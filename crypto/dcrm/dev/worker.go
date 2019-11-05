@@ -779,6 +779,13 @@ func Dcrmcallret(msg interface{},enode string) {
 	    }
 	}
 	    
+	if ss[2] == "rpc_lockout" {
+	    if w.retres.Len() == NodeCnt {
+		ret := GetGroupRes(workid)
+		w.ch <- ret
+	    }
+	}
+	    
 	if ss[2] == "rpc_req_dcrmaddr" {
 	    if w.retres.Len() == NodeCnt {
 		ret := GetGroupRes(workid)
@@ -798,6 +805,13 @@ func Dcrmcallret(msg interface{},enode string) {
 	w.retres.PushBack(&res2)
 
 	if ss[2] == "rpc_sign" {
+	    if w.retres.Len() == NodeCnt {
+		ret := GetGroupRes(workid)
+		w.ch <- ret
+	    }
+	}
+
+	if ss[2] == "rpc_lockout" {
 	    if w.retres.Len() == NodeCnt {
 		ret := GetGroupRes(workid)
 		w.ch <- ret
@@ -924,7 +938,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    msgs := strings.Split(msg,":")
 
 	    rch := make(chan interface{},1)
-	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],rch)
+	    validate_sign(w.sid,msgs[0],msgs[1],msgs[2],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
@@ -944,6 +958,38 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    ch <- res2
 	    return true
 	}
+	
+	//rpc_lockout
+	if rr.MsgType == "rpc_lockout" {
+	    w := workers[workid]
+	    w.sid = rr.Nonce
+	    w.groupid = self.groupid
+	    //msg = pubkey:keytype:message:cointype:value:to
+	    msg := rr.Msg
+	    msgs := strings.Split(msg,":")
+
+	    rch := make(chan interface{},1)
+	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],rch)
+	    chret,cherr := GetChannelValue(ch_t,rch)
+	    if chret != "" {
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
+		ch <- res2
+		return true
+	    }
+
+	    if cherr != nil {
+		var ret2 Err
+		ret2.Info = cherr.Error() 
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:ret2}
+		ch <- res2
+		return false
+	    }
+	    
+	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("send tx to net fail.")}
+	    ch <- res2
+	    return true
+	}
+	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
 	    //msg = keytype 
@@ -1200,6 +1246,87 @@ func (self *SignSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     return true
 }
 
+//msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
+type LockOutSendMsgToDcrm struct {
+    PubKey string
+    KeyType string
+    Message string
+    Cointype string
+    Value string
+    To string
+}
+
+func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
+    if workid < 0 {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	ch <- res
+	return false
+    }
+
+    /////check message
+    message := self.Message
+    txhashs := []rune(message)
+    if string(txhashs[0:2]) != "0x" {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("message must be 16-in-32-byte character sprang at the beginning of 0x,for example: 0x19b6236d2e7eb3e925d0c6e8850502c1f04822eb9aa67cb92e5004f7017e5e41")}
+	ch <- res
+	return false
+    }
+    message = string(txhashs[2:])
+    if len(message) != 64 {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("message must be 16-in-32-byte character sprang at the beginning of 0x,for example: 0x19b6236d2e7eb3e925d0c6e8850502c1f04822eb9aa67cb92e5004f7017e5e41")}
+	ch <- res
+	return false
+    }
+    //////
+
+    GetEnodesInfo()
+    msg := self.PubKey + ":" + self.KeyType + ":" + self.Message + ":" + self.Cointype + ":" + self.Value + ":" + self.To
+    timestamp := time.Now().Unix()
+    tt := strconv.Itoa(int(timestamp))
+    nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
+    
+    sm := &SendMsg{MsgType:"rpc_lockout",Nonce:nonce,WorkId:workid,Msg:msg}
+    res,err := Encode2(sm)
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return false
+    }
+
+    res,err = Compress([]byte(res))
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return false
+    }
+
+    GroupId := GetGroupIdByEnode(cur_enode)
+    fmt.Println("=========LockOutSendMsgToDcrm.Run===========","GroupId",GroupId,"cur_enode",cur_enode)
+    if strings.EqualFold(GroupId,"") {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
+	ch <- res
+	return false
+    }
+    s := SendToGroupAllNodes(GroupId,res)
+    if strings.EqualFold(s,"send fail.") {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
+	ch <- res
+	return false
+    }
+
+    fmt.Println("=========LockOutSendMsgToDcrm.Run,waiting for result.===========","GroupId",GroupId,"cur_enode",cur_enode)
+    w := workers[workid]
+    chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
+    if cherr != nil {
+	res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+	ch <- res2
+	return false
+    }
+    res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+    ch <- res2
+
+    return true
+}
 func IsInGroup(enode string,groupId string) bool {
     if groupId == "" || enode == "" {
 	return false
@@ -1288,8 +1415,15 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_sign":
+//	msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
 	    m := strings.Split(msg,":")
 	    v := SignSendMsgToDcrm{PubKey:m[0],KeyType:m[1],Message:m[2]}
+	    rch := make(chan interface{},1)
+	    req = RpcReq{rpcdata:&v,ch:rch}
+	case "rpc_lockout":
+	    //msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
+	    m := strings.Split(msg,":")
+	    v := LockOutSendMsgToDcrm{PubKey:m[0],KeyType:m[1],Message:m[2],Cointype:m[3],Value:m[4],To:m[5]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	default:
@@ -1297,7 +1431,7 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
     }
 
     var t int
-    if rpctype == "rpc_sign" {
+    if rpctype == "rpc_sign" || rpctype == "rpc_lockout" {
 	t = sendtogroup_lilo_timeout 
     } else {
 	t = sendtogroup_timeout

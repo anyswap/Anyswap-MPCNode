@@ -32,9 +32,85 @@ import (
     "bytes"
 )
 
-func validate_lockout(wsid string,pubkey string,keytype string,message string,ch chan interface{}) {
-    fmt.Println("========validate_lockout============")
+func validate_sign(wsid string,pubkey string,keytype string,message string,ch chan interface{}) {
+    fmt.Println("========validate_sign============")
     lock5.Lock()
+    pub, err := hex.DecodeString(pubkey)
+    if err != nil {
+        res := RpcDcrmRes{Ret:"",Err:err}
+        ch <- res
+        lock5.Unlock()
+        return
+    }
+
+    //db
+    dir := GetDbDir()
+    ////////
+    db, err := leveldb.OpenFile(dir, nil) 
+    if err != nil { 
+        fmt.Println("===========validate_sign,open db fail.=============")
+        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("open db fail.")}
+        ch <- res
+        lock5.Unlock()
+        return
+    } 
+
+    var data string
+    var b bytes.Buffer 
+    b.WriteString("") 
+    b.WriteByte(0) 
+    b.WriteString("") 
+    iter := db.NewIterator(nil, nil) 
+    for iter.Next() { 
+	key := string(iter.Key())
+	value := string(iter.Value())
+	if strings.EqualFold(key,string(pub)) {
+	    data = value
+	    break
+	}
+    }
+    iter.Release()
+    ///////
+    if data == "" {
+	fmt.Println("===========get generate save data fail.=============")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail.")}
+	ch <- res
+	db.Close()
+	lock5.Unlock()
+	return
+    }
+    
+    datas := strings.Split(data,Sep)
+
+    realdcrmpubkey := hex.EncodeToString([]byte(datas[0]))
+    if !strings.EqualFold(realdcrmpubkey,pubkey) {
+        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail")}
+        ch <- res
+        db.Close()
+        lock5.Unlock()
+        return
+    }
+
+    db.Close()
+    lock5.Unlock()
+
+    rch := make(chan interface{}, 1)
+    dcrm_sign(wsid,"xxx",message,realdcrmpubkey,keytype,rch)
+    ret,cherr := GetChannelValue(ch_t,rch)
+    if cherr != nil {
+	    res := RpcDcrmRes{Ret:"",Err:cherr}
+	    ch <- res
+	    return
+    }
+
+    res := RpcDcrmRes{Ret:ret,Err:nil}
+    ch <- res
+    return
+}
+
+func validate_lockout(wsid string,pubkey string,keytype string,message string,cointype string,value string,to string,ch chan interface{}) {
+    fmt.Println("========validate_lockout============")
+    /*lock5.Lock()
     pub, err := hex.DecodeString(pubkey)
     if err != nil {
         res := RpcDcrmRes{Ret:"",Err:err}
@@ -105,7 +181,7 @@ func validate_lockout(wsid string,pubkey string,keytype string,message string,ch
 
     res := RpcDcrmRes{Ret:ret,Err:nil}
     ch <- res
-    return
+    return*/
 }
 
 //ec2

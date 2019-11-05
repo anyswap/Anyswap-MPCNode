@@ -79,6 +79,26 @@ func (this *Service) GenPubkey() string {   //函数名首字母必须大写
     return addr
 }
 
+func (this *Service) LockOut(pubkey string,message string,cointype string,value string,to string) string {
+    fmt.Println("==============LockOut==================")
+    keytype := "ECDSA"  //tmp
+    if pubkey == "" || message == "" || cointype == "" || value == "" || to == "" {
+	return "param error."
+    }
+    
+    if (!strings.EqualFold(keytype,"ECDSA") && !strings.EqualFold(keytype,"ED25519")) || keytype == "" {
+	return "keytype not supported."
+    }
+    
+    msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
+    txhash,err := dcrm.SendReqToGroup(msg,"rpc_lockout")
+    if err != nil || txhash == "" {
+	return err.Error()
+    }
+
+    return txhash
+}
+
 // this will be called by dcrm_sign
 func (this *Service) Sign(pubkey string,message string) map[string]interface{} {
     fmt.Println("==============dcrm_sign==================")

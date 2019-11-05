@@ -46,33 +46,41 @@ type DcrmPubkeyRes struct {
 }
 
 func SendReqToGroup(msg string,rpctype string) (string,error) {
-    pubkey,err := dev.SendReqToGroup(msg,rpctype)
-    if err != nil || pubkey == "" {
-	return "",nil
+    ret,err := dev.SendReqToGroup(msg,rpctype)
+    if err != nil || ret == "" {
+	return "",err
     }
 
-    var m interface{}
-    addrmp := make(map[string]string)
-    for _, ct := range cryptocoins.Cointypes {
-	if strings.EqualFold(ct, "ALL") {
-	    continue
+    if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
+	var m interface{}
+	addrmp := make(map[string]string)
+	for _, ct := range cryptocoins.Cointypes {
+	    if strings.EqualFold(ct, "ALL") {
+		continue
+	    }
+
+	    h := cryptocoins.NewCryptocoinHandler(ct)
+	    if h == nil {
+		continue
+	    }
+	    ctaddr, err := h.PublicKeyToAddress(ret)
+	    if err != nil {
+		fmt.Printf("============ generate address,error = %+v ==========\n", err.Error())
+		continue
+	    }
+	    addrmp[ct] = ctaddr
 	}
 
-	h := cryptocoins.NewCryptocoinHandler(ct)
-	if h == nil {
-	    continue
-	}
-	ctaddr, err := h.PublicKeyToAddress(pubkey)
-	if err != nil {
-	    fmt.Printf("============ generate address,error = %+v ==========\n", err.Error())
-	    continue
-	}
-	addrmp[ct] = ctaddr
+	m = &DcrmPubkeyRes{FusionAccount:"",PubKey:ret,Address:addrmp}
+	b,_ := json.Marshal(m)
+	return string(b),nil
     }
 
-    m = &DcrmPubkeyRes{FusionAccount:"",PubKey:pubkey,Address:addrmp}
-    b,_ := json.Marshal(m)
-    return string(b),nil
+    if strings.EqualFold(rpctype,"rpc_lockout") {
+//	msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
+    }
+
+    return ret,nil
 }
 
 func init(){

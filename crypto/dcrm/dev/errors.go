@@ -34,6 +34,7 @@ var (
 	ErrSendDataToGroupFail   = `{Code:15,Error:"send data to group fail."}`
 	ErrInternalMsgFormatError   = `{Code:16,Error:"msg data format error."}`
 	ErrGetNoResFromGroupMem   = `{Code:17,Error:"no get any result from other group node."}`
+	ErrCoinTypeNotSupported   = `{Code:18,Error:"coin type is not supported."}`
 	ErrGroupNotReady   = `{Code:23,Error:"the group is not ready.please try again."}`
 	ErrGetGenPubkeyFail   = `{Code:24,Error:"get generate pubkey fail."}`
 	ErrGetGenSaveDataFail   = `{Code:25,Error:"get generate save data fail."}`
@@ -41,6 +42,8 @@ var (
 	ErrDcrmSigWrongSize   = `{Code:28,Error:"wrong size for dcrm sig."}`
 	ErrDcrmSigFail   = `{Code:29,Error:"dcrm sign fail."}`
 	ErrInvalidDcrmAddr   = `{Code:30,Error:"invalid dcrm address."}`
+	ErrGetRealEosUserFail   = `{Code:27,Error:"cannot get real eos account."}`
+	ErrSendTxToNetFail   = `{Code:14,Error:"send tx to outside net fail."}`
 	ErrGetC1Timeout   = `{Code:31,Error:"get C1 timeout."}`
 	ErrGetEnodeByUIdFail   = `{Code:32,Error:"can not find proper enodes by uid."}`
 	ErrGetD1Timeout   = `{Code:33,Error:"get D1 timeout."}`

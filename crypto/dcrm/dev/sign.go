@@ -30,6 +30,9 @@ import (
     "encoding/hex"
     "github.com/syndtr/goleveldb/leveldb"
     "bytes"
+    "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins"
+    "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/eos"
+    "github.com/astaxie/beego/logs"
 )
 
 func validate_sign(wsid string,pubkey string,keytype string,message string,ch chan interface{}) {
@@ -91,11 +94,16 @@ func validate_sign(wsid string,pubkey string,keytype string,message string,ch ch
         return
     }
 
+    save := datas[1] 
+    dcrmpub := datas[0]
+    dcrmpks := []byte(dcrmpub)
+    dcrmpkx,dcrmpky := secp256k1.S256().Unmarshal(dcrmpks[:])
+
     db.Close()
     lock5.Unlock()
 
     rch := make(chan interface{}, 1)
-    dcrm_sign(wsid,"xxx",message,realdcrmpubkey,keytype,rch)
+    dcrm_sign(wsid,message,save,dcrmpkx,dcrmpky,keytype,rch)
     ret,cherr := GetChannelValue(ch_t,rch)
     if cherr != nil {
 	    res := RpcDcrmRes{Ret:"",Err:cherr}
@@ -108,9 +116,17 @@ func validate_sign(wsid string,pubkey string,keytype string,message string,ch ch
     return
 }
 
-func validate_lockout(wsid string,pubkey string,keytype string,message string,cointype string,value string,to string,ch chan interface{}) {
+func validate_lockout(wsid string,pubkey string,cointype string,value string,to string,ch chan interface{}) {
     fmt.Println("========validate_lockout============")
-    /*lock5.Lock()
+    var ret2 Err
+    chandler := cryptocoins.NewCryptocoinHandler(cointype)
+    if chandler == nil {
+	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrCoinTypeNotSupported)}
+	    ch <- res
+	    return
+    }
+    
+    lock5.Lock()
     pub, err := hex.DecodeString(pubkey)
     if err != nil {
         res := RpcDcrmRes{Ret:"",Err:err}
@@ -167,28 +183,246 @@ func validate_lockout(wsid string,pubkey string,keytype string,message string,co
         return
     }
 
+    save := datas[1] 
+    dcrmpub := datas[0]
+    dcrmpks := []byte(dcrmpub)
+    dcrmpkx,dcrmpky := secp256k1.S256().Unmarshal(dcrmpks[:])
+
     db.Close()
     lock5.Unlock()
 
+    realdcrmfrom, err := chandler.PublicKeyToAddress(pubkey)
+    if err != nil {
+        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get dcrm addr fail")}
+        ch <- res
+        return
+    }
+    
+    amount, _ := new(big.Int).SetString(value,10)
+    jsonstring := "" // TODO erc20
+    // For EOS, realdcrmpubkey is needed to calculate userkey,
+    // but is not used as real transaction maker.
+    // The real transaction maker is eospubkey.
+    var eosaccount string
+    if strings.EqualFold(cointype,"EOS") {
+	    //realdcrmfrom, _, _ = GetEosAccount()
+	    //if realdcrmfrom == "" {
+	    eosaccount, _, _ = GetEosAccount()
+	    if eosaccount == "" {
+		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetRealEosUserFail)}
+		ch <- res
+		return
+	    }
+    }
+    
+    var lockouttx interface{}
+    var digests []string
+    var buildTxErr error
+    if strings.EqualFold(cointype,"EOS") {
+    	lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(eosaccount,pubkey,to,amount,jsonstring)
+    } else {
+	lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(realdcrmfrom,pubkey,to,amount,jsonstring)
+    }
+    
+    if buildTxErr != nil {
+	    res := RpcDcrmRes{Ret:"",Err:buildTxErr}
+	    ch <- res
+	    return
+    }
+    
     rch := make(chan interface{}, 1)
-    dcrm_sign(wsid,"xxx",message,realdcrmpubkey,keytype,rch)
-    ret,cherr := GetChannelValue(ch_t,rch)
-    if cherr != nil {
-	    res := RpcDcrmRes{Ret:"",Err:cherr}
+    var sigs []string
+    var bak_sigs []string
+    for k, digest := range digests {
+	    fmt.Printf("============validate_lockout,call dcrm_sign times = %+v,cointype = %+v ==============\n",k,cointype)
+
+	    /*if types.IsDefaultED25519(cointype) {
+		bak_sig := dcrm_sign_ed(wsid,digest,realdcrmfrom,cointype,rch)
+		ret,cherr := GetChannelValue(ch_t,rch)
+		if cherr != nil {
+			res := RpcDcrmRes{Ret:"",Err:cherr}
+			ch <- res
+			return
+		}
+		
+		sigs = append(sigs, ret)
+		if bak_sig != "" {
+		    bak_sigs = append(bak_sigs, bak_sig)
+		}
+
+		continue
+	    }*/
+
+	    bak_sig := dcrm_sign(wsid,digest,save,dcrmpkx,dcrmpky,cointype,rch)
+	    ret,cherr := GetChannelValue(ch_t,rch)
+	    if cherr != nil {
+		    res := RpcDcrmRes{Ret:"",Err:cherr}
+		    ch <- res
+		    return
+	    }
+	    //bug
+	    rets := []rune(ret)
+	    if len(rets) != 130 {
+		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrDcrmSigWrongSize)}
+		ch <- res
+		return
+	    }
+	    sigs = append(sigs, string(ret))
+	    if bak_sig != "" {
+		bak_sigs = append(bak_sigs, bak_sig)
+	    }
+    }
+
+    signedTx, err := chandler.MakeSignedTransaction(sigs, lockouttx)
+    if err != nil {
+	    ret2.Info = err.Error()
+	    res := RpcDcrmRes{Ret:"",Err:ret2}
 	    ch <- res
 	    return
     }
 
-    res := RpcDcrmRes{Ret:ret,Err:nil}
+    lockout_tx_hash, err := chandler.SubmitTransaction(signedTx)
+    /////////add for bak sig
+    if err != nil && len(bak_sigs) != 0 {
+
+	signedTx, err = chandler.MakeSignedTransaction(bak_sigs, lockouttx)
+	if err != nil {
+		ret2.Info = err.Error()
+		res := RpcDcrmRes{Ret:"",Err:ret2}
+		ch <- res
+		return
+	}
+	
+	lockout_tx_hash, err = chandler.SubmitTransaction(signedTx)
+    }
+    /////////
+    
+    if lockout_tx_hash != "" {
+	res := RpcDcrmRes{Ret:lockout_tx_hash,Err:err}
+	ch <- res
+	return
+    }
+
+    if err != nil {
+	    ret2.Info = err.Error()
+	    res := RpcDcrmRes{Ret:"",Err:ret2}
+	    ch <- res
+	    return
+    }
+    
+    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendTxToNetFail)}
     ch <- res
-    return*/
+    return
 }
 
 //ec2
 //msgprex = hash 
 //return value is the backup for dcrm sig.
-func dcrm_sign(msgprex string,sig string,txhash string,pubkey string,cointype string,ch chan interface{}) string {
+func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky *big.Int,cointype string,ch chan interface{}) string {
 
+    if strings.EqualFold(cointype,"EOS") == true {
+	lock5.Lock()
+	//db
+	dir := GetEosDbDir()
+	db, err := leveldb.OpenFile(dir, nil) 
+	if err != nil {
+	    fmt.Println("===========open db fail.=============")
+	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrCreateDbFail)}
+	    ch <- res
+	    lock5.Unlock()
+	    return ""
+	}
+	
+	var eosstr string
+	var b bytes.Buffer 
+	b.WriteString("") 
+	b.WriteByte(0) 
+	b.WriteString("") 
+	iter := db.NewIterator(nil, nil) 
+	for iter.Next() { 
+	    key := string(iter.Key())
+	    value := string(iter.Value())
+	    if strings.EqualFold(key,string([]byte("eossettings"))) {
+		eosstr = value
+		break
+	    }
+	}
+	iter.Release()
+	///////
+	if eosstr == "" {
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get save date fail.")}
+	    ch <- res
+	    db.Close()
+	    lock5.Unlock()
+	    return ""
+	}
+
+	// Retrieve eospubkey
+	eosstrs := strings.Split(string(eosstr),":")
+	fmt.Println("======== get eos settings,eosstr = %s ========",eosstr)
+	if len(eosstrs) != 5 {
+	    var ret2 Err
+	    ret2.Info = "get eos settings error: "+string(eosstr)
+	    res := RpcDcrmRes{Ret:"",Err:ret2}
+	    ch <- res
+	    return ""
+	}
+	pubhex := eosstrs[3]
+	dcrmpks, _ := hex.DecodeString(pubhex)
+	dcrmpkx2,dcrmpky2 := secp256k1.S256().Unmarshal(dcrmpks[:])
+	//dcrmaddr := pubhex
+	db.Close()
+	lock5.Unlock()
+	fmt.Println("======== dcrm_sign eos,pkx = %+v,pky = %+v,==========",dcrmpkx2,dcrmpky2)
+	txhashs := []rune(txhash)
+	if string(txhashs[0:2]) == "0x" {
+	    txhash = string(txhashs[2:])
+	}
+
+	w,err := FindWorker(msgprex)
+	if w == nil || err != nil {
+	    logs.Debug("===========get worker fail.=============")
+	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrNoFindWorker)}
+	    ch <- res
+	    return ""
+	}
+	id := w.id
+
+	var ch1 = make(chan interface{}, 1)
+	var flag = false
+	var ret string
+	var bak_sig string
+	//25-->1
+	for i := 0; i < 1; i++ {
+		bak_sig = Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx2,dcrmpky2,ch1,id)
+		ret,_ = GetChannelValue(ch_t,ch1)
+		//log.Debug("======== dcrm_sign eos","signature",ret,"bak sig",bak_sig,"","========")
+		//if ret != "" && eos.IsCanonical([]byte(ret)) == true 
+		if ret == "" {
+			w := workers[id]
+			w.Clear2()
+			continue
+		}
+		b, _ := hex.DecodeString(ret)
+		if eos.IsCanonical(b) == true {
+			flag = true
+			break
+		}
+		w := workers[id]
+		w.Clear2()
+	}
+	if flag == false {
+		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrDcrmSigFail)}
+		ch <- res
+		return ""
+	}
+
+	res := RpcDcrmRes{Ret:ret,Err:nil}
+	ch <- res
+	return bak_sig
+    }
+    
+    /////////////
     GetEnodesInfo() 
     
     if int32(Enode_cnts) != int32(NodeCnt) {
@@ -200,68 +434,10 @@ func dcrm_sign(msgprex string,sig string,txhash string,pubkey string,cointype st
 
     fmt.Println("===================!!!Start!!!====================")
 
-    lock.Lock()
-    //db
-    dir := GetDbDir()
-    db, err := leveldb.OpenFile(dir, nil) 
-    if err != nil { 
-	fmt.Println("===========open db fail.=============")
-        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("open db fail.")}
-        ch <- res
-        lock.Unlock()
-        return ""
-    } 
-
-    //
-    pub,err := hex.DecodeString(pubkey)
-    if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail.")}
-	ch <- res
-	db.Close()
-	lock.Unlock()
-	return ""
-    }
-
-    var data string
-    var b bytes.Buffer 
-    b.WriteString("") 
-    b.WriteByte(0) 
-    b.WriteString("") 
-    iter := db.NewIterator(nil, nil) 
-    for iter.Next() { 
-	key := string(iter.Key())
-	value := string(iter.Value())
-	if strings.EqualFold(key,string(pub)) {
-	    data = value
-	    break
-	}
-    }
-    iter.Release()
-    
-    if data == "" {
-	fmt.Println("===========get generate save data fail.=============")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail.")}
-	ch <- res
-	db.Close()
-	lock.Unlock()
-	return ""
-    }
-
-    datas := strings.Split(string(data),Sep)
-
-    save := datas[1] 
-    
-    dcrmpub := datas[0]
-    dcrmpks := []byte(dcrmpub)
-    dcrmpkx,dcrmpky := secp256k1.S256().Unmarshal(dcrmpks[:])
-
     txhashs := []rune(txhash)
     if string(txhashs[0:2]) == "0x" {
 	txhash = string(txhashs[2:])
     }
-
-    db.Close()
-    lock.Unlock()
 
     w,err := FindWorker(msgprex)
     if w == nil || err != nil {
@@ -271,8 +447,59 @@ func dcrm_sign(msgprex string,sig string,txhash string,pubkey string,cointype st
 	return ""
     }
     id := w.id
-    bak_sig := Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx,dcrmpky,ch,id)
-    return bak_sig
+
+    ///////
+     if strings.EqualFold(cointype,"EVT1") == true {
+	logs.Debug("======== dcrm_sign ready to call Sign_ec2","msgprex",msgprex,"save",save,"txhash",txhash,"cointype",cointype,"pkx",dcrmpkx,"pky",dcrmpky,"id",id)
+	logs.Debug("!!! token type is EVT1 !!!")
+	var ch1 = make(chan interface{}, 1)
+	var flag = false
+	var ret string
+	var cherr error
+	var bak_sig string
+	//25-->1
+	for i := 0; i < 1; i++ {
+		bak_sig = Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx,dcrmpky,ch1,id)
+		ret, cherr = GetChannelValue(ch_t,ch1)
+		if cherr != nil {
+			logs.Debug("======== dcrm_sign evt","cherr",cherr)
+			time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+			w := workers[id]
+			w.Clear2()
+			continue
+		}
+		logs.Debug("======== dcrm_sign evt","signature",ret,"","========")
+		//if ret != "" && eos.IsCanonical([]byte(ret)) == true 
+		if ret == "" {
+			w := workers[id]
+			w.Clear2()
+			continue
+		}
+		b, _ := hex.DecodeString(ret)
+		if eos.IsCanonical(b) == true {
+			fmt.Printf("\nret is a canonical signature\n")
+			flag = true
+			break
+		}
+		w := workers[id]
+		w.Clear2()
+	}
+	logs.Debug("======== dcrm_sign evt","got rsv flag",flag,"ret",ret,"","========")
+	if flag == false {
+		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrDcrmSigFail)}
+		ch <- res
+		return ""
+	}
+	//ch <- ret
+	res := RpcDcrmRes{Ret:ret,Err:cherr}
+	ch <- res
+	return bak_sig
+    } else {
+	bak_sig := Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx,dcrmpky,ch,id)
+	return bak_sig
+    }
+
+    return ""
 }
 
 //msgprex = hash

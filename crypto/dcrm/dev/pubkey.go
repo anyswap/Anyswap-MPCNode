@@ -29,9 +29,9 @@ import (
 
 //ec2
 //msgprex = hash 
-func dcrm_liloreqAddress(msgprex string,keytype string,ch chan interface{}) {
+func dcrm_genPubKey(msgprex string,keytype string,ch chan interface{}) {
 
-    fmt.Println("========dcrm_liloreqAddress============")
+    fmt.Println("========dcrm_genPubKey============")
     GetEnodesInfo()
 
     if int32(Enode_cnts) != int32(NodeCnt) {

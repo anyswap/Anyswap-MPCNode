@@ -40,18 +40,24 @@ func Start() {
 }
 
 type DcrmPubkeyRes struct {
-    FusionAccount string
+    Account string
     PubKey string
     Address map[string]string
 }
 
-func SendReqToGroup(msg string,rpctype string) (string,error) {
-    ret,err := dev.SendReqToGroup(msg,rpctype)
-    if err != nil || ret == "" {
-	return "",err
-    }
+type DcrmAddrRes struct {
+    Account string
+    DcrmAddr string
+    Cointype string
+}
 
+func SendReqToGroup(msg string,rpctype string) (string,error) {
     if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
+	ret,err := dev.SendReqToGroup("ALL",rpctype)
+	if err != nil || ret == "" {
+	    return "",err
+	}
+
 	var m interface{}
 	addrmp := make(map[string]string)
 	for _, ct := range cryptocoins.Cointypes {
@@ -71,13 +77,19 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    addrmp[ct] = ctaddr
 	}
 
-	m = &DcrmPubkeyRes{FusionAccount:"",PubKey:ret,Address:addrmp}
+	if strings.EqualFold(msg, "All") {
+	    m = &DcrmPubkeyRes{Account:"",PubKey:ret,Address:addrmp}
+	} else {
+	    m = &DcrmAddrRes{Account:"",DcrmAddr:addrmp[msg],Cointype:msg}
+	}
+
 	b,_ := json.Marshal(m)
 	return string(b),nil
     }
-
-    if strings.EqualFold(rpctype,"rpc_lockout") {
-//	msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
+    
+    ret,err := dev.SendReqToGroup(msg,rpctype)
+    if err != nil || ret == "" {
+	return "",err
     }
 
     return ret,nil
@@ -96,6 +108,7 @@ func init(){
 	dev.RegP2pBroadcastInGroupOthersCallBack(p2pdcrm.SdkProtocol_broadcastInGroupOthers)
 	dev.RegP2pSendMsgToPeerCallBack(p2pdcrm.SendMsgToPeer)
 	dev.RegP2pParseNodeCallBack(p2pdcrm.ParseNodeID)
+	dev.RegDcrmGetEosAccountCallBack(GetEosAccount)
 	dev.InitChan()
 }
 

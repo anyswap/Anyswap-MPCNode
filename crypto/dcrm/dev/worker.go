@@ -54,6 +54,7 @@ var (
     BroadcastInGroupOthers func(string,string)
     SendToPeer func(string,string) error
     ParseNode func(string) string
+    GetEosAccount func() (string,string,string)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -78,6 +79,10 @@ func RegP2pSendMsgToPeerCallBack(f func(string,string)error) {
 
 func RegP2pParseNodeCallBack(f func(string)string) {
     ParseNode = f
+}
+
+func RegDcrmGetEosAccountCallBack(f func() (string,string,string)) {
+    GetEosAccount = f
 }
 
 func PutGroup(groupId string) bool {
@@ -679,6 +684,230 @@ func (w *RpcReqWorker) Clear() {
     w.splitmsg_ss1 = make(map[string]*list.List)
 }
 
+func (w *RpcReqWorker) Clear2() {
+    fmt.Println("===========RpcReqWorker.Clear2,w.id = %s ===================",w.id)
+    var next *list.Element
+    
+    for e := w.msg_c1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_c1.Remove(e)
+    }
+    
+    for e := w.msg_kc.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_kc.Remove(e)
+    }
+
+    for e := w.msg_mkg.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_mkg.Remove(e)
+    }
+
+    for e := w.msg_mkw.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_mkw.Remove(e)
+    }
+
+    for e := w.msg_delta1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_delta1.Remove(e)
+    }
+
+    for e := w.msg_d1_1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_d1_1.Remove(e)
+    }
+
+    for e := w.msg_share1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_share1.Remove(e)
+    }
+
+    for e := w.msg_zkfact.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_zkfact.Remove(e)
+    }
+
+    for e := w.msg_zku.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_zku.Remove(e)
+    }
+
+    for e := w.msg_mtazk1proof.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_mtazk1proof.Remove(e)
+    }
+
+    for e := w.msg_c11.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_c11.Remove(e)
+    }
+
+    for e := w.msg_d11_1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_d11_1.Remove(e)
+    }
+
+    for e := w.msg_s1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_s1.Remove(e)
+    }
+
+    for e := w.msg_ss1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_ss1.Remove(e)
+    }
+
+    for e := w.retres.Front(); e != nil; e = next {
+        next = e.Next()
+        w.retres.Remove(e)
+    }
+
+    if len(w.ch) == 1 {
+	<-w.ch
+    }
+    if len(w.rpcquit) == 1 {
+	<-w.rpcquit
+    }
+    if len(w.bshare1) == 1 {
+	<-w.bshare1
+    }
+    if len(w.bzkfact) == 1 {
+	<-w.bzkfact
+    }
+    if len(w.bzku) == 1 {
+	<-w.bzku
+    }
+    if len(w.bmtazk1proof) == 1 {
+	<-w.bmtazk1proof
+    }
+    if len(w.bc1) == 1 {
+	<-w.bc1
+    }
+    if len(w.bd1_1) == 1 {
+	<-w.bd1_1
+    }
+    if len(w.bc11) == 1 {
+	<-w.bc11
+    }
+    if len(w.bkc) == 1 {
+	<-w.bkc
+    }
+    if len(w.bs1) == 1 {
+	<-w.bs1
+    }
+    if len(w.bss1) == 1 {
+	<-w.bss1
+    }
+    if len(w.bmkg) == 1 {
+	<-w.bmkg
+    }
+    if len(w.bmkw) == 1 {
+	<-w.bmkw
+    }
+    if len(w.bdelta1) == 1 {
+	<-w.bdelta1
+    }
+    if len(w.bd11_1) == 1 {
+	<-w.bd11_1
+    }
+
+    //ed
+    if len(w.bedc11) == 1 {
+	<-w.bedc11
+    }
+    for e := w.msg_edc11.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edc11.Remove(e)
+    }
+    if len(w.bedzk) == 1 {
+	<-w.bedzk
+    }
+    for e := w.msg_edzk.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edzk.Remove(e)
+    }
+    if len(w.bedd11) == 1 {
+	<-w.bedd11
+    }
+    for e := w.msg_edd11.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edd11.Remove(e)
+    }
+    if len(w.bedshare1) == 1 {
+	<-w.bedshare1
+    }
+    for e := w.msg_edshare1.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edshare1.Remove(e)
+    }
+    if len(w.bedcfsb) == 1 {
+	<-w.bedcfsb
+    }
+    for e := w.msg_edcfsb.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edcfsb.Remove(e)
+    }
+    if len(w.bedc21) == 1 {
+	<-w.bedc21
+    }
+    for e := w.msg_edc21.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edc21.Remove(e)
+    }
+    if len(w.bedzkr) == 1 {
+	<-w.bedzkr
+    }
+    for e := w.msg_edzkr.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edzkr.Remove(e)
+    }
+    if len(w.bedd21) == 1 {
+	<-w.bedd21
+    }
+    for e := w.msg_edd21.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edd21.Remove(e)
+    }
+    if len(w.bedc31) == 1 {
+	<-w.bedc31
+    }
+    for e := w.msg_edc31.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edc31.Remove(e)
+    }
+    if len(w.bedd31) == 1 {
+	<-w.bedd31
+    }
+    for e := w.msg_edd31.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_edd31.Remove(e)
+    }
+    if len(w.beds) == 1 {
+	<-w.beds
+    }
+    for e := w.msg_eds.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_eds.Remove(e)
+    }
+
+    //TODO
+    w.splitmsg_c1 = make(map[string]*list.List)
+    w.splitmsg_kc = make(map[string]*list.List)
+    w.splitmsg_mkg = make(map[string]*list.List)
+    w.splitmsg_mkw = make(map[string]*list.List)
+    w.splitmsg_delta1 = make(map[string]*list.List)
+    w.splitmsg_d1_1 = make(map[string]*list.List)
+    w.splitmsg_share1 = make(map[string]*list.List)
+    w.splitmsg_zkfact = make(map[string]*list.List)
+    w.splitmsg_zku = make(map[string]*list.List)
+    w.splitmsg_mtazk1proof = make(map[string]*list.List)
+    w.splitmsg_c11 = make(map[string]*list.List)
+    w.splitmsg_d11_1 = make(map[string]*list.List)
+    w.splitmsg_s1 = make(map[string]*list.List)
+    w.splitmsg_ss1 = make(map[string]*list.List)
+}
+
 func (w *RpcReqWorker) Start() {
     go func() {
 
@@ -793,6 +1022,13 @@ func Dcrmcallret(msg interface{},enode string) {
 	    }
 	}
 
+	if ss[2] == "rpc_gen_pubkey" {
+	    if w.retres.Len() == NodeCnt {
+		ret := GetGroupRes(workid)
+		w.ch <- ret
+	    }
+	}
+
 	return
     }
     
@@ -819,6 +1055,13 @@ func Dcrmcallret(msg interface{},enode string) {
 	}
 
 	if ss[2] == "rpc_req_dcrmaddr" {
+	    if w.retres.Len() == NodeCnt {
+		ret := GetGroupRes(workid)
+		w.ch <- ret
+	    }
+	}
+	
+	if ss[2] == "rpc_gen_pubkey" {
 	    if w.retres.Len() == NodeCnt {
 		ret := GetGroupRes(workid)
 		w.ch <- ret
@@ -964,12 +1207,12 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
 	    w.groupid = self.groupid
-	    //msg = pubkey:keytype:message:cointype:value:to
+	    //msg = pubkey:cointype:value:to
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 
 	    rch := make(chan interface{},1)
-	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],rch)
+	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],msgs[3],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
@@ -992,13 +1235,13 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
-	    //msg = keytype 
+	    //msg = cointype 
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
 	    w.sid = rr.Nonce
 	    w.groupid = self.groupid
 
-	    dcrm_liloreqAddress(w.sid,rr.Msg,rch)
+	    dcrm_genPubKey(w.sid,rr.Msg,rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
 		var ret2 Err
@@ -1013,6 +1256,29 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    return true
 	}
 
+	//rpc_gen_pubkey
+	if rr.MsgType == "rpc_gen_pubkey" {
+	    //msg = keytype 
+	    rch := make(chan interface{},1)
+	    w := workers[workid]
+	    w.sid = rr.Nonce
+	    w.groupid = self.groupid
+
+	    dcrm_genPubKey(w.sid,rr.Msg,rch)
+	    chret,cherr := GetChannelValue(ch_t,rch)
+	    if cherr != nil {
+		var ret2 Err
+		ret2.Info = cherr.Error()
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:ret2}
+		ch <- res2
+		return false
+	    }
+	    
+	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
+	    ch <- res2
+	    return true
+	}
+    
     default:
 	return false
     }
@@ -1105,8 +1371,69 @@ func Keccak256Hash(data ...[]byte) (h DcrmHash) {
 	return h
 }
 
-type ReqAddrSendMsgToDcrm struct {
+type GenPubKeySendMsgToDcrm struct {
     KeyType string
+}
+
+func (self *GenPubKeySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
+    if workid < 0 {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	ch <- res
+	return false
+    }
+
+    GetEnodesInfo()
+    timestamp := time.Now().Unix()
+    tt := strconv.Itoa(int(timestamp))
+    nonce := Keccak256Hash([]byte(self.KeyType + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
+    
+    sm := &SendMsg{MsgType:"rpc_gen_pubkey",Nonce:nonce,WorkId:workid,Msg:self.KeyType}
+    res,err := Encode2(sm)
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return false
+    }
+
+    res,err = Compress([]byte(res))
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return false
+    }
+
+    GroupId := GetGroupIdByEnode(cur_enode)
+    fmt.Println("=========GenPubKeySendMsgToMsg.Run===========","GroupId",GroupId,"cur_enode",cur_enode)
+    if strings.EqualFold(GroupId,"") {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
+	ch <- res
+	return false
+    }
+
+    s := SendToGroupAllNodes(GroupId,res)
+    
+    if strings.EqualFold(s,"send fail.") {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
+	ch <- res
+	return false
+    }
+
+    fmt.Println("=========GenPubKeySendMsgToMsg.Run,waiting for result===========","GroupId",GroupId,"cur_enode",cur_enode)
+    w := workers[workid]
+    chret,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
+    if cherr != nil {
+	res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+	ch <- res2
+	return false
+    }
+    res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+    ch <- res2
+
+    return true
+}
+
+type ReqAddrSendMsgToDcrm struct {
+    Cointype string
 }
 
 func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -1119,9 +1446,9 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     GetEnodesInfo()
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
-    nonce := Keccak256Hash([]byte(self.KeyType + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
+    nonce := Keccak256Hash([]byte(self.Cointype + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
     
-    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.KeyType}
+    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Cointype}
     res,err := Encode2(sm)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Err:err}
@@ -1138,7 +1465,6 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
     GroupId := GetGroupIdByEnode(cur_enode)
     fmt.Println("=========ReqAddrSendMsgToMsg.Run===========","GroupId",GroupId,"cur_enode",cur_enode)
-    //if !strings.EqualFold(GroupId,cur_enode) {
     if strings.EqualFold(GroupId,"") {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
 	ch <- res
@@ -1246,11 +1572,9 @@ func (self *SignSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     return true
 }
 
-//msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
+//msg := pubkey + ":" + cointype + ":" + value + ":" + to
 type LockOutSendMsgToDcrm struct {
     PubKey string
-    KeyType string
-    Message string
     Cointype string
     Value string
     To string
@@ -1263,24 +1587,8 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    /////check message
-    message := self.Message
-    txhashs := []rune(message)
-    if string(txhashs[0:2]) != "0x" {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("message must be 16-in-32-byte character sprang at the beginning of 0x,for example: 0x19b6236d2e7eb3e925d0c6e8850502c1f04822eb9aa67cb92e5004f7017e5e41")}
-	ch <- res
-	return false
-    }
-    message = string(txhashs[2:])
-    if len(message) != 64 {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("message must be 16-in-32-byte character sprang at the beginning of 0x,for example: 0x19b6236d2e7eb3e925d0c6e8850502c1f04822eb9aa67cb92e5004f7017e5e41")}
-	ch <- res
-	return false
-    }
-    //////
-
     GetEnodesInfo()
-    msg := self.PubKey + ":" + self.KeyType + ":" + self.Message + ":" + self.Cointype + ":" + self.Value + ":" + self.To
+    msg := self.PubKey + ":" + self.Cointype + ":" + self.Value + ":" + self.To
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1410,20 +1718,23 @@ func GetEnodesInfo() {
 func SendReqToGroup(msg string,rpctype string) (string,error) {
     var req RpcReq
     switch rpctype {
+	case "rpc_gen_pubkey":
+	    v := GenPubKeySendMsgToDcrm{KeyType:msg}
+	    rch := make(chan interface{},1)
+	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_req_dcrmaddr":
-	    v := ReqAddrSendMsgToDcrm{KeyType:msg}
+	    v := ReqAddrSendMsgToDcrm{Cointype:msg}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_sign":
-//	msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
 	    m := strings.Split(msg,":")
 	    v := SignSendMsgToDcrm{PubKey:m[0],KeyType:m[1],Message:m[2]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_lockout":
-	    //msg := pubkey + ":" + keytype + ":" + message + ":" + cointype + ":" + value + ":" + to
+	    //msg := pubkey + ":" + cointype + ":" + value + ":" + to
 	    m := strings.Split(msg,":")
-	    v := LockOutSendMsgToDcrm{PubKey:m[0],KeyType:m[1],Message:m[2],Cointype:m[3],Value:m[4],To:m[5]}
+	    v := LockOutSendMsgToDcrm{PubKey:m[0],Cointype:m[1],Value:m[2],To:m[3]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	default:
@@ -1740,5 +2051,14 @@ func DefaultDataDir() string {
 	}
 	// As we cannot guess a stable location, return empty and handle later
 	return ""
+}
+
+//eos_init---> eos account
+//key: crypto.Keccak256Hash([]byte("eossettings"))
+//value: pubkey+eos account
+func GetEosDbDir() string {
+    dir := DefaultDataDir()
+    dir += "/dcrmdata/eosdb"
+    return dir
 }
 

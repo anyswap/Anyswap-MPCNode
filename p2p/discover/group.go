@@ -683,9 +683,9 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 			}
 		}
 	} else {
-		if SDK_groupList[n.ID] != nil { // exist group
-			delete(SDK_groupList, n.ID)
-		}
+		//if SDK_groupList[n.ID] != nil { // exist group
+		//	delete(SDK_groupList, n.ID)
+		//}
 	}
 }
 

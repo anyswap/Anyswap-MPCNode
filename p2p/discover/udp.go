@@ -231,7 +231,7 @@ func ListenUDP(c conn, cfg Config) (*Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("UDP listener up, bootnodes %v\n", tab.self)
+	fmt.Printf("\nUDP listener up, self %v\n", tab.self)
 	return tab, nil
 }
 

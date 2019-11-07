@@ -53,7 +53,7 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 			if selfid == g.id {
 				if myself == true {
 	//				log.Debug("group", "selfid", selfid, "g.id", g.id, "myself", "true")
-					SendToMyself(g.enode, msg, p2pType)
+					go callEvent(msg, g.id.String())
 				}
 				continue
 			}

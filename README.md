@@ -27,7 +27,7 @@ generate dcrm pubkey.
 
 ##### Parameters
 
-none
+1. `String|HexNumber|TAG`, - coin type,include "ALL".
 
 ##### Return
 
@@ -54,7 +54,9 @@ dcrm sign.
 ##### Parameters
 
 1. `DATA`,pubkey - the pubkey from dcrm_genPubkey request.
-2. `String|HexNumber|TAG` - the hash want to sign.it must be 16-in-32-byte character sprang at the beginning of 0x,for example,0x19b6236d2e7eb3e925d0c6e8850502c1f04822eb9aa67cb92e5004f7017e5e41.
+2. `String|HexNumber|TAG`, - coin type.
+3. `String|HexNumber|TAG`, - value to lockout,use smallest unit.
+4. `String|HexNumber|TAG`, - the address lockout to.
 
 ##### Return
 

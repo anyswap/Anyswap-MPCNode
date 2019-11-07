@@ -14,11 +14,10 @@
  *
  */
 
-package lib 
+package ec2 
 
 import (
 	"github.com/fsn-dev/dcrm-sdk/internal/common/math/random"
-	//"github.com/fusion/dcrm-sdk/crypto/dcrm/dev/lib/ec2/paillier"
 	s256 "github.com/fsn-dev/dcrm-sdk/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-sdk/crypto/sha3"
 	"math/big"

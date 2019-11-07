@@ -17,25 +17,31 @@
 package dev
 
 import (
-    "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/dev/lib"
+    "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/dev/lib/ec2"
+    "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/dev/lib/ed"
     "math/big"
     "github.com/fsn-dev/dcrm-sdk/crypto/secp256k1"
     "github.com/fsn-dev/dcrm-sdk/crypto/sha3"
     "time"
     "sort"
+    "bytes"
     "math/rand"
     "strconv"
     "strings"
+    "crypto/sha512"
     "fmt"
     "encoding/hex"
     "github.com/syndtr/goleveldb/leveldb"
-    "bytes"
     "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins"
+    "github.com/fsn-dev/dcrm-sdk/internal/common"
+    "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/types"
     "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/eos"
     "github.com/astaxie/beego/logs"
+    "github.com/agl/ed25519"
+    "runtime/debug"
 )
 
-func validate_sign(wsid string,pubkey string,keytype string,message string,ch chan interface{}) {
+func validate_sign(wsid string,pubkey string,cointype string,message string,ch chan interface{}) {
     fmt.Println("========validate_sign============")
     lock5.Lock()
     pub, err := hex.DecodeString(pubkey)
@@ -96,14 +102,23 @@ func validate_sign(wsid string,pubkey string,keytype string,message string,ch ch
 
     save := datas[1] 
     dcrmpub := datas[0]
-    dcrmpks := []byte(dcrmpub)
-    dcrmpkx,dcrmpky := secp256k1.S256().Unmarshal(dcrmpks[:])
 
+    var dcrmpkx *big.Int
+    var dcrmpky *big.Int
+    if !types.IsDefaultED25519(cointype) {
+	dcrmpks := []byte(dcrmpub)
+	dcrmpkx,dcrmpky = secp256k1.S256().Unmarshal(dcrmpks[:])
+    }
+    
     db.Close()
     lock5.Unlock()
 
     rch := make(chan interface{}, 1)
-    dcrm_sign(wsid,message,save,dcrmpkx,dcrmpky,keytype,rch)
+    if types.IsDefaultED25519(cointype) {
+	dcrm_sign_ed(wsid,message,save,dcrmpub,cointype,rch)
+    } else {
+	dcrm_sign(wsid,message,save,dcrmpkx,dcrmpky,cointype,rch)
+    }
     ret,cherr := GetChannelValue(ch_t,rch)
     if cherr != nil {
 	    res := RpcDcrmRes{Ret:"",Err:cherr}
@@ -185,8 +200,13 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
 
     save := datas[1] 
     dcrmpub := datas[0]
-    dcrmpks := []byte(dcrmpub)
-    dcrmpkx,dcrmpky := secp256k1.S256().Unmarshal(dcrmpks[:])
+
+    var dcrmpkx *big.Int
+    var dcrmpky *big.Int
+    if !types.IsDefaultED25519(cointype) {
+	dcrmpks := []byte(dcrmpub)
+	dcrmpkx,dcrmpky = secp256k1.S256().Unmarshal(dcrmpks[:])
+    }
 
     db.Close()
     lock5.Unlock()
@@ -236,8 +256,8 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
     for k, digest := range digests {
 	    fmt.Printf("============validate_lockout,call dcrm_sign times = %+v,cointype = %+v ==============\n",k,cointype)
 
-	    /*if types.IsDefaultED25519(cointype) {
-		bak_sig := dcrm_sign_ed(wsid,digest,realdcrmfrom,cointype,rch)
+	    if types.IsDefaultED25519(cointype) {
+		bak_sig := dcrm_sign_ed(wsid,digest,save,dcrmpub,cointype,rch)
 		ret,cherr := GetChannelValue(ch_t,rch)
 		if cherr != nil {
 			res := RpcDcrmRes{Ret:"",Err:cherr}
@@ -251,7 +271,7 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
 		}
 
 		continue
-	    }*/
+	    }
 
 	    bak_sig := dcrm_sign(wsid,digest,save,dcrmpkx,dcrmpky,cointype,rch)
 	    ret,cherr := GetChannelValue(ch_t,rch)
@@ -570,7 +590,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     
     // 3. make gamma*G commitment to get (C, D)
     u1GammaGx,u1GammaGy := secp256k1.S256().ScalarBaseMult(u1Gamma.Bytes())
-    commitU1GammaG := new(lib.Commitment).Commit(u1GammaGx, u1GammaGy)
+    commitU1GammaG := new(ec2.Commitment).Commit(u1GammaGx, u1GammaGy)
 
     // 4. Broadcast
     //	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
@@ -594,7 +614,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     // 2.1 encrypt c_k = E_paillier(k)
     var ukc = make(map[string]*big.Int)
     var ukc2 = make(map[string]*big.Int)
-    var ukc3 = make(map[string]*lib.PublicKey)
+    var ukc3 = make(map[string]*ec2.PublicKey)
     for k,id := range idSign {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
@@ -609,18 +629,18 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     }
 
     // 2.2 calculate zk(k)
-    var zk1proof = make(map[string]*lib.MtAZK1Proof)
-    var zkfactproof = make(map[string]*lib.ZkFactProof)
+    var zk1proof = make(map[string]*ec2.MtAZK1Proof)
+    var zkfactproof = make(map[string]*ec2.ZkFactProof)
     for k,id := range idSign {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
 	u1zkFactProof := GetZkFactProof(save,k)
 	zkfactproof[en[0]] = u1zkFactProof
 	if IsCurNode(enodes,cur_enode) {
-	    u1u1MtAZK1Proof := lib.MtAZK1Prove(u1K,ukc2[en[0]], ukc3[en[0]], u1zkFactProof)
+	    u1u1MtAZK1Proof := ec2.MtAZK1Prove(u1K,ukc2[en[0]], ukc3[en[0]], u1zkFactProof)
 	    zk1proof[en[0]] = u1u1MtAZK1Proof
 	} else {
-	    u1u1MtAZK1Proof := lib.MtAZK1Prove(u1K,ukc2[cur_enode], ukc3[cur_enode], u1zkFactProof)
+	    u1u1MtAZK1Proof := ec2.MtAZK1Prove(u1K,ukc2[cur_enode], ukc3[cur_enode], u1zkFactProof)
 	    mp := []string{msgprex,cur_enode}
 	    enode := strings.Join(mp,"-")
 	    s0 := "MTAZK1PROOF"
@@ -727,7 +747,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 		s := new(big.Int).SetBytes([]byte(mm[5]))
 		s1 := new(big.Int).SetBytes([]byte(mm[6]))
 		s2 := new(big.Int).SetBytes([]byte(mm[7]))
-		mtAZK1Proof := &lib.MtAZK1Proof{Z: z, U: u, W: w, S: s, S1: s1, S2: s2}
+		mtAZK1Proof := &ec2.MtAZK1Proof{Z: z, U: u, W: w, S: s, S1: s1, S2: s2}
 		zk1proof[en[0]] = mtAZK1Proof
 		break
 	    }
@@ -822,7 +842,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     // 2.7
     // send c_kGamma to proper node, MtA(k, gamma)   zk
     var mkg = make(map[string]*big.Int)
-    var mkg_mtazk2 = make(map[string]*lib.MtAZK2Proof)
+    var mkg_mtazk2 = make(map[string]*ec2.MtAZK2Proof)
     for k,id := range idSign {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
@@ -831,7 +851,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	    u1KGamma1Cipher := u1PaillierPk.HomoMul(ukc[en[0]], u1Gamma)
 	    beta1U1StarCipher, u1BetaR1,_ := u1PaillierPk.Encrypt(betaU1Star[k])
 	    u1KGamma1Cipher = u1PaillierPk.HomoAdd(u1KGamma1Cipher, beta1U1StarCipher) // send to u1
-	    u1u1MtAZK2Proof := lib.MtAZK2Prove(u1Gamma, betaU1Star[k], u1BetaR1, ukc[cur_enode],ukc3[cur_enode], zkfactproof[cur_enode])
+	    u1u1MtAZK2Proof := ec2.MtAZK2Prove(u1Gamma, betaU1Star[k], u1BetaR1, ukc[cur_enode],ukc3[cur_enode], zkfactproof[cur_enode])
 	    mkg[en[0]] = u1KGamma1Cipher
 	    mkg_mtazk2[en[0]] = u1u1MtAZK2Proof
 	    continue
@@ -841,7 +861,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	u2KGamma1Cipher := u2PaillierPk.HomoMul(ukc[en[0]], u1Gamma)
 	beta2U1StarCipher, u2BetaR1,_ := u2PaillierPk.Encrypt(betaU1Star[k])
 	u2KGamma1Cipher = u2PaillierPk.HomoAdd(u2KGamma1Cipher, beta2U1StarCipher) // send to u2
-	u2u1MtAZK2Proof := lib.MtAZK2Prove(u1Gamma, betaU1Star[k], u2BetaR1, ukc[en[0]],u2PaillierPk,zkfactproof[cur_enode])
+	u2u1MtAZK2Proof := ec2.MtAZK2Prove(u1Gamma, betaU1Star[k], u2BetaR1, ukc[en[0]],u2PaillierPk,zkfactproof[cur_enode])
 	mp = []string{msgprex,cur_enode}
 	enode = strings.Join(mp,"-")
 	s0 = "MKG"
@@ -865,7 +885,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     // 2.8
     // send c_kw to proper node, MtA(k, w)   zk
     var mkw = make(map[string]*big.Int)
-    var mkw_mtazk2 = make(map[string]*lib.MtAZK2Proof)
+    var mkw_mtazk2 = make(map[string]*ec2.MtAZK2Proof)
     for k,id := range idSign {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
@@ -874,7 +894,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	    u1Kw1Cipher := u1PaillierPk.HomoMul(ukc[en[0]], w1)
 	    v1U1StarCipher, u1VR1,_ := u1PaillierPk.Encrypt(vU1Star[k])
 	    u1Kw1Cipher = u1PaillierPk.HomoAdd(u1Kw1Cipher, v1U1StarCipher) // send to u1
-	    u1u1MtAZK2Proof2 := lib.MtAZK2Prove(w1, vU1Star[k], u1VR1, ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode])
+	    u1u1MtAZK2Proof2 := ec2.MtAZK2Prove(w1, vU1Star[k], u1VR1, ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode])
 	    mkw[en[0]] = u1Kw1Cipher
 	    mkw_mtazk2[en[0]] = u1u1MtAZK2Proof2
 	    continue
@@ -884,7 +904,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	u2Kw1Cipher := u2PaillierPk.HomoMul(ukc[en[0]], w1)
 	v2U1StarCipher, u2VR1,_ := u2PaillierPk.Encrypt(vU1Star[k])
 	u2Kw1Cipher = u2PaillierPk.HomoAdd(u2Kw1Cipher,v2U1StarCipher) // send to u2
-	u2u1MtAZK2Proof2 := lib.MtAZK2Prove(w1, vU1Star[k], u2VR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
+	u2u1MtAZK2Proof2 := ec2.MtAZK2Prove(w1, vU1Star[k], u2VR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
 
 	mp = []string{msgprex,cur_enode}
 	enode = strings.Join(mp,"-")
@@ -955,7 +975,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 		s2 := new(big.Int).SetBytes([]byte(mm[10]))
 		t1 := new(big.Int).SetBytes([]byte(mm[11]))
 		t2 := new(big.Int).SetBytes([]byte(mm[12]))
-		mtAZK2Proof := &lib.MtAZK2Proof{Z: z, ZBar: zbar, T: t, V: v, W: w, S: s, S1: s1, S2: s2, T1: t1, T2: t2}
+		mtAZK2Proof := &ec2.MtAZK2Proof{Z: z, ZBar: zbar, T: t, V: v, W: w, S: s, S1: s1, S2: s2, T1: t1, T2: t2}
 		mkg_mtazk2[en[0]] = mtAZK2Proof
 		break
 	    }
@@ -1010,7 +1030,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 		s2 := new(big.Int).SetBytes([]byte(mm[10]))
 		t1 := new(big.Int).SetBytes([]byte(mm[11]))
 		t2 := new(big.Int).SetBytes([]byte(mm[12]))
-		mtAZK2Proof := &lib.MtAZK2Proof{Z: z, ZBar: zbar, T: t, V: v, W: w, S: s, S1: s1, S2: s2, T1: t1, T2: t2}
+		mtAZK2Proof := &ec2.MtAZK2Proof{Z: z, ZBar: zbar, T: t, V: v, W: w, S: s, S1: s1, S2: s2, T1: t1, T2: t2}
 		mkw_mtazk2[en[0]] = mtAZK2Proof
 		break
 	    }
@@ -1251,7 +1271,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     // 2. verify and de-commitment to get GammaG
     
     // for all nodes, construct the commitment by the receiving C and D
-    var udecom = make(map[string]*lib.Commitment)
+    var udecom = make(map[string]*ec2.Commitment)
     for _,v := range c11s {
 	mm := strings.Split(v, Sep)
 	prex := mm[0]
@@ -1268,13 +1288,13 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 		    l++
 		    gg = append(gg,new(big.Int).SetBytes([]byte(mmm[2+l])))
 		}
-		deCommit := &lib.Commitment{C:new(big.Int).SetBytes([]byte(mm[2])), D:gg}
+		deCommit := &ec2.Commitment{C:new(big.Int).SetBytes([]byte(mm[2])), D:gg}
 		udecom[prexs[len(prexs)-1]] = deCommit
 		break
 	    }
 	}
     }
-    deCommit_commitU1GammaG := &lib.Commitment{C: commitU1GammaG.C, D: commitU1GammaG.D}
+    deCommit_commitU1GammaG := &ec2.Commitment{C: commitU1GammaG.C, D: commitU1GammaG.D}
     udecom[cur_enode] = deCommit_commitU1GammaG
 
     // for all nodes, verify the commitment
@@ -1596,7 +1616,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     return "" 
 }
 
-func GetPaillierPk(save string,index int) *lib.PublicKey {
+func GetPaillierPk(save string,index int) *ec2.PublicKey {
     if save == "" || index < 0 {
 	return nil
     }
@@ -1607,25 +1627,25 @@ func GetPaillierPk(save string,index int) *lib.PublicKey {
     n := new(big.Int).SetBytes([]byte(mm[s+1]))
     g := new(big.Int).SetBytes([]byte(mm[s+2]))
     n2 := new(big.Int).SetBytes([]byte(mm[s+3]))
-    publicKey := &lib.PublicKey{Length: l, N: n, G: g, N2: n2}
+    publicKey := &ec2.PublicKey{Length: l, N: n, G: g, N2: n2}
     return publicKey
 }
 
-func GetPaillierSk(save string,index int) *lib.PrivateKey {
+func GetPaillierSk(save string,index int) *ec2.PrivateKey {
     publicKey := GetPaillierPk(save,index)
     if publicKey != nil {
 	mm := strings.Split(save, SepSave)
 	l := mm[1]
 	ll := new(big.Int).SetBytes([]byte(mm[2]))
 	uu := new(big.Int).SetBytes([]byte(mm[3]))
-	privateKey := &lib.PrivateKey{Length: l, PublicKey: *publicKey, L: ll, U: uu}
+	privateKey := &ec2.PrivateKey{Length: l, PublicKey: *publicKey, L: ll, U: uu}
 	return privateKey
     }
 
     return nil
 }
 
-func GetZkFactProof(save string,index int) *lib.ZkFactProof {
+func GetZkFactProof(save string,index int) *ec2.ZkFactProof {
     if save == "" || index < 0 {
 	return nil
     }
@@ -1637,7 +1657,7 @@ func GetZkFactProof(save string,index int) *lib.ZkFactProof {
     y := new(big.Int).SetBytes([]byte(mm[s+2]))
     e := new(big.Int).SetBytes([]byte(mm[s+3]))
     n := new(big.Int).SetBytes([]byte(mm[s+4]))
-    zkFactProof := &lib.ZkFactProof{H1: h1, H2: h2, Y: y, E: e,N: n}
+    zkFactProof := &ec2.ZkFactProof{H1: h1, H2: h2, Y: y, E: e,N: n}
     return zkFactProof
 }
 
@@ -1707,6 +1727,634 @@ func Verify2(r *big.Int,s *big.Int,v int32,message string,pkx *big.Int,pky *big.
     return false
 }
 
+////ed
+//msgprex = hash 
+//return value is the backup for dcrm sig.
+func dcrm_sign_ed(msgprex string,txhash string,save string,pk string,cointype string,ch chan interface{}) string {
+
+    GetEnodesInfo() 
+    
+    if int32(Enode_cnts) != int32(NodeCnt) {
+	logs.Debug("============the net group is not ready.please try again.================")
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	ch <- res
+	return ""
+    }
+
+    logs.Debug("===================!!!Start!!!====================")
+
+    txhashs := []rune(txhash)
+    if string(txhashs[0:2]) == "0x" {
+	txhash = string(txhashs[2:])
+    }
+
+    w,err := FindWorker(msgprex)
+    if w == nil || err != nil {
+	logs.Debug("===========get worker fail.=============")
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrNoFindWorker)}
+	ch <- res
+	return ""
+    }
+    id := w.id
+
+    bak_sig := Sign_ed(msgprex,save,txhash,cointype,pk,ch,id)
+    return bak_sig
+}
+
+//msgprex = hash
+//return value is the backup for the dcrm sig
+func Sign_ed(msgprex string,save string,message string,cointype string,pk string,ch chan interface{},id int) string {
+    defer func () {
+	if e := recover(); e != nil {
+	    fmt.Errorf("Sign_ed,Runtime error: %v\n%v", e, string(debug.Stack()))
+		return 
+	}
+    } ()
+
+    logs.Debug("===================Sign_ed====================")
+    if id < 0 || id >= len(workers) {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	ch <- res
+	return ""
+    }
+    w := workers[id]
+    GroupId := w.groupid 
+    fmt.Println("========Sign_ed============","GroupId",GroupId)
+    if GroupId == "" {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
+	ch <- res
+	return ""
+    }
+    
+    ns,_ := GetGroup(GroupId)
+    if ns != NodeCnt {
+	logs.Debug("Sign_ed,get nodes info error.")
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	ch <- res
+	return "" 
+    }
+    
+    logs.Debug("===========Sign_ed============","save len",len(save),"save",save)
+    //log.Debug("===========Sign_ed============","pk",pk)
+
+    ids := GetIds(cointype,GroupId)
+    idSign := ids[:ThresHold]
+    
+    m := strings.Split(save,common.Sep11)
+
+    var sk [64]byte
+    va := []byte(m[0]) 
+    copy(sk[:], va[:64])
+    //pk := ([]byte(m[1]))[:]
+    var tsk [32]byte
+    va = []byte(m[2]) 
+    copy(tsk[:], va[:32])
+    var pkfinal [32]byte
+    va = []byte(m[3]) 
+    copy(pkfinal[:], va[:32])
+    
+    //fixid := []string{"36550725515126069209815254769857063254012795400127087205878074620099758462980","86773132036836319561089192108022254523765345393585629030875522375234841566222","80065533669343563706948463591465947300529465448793304408098904839998265250318"}
+    var uids = make(map[string][32]byte)
+    for _,id := range ids {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	//num,_ := new(big.Int).SetString(fixid[k],10)
+	var t [32]byte
+	//copy(t[:], num.Bytes())
+	copy(t[:], id.Bytes())
+	if len(id.Bytes()) < 32 {
+	    l := len(id.Bytes())
+	    for j:= l;j<32;j++ {
+		t[j] = byte(0x00)
+	    }
+	}
+	uids[en[0]] = t
+    }
+    
+    // [Notes]
+    // 1. calculate R
+    var r [32]byte
+    var RBytes [32]byte
+    var rDigest [64]byte
+
+    h := sha512.New()
+    h.Write(sk[32:])
+    h.Write([]byte(message))
+    h.Sum(rDigest[:0])
+    ed.ScReduce(&r, &rDigest)
+
+    var R ed.ExtendedGroupElement
+    ed.GeScalarMultBase(&R, &r)
+
+    // 2. commit(R)
+    R.ToBytes(&RBytes)
+    CR, DR := ed.Commit(RBytes)
+
+    // 3. zkSchnorr(rU1)
+    zkR := ed.Prove(r)
+    
+    mp := []string{msgprex,cur_enode}
+    enode := strings.Join(mp,"-")
+    s0 := "EDC21"
+    s1 := string(CR[:])
+
+    ss := enode + common.Sep + s0 + common.Sep + s1
+    logs.Debug("================sign ed round one,send msg,code is EDC21==================")
+    SendMsgToDcrmGroup(ss,GroupId)
+    
+    _,cherr := GetChannelValue(ch_t,w.bedc21)
+    if cherr != nil {
+	logs.Debug("get w.bedc21 timeout.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed c21 timeout.")}
+	ch <- res
+	return "" 
+    }
+
+    if w.msg_edc21.Len() != (NodeCnt-1) {
+	logs.Debug("get w.msg_edc21 fail.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed c21 fail.")}
+	ch <- res
+	return ""
+    }
+    var crs = make(map[string][32]byte)
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	if IsCurNode(enodes,cur_enode) {
+	    crs[cur_enode] = CR
+	    continue
+	}
+
+	en := strings.Split(string(enodes[8:]),"@")
+	
+	iter := w.msg_edc21.Front()
+	for iter != nil {
+	    data := iter.Value.(string)
+	    m := strings.Split(data,common.Sep)
+	    ps := strings.Split(m[0],"-")
+	    if strings.EqualFold(ps[1],en[0]) {
+		var t [32]byte
+		va := []byte(m[2]) 
+		copy(t[:], va[:32])
+		crs[en[0]] = t
+		break
+	    }
+	    iter = iter.Next()
+	}
+    }
+
+    s0 = "EDZKR"
+    s1 = string(zkR[:])
+    ss = enode + common.Sep + s0 + common.Sep + s1
+    logs.Debug("================sign ed round one,send msg,code is EDZKR==================")
+    SendMsgToDcrmGroup(ss,GroupId)
+    
+    _,cherr = GetChannelValue(ch_t,w.bedzkr)
+    if cherr != nil {
+	logs.Debug("get w.bedzkr timeout.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed zkr timeout.")}
+	ch <- res
+	return ""
+    }
+
+    if w.msg_edzkr.Len() != (NodeCnt-1) {
+	logs.Debug("get w.msg_edzkr fail.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed zkr fail.")}
+	ch <- res
+	return ""
+    }
+
+    var zkrs = make(map[string][64]byte)
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	if IsCurNode(enodes,cur_enode) {
+	    zkrs[cur_enode] = zkR
+	    continue
+	}
+
+	en := strings.Split(string(enodes[8:]),"@")
+	
+	iter := w.msg_edzkr.Front()
+	for iter != nil {
+	    data := iter.Value.(string)
+	    m := strings.Split(data,common.Sep)
+	    ps := strings.Split(m[0],"-")
+	    if strings.EqualFold(ps[1],en[0]) {
+		var t [64]byte
+		va := []byte(m[2]) 
+		copy(t[:], va[:64])
+		zkrs[en[0]] = t
+		break
+	    }
+	    iter = iter.Next()
+	}
+    }
+
+    s0 = "EDD21"
+    s1 = string(DR[:])
+    ss = enode + common.Sep + s0 + common.Sep + s1
+    logs.Debug("================sign ed round one,send msg,code is EDD21==================")
+    SendMsgToDcrmGroup(ss,GroupId)
+    
+    _,cherr = GetChannelValue(ch_t,w.bedd21)
+    if cherr != nil {
+	logs.Debug("get w.bedd21 timeout.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed d21 timeout.")}
+	ch <- res
+	return ""
+    }
+
+    if w.msg_edd21.Len() != (NodeCnt-1) {
+	logs.Debug("get w.msg_edd21 fail.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed d21 fail.")}
+	ch <- res
+	return ""
+    }
+    var drs = make(map[string][64]byte)
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	if IsCurNode(enodes,cur_enode) {
+	    drs[cur_enode] = DR
+	    continue
+	}
+
+	en := strings.Split(string(enodes[8:]),"@")
+	
+	iter := w.msg_edd21.Front()
+	for iter != nil {
+	    data := iter.Value.(string)
+	    m := strings.Split(data,common.Sep)
+	    ps := strings.Split(m[0],"-")
+	    if strings.EqualFold(ps[1],en[0]) {
+		var t [64]byte
+		va := []byte(m[2]) 
+		copy(t[:], va[:64])
+		drs[en[0]] = t
+		break
+	    }
+	    iter = iter.Next()
+	}
+    }
+
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	CRFlag := ed.Verify(crs[en[0]],drs[en[0]])
+	if !CRFlag {
+	    fmt.Println("Error: Commitment(R) Not Pass at User: %s", en[0])
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("Commitment(R) Not Pass.")}
+	    ch <- res
+	    return ""
+	}
+    }
+    
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	var temR [32]byte
+	t := drs[en[0]]
+	copy(temR[:], t[32:])
+
+	zkRFlag := ed.Verify_zk(zkrs[en[0]], temR)
+	if !zkRFlag {
+	    fmt.Println("Error: ZeroKnowledge Proof (R) Not Pass at User: %s", en[0])
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("ZeroKnowledge Proof (R) Not Pass.")}
+	    ch <- res
+	    return ""
+	}
+    }
+    
+    var FinalR, temR ed.ExtendedGroupElement
+    var FinalRBytes [32]byte
+    for index,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	var temRBytes [32]byte
+	t := drs[en[0]]
+	copy(temRBytes[:],t[32:])
+	temR.FromBytes(&temRBytes)
+	if index == 0 {
+		FinalR = temR
+	} else {
+		ed.GeAdd(&FinalR, &FinalR, &temR)
+	}
+    }
+    FinalR.ToBytes(&FinalRBytes)
+
+    // 2.6 calculate k=H(FinalRBytes||pk||M)
+    var k [32]byte
+    var kDigest [64]byte
+
+    h = sha512.New()
+    h.Write(FinalRBytes[:])
+    h.Write(pkfinal[:])
+    h.Write(([]byte(message))[:])
+    h.Sum(kDigest[:0])
+
+    ed.ScReduce(&k, &kDigest)
+    
+    // 2.7 calculate lambda1
+    var lambda [32]byte
+    lambda[0] = 1
+    order := ed.GetBytesOrder()
+
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	if IsCurNode(enodes,cur_enode) {
+	    continue
+	}
+
+	var time [32]byte
+	t := uids[en[0]]
+	tt := uids[cur_enode]
+	ed.ScSub(&time, &t, &tt)
+	time = ed.ScModInverse(time, order)
+	ed.ScMul(&time, &time, &t)
+	ed.ScMul(&lambda, &lambda, &time)
+    }
+
+    var s [32]byte
+    ed.ScMul(&s, &lambda, &tsk)
+    ed.ScMul(&s, &s, &k)
+    ed.ScAdd(&s, &s, &r)
+
+    // 2.9 calculate sBBytes
+    var sBBytes [32]byte
+    var sB ed.ExtendedGroupElement
+    ed.GeScalarMultBase(&sB, &s)
+    sB.ToBytes(&sBBytes)
+
+    // 2.10 commit(sBBytes)
+    CSB, DSB := ed.Commit(sBBytes)
+
+    s0 = "EDC31"
+    s1 = string(CSB[:])
+    ss = enode + common.Sep + s0 + common.Sep + s1
+    logs.Debug("================sign ed round one,send msg,code is EDC31==================")
+    SendMsgToDcrmGroup(ss,GroupId)
+    
+    _,cherr = GetChannelValue(ch_t,w.bedc31)
+    if cherr != nil {
+	logs.Debug("get w.bedc31 timeout.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed c31 timeout.")}
+	ch <- res
+	return ""
+    }
+
+    if w.msg_edc31.Len() != (NodeCnt-1) {
+	logs.Debug("get w.msg_edc31 fail.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed c31 fail.")}
+	ch <- res
+	return ""
+    }
+    var csbs = make(map[string][32]byte)
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	if IsCurNode(enodes,cur_enode) {
+	    csbs[cur_enode] = CSB
+	    continue
+	}
+
+	en := strings.Split(string(enodes[8:]),"@")
+	
+	iter := w.msg_edc31.Front()
+	for iter != nil {
+	    data := iter.Value.(string)
+	    m := strings.Split(data,common.Sep)
+	    ps := strings.Split(m[0],"-")
+	    if strings.EqualFold(ps[1],en[0]) {
+		var t [32]byte
+		va := []byte(m[2]) 
+		copy(t[:], va[:32])
+		csbs[en[0]] = t
+		break
+	    }
+	    iter = iter.Next()
+	}
+    }
+
+    s0 = "EDD31"
+    s1 = string(DSB[:])
+    ss = enode + common.Sep + s0 + common.Sep + s1
+    logs.Debug("================sign ed round one,send msg,code is EDD31==================")
+    SendMsgToDcrmGroup(ss,GroupId)
+    
+    _,cherr = GetChannelValue(ch_t,w.bedd31)
+    if cherr != nil {
+	logs.Debug("get w.bedd31 timeout.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed d31 timeout.")}
+	ch <- res
+	return "" 
+    }
+
+    if w.msg_edd31.Len() != (NodeCnt-1) {
+	logs.Debug("get w.msg_edd31 fail.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed d31 fail.")}
+	ch <- res
+	return ""
+    }
+    var dsbs = make(map[string][64]byte)
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	if IsCurNode(enodes,cur_enode) {
+	    dsbs[cur_enode] = DSB
+	    continue
+	}
+
+	en := strings.Split(string(enodes[8:]),"@")
+	
+	iter := w.msg_edd31.Front()
+	for iter != nil {
+	    data := iter.Value.(string)
+	    m := strings.Split(data,common.Sep)
+	    ps := strings.Split(m[0],"-")
+	    if strings.EqualFold(ps[1],en[0]) {
+		var t [64]byte
+		va := []byte(m[2]) 
+		copy(t[:], va[:64])
+		dsbs[en[0]] = t
+		break
+	    }
+	    iter = iter.Next()
+	}
+    }
+    
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	CSBFlag := ed.Verify(csbs[en[0]],dsbs[en[0]])
+	if !CSBFlag {
+	    fmt.Println("Error: Commitment(SB) Not Pass at User: %s",en[0])
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("Commitment(SB) Not Pass.")}
+	    ch <- res
+	    return ""
+	}
+    }
+    
+    var sB2, temSB ed.ExtendedGroupElement
+    for index,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	var temSBBytes [32]byte
+	t := dsbs[en[0]]
+	copy(temSBBytes[:], t[32:])
+	temSB.FromBytes(&temSBBytes)
+
+	if index == 0 {
+		sB2 = temSB
+	} else {
+		ed.GeAdd(&sB2, &sB2, &temSB)
+	}
+    }
+
+    var k2 [32]byte
+    var kDigest2 [64]byte
+
+    h = sha512.New()
+    h.Write(FinalRBytes[:])
+    h.Write(pkfinal[:])
+    h.Write(([]byte(message))[:])
+    h.Sum(kDigest2[:0])
+
+    ed.ScReduce(&k2, &kDigest2)
+
+    // 3.6 calculate sBCal
+    var FinalR2, sBCal, FinalPkB ed.ExtendedGroupElement
+    FinalR2.FromBytes(&FinalRBytes)
+    FinalPkB.FromBytes(&pkfinal)
+    ed.GeScalarMult(&sBCal, &k2, &FinalPkB)
+    ed.GeAdd(&sBCal, &sBCal, &FinalR2)
+
+    // 3.7 verify equation
+    var sBBytes2, sBCalBytes [32]byte
+    sB2.ToBytes(&sBBytes2)
+    sBCal.ToBytes(&sBCalBytes)
+
+    if !bytes.Equal(sBBytes2[:], sBCalBytes[:]) {
+	fmt.Println("Error: Not Pass Verification (SB = SBCal) at User: %s", cur_enode)
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("Error: Not Pass Verification (SB = SBCal).")}
+	ch <- res
+	return ""
+    }
+
+    s0 = "EDS"
+    s1 = string(s[:])
+    ss = enode + common.Sep + s0 + common.Sep + s1
+    logs.Debug("================sign ed round one,send msg,code is EDS==================")
+    SendMsgToDcrmGroup(ss,GroupId)
+    
+    _,cherr = GetChannelValue(ch_t,w.beds)
+    if cherr != nil {
+	logs.Debug("get w.beds timeout.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed s timeout.")}
+	ch <- res
+	return ""
+    }
+
+    if w.msg_eds.Len() != (NodeCnt-1) {
+	logs.Debug("get w.msg_eds fail.")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed s fail.")}
+	ch <- res
+	return ""
+    }
+    var eds = make(map[string][32]byte)
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	if IsCurNode(enodes,cur_enode) {
+	    eds[cur_enode] = s
+	    continue
+	}
+
+	en := strings.Split(string(enodes[8:]),"@")
+	
+	iter := w.msg_eds.Front()
+	for iter != nil {
+	    data := iter.Value.(string)
+	    m := strings.Split(data,common.Sep)
+	    ps := strings.Split(m[0],"-")
+	    if strings.EqualFold(ps[1],en[0]) {
+		var t [32]byte
+		va := []byte(m[2]) 
+		copy(t[:], va[:32])
+		eds[en[0]] = t
+		break
+	    }
+	    iter = iter.Next()
+	}
+    }
+
+    var FinalS [32]byte
+    for _,id := range idSign {
+	enodes := GetEnodesByUid(id,cointype,GroupId)
+	en := strings.Split(string(enodes[8:]),"@")
+	t := eds[en[0]]
+	ed.ScAdd(&FinalS, &FinalS, &t)
+    }
+    
+    inputVerify := InputVerify{FinalR: FinalRBytes, FinalS: FinalS, Message: []byte(message), FinalPk: pkfinal}
+    
+    var pass = EdVerify(inputVerify)
+    fmt.Println("===========ed verify pass=%v===============",pass)
+
+    //r
+    rx := hex.EncodeToString(FinalRBytes[:])
+    sx := hex.EncodeToString(FinalS[:])
+    logs.Debug("========sign_ed========","rx",rx,"sx",sx,"FinalRBytes",FinalRBytes,"FinalS",FinalS)
+
+    //////test
+    signature := new([64]byte)
+    copy(signature[:], FinalRBytes[:])
+    copy(signature[32:], FinalS[:])
+    suss := ed25519.Verify(&pkfinal,[]byte(message),signature)
+    fmt.Println("===========ed verify pass again=%v===============",suss)
+    //////
+
+    res := RpcDcrmRes{Ret:rx+":"+sx,Err:nil}
+    ch <- res
+    return ""
+}
+
+type InputVerify struct {
+	FinalR  [32]byte
+	FinalS  [32]byte
+	Message []byte
+	FinalPk [32]byte
+}
+
+func EdVerify(input InputVerify) bool {
+	// 1. calculate k
+	var k [32]byte
+	var kDigest [64]byte
+
+	h := sha512.New()
+	h.Write(input.FinalR[:])
+	h.Write(input.FinalPk[:])
+	h.Write(input.Message[:])
+	h.Sum(kDigest[:0])
+
+	ed.ScReduce(&k, &kDigest)
+
+	// 2. verify the equation
+	var R, pkB, sB, sBCal ed.ExtendedGroupElement
+	pkB.FromBytes(&(input.FinalPk))
+	R.FromBytes(&(input.FinalR))
+
+	ed.GeScalarMult(&sBCal, &k, &pkB)
+	ed.GeAdd(&sBCal, &R, &sBCal)
+
+	ed.GeScalarMultBase(&sB, &(input.FinalS))
+
+	var sBBytes, sBCalBytes [32]byte
+	sB.ToBytes(&sBBytes)
+	sBCal.ToBytes(&sBCalBytes)
+
+	pass := bytes.Equal(sBBytes[:], sBCalBytes[:])
+
+	return pass
+}
+
+//////
+
 func (this *ECDSASignature) GetRoudFiveAborted() bool {
     return this.roudFiveAborted
 }
@@ -1753,7 +2401,7 @@ func IsCurNode(enodes string,cur string) bool {
     return false
 }
 
-func DoubleHash(id string,keytype string) *big.Int {
+func DoubleHash(id string,cointype string) *big.Int {
     // Generate the random num
 
     // First, hash with the keccak256
@@ -1769,6 +2417,20 @@ func DoubleHash(id string,keytype string) *big.Int {
 
     sha3256.Write(digestKeccak256)
 
+    if types.IsDefaultED25519(cointype) {
+	var digest [32]byte
+        copy(digest[:], sha3256.Sum(nil))
+    
+        //////
+        var zero [32]byte
+        var one [32]byte
+        one[0] = 1
+        ed.ScMulAdd(&digest,&digest,&one,&zero)
+        //////
+	digestBigInt := new(big.Int).SetBytes(digest[:])
+	return digestBigInt
+    }
+    
     digest := sha3256.Sum(nil)
     // convert the hash ([]byte) to big.Int
     digestBigInt := new(big.Int).SetBytes(digest)

@@ -24,6 +24,7 @@ import (
 	"time"
 	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/dev"
 	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins"
+	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/types"
 	cryptocoinsconfig "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/config"
 	"encoding/json"
 )
@@ -47,18 +48,40 @@ type DcrmPubkeyRes struct {
 
 type DcrmAddrRes struct {
     Account string
+    PubKey string
     DcrmAddr string
     Cointype string
 }
 
 func SendReqToGroup(msg string,rpctype string) (string,error) {
     if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
-	ret,err := dev.SendReqToGroup("ALL",rpctype)
+	coin := "ALL"
+	if types.IsDefaultED25519(msg) {
+	    coin = msg
+	}
+
+	ret,err := dev.SendReqToGroup(coin,rpctype)
 	if err != nil || ret == "" {
 	    return "",err
 	}
 
 	var m interface{}
+	if !strings.EqualFold(msg, "All") {
+	    h := cryptocoins.NewCryptocoinHandler(msg)
+	    if h == nil {
+		return "",fmt.Errorf("req addr fail.cointype is not supported.")
+	    }
+
+	    ctaddr, err := h.PublicKeyToAddress(ret)
+	    if err != nil {
+		return "",fmt.Errorf("req addr fail.")
+	    }
+	    
+	    m = &DcrmAddrRes{Account:"",PubKey:ret,DcrmAddr:ctaddr,Cointype:msg}
+	    b,_ := json.Marshal(m)
+	    return string(b),nil
+	}
+	
 	addrmp := make(map[string]string)
 	for _, ct := range cryptocoins.Cointypes {
 	    if strings.EqualFold(ct, "ALL") {
@@ -77,12 +100,7 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    addrmp[ct] = ctaddr
 	}
 
-	if strings.EqualFold(msg, "All") {
-	    m = &DcrmPubkeyRes{Account:"",PubKey:ret,Address:addrmp}
-	} else {
-	    m = &DcrmAddrRes{Account:"",DcrmAddr:addrmp[msg],Cointype:msg}
-	}
-
+	m = &DcrmPubkeyRes{Account:"",PubKey:ret,Address:addrmp}
 	b,_ := json.Marshal(m)
 	return string(b),nil
     }

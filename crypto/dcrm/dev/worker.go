@@ -34,6 +34,7 @@ import (
     "strconv"
     "github.com/syndtr/goleveldb/leveldb"
     "encoding/json"
+    "github.com/astaxie/beego/logs"
 )
 
 var (
@@ -2011,6 +2012,151 @@ func DisMsg(msg string) {
 		w.bss1 <- true
 	    }
 
+	    //////////////////ed
+	    case "EDC11":
+	    logs.Debug("=========DisMsg,it is ed and it is EDC11.=============","len msg_edc11",w.msg_edc11.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edc11.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edc11.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDC11 msg.=============","len c11",w.msg_edc11.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edc11.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDC11 msg.=============")
+		w.bedc11 <- true
+	    }
+	    case "EDZK":
+	    logs.Debug("=========DisMsg,it is ed and it is EDZK.=============","len msg_edzk",w.msg_edzk.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edzk.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edzk.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDZK msg.=============","len zk",w.msg_edzk.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edzk.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDZK msg.=============")
+		w.bedzk <- true
+	    }
+	    case "EDD11":
+	    logs.Debug("=========DisMsg,it is ed and it is EDD11.=============","len msg_edd11",w.msg_edd11.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edd11.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edd11.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDD11 msg.=============","len d11",w.msg_edd11.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edd11.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDD11 msg.=============")
+		w.bedd11 <- true
+	    }
+	    case "EDSHARE1":
+	    logs.Debug("=========DisMsg,it is ed and it is EDSHARE1.=============","len msg_edshare1",w.msg_edshare1.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edshare1.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edshare1.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDSHARE1 msg.=============","len share1",w.msg_edshare1.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edshare1.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDSHARE1 msg.=============")
+		w.bedshare1 <- true
+	    }
+	    case "EDCFSB":
+	    logs.Debug("=========DisMsg,it is ed and it is EDCFSB.=============","len msg_edcfsb",w.msg_edcfsb.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edcfsb.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edcfsb.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDCFSB msg.=============","len cfsb",w.msg_edcfsb.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edcfsb.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDCFSB msg.=============")
+		w.bedcfsb <- true
+	    }
+	    case "EDC21":
+	    logs.Debug("=========DisMsg,it is ed and it is EDC21.=============","len msg_edc21",w.msg_edc21.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edc21.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edc21.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDC21 msg.=============","len c21",w.msg_edc21.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edc21.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDC21 msg.=============")
+		w.bedc21 <- true
+	    }
+	    case "EDZKR":
+	    logs.Debug("=========DisMsg,it is ed and it is EDZKR.=============","len msg_edzkr",w.msg_edzkr.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edzkr.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edzkr.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDZKR msg.=============","len zkr",w.msg_edzkr.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edzkr.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDZKR msg.=============")
+		w.bedzkr <- true
+	    }
+	    case "EDD21":
+	    logs.Debug("=========DisMsg,it is ed and it is EDD21.=============","len msg_edd21",w.msg_edd21.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edd21.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edd21.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDD21 msg.=============","len d21",w.msg_edd21.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edd21.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDD21 msg.=============")
+		w.bedd21 <- true
+	    }
+	    case "EDC31":
+	    logs.Debug("=========DisMsg,it is ed and it is EDC31.=============","len msg_edc31",w.msg_edc31.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edc31.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edc31.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDC31 msg.=============","len c31",w.msg_edc31.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edc31.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDC31 msg.=============")
+		w.bedc31 <- true
+	    }
+	    case "EDD31":
+	    logs.Debug("=========DisMsg,it is ed and it is EDD31.=============","len msg_edd31",w.msg_edd31.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_edd31.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_edd31.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDD31 msg.=============","len d31",w.msg_edd31.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_edd31.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDD31 msg.=============")
+		w.bedd31 <- true
+	    }
+	    case "EDS":
+	    logs.Debug("=========DisMsg,it is ed and it is EDS.=============","len msg_eds",w.msg_eds.Len(),"len msg",len(msg))
+	    ///bug
+	    if w.msg_eds.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_eds.PushBack(msg)
+	    logs.Debug("=========DisMsg,EDS msg.=============","len s",w.msg_eds.Len(),"nodecnt-1",(NodeCnt-1))
+	    if w.msg_eds.Len() == (NodeCnt-1) {
+		logs.Debug("=========DisMsg,get all EDS msg.=============")
+		w.beds <- true
+	    }
+	    ///////////////////
 	default:
 	    fmt.Println("unkown msg code")
 	}

@@ -14,7 +14,7 @@
  *
  */
 
-package lib 
+package ec2 
 
 import (
 	"github.com/fsn-dev/dcrm-sdk/internal/common/math/random"

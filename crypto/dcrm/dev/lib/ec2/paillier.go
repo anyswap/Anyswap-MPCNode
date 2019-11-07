@@ -14,7 +14,7 @@
  *
  */
 
-package lib 
+package ec2 
 
 import (
 	"errors"

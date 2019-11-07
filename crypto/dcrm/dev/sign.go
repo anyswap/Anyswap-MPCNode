@@ -302,18 +302,19 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
     }
 
     lockout_tx_hash, err := chandler.SubmitTransaction(signedTx)
+    fmt.Println("==========validate_lockout,send to outside net,err = %+v================",err)
     /////////add for bak sig
     if err != nil && len(bak_sigs) != 0 {
 
 	signedTx, err = chandler.MakeSignedTransaction(bak_sigs, lockouttx)
 	if err != nil {
-		ret2.Info = err.Error()
-		res := RpcDcrmRes{Ret:"",Err:ret2}
+		res := RpcDcrmRes{Ret:"",Err:err}
 		ch <- res
 		return
 	}
 	
 	lockout_tx_hash, err = chandler.SubmitTransaction(signedTx)
+	fmt.Println("==========validate_lockout,send to outside net,err = %+v================",err)
     }
     /////////
     
@@ -324,8 +325,7 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
     }
 
     if err != nil {
-	    ret2.Info = err.Error()
-	    res := RpcDcrmRes{Ret:"",Err:ret2}
+	    res := RpcDcrmRes{Ret:"",Err:err}
 	    ch <- res
 	    return
     }

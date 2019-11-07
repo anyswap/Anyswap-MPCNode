@@ -66,10 +66,15 @@ func (this *Service) GenPubKey(keytype string) map[string]interface{} {   //函�
 
 // this will be called by dcrm_reqDcrmAddr
 // cointype: ALL/BTC/ETH/XRP/.....
-func (this *Service) ReqDcrmAddr(cointype string) string {   //函数名首字母必须大写
+func (this *Service) ReqDcrmAddr(account string,cointype string) string {   //函数名首字母必须大写
     fmt.Println("==============dcrm_reqDcrmAddr==================")
 
-    addr,err := dcrm.SendReqToGroup(cointype,"rpc_req_dcrmaddr")
+    if account == "" || cointype == "" {
+	return "param error."
+    }
+
+    msg := account + ":" + cointype
+    addr,err := dcrm.SendReqToGroup(msg,"rpc_req_dcrmaddr")
     if addr == "" && err != nil {
 	fmt.Println("===========dcrm_reqDcrmAddr,err= ============",err.Error())
 	return err.Error()
@@ -87,17 +92,21 @@ func (this *Service) LockOut(pubkey string,cointype string,value string,to strin
     }
    
     var err error
-    for i:=0;i<100;i++ {
+    for i:=0;i<10;i++ {
 	msg := pubkey + ":" + cointype + ":" + value + ":" + to
-	txhash,err := dcrm.SendReqToGroup(msg,"rpc_lockout")
-	if err == nil && txhash != "" {
+	txhash,err2 := dcrm.SendReqToGroup(msg,"rpc_lockout")
+	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
+	if err2 == nil && txhash != "" {
 	    return txhash
 	}
+
+	err = err2
 	
 	time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
     }
 
     if err != nil {
+	fmt.Println("============dcrm_lockOut,err = %s ================",err.Error())
 	return err.Error()
     }
 

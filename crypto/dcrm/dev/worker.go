@@ -46,7 +46,7 @@ var (
     PaillierKeyLength = 2048
     sendtogroup_lilo_timeout = 80 
     sendtogroup_timeout = 80
-    ch_t = 60
+    ch_t = 10
 
     //callback
     GetGroup func(string) (int,string)
@@ -981,7 +981,7 @@ func Dcrmcallret(msg interface{},enode string) {
 	return
     }
    
-    fmt.Println("=========Dcrmcallret,node count=%v==============",NodeCnt)
+    fmt.Println("=========Dcrmcallret,node count=%v,msg = %s ==============",NodeCnt,res)
 
     ss := strings.Split(res,Sep)
     if len(ss) != 4 {
@@ -1051,6 +1051,7 @@ func Dcrmcallret(msg interface{},enode string) {
 	if ss[2] == "rpc_lockout" {
 	    if w.retres.Len() == NodeCnt {
 		ret := GetGroupRes(workid)
+		//fmt.Println("============Dcrmcallret,ret error= %s ===============",ret)
 		w.ch <- ret
 	    }
 	}
@@ -1626,8 +1627,9 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     fmt.Println("=========LockOutSendMsgToDcrm.Run,waiting for result.===========","GroupId",GroupId,"cur_enode",cur_enode)
     w := workers[workid]
     chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
+    fmt.Println("========LockOutSendMsgToDcrm.Run,return result = %s, err = %s ============",chret,cherr)
     if cherr != nil {
-	res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+	res2 := RpcDcrmRes{Ret:"",Err:cherr}
 	ch <- res2
 	return false
     }

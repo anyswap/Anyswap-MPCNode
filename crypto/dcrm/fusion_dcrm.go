@@ -55,9 +55,14 @@ type DcrmAddrRes struct {
 
 func SendReqToGroup(msg string,rpctype string) (string,error) {
     if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
+	msgs := strings.Split(msg,":")
+	if len(msgs) < 2 {
+	    return "",fmt.Errorf("param error.")
+	}
+
 	coin := "ALL"
-	if types.IsDefaultED25519(msg) {
-	    coin = msg
+	if types.IsDefaultED25519(msgs[1]) {
+	    coin = msgs[1]
 	}
 
 	ret,err := dev.SendReqToGroup(coin,rpctype)
@@ -66,8 +71,8 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	}
 
 	var m interface{}
-	if !strings.EqualFold(msg, "All") {
-	    h := cryptocoins.NewCryptocoinHandler(msg)
+	if !strings.EqualFold(msgs[1], "All") {
+	    h := cryptocoins.NewCryptocoinHandler(msgs[1])
 	    if h == nil {
 		return "",fmt.Errorf("req addr fail.cointype is not supported.")
 	    }
@@ -77,7 +82,7 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 		return "",fmt.Errorf("req addr fail.")
 	    }
 	    
-	    m = &DcrmAddrRes{Account:"",PubKey:ret,DcrmAddr:ctaddr,Cointype:msg}
+	    m = &DcrmAddrRes{Account:msgs[0],PubKey:ret,DcrmAddr:ctaddr,Cointype:msgs[1]}
 	    b,_ := json.Marshal(m)
 	    return string(b),nil
 	}
@@ -100,7 +105,7 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    addrmp[ct] = ctaddr
 	}
 
-	m = &DcrmPubkeyRes{Account:"",PubKey:ret,Address:addrmp}
+	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:ret,Address:addrmp}
 	b,_ := json.Marshal(m)
 	return string(b),nil
     }

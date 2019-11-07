@@ -31,19 +31,21 @@ none
 
 ##### Return
 
-`error` - error info.
+`Account` - user account.
 
-`pubkey` - dcrm pubkey.
+`PubKey` - dcrm pubkey.
+
+`Address` - coins dcrm address.
 
 ##### Example
 
 // Request
 
-curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_genPubkey","params":[],"id":67}' http://127.0.0.1:5559
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_reqDcrmAddr","params":["ALL"],"id":67}' http://127.0.0.1:5559
 
 // Result
 
-{"jsonrpc":"2.0","id":67,"result":"{\"FusionAccount\":\"\",\"PubKey\":\"04e744eacd8afda989e3693930c3767cf4d1391f0f8981a4fcf1d988ae5260d9ac94cab5ee823ca573f58f71de843804a2c44d136abec7d37b09984002578b0405\",\"Address\":{\"ATOM\":\"cosmos1qcxpmgcpc6yeak95chrpmv57jd8trr3sk5y457\",\"BCH\":\"qqrqc8drq8rgn8kcknzuv8djn6f5avvwxqcnhgehce\",\"BEP2GZX_754\":\"tbnb1qcxpmgcpc6yeak95chrpmv57jd8trr3s69ja4p\",\"BNB\":\"tbnb1qcxpmgcpc6yeak95chrpmv57jd8trr3s69ja4p\",\"BTC\":\"mg4vs2JqQpqwDZwyzKVpUjGABUmv2amtmz\",\"EOS\":\"dprf14jgfz4qsshdpqi2mdkhlvlbz45bus\",\"ERC20BNB\":\"0x56Eb855bD7B50b9800E27fff898264E8d4761f75\",\"ERC20GUSD\":\"0x56Eb855bD7B50b9800E27fff898264E8d4761f75\",\"ERC20HT\":\"0x56Eb855bD7B50b9800E27fff898264E8d4761f75\",\"ERC20MKR\":\"0x56Eb855bD7B50b9800E27fff898264E8d4761f75\",\"ERC20RMBT\":\"0x56Eb855bD7B50b9800E27fff898264E8d4761f75\",\"ETH\":\"0x56Eb855bD7B50b9800E27fff898264E8d4761f75\",\"EVT1\":\"EVT8b5zTtfnXPwPeui4oSLq3X7Ke2Nz9XLfaNJYxG9Q5aUEpYKP1f\",\"EVT1001\":\"EVT8b5zTtfnXPwPeui4oSLq3X7Ke2Nz9XLfaNJYxG9Q5aUEpYKP1f\",\"TRX\":\"4156eb855bd7b50b9800e27fff898264e8d4761f75\",\"USDT\":\"mg4vs2JqQpqwDZwyzKVpUjGABUmv2amtmz\",\"XRP\":\"rYyZyDiboQgST74GkXSeFsqKVBDhrDUJu\"}}"}
+{"jsonrpc":"2.0","id":67,"result":"{\"Account\":\"\",\"PubKey\":\"049c1c8934b136e94f283caaa1a8d02d4c4c14eac3d41d405ec6062ae50c802a1c24a33b6334a2af274a6677c6c84b6fddfa056e466a588b322220ab937d002fb9\",\"Address\":{\"ATOM\":\"cosmos13uazqef8wrp8pz896m7w7kmw0ldhcxxknkn3xw\",\"BCH\":\"qz8n5gr9yacvyuyguht0em6mdelaklqc6cwcgp9ccn\",\"BEP2GZX_754\":\"tbnb13uazqef8wrp8pz896m7w7kmw0ldhcxxkl89e83\",\"BNB\":\"tbnb13uazqef8wrp8pz896m7w7kmw0ldhcxxkl89e83\",\"BTC\":\"mtaGZBuRtyFc2uU1ia8VFUXCLpVukNJL2V\",\"EOS\":\"dnp2lykzbzhusjnenjelg12sx45qhtppl2\",\"ERC20BNB\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20GUSD\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20HT\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20MKR\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20RMBT\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ETH\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"EVT1\":\"EVT81zBrfNwvG9nPUGGu3x9Eppz5oGvM1xckqoXC3jSP8L1wUEqLc\",\"EVT1001\":\"EVT81zBrfNwvG9nPUGGu3x9Eppz5oGvM1xckqoXC3jSP8L1wUEqLc\",\"TRX\":\"41843c40b78063a62119e1682b7c6f964e634c00a0\",\"USDT\":\"mtaGZBuRtyFc2uU1ia8VFUXCLpVukNJL2V\",\"XRP\":\"rpzvrabbQc7ZPYqTs8EdAa6QuPR9KArLV2\"}}"}
 
 #### dcrm_sign
 
@@ -56,21 +58,17 @@ dcrm sign.
 
 ##### Return
 
-`error` - error info.
-
-`rsv` - signature str.
+`result` - tx hash.
 
 ##### Example
 
 // Request
 
-curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_sign","params":["049ac626ee0f0f79a49d6ed37f14ff2ad4e4f45fddf6e5293bcaa6a607e5392b49dde27a8f0602e23bc5fa0b847bd28d46e2f2d1d0d8cf59514785e4276b28de9d","0x19b6236d2e7eb3e925d0c6e8850502c1f04822eb9aa67cb92e5004f7017e5e41"],"id":67}' http://127.0.0.1:5559
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_lockOut","params":["049c1c8934b136e94f283caaa1a8d02d4c4c14eac3d41d405ec6062ae50c802a1c24a33b6334a2af274a6677c6c84b6fddfa056e466a588b322220ab937d002fb9","ETH","1000","0xd92c6581cb000367c10a1997070ccd870287f2da"],"id":67}' http://127.0.0.1:5559
 
 // Result
 
-{
-"rsv":"FFBB398B95ED2ED308B0FE87BC254FFC2C9957742EA05C18A1411C672B74FBDF6FBD6F4915799F2B4186192581D4506039ADEB79C8EB954E779901FDB9575C8301"
-}
+{"jsonrpc":"2.0","id":67,"result":"0xb8725b174243fb1b7baedf96f85e409f9ad47181d59eb062c126016bad5f4255"}
 
 ## Run Local
 

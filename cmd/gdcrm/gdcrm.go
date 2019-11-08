@@ -54,6 +54,7 @@ var (
 	port      int
 	bootnodes string
 	keyfile   string
+	genKey    string
 	app = cli.NewApp()
 )
 
@@ -69,6 +70,7 @@ func init() {
 		cli.IntFlag{Name: "port", Value: 5551, Usage: "listen port", Destination: &port},
 		cli.StringFlag{Name: "bootnodes", Value: "enode://200cb94957955bfa331ce14b72325c39f3eaa6bcfa962308c967390e5722f6fda0f6080781fde6a025a6280fbf23f38ca454e51a6b75ddbc1f9d57593790545a@47.107.50.83:5550", Usage: "boot node", Destination: &bootnodes},
 		cli.StringFlag{Name: "nodekey", Value: "", Usage: "private key filename", Destination: &keyfile},
+		cli.StringFlag{Name: "genkey", Value: "", Usage: "generate a node key", Destination: &genKey},
 	}
 
 	startP2pNode(nil)
@@ -77,6 +79,16 @@ func init() {
 
 func startP2pNode(c *cli.Context) error {
 	go func() error {
+		if genKey != "" {
+			nodeKey, err := crypto.GenerateKey()
+			if err != nil {
+				fmt.Printf("could not generate key: %v\n", err)
+			}
+			if err = crypto.SaveECDSA(genKey, nodeKey); err != nil {
+				fmt.Printf("could not save key: %v\n", err)
+			}
+			os.Exit(1)
+		}
 		if keyfile == "" {
 			keyfile = fmt.Sprintf("node.key")
 		}

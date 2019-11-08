@@ -41,6 +41,7 @@ func main() {
 }
 
 func StartDcrm(c *cli.Context) {
+	startP2pNode(nil)
 	time.Sleep(time.Duration(20) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
 	dcrm.Start()
@@ -72,9 +73,6 @@ func init() {
 		cli.StringFlag{Name: "nodekey", Value: "", Usage: "private key filename", Destination: &keyfile},
 		cli.StringFlag{Name: "genkey", Value: "", Usage: "generate a node key", Destination: &genKey},
 	}
-
-	startP2pNode(nil)
-
 }
 
 func startP2pNode(c *cli.Context) error {

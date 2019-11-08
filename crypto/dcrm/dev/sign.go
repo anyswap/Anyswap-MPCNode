@@ -25,7 +25,7 @@ import (
     "time"
     "sort"
     "bytes"
-    "math/rand"
+    "crypto/rand"
     "strconv"
     "strings"
     "crypto/sha512"
@@ -139,6 +139,7 @@ func GetNonce(account string,cointype string) (string,error) {
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
         lock5.Unlock()
+	fmt.Println("=========GetNonce,err = %v ============",err)
         return "",err
     }
     
@@ -151,7 +152,7 @@ func GetNonce(account string,cointype string) (string,error) {
 	///////
 	if err != nil {
 	    db.Close()
-	    lock.Unlock()
+	    lock5.Unlock()
 	    return "",err
 	}
     }
@@ -172,6 +173,7 @@ func SetNonce(account string,cointype string,nonce string) error {
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
         lock5.Unlock()
+	fmt.Println("=========SetNonce,err = %v ============",err)
         return err
     }
     
@@ -184,7 +186,7 @@ func SetNonce(account string,cointype string,nonce string) error {
 	///////
 	if err != nil {
 	    db.Close()
-	    lock.Unlock()
+	    lock5.Unlock()
 	    return err
 	}
     }
@@ -657,7 +659,18 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     
     // 2. select k and gamma randomly
     u1K := GetRandomIntFromZn(secp256k1.S256().N)
+    if u1K == nil {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random u1K fail.")}
+	ch <- res
+	return ""
+    }
+
     u1Gamma := GetRandomIntFromZn(secp256k1.S256().N)
+    if u1Gamma == nil {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random u1Gamma fail.")}
+	ch <- res
+	return ""
+    }
     
     // 3. make gamma*G commitment to get (C, D)
     u1GammaGx,u1GammaGy := secp256k1.S256().ScalarBaseMult(u1Gamma.Bytes())
@@ -896,6 +909,11 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     betaU1 := make([]*big.Int,ThresHold)
     for i=0;i<ThresHold;i++ {
 	beta1U1Star := GetRandomIntFromZn(NSubN2)
+	if beta1U1Star == nil {
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random beta1U1Star fail.")}
+	    ch <- res
+	    return ""
+	}
 	beta1U1 := new(big.Int).Mul(MinusOne, beta1U1Star)
 	betaU1Star[i] = beta1U1Star
 	betaU1[i] = beta1U1
@@ -905,6 +923,11 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     vU1 := make([]*big.Int,ThresHold)
     for i=0;i<ThresHold;i++ {
 	v1U1Star := GetRandomIntFromZn(NSubN2)
+	if v1U1Star == nil {
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random v1U1Star fail.")}
+	    ch <- res
+	    return ""
+	}
 	v1U1 := new(big.Int).Mul(MinusOne, v1U1Star)
 	vU1Star[i] = v1U1Star
 	vU1[i] = v1U1
@@ -2510,7 +2533,7 @@ func DoubleHash(id string,cointype string) *big.Int {
 
 func GetRandomInt(length int) *big.Int {
 	// NewInt allocates and returns a new Int set to x.
-	one := big.NewInt(1)
+	/*one := big.NewInt(1)
 	// Lsh sets z = x << n and returns z.
 	maxi := new(big.Int).Lsh(one, uint(length))
 
@@ -2519,7 +2542,15 @@ func GetRandomInt(length int) *big.Int {
 	// NewSource returns a new pseudo-random Source seeded with the given value.
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Rand sets z to a pseudo-random number in [0, n) and returns z.
-	rndNum := new(big.Int).Rand(rnd, maxi)
+	rndNum := new(big.Int).Rand(rnd, maxi)*/
+	one := big.NewInt(1)
+	maxi := new(big.Int).Lsh(one, uint(length))
+	maxi = new(big.Int).Sub(maxi,one)
+	rndNum,err := rand.Int(rand.Reader,maxi)
+	if err != nil {
+	    return nil
+	}
+
 	return rndNum
 }
 
@@ -2529,6 +2560,10 @@ func GetRandomIntFromZn(n *big.Int) *big.Int {
 
 	for {
 		rndNumZn = GetRandomInt(n.BitLen())
+		if rndNumZn == nil {
+		    return nil
+		}
+
 		if rndNumZn.Cmp(n) < 0 && rndNumZn.Cmp(zero) >= 0 {
 			break
 		}

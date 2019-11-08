@@ -21,9 +21,9 @@ make
 
 Default rpc port: 5559
 
-#### dcrm_genPubkey
+#### dcrm_reqDcrmAddr
 
-generate dcrm pubkey.
+generate dcrm pubkey and dcrm address by coin type.
 
 ##### Parameters
 
@@ -46,18 +46,61 @@ curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method
 
 // Result
 
-{"jsonrpc":"2.0","id":67,"result":"{\"Account\":\"0x3a1b3b81ed061581558a81f11d63e03129347437\",\"PubKey\":\"049c1c8934b136e94f283caaa1a8d02d4c4c14eac3d41d405ec6062ae50c802a1c24a33b6334a2af274a6677c6c84b6fddfa056e466a588b322220ab937d002fb9\",\"Address\":{\"ATOM\":\"cosmos13uazqef8wrp8pz896m7w7kmw0ldhcxxknkn3xw\",\"BCH\":\"qz8n5gr9yacvyuyguht0em6mdelaklqc6cwcgp9ccn\",\"BEP2GZX_754\":\"tbnb13uazqef8wrp8pz896m7w7kmw0ldhcxxkl89e83\",\"BNB\":\"tbnb13uazqef8wrp8pz896m7w7kmw0ldhcxxkl89e83\",\"BTC\":\"mtaGZBuRtyFc2uU1ia8VFUXCLpVukNJL2V\",\"EOS\":\"dnp2lykzbzhusjnenjelg12sx45qhtppl2\",\"ERC20BNB\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20GUSD\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20HT\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20MKR\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ERC20RMBT\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"ETH\":\"0x843C40B78063a62119E1682B7c6F964e634c00a0\",\"EVT1\":\"EVT81zBrfNwvG9nPUGGu3x9Eppz5oGvM1xckqoXC3jSP8L1wUEqLc\",\"EVT1001\":\"EVT81zBrfNwvG9nPUGGu3x9Eppz5oGvM1xckqoXC3jSP8L1wUEqLc\",\"TRX\":\"41843c40b78063a62119e1682b7c6f964e634c00a0\",\"USDT\":\"mtaGZBuRtyFc2uU1ia8VFUXCLpVukNJL2V\",\"XRP\":\"rpzvrabbQc7ZPYqTs8EdAa6QuPR9KArLV2\"}}"}
+{"jsonrpc":"2.0","id":67,"result":"{\"Account\":\"0x3a1b3b81ed061581558a81f11d63e03129347437\",\"PubKey\":\"0479ba0f7b660c91e102de6ff4a5593007aad74020ec4cfdd36babf32dc3e049ad53e7ca9ad6685c4f0d1ad9623b2122cff873f26afcb7cc4bbb883be0b985d7f8\",\"Address\":{\"ATOM\":\"cosmos1jxyqvgr5x7ej2gkjetv56a0dvq5avzqfyklzkz\",\"BCH\":\"qzgcsp3qwsmmxffz6t9djnt4a4szn4sgpy9nt9caam\",\"BEP2GZX_754\":\"tbnb1jxyqvgr5x7ej2gkjetv56a0dvq5avzqfg8f2ha\",\"BNB\":\"tbnb1jxyqvgr5x7ej2gkjetv56a0dvq5avzqfg8f2ha\",\"BTC\":\"mtnTDyg8U7MSte2371dYg5SDrYzZfqZGSs\",\"EOS\":\"dwkjqutesmwhy44zkmx4jx3icuqkolxovs\",\"ERC20BNB\":\"0xBe46691BEeEAfC302c11bD2F2C306c31d8d1905c\",\"ERC20GUSD\":\"0xBe46691BEeEAfC302c11bD2F2C306c31d8d1905c\",\"ERC20HT\":\"0xBe46691BEeEAfC302c11bD2F2C306c31d8d1905c\",\"ERC20MKR\":\"0xBe46691BEeEAfC302c11bD2F2C306c31d8d1905c\",\"ERC20RMBT\":\"0xBe46691BEeEAfC302c11bD2F2C306c31d8d1905c\",\"ETH\":\"0xBe46691BEeEAfC302c11bD2F2C306c31d8d1905c\",\"EVT1\":\"EVT5p6hdZL6bgdDwphH3vR6LQfgD4CCnnNh6M7qBUaPxz3sHTgkT2\",\"EVT1001\":\"EVT5p6hdZL6bgdDwphH3vR6LQfgD4CCnnNh6M7qBUaPxz3sHTgkT2\",\"TRX\":\"41be46691beeeafc302c11bd2f2c306c31d8d1905c\",\"USDT\":\"mtnTDyg8U7MSte2371dYg5SDrYzZfqZGSs\",\"XRP\":\"rNGVvvb9CnvUfXYRPSCwiwDtzZPiFG8zZz\"}}"}
 
-#### dcrm_sign
+#### dcrm_getNonce
 
-dcrm sign.
+get nonce by fusion account and cointype.
+
+#### Parameters
+
+1. `String|HexNumber|TAG`, - fusion account.
+2. `String|HexNumber|TAG`, - coin type,not include "ALL".
+
+#### Return
+
+`result` - the nonce value.
+
+#### Example
+
+// Request
+
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_getNonce","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ETH"],"id":67}' http://127.0.0.1:5559
+
+// Result
+
+{"jsonrpc":"2.0","id":67,"result":"0"}
+
+#### dcrm_getBalance
+
+get balance by fusion account and cointype.
+
+#### Parameters
+
+1. `String|HexNumber|TAG`, - fusion account.
+2. `String|HexNumber|TAG`, - coin type,not include "ALL".
+
+#### Return
+
+`result` - the balance.
+
+#### Example
+
+// Request
+
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_getBalance","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ETH"],"id":67}' http://127.0.0.1:5559
+
+// Result
+
+{"jsonrpc":"2.0","id":67,"result":"0"}
+
+#### dcrm_lockOut
+
+dcrm lockout.
 
 ##### Parameters
 
-1. `DATA`,pubkey - the pubkey from dcrm_genPubkey request.
-2. `String|HexNumber|TAG`, - coin type.
-3. `String|HexNumber|TAG`, - value to lockout,use smallest unit.
-4. `String|HexNumber|TAG`, - the address lockout to.
+1. `String|HexNumber|TAG`, - the raw transaction data string.
 
 ##### Return
 
@@ -67,7 +110,7 @@ dcrm sign.
 
 // Request
 
-curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_lockOut","params":["049c1c8934b136e94f283caaa1a8d02d4c4c14eac3d41d405ec6062ae50c802a1c24a33b6334a2af274a6677c6c84b6fddfa056e466a588b322220ab937d002fb9","ETH","1000","0xd92c6581cb000367c10a1997070ccd870287f2da"],"id":67}' http://127.0.0.1:5559
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_lockOut","params":["0xf89d80830f4240830f42409400000000000000000000000000000000000000dc80b8394c4f434b4f55543a3078303036363534414165323733393466304337386432633634324562343663323842333637626336463a31303a4554481ca03364040de4205d5fae08bd34e462994c9d72b105edb3c6a903345c3700aa241da01f54f1ff5784e204025e222338218eb03e65fbf5bb801ee4ad978c688c9f8a12"],"id":67}' http://127.0.0.1:5559
 
 // Result
 

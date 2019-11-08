@@ -131,7 +131,74 @@ func validate_sign(wsid string,pubkey string,cointype string,message string,ch c
     return
 }
 
-func validate_lockout(wsid string,pubkey string,cointype string,value string,to string,ch chan interface{}) {
+func GetNonce(account string,cointype string) (string,error) {
+     //db
+    lock5.Lock()
+    dir := GetDbDir()
+    ////////
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+        return "",err
+    }
+    
+    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	key = Keccak256Hash([]byte(account + ":" + "ALL")).Hex()
+	da,err = db.Get([]byte(key),nil)
+	///////
+	if err != nil {
+	    db.Close()
+	    lock.Unlock()
+	    return "",err
+	}
+    }
+
+    data := string(da)
+    datas := strings.Split(data,Sep)
+    nonce := datas[2]
+    db.Close()
+    lock5.Unlock()
+    return nonce,nil
+}
+
+func SetNonce(account string,cointype string,nonce string) error {
+     //db
+    lock5.Lock()
+    dir := GetDbDir()
+    ////////
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+        return err
+    }
+    
+    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	key = Keccak256Hash([]byte(account + ":" + "ALL")).Hex()
+	da,err = db.Get([]byte(key),nil)
+	///////
+	if err != nil {
+	    db.Close()
+	    lock.Unlock()
+	    return err
+	}
+    }
+
+    data := string(da)
+    datas := strings.Split(data,Sep)
+    datas[2] = nonce
+    s := strings.Join(datas,Sep)
+    db.Put([]byte(key),[]byte(s),nil)
+    db.Close()
+    lock5.Unlock()
+    return nil
+}
+func validate_lockout(wsid string,account string,cointype string,value string,to string,nonce string,ch chan interface{}) {
     fmt.Println("========validate_lockout============")
     var ret2 Err
     chandler := cryptocoins.NewCryptocoinHandler(cointype)
@@ -140,15 +207,28 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
 	    ch <- res
 	    return
     }
+
+    Nonce,_ := new(big.Int).SetString(nonce,10)
+
+    //nonce check
+    cur_nonce_str,err := GetNonce(account,cointype)
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return
+    }
+
+    cur_nonce,_ := new(big.Int).SetString(cur_nonce_str,10)
+    one,_ := new(big.Int).SetString("1",10)
+    cur_nonce = new(big.Int).Add(cur_nonce,one)
+    if Nonce.Cmp(cur_nonce) != 0 {
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("nonce error.")}
+	ch <- res
+	return
+    }
+    //
     
     lock5.Lock()
-    pub, err := hex.DecodeString(pubkey)
-    if err != nil {
-        res := RpcDcrmRes{Ret:"",Err:err}
-        ch <- res
-        lock5.Unlock()
-        return
-    }
 
     //db
     dir := GetDbDir()
@@ -161,44 +241,28 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
         lock5.Unlock()
         return
     } 
-
-    var data string
-    var b bytes.Buffer 
-    b.WriteString("") 
-    b.WriteByte(0) 
-    b.WriteString("") 
-    iter := db.NewIterator(nil, nil) 
-    for iter.Next() { 
-	key := string(iter.Key())
-	value := string(iter.Value())
-	if strings.EqualFold(key,string(pub)) {
-	    data = value
-	    break
+    
+    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	key = Keccak256Hash([]byte(account + ":" + "ALL")).Hex()
+	da,err = db.Get([]byte(key),nil)
+	///////
+	if err != nil {
+	    fmt.Println("===========get generate save data fail.=============")
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail.")}
+	    ch <- res
+	    db.Close()
+	    lock5.Unlock()
+	    return
 	}
     }
-    iter.Release()
-    ///////
-    if data == "" {
-	fmt.Println("===========get generate save data fail.=============")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail.")}
-	ch <- res
-	db.Close()
-	lock5.Unlock()
-	return
-    }
     
+    data := string(da)
     datas := strings.Split(data,Sep)
 
-    realdcrmpubkey := hex.EncodeToString([]byte(datas[0]))
-    if !strings.EqualFold(realdcrmpubkey,pubkey) {
-        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail")}
-        ch <- res
-        db.Close()
-        lock5.Unlock()
-        return
-    }
-
-    save := datas[1] 
+    save := datas[1]
     dcrmpub := datas[0]
 
     var dcrmpkx *big.Int
@@ -211,6 +275,7 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
     db.Close()
     lock5.Unlock()
 
+    pubkey := hex.EncodeToString([]byte(datas[0]))
     realdcrmfrom, err := chandler.PublicKeyToAddress(pubkey)
     if err != nil {
         res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get dcrm addr fail")}
@@ -319,6 +384,12 @@ func validate_lockout(wsid string,pubkey string,cointype string,value string,to 
     /////////
     
     if lockout_tx_hash != "" {
+	if SetNonce(account,cointype,nonce) != nil {
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("update nonce error.")}
+	    ch <- res
+	    return
+	}
+
 	res := RpcDcrmRes{Ret:lockout_tx_hash,Err:err}
 	ch <- res
 	return

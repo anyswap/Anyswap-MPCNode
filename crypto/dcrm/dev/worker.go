@@ -1209,12 +1209,12 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
 	    w.groupid = self.groupid
-	    //msg = pubkey:cointype:value:to
+	    //msg = account:cointype:value:to:nonce
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 
 	    rch := make(chan interface{},1)
-	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],msgs[3],rch)
+	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
@@ -1243,7 +1243,8 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.sid = rr.Nonce
 	    w.groupid = self.groupid
 
-	    dcrm_genPubKey(w.sid,rr.Msg,rch)
+	    msgs := strings.Split(rr.Msg,":")
+	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
 		var ret2 Err
@@ -1266,7 +1267,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.sid = rr.Nonce
 	    w.groupid = self.groupid
 
-	    dcrm_genPubKey(w.sid,rr.Msg,rch)
+	    dcrm_genPubKey(w.sid,"",rr.Msg,rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
 		var ret2 Err
@@ -1435,6 +1436,7 @@ func (self *GenPubKeySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 }
 
 type ReqAddrSendMsgToDcrm struct {
+    Account string
     Cointype string
 }
 
@@ -1448,9 +1450,9 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     GetEnodesInfo()
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
-    nonce := Keccak256Hash([]byte(self.Cointype + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
+    nonce := Keccak256Hash([]byte(self.Account + ":" + self.Cointype + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
     
-    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Cointype}
+    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype}
     res,err := Encode2(sm)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Err:err}
@@ -1576,10 +1578,11 @@ func (self *SignSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
 //msg := pubkey + ":" + cointype + ":" + value + ":" + to
 type LockOutSendMsgToDcrm struct {
-    PubKey string
+    Account string
     Cointype string
     Value string
     To string
+    Nonce string
 }
 
 func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -1590,7 +1593,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     GetEnodesInfo()
-    msg := self.PubKey + ":" + self.Cointype + ":" + self.Value + ":" + self.To
+    msg := self.Account + ":" + self.Cointype + ":" + self.Value + ":" + self.To + ":" + self.Nonce
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1726,7 +1729,8 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_req_dcrmaddr":
-	    v := ReqAddrSendMsgToDcrm{Cointype:msg}
+	    msgs := strings.Split(msg,":")
+	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_sign":
@@ -1735,9 +1739,9 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_lockout":
-	    //msg := pubkey + ":" + cointype + ":" + value + ":" + to
+	    //msg := account + ":" + cointype + ":" + value + ":" + to + ":" + nonce
 	    m := strings.Split(msg,":")
-	    v := LockOutSendMsgToDcrm{PubKey:m[0],Cointype:m[1],Value:m[2],To:m[3]}
+	    v := LockOutSendMsgToDcrm{Account:m[0],Cointype:m[1],Value:m[2],To:m[3],Nonce:m[4]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	default:

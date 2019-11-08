@@ -18,7 +18,6 @@ package dcrm
 
 import (
 	"fmt"
-	"time"
 	"os"
 	"strconv"
 	"os/signal"
@@ -85,7 +84,7 @@ func (this *Service) ReqDcrmAddr(account string,cointype string) string {   //å‡
 
 // this will be called by dcrm_lockOut
 // cointype: BTC/ETH/XRP/.....
-func (this *Service) LockOut(pubkey string,cointype string,value string,to string) string {
+/*func (this *Service) LockOut(pubkey string,cointype string,value string,to string) string {
     fmt.Println("==============dcrm_lockOut==================")
     if pubkey == "" || cointype == "" || value == "" || to == "" {
 	return "param error."
@@ -111,6 +110,27 @@ func (this *Service) LockOut(pubkey string,cointype string,value string,to strin
     }
 
     return "LockOut fail."
+}
+*/
+
+func (this *Service) LockOut(raw string) string {
+    return dcrm.LockOut(raw)
+}
+
+func (this *Service) GetBalance(account string,cointype string) string {
+    if account == "" || cointype == "" {
+	return "param error."
+    }
+
+    return dcrm.GetBalance(account,cointype)
+}
+
+func (this *Service) GetNonce(account string,cointype string) string {
+    if account == "" || cointype == "" {
+	return "param error."
+    }
+
+    return dcrm.GetNonce(account,cointype)
 }
 
 // this will be called by dcrm_sign

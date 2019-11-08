@@ -18,11 +18,14 @@ package dcrm
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 	p2pdcrm "github.com/fsn-dev/dcrm-sdk/p2p/layer2"
+	"github.com/fsn-dev/dcrm-sdk/p2p/rlp"
 	"strconv"
 	"time"
 	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/dev"
+	"github.com/fsn-dev/dcrm-sdk/internal/common"
 	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins"
 	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/types"
 	cryptocoinsconfig "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/config"
@@ -65,7 +68,8 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    coin = msgs[1]
 	}
 
-	ret,err := dev.SendReqToGroup(coin,rpctype)
+	str := msgs[0] + ":" + coin
+	ret,err := dev.SendReqToGroup(str,rpctype)
 	if err != nil || ret == "" {
 	    return "",err
 	}
@@ -116,6 +120,99 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
     }
 
     return ret,nil
+}
+
+func LockOut(raw string) string {
+
+    fmt.Println("==========LockOut,raw = %v ===========",raw)
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	fmt.Println("==========LockOut,raw = %s,err = %s ===========",raw,err)
+	return err.Error() 
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+    from, err := types.Sender(signer, tx)
+    if err != nil {
+	signer = types.NewEIP155Signer(big.NewInt(4)) //
+	from, err = types.Sender(signer, tx)
+	if err != nil {
+	    return err.Error() 
+	}
+    }
+
+    data := string(tx.Data())
+    datas := strings.Split(data,":")
+    to := datas[1]
+    value := datas[2]
+    cointype := datas[3]
+    Nonce := tx.Nonce() 
+
+    fmt.Println("==============dcrm_lockOut,from = %s,to = %s,value = %s,cointype = %s ==================",from.Hex(),to,value,cointype)
+    if from.Hex() == "" || cointype == "" || value == "" || to == "" {
+	return "param error."
+    }
+   
+    var errtmp error
+    for i:=0;i<10;i++ {
+	msg := from.Hex() + ":" + cointype + ":" + value + ":" + to + ":" + fmt.Sprintf("%v",Nonce)
+	txhash,err2 := SendReqToGroup(msg,"rpc_lockout")
+	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
+	if err2 == nil && txhash != "" {
+	    return txhash
+	}
+
+	errtmp = err2
+	
+	time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
+    }
+
+    if errtmp != nil {
+	fmt.Println("============dcrm_lockOut,err = %s ================",errtmp.Error())
+	return errtmp.Error()
+    }
+
+    return "LockOut fail."
+}
+
+func GetBalance(account string, cointype string) string {
+    pubkey,b := dev.ExsitPubKey(account,cointype) 
+    if b == false {
+	return "get balance fail,there is no dcrm addr in account."
+    }
+
+    h := cryptocoins.NewCryptocoinHandler(cointype)
+    if h == nil {
+	return "coin type is not supported."
+    }
+
+    ctaddr, err := h.PublicKeyToAddress(pubkey)
+    if err != nil {
+	return err.Error()
+    }
+
+    ba,err := h.GetAddressBalance(ctaddr,"")
+    if err != nil {
+	return err.Error()
+    }
+
+    if h.IsToken() {
+	ret := fmt.Sprintf("%v",ba.TokenBalance.Val)
+	return ret
+    } 
+    
+    ret := fmt.Sprintf("%v",ba.CoinBalance.Val)
+    return ret
+}
+
+func GetNonce(account string,cointype string) string {
+    nonce,err := dev.GetNonce(account,cointype)
+    if err != nil {
+	return err.Error()
+    }
+
+    return nonce
 }
 
 func init(){

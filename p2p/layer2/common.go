@@ -93,16 +93,19 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	//		log.Debug("BroadcastToGroup", "gid", gid, "xvcGroup", gid, xvcGroup)
 			msgCode = Sdk_msgCode
 		}
+		break
 	case DcrmProtocol_type:
 		if dccpGroup != nil {
 			xvcGroup = dccpGroup
 			msgCode = Dcrm_msgCode
 		}
+		break
 	case Xprotocol_type:
 		if xpGroup != nil {
 			xvcGroup = xpGroup
 			msgCode = Xp_msgCode
 		}
+		break
 	default:
 		return
 	}
@@ -190,6 +193,7 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			//	log.Debug("HandlePeer", "callback(msg): ", recv)
 				go callEvent(string(recv), peer.ID().String())
 			}
+			break
 		case Sdk_msgCode:
 			var recv []byte
 			err := rlp.Decode(msg.Payload, &recv)
@@ -200,6 +204,7 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			//	log.Debug("HandlePeer", "callback(msg): ", recv)
 				go Sdk_callEvent(string(recv), peer.ID().String())
 			}
+			break
 		case Dcrm_msgCode:
 			var recv []byte
 			err := rlp.Decode(msg.Payload, &recv)
@@ -210,6 +215,7 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			//	log.Debug("HandlePeer", "callback(msg): ", recv)
 				go Dcrm_callEvent(string(recv))
 			}
+			break
 		case Xp_msgCode:
 			var recv []byte
 			err := rlp.Decode(msg.Payload, &recv)
@@ -220,8 +226,10 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 		//		log.Debug("HandlePeer", "callback(msg): ", recv)
 				go Xp_callEvent(string(recv))
 			}
+			break
 		default:
 			fmt.Println("unkown msg code")
+			break
 		}
 	}
 	return nil
@@ -247,16 +255,19 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 			_, xvcGroup = getGroupSDK(gid)
 		//	log.Debug("BroadcastToGroup", "gid", gid, "xvcGroup", gid, xvcGroup)
 		}
+		break
 	case DcrmProtocol_type:
 		if dccpGroup == nil {
 			return 0, ""
 		}
 		xvcGroup = dccpGroup
+		break
 	case Xprotocol_type:
 		if xpGroup == nil {
 			return 0, ""
 		}
 		xvcGroup = xpGroup
+		break
 	default:
 		return 0, ""
 	}
@@ -292,12 +303,15 @@ func recvGroupInfo(gid discover.NodeID, req interface{}, p2pType int) {
 		groupTmp = NewGroup()
 		sdkGroup[gid] = groupTmp
 		xvcGroup = groupTmp
+		break
 	case DcrmProtocol_type:
 		dccpGroup = NewGroup()
 		xvcGroup = dccpGroup
+		break
 	case Xprotocol_type:
 		xpGroup = NewGroup()
 		xvcGroup = xpGroup
+		break
 	default:
 		return
 	}
@@ -343,7 +357,7 @@ func SendMsgToPeer(enode string, msg string) error {
 //		log.Debug("Failed: SendToPeer peers mismatch peerID", "peerID", node.ID)
 		return errors.New("peerID mismatch!")
 	}
-	if err := p2p.Send(p.ws, peerMsgCode, msg); err == nil {
+	if err := p2p.Send(p.ws, peerMsgCode, msg); err != nil {
 //		log.Debug("Failed: SendToPeer", "peerID", node.ID, "msg", msg)
 		return err
 	}
@@ -430,7 +444,7 @@ func (e *Emitter) peersWithoutTx(hash common.Hash, group bool) []*peer {
 // in its transaction hash set for future reference.
 func (p *peer) sendTx(txs []Transaction) {
 	for _, tx := range txs {
-		if err := p2p.Send(p.ws, Dcrm_msgCode, string(tx.Payload)); err == nil {
+		if err := p2p.Send(p.ws, Dcrm_msgCode, string(tx.Payload)); err != nil {
 			if len(p.queuedTxs) >= maxKnownTxs {
 				p.knownTxs.Pop()
 			}

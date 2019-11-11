@@ -34,7 +34,8 @@ import (
 
 func main() {
 	var (
-		groupNum    = flag.Int("group", int(0), "group Number")
+		groupNum    = flag.Uint("groups", uint(0), "group Number")//0:sdk, 1:one group, 2:two groups dcrm xp
+		groupNodesNum    = flag.Uint("nodes", uint(3), "nodes Number in some group, must > 0")
 		listenAddr  = flag.String("addr", ":4440", "listen address")
 		genKey      = flag.String("genkey", "", "generate a node key")
 		writeAddr   = flag.Bool("writeaddress", false, "write out the node's pubkey hash and quit")
@@ -55,6 +56,9 @@ func main() {
 		return
 	}
 	switch {
+	case *groupNodesNum == 0:
+		fmt.Printf("Use -nodes must bigger than zero\n")
+		return
 	case *genKey != "":
 		nodeKey, err = crypto.GenerateKey()
 		if err != nil {
@@ -130,8 +134,8 @@ func main() {
 	}
 
 	// TODO: group
-	fmt.Printf("groupNum: %v\n", *groupNum)
-	if err := discover.InitGroup(*groupNum); err != nil {
+	fmt.Printf("groupNum: %v, groupNodesNum: %v\n", *groupNum, *groupNodesNum)
+	if err := discover.InitGroup(int(*groupNum), int(*groupNodesNum)); err != nil {
 	}
 
 	select {}

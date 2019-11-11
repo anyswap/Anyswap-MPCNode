@@ -112,7 +112,7 @@ curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method
 
 // Result
 
-{"jsonrpc":"2.0","id":67,"result":"0xb8725b174243fb1b7baedf96f85e409f9ad47181d59eb062c126016bad5f4255"}
+{"jsonrpc":"2.0","id":67,"result":{"TxHash":"0xb8725b174243fb1b7baedf96f85e409f9ad47181d59eb062c126016bad5f4255"}}
 
 ## Run Local
 

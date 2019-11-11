@@ -34,8 +34,8 @@ import (
 
 func main() {
 	var (
-		groupNum    = flag.Int("group", int(1), "group Number: default 1")
-		listenAddr  = flag.String("addr", ":40401", "listen address")
+		groupNum    = flag.Int("group", int(0), "group Number")
+		listenAddr  = flag.String("addr", ":4440", "listen address")
 		genKey      = flag.String("genkey", "", "generate a node key")
 		writeAddr   = flag.Bool("writeaddress", false, "write out the node's pubkey hash and quit")
 		nodeKeyFile = flag.String("nodekey", "", "private key filename")

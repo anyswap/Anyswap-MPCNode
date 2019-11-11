@@ -65,11 +65,11 @@ func init() {
 	//app := cli.NewApp()
 	app.Usage = "Dcrm Init"
 	app.Version = "5.0"
-	app.Action = StartDcrm 
+	app.Action = StartDcrm
 	app.Flags = []cli.Flag{
-		cli.IntFlag{Name: "rpcport", Value: 5559, Usage: "listen port", Destination: &rpcport},
-		cli.IntFlag{Name: "port", Value: 5551, Usage: "listen port", Destination: &port},
-		cli.StringFlag{Name: "bootnodes", Value: "enode://200cb94957955bfa331ce14b72325c39f3eaa6bcfa962308c967390e5722f6fda0f6080781fde6a025a6280fbf23f38ca454e51a6b75ddbc1f9d57593790545a@47.107.50.83:5550", Usage: "boot node", Destination: &bootnodes},
+		cli.IntFlag{Name: "rpcport", Value: 4449, Usage: "listen port", Destination: &rpcport},
+		cli.IntFlag{Name: "port", Value: 4441, Usage: "listen port", Destination: &port},
+		cli.StringFlag{Name: "bootnodes", Value: "enode://aad98f8284b99d2438516c37d3d2d5d9b29a259d8ce8fe38eff303c8cac9eb002699d23d276951e77e123f47522b978ad419c0e418a7109aa40cf600bd07d6ac@47.107.50.83:4440", Usage: "boot node", Destination: &bootnodes},
 		cli.StringFlag{Name: "nodekey", Value: "", Usage: "private key filename", Destination: &keyfile},
 		cli.StringFlag{Name: "genkey", Value: "", Usage: "generate a node key", Destination: &genKey},
 	}

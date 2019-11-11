@@ -17,7 +17,7 @@ make
 
 ## JSON RPC API
 
-Default rpc port: 5559
+Default rpc port: 4449
 
 #### dcrm_reqDcrmAddr
 
@@ -40,7 +40,7 @@ generate dcrm pubkey and dcrm address by coin type.
 
 // Request
 
-curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_reqDcrmAddr","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ALL"],"id":67}' http://127.0.0.1:5559
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_reqDcrmAddr","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ALL"],"id":67}' http://127.0.0.1:4449
 
 // Result
 
@@ -63,7 +63,7 @@ get nonce by fusion account and cointype.
 
 // Request
 
-curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_getNonce","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ETH"],"id":67}' http://127.0.0.1:5559
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_getNonce","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ETH"],"id":67}' http://127.0.0.1:4449
 
 // Result
 
@@ -86,7 +86,7 @@ get balance by fusion account and cointype.
 
 // Request
 
-curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_getBalance","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ETH"],"id":67}' http://127.0.0.1:5559
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_getBalance","params":["0x3a1b3b81ed061581558a81f11d63e03129347437","ETH"],"id":67}' http://127.0.0.1:4449
 
 // Result
 
@@ -108,7 +108,7 @@ dcrm lockout.
 
 // Request
 
-curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_lockOut","params":["0xf89d80830f4240830f42409400000000000000000000000000000000000000dc80b8394c4f434b4f55543a3078303036363534414165323733393466304337386432633634324562343663323842333637626336463a31303a4554481ca03364040de4205d5fae08bd34e462994c9d72b105edb3c6a903345c3700aa241da01f54f1ff5784e204025e222338218eb03e65fbf5bb801ee4ad978c688c9f8a12"],"id":67}' http://127.0.0.1:5559
+curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method":"dcrm_lockOut","params":["0xf89d80830f4240830f42409400000000000000000000000000000000000000dc80b8394c4f434b4f55543a3078303036363534414165323733393466304337386432633634324562343663323842333637626336463a31303a4554481ca03364040de4205d5fae08bd34e462994c9d72b105edb3c6a903345c3700aa241da01f54f1ff5784e204025e222338218eb03e65fbf5bb801ee4ad978c688c9f8a12"],"id":67}' http://127.0.0.1:4449
 
 // Result
 
@@ -119,10 +119,10 @@ curl -X POST -H "Content-Type":application/json --data '{"jsonrpc":"2.0","method
 #### Run bootnode
 ./bin/cmd/bootnode --genkey ./bootnode.key
 
-./bin/cmd/bootnode --nodekey ./bootnode.key --addr :5550 --group 0
+./bin/cmd/bootnode --nodekey ./bootnode.key --addr :4440 --group 0
 
 will print bootnode which use for run node with args --bootnodes
-bootnode key such as enode://16ab118525ec559dde2640b513676b8df7368aac3a80cc5c9d9e8b9c71781c09103fe3e8b5dd17bf245f0c71b891ec4848b142852763ab2146a1e288df15da40@[::]:5550
+bootnode key such as enode://16ab118525ec559dde2640b513676b8df7368aac3a80cc5c9d9e8b9c71781c09103fe3e8b5dd17bf245f0c71b891ec4848b142852763ab2146a1e288df15da40@[::]:4440
 
 ##### Run nodes (3 nodes at least)
 INFO: if want reboot node, please wait 1 minute to run node after close node
@@ -131,9 +131,9 @@ without args:
 
 ./bin/cmd/gdcrm
 
-(default: --nodekey ~/node.key --rpcport 5559 --port 5551 --bootnodes "enode://200cb94957955bfa331ce14b72325c39f3eaa6bcfa962308c967390e5722f6fda0f6080781fde6a025a6280fbf23f38ca454e51a6b75ddbc1f9d57593790545a@47.107.50.83:5550")
+(default: --nodekey ~/node.key --rpcport 4449 --port 4441 --bootnodes "enode://aad98f8284b99d2438516c37d3d2d5d9b29a259d8ce8fe38eff303c8cac9eb002699d23d276951e77e123f47522b978ad419c0e418a7109aa40cf600bd07d6ac@47.107.50.83:4440")
 
 with args,for example:
 
-./bin/cmd/gdcrm --rpcport 9012 --bootnodes "enode://16ab118525ec559dde2640b513676b8df7368aac3a80cc5c9d9e8b9c71781c09103fe3e8b5dd17bf245f0c71b891ec4848b142852763ab2146a1e288df15da40@192.168.1.104:12340" --port 12341 --nodekey "node1.key"
+./bin/cmd/gdcrm --rpcport 9012 --bootnodes "enode://aad98f8284b99d2438516c37d3d2d5d9b29a259d8ce8fe38eff303c8cac9eb002699d23d276951e77e123f47522b978ad419c0e418a7109aa40cf600bd07d6ac@47.107.50.83:4440" --port 12341 --nodekey "node1.key"
 

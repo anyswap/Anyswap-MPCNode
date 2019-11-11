@@ -599,7 +599,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 //return value is the backup for the dcrm sig
 func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big.Int,pky *big.Int,ch chan interface{},id int) string {
     //gc := getgroupcount()
-    if id < 0 || id >= len(workers) {
+    if id < 0 || id >= len(workers) || id >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
 	ch <- res
 	return ""
@@ -1866,7 +1866,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     } ()
 
     logs.Debug("===================Sign_ed====================")
-    if id < 0 || id >= len(workers) {
+    if id < 0 || id >= len(workers) || id >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return ""

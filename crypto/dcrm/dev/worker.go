@@ -992,7 +992,7 @@ func Dcrmcallret(msg interface{},enode string) {
     //msgtype := ss[2]
     ret := ss[3]
     workid,err := strconv.Atoi(ss[1])
-    if err != nil || workid < 0 {
+    if err != nil || workid < 0 || workid >= RpcMaxWorker {
 	return
     }
 
@@ -1075,7 +1075,7 @@ func Dcrmcallret(msg interface{},enode string) {
 }
 
 func GetGroupRes(wid int) RpcDcrmRes {
-    if wid < 0 {
+    if wid < 0 || wid >= RpcMaxWorker {
 	res2 := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
 	return res2
     }
@@ -1131,7 +1131,7 @@ func SetUpMsgList(msg string) {
 }
 
 func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
-    if workid < 0 { //TODO
+    if workid < 0 || workid >= RpcMaxWorker { //TODO
 	res2 := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
 	ch <- res2
 	return false
@@ -1245,6 +1245,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	    msgs := strings.Split(rr.Msg,":")
 	    if len(msgs) < 2 {
+		fmt.Println("=========RecvMsg.Run,get msg error. rr.Msg = %s ==========",rr.Msg)
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("get msg error.")}
 		ch <- res2
 		return false
@@ -1384,7 +1385,7 @@ type GenPubKeySendMsgToDcrm struct {
 }
 
 func (self *GenPubKeySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    if workid < 0 {
+    if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
@@ -1446,7 +1447,7 @@ type ReqAddrSendMsgToDcrm struct {
 }
 
 func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    if workid < 0 {
+    if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
@@ -1509,7 +1510,7 @@ type SignSendMsgToDcrm struct {
 }
 
 func (self *SignSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    if workid < 0 {
+    if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
@@ -1591,7 +1592,7 @@ type LockOutSendMsgToDcrm struct {
 }
 
 func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    if workid < 0 {
+    if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false

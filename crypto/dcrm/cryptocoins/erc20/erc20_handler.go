@@ -535,7 +535,7 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("=============makeSignedTransaction============","chain Id",chainID)
+	fmt.Println("=============makeSignedTransaction,chain id = %v ============",chainID)
 	message, err := hex.DecodeString(rsv)
 	if err != nil {
 		return nil, err
@@ -549,10 +549,10 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	//////
 	from, err2 := ctypes.Sender(signer, signedtx)
 	if err2 != nil {
-	    fmt.Printf("===================makeSignedTransaction==================","err",err2)
+	    fmt.Println("===================makeSignedTransaction,err = %v ==================",err2)
 	    return nil,err2
 	}
-	fmt.Printf("===================makeSignedTransaction==================","from",from)
+	fmt.Println("===================makeSignedTransaction,from = %v ==================",from)
 	////
 
 	return signedtx, nil

@@ -46,11 +46,11 @@ func ExsitPubKey(account string,cointype string) (string,bool) {
         return "",false
     }
     
-    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
     da,err := db.Get([]byte(key),nil)
     ///////
     if err != nil {
-	key = Keccak256Hash([]byte(account + ":" + "ALL")).Hex()
+	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
 	da,err = db.Get([]byte(key),nil)
 	///////
 	if err != nil {
@@ -138,7 +138,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	s := []string{string(sedpk),sedsave,"0"}
 	ss := strings.Join(s,common.Sep)
 	//db.Put(sedpk[:],[]byte(ss),nil)
-	key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	db.Put([]byte(key),[]byte(ss),nil)
 
 	res := RpcDcrmRes{Ret:pubkeyhex2,Err:nil}
@@ -195,7 +195,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     s := []string{string(ys),save,"0"}
     ss := strings.Join(s,Sep)
     //db.Put(ys,[]byte(ss),nil)
-    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
     db.Put([]byte(key),[]byte(ss),nil)
     db.Close()
     lock.Unlock()

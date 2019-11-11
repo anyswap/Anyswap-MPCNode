@@ -53,17 +53,18 @@ func GetNonce(account string,cointype string) (string,error) {
         return "",err
     }
     
-    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
     da,err := db.Get([]byte(key),nil)
     ///////
     if err != nil {
-	key = Keccak256Hash([]byte(account + ":" + "ALL")).Hex()
+	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
 	da,err = db.Get([]byte(key),nil)
 	///////
 	if err != nil {
+	    fmt.Println("=========GetNonce,key = %s,err = %v ============",key,err)
 	    db.Close()
 	    lock5.Unlock()
-	    return "",err
+	    return "",fmt.Errorf("leveldb not found account %s,cointype %s",account,"ALL")
 	}
     }
 
@@ -87,17 +88,18 @@ func SetNonce(account string,cointype string,nonce string) error {
         return err
     }
     
-    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
     da,err := db.Get([]byte(key),nil)
     ///////
     if err != nil {
-	key = Keccak256Hash([]byte(account + ":" + "ALL")).Hex()
+	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
 	da,err = db.Get([]byte(key),nil)
 	///////
 	if err != nil {
+	    fmt.Println("=========SetNonce,key = %s,err = %v ============",key,err)
 	    db.Close()
 	    lock5.Unlock()
-	    return err
+	    return fmt.Errorf("leveldb not found account %s,cointype %s",account,"ALL")
 	}
     }
 
@@ -155,16 +157,16 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
         return
     } 
     
-    key := Keccak256Hash([]byte(account + ":" + cointype)).Hex()
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
     da,err := db.Get([]byte(key),nil)
     ///////
     if err != nil {
-	key = Keccak256Hash([]byte(account + ":" + "ALL")).Hex()
+	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
 	da,err = db.Get([]byte(key),nil)
 	///////
 	if err != nil {
-	    fmt.Println("===========get generate save data fail.=============")
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail.")}
+	    fmt.Println("=========validate_lockout,get save data fail,key = %s,err = %v ============",key,err)
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("leveldb not found account %s,cointype %s",account,"ALL")}
 	    ch <- res
 	    db.Close()
 	    lock5.Unlock()

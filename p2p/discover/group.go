@@ -53,11 +53,10 @@ var (
 	groupSDK sync.Mutex
 	groupSDKList []*Node
 )
-
-const (
-	Dcrm_groupMemNum = 3
-	Xp_groupMemNum   = 3
-	SDK_groupNum = 3
+var (
+	Dcrm_groupMemNum = 0
+	Xp_groupMemNum   = 0
+	SDK_groupNum = 0
 )
 
 const (
@@ -463,10 +462,13 @@ func getGroupInfo(gid NodeID, p2pType int) *group {
 	return nil
 }
 
-func InitGroup(Number int) error {
+func InitGroup(groupsNum, nodesNum int) error {
 //	log.Debug("==== InitGroup() ====")
 	setgroup = 1
-	setgroupNumber = Number
+	setgroupNumber = groupsNum
+	SDK_groupNum = nodesNum
+	Dcrm_groupMemNum = nodesNum
+	Xp_groupMemNum   = nodesNum
 	Dcrm_groupList = &group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
 	Xp_groupList = &group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
 	return nil
@@ -595,12 +597,12 @@ func sendGroupInfo(groupList *group, p2pType int) {
 
 func addGroupSDK(n *Node) {
 	groupTmp := new(group)
-	groupTmp.Nodes = []rpcNode{{},{},{}}
+	groupTmp.Nodes = make([]rpcNode, SDK_groupNum)
 	for i, node := range groupSDKList {
 		groupTmp.Nodes[i] = nodeToRPC(node)
 		groupTmp.count++
 	}
-	groupTmp.Nodes[2] = nodeToRPC(n)
+	groupTmp.Nodes[len(groupSDKList)] = nodeToRPC(n)
 	groupTmp.count++
 	groupTmp.ID = n.ID
 	//fmt.Printf("addGroupSDK, gid: %v\n", groupTmp.ID)
@@ -669,7 +671,9 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 				if checkNodeIDExist(n) {
 					return
 				} else {
-					delete(SDK_groupList, n.ID)
+					if SDK_groupList[n.ID] != nil { // exist group
+						delete(SDK_groupList, n.ID)
+					}
 					addGroupSDK(n)
 				}
 			}
@@ -1039,5 +1043,25 @@ func SendToMyselfAndReturn(selfID, msg string, p2pType int) {
 	//log.Debug("getmessage", "callEvent retmsg: ", msgc)
 	msgr := <-msgc
 	callCCReturn(msgr, p2pType, selfID)
+}
+
+func UpdateGroupNodesNumber(number, p2pType int) {
+	switch p2pType {
+	case Sdkprotocol_type:
+		if SDK_groupNum == 0 {
+			SDK_groupNum = number
+		}
+		break
+	case Dcrmprotocol_type:
+		if Dcrm_groupMemNum == 0 {
+			Dcrm_groupMemNum = number
+		}
+		break
+	case Xprotocol_type:
+		if Xp_groupMemNum == 0 {
+			Xp_groupMemNum = number
+		}
+		break
+	}
 }
 

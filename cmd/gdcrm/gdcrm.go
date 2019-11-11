@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/fsn-dev/dcrm5-libcoins/crypto"
 	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm"
@@ -42,7 +41,6 @@ func main() {
 
 func StartDcrm(c *cli.Context) {
 	startP2pNode(nil)
-	time.Sleep(time.Duration(20) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
 	dcrm.Start()
 	select {} // note for server, or for client

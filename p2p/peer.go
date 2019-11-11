@@ -25,10 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/internal/common/mclock"
-	"github.com/fsn-dev/dcrm-sdk/p2p/event"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/p2p/rlp"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/mclock"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
 )
 
 var (

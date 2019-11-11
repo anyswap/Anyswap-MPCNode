@@ -20,10 +20,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/erc20/abi"
-	"github.com/fsn-dev/dcrm-sdk/internal/common"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/types"
-	"github.com/fsn-dev/dcrm-sdk/p2p/event"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/erc20/abi"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
 )
 
 // TokenABI is the input ABI used to generate the abiing from.

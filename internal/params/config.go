@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/fsn-dev/dcrm-sdk/internal/common"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
 )
 
 // Genesis hashes to enforce below configs on.

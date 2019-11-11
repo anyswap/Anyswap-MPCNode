@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/event"
-	"github.com/fsn-dev/dcrm-sdk/p2p"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/p2p/simulations/adapters"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations/adapters"
 )
 
 var DialBanTimeout = 200 * time.Millisecond

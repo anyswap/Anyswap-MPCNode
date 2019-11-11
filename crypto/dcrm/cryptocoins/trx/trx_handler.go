@@ -27,12 +27,12 @@ import (
 	"math/big"
 	"runtime/debug"
 
-	"github.com/fsn-dev/dcrm-sdk/crypto"
-	tcrypto "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/trx/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	tcrypto "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/trx/crypto"
 
-	rpcutils "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/rpcutils"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/config"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/types"
+	rpcutils "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/rpcutils"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
 )
 
 func TRXInit() {

@@ -1,6 +1,6 @@
 package fungible
 
-import "github.com/fsn-dev/dcrm-sdk/external/evt/evttypes"
+import "github.com/fsn-dev/dcrm5-libcoins/external/evt/evttypes"
 
 const actionNameNewFungible = "newfungible"
 

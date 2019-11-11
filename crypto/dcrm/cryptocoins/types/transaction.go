@@ -28,11 +28,11 @@ import (
 	"sync"
 	"bytes"
 
-	"github.com/fsn-dev/dcrm-sdk/crypto/sha3"
-	"github.com/fsn-dev/dcrm-sdk/internal/common"
-	"github.com/fsn-dev/dcrm-sdk/internal/common/hexutil"
-	"github.com/fsn-dev/dcrm-sdk/crypto"
-	"github.com/fsn-dev/dcrm-sdk/p2p/rlp"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/sha3"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/hexutil"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
 	"encoding/json"
 )
 

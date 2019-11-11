@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
 )
 
 type TestPeer interface {

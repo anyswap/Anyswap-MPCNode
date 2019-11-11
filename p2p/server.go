@@ -26,11 +26,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/event"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discv5"
-	"github.com/fsn-dev/dcrm-sdk/p2p/nat"
-	"github.com/fsn-dev/dcrm-sdk/p2p/netutil"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discv5"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/nat"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/netutil"
 )
 
 const (

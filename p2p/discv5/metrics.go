@@ -1,6 +1,6 @@
 package discv5
 
-import "github.com/fsn-dev/dcrm-sdk/p2p/metrics"
+import "github.com/fsn-dev/dcrm5-libcoins/p2p/metrics"
 
 var (
 	ingressTrafficMeter = metrics.NewRegisteredMeter("discv5/InboundTraffic", nil)

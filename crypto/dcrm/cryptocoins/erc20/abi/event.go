@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-sdk/internal/common"
-	"github.com/fsn-dev/dcrm-sdk/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
 )
 
 // Event is an event potentially triggered by the EVM's LOG mechanism. The Event

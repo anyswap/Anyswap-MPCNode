@@ -2,7 +2,7 @@ package examples
 
 import (
 	"github.com/davecgh/go-spew/spew"
-	"github.com/fsn-dev/dcrm-sdk/external/evt/evt"
+	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evt"
 	"log"
 )
 

@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/p2p/simulations/adapters"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations/adapters"
 )
 
 //a map of mocker names to its function

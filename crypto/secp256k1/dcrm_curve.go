@@ -19,7 +19,7 @@ package secp256k1
 import (
 	"math/big"
 	"unsafe"
-	"github.com/fsn-dev/dcrm-sdk/internal/common/math"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/math"
 )
 
 /*

@@ -2,8 +2,8 @@ package history
 
 import (
 	"fmt"
-	"github.com/fsn-dev/dcrm-sdk/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm-sdk/external/evt/evtconfig"
+	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtconfig"
 )
 
 type Instance struct {

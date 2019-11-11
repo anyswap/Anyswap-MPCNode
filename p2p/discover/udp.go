@@ -25,10 +25,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/crypto"
-	"github.com/fsn-dev/dcrm-sdk/p2p/nat"
-	"github.com/fsn-dev/dcrm-sdk/p2p/netutil"
-	"github.com/fsn-dev/dcrm-sdk/p2p/rlp"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/nat"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/netutil"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
 )
 
 // Errors

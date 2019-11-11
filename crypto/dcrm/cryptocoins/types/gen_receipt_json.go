@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/fsn-dev/dcrm-sdk/internal/common"
-	"github.com/fsn-dev/dcrm-sdk/internal/common/hexutil"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/hexutil"
 )
 
 var _ = (*receiptMarshaling)(nil)

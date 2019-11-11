@@ -25,11 +25,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-sdk/internal/common"
-	"github.com/fsn-dev/dcrm-sdk/crypto"
-	"github.com/fsn-dev/dcrm-sdk/p2p"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/rpc"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/rpc"
 )
 
 const (

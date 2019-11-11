@@ -5,9 +5,7 @@ cd $GOPATH/src/github.com/fsn-dev
 
 git clone https://github.com/zhaojun-sh/dcrm5-libcoins.git 
 
-mv dcrm5-libcoins dcrm-sdk
-
-cd dcrm-sdk
+cd dcrm5-libcoins
 
 ## Build
 

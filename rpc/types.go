@@ -24,7 +24,7 @@ import (
 	"sync"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/fsn-dev/dcrm-sdk/internal/common/hexutil"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/hexutil"
 )
 
 // API describes the set of methods offered over the RPC interface

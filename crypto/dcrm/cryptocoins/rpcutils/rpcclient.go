@@ -25,7 +25,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/config"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
 )
 
 // 钱包连接参数

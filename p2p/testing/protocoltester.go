@@ -32,13 +32,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fsn-dev/dcrm-sdk/node"
-	"github.com/fsn-dev/dcrm-sdk/p2p"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/p2p/simulations"
-	"github.com/fsn-dev/dcrm-sdk/p2p/simulations/adapters"
-	"github.com/fsn-dev/dcrm-sdk/p2p/rlp"
-	"github.com/fsn-dev/dcrm-sdk/rpc"
+	"github.com/fsn-dev/dcrm5-libcoins/node"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations/adapters"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
+	"github.com/fsn-dev/dcrm5-libcoins/rpc"
 )
 
 // ProtocolTester is the tester environment used for unit testing protocol

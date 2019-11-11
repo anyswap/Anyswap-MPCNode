@@ -38,11 +38,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/metrics"
-	"github.com/fsn-dev/dcrm-sdk/p2p"
-	"github.com/fsn-dev/dcrm-sdk/p2p/rlp"
-	//"github.com/fsn-dev/dcrm-sdk/swarm/spancontext"
-	//"github.com/fsn-dev/dcrm-sdk/swarm/tracing"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/metrics"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
+	//"github.com/fsn-dev/dcrm5-libcoins/swarm/spancontext"
+	//"github.com/fsn-dev/dcrm5-libcoins/swarm/tracing"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 

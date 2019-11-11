@@ -1,8 +1,8 @@
 package chain
 
 import (
-	"github.com/fsn-dev/dcrm-sdk/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm-sdk/external/evt/evttypes"
+	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evttypes"
 )
 
 type PushTransactionResult struct {

@@ -34,7 +34,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/rlp"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
 )
 
 var (

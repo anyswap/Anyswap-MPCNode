@@ -21,7 +21,7 @@ package p2p
 import (
 	"net"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/metrics"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/metrics"
 )
 
 var (

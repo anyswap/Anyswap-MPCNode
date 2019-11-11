@@ -25,11 +25,11 @@ import (
 	"os"
 
 	//"github.com/fusion/go-fusion/cmd/utils"
-	"github.com/fsn-dev/dcrm-sdk/crypto"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discv5"
-	"github.com/fsn-dev/dcrm-sdk/p2p/nat"
-	"github.com/fsn-dev/dcrm-sdk/p2p/netutil"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discv5"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/nat"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/netutil"
 )
 
 func main() {

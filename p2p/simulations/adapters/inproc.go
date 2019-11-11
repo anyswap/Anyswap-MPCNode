@@ -23,12 +23,12 @@ import (
 	"net"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-sdk/p2p/event"
-	"github.com/fsn-dev/dcrm-sdk/node"
-	"github.com/fsn-dev/dcrm-sdk/p2p"
-	"github.com/fsn-dev/dcrm-sdk/p2p/discover"
-	"github.com/fsn-dev/dcrm-sdk/p2p/simulations/pipes"
-	"github.com/fsn-dev/dcrm-sdk/rpc"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
+	"github.com/fsn-dev/dcrm5-libcoins/node"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
+	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations/pipes"
+	"github.com/fsn-dev/dcrm5-libcoins/rpc"
 )
 
 // SimAdapter is a NodeAdapter which creates in-memory simulation nodes and

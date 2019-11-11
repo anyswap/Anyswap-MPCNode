@@ -1,6 +1,6 @@
 package chain
 
-import "github.com/fsn-dev/dcrm-sdk/external/evt/evtapi/client"
+import "github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
 
 type GetHeadBlockHeaderStateRequest struct {
 	BlockNumOrId string `json:"block_num_or_id"`

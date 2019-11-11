@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/fsn-dev/dcrm-sdk/internal/common/hexutil"
-	"github.com/fsn-dev/dcrm-sdk/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/hexutil"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
 )
 
 type bytesBacked interface {

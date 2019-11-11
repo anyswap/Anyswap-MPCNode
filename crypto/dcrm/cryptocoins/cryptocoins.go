@@ -20,21 +20,21 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
 
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/btc"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/eth"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/erc20"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/xrp"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/eos"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/omni"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/trx"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/bch"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/atom"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/evt"
-	"github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/bnb"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/btc"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/eth"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/erc20"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/xrp"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/eos"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/omni"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/trx"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/bch"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/atom"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/evt"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/bnb"
 
-	config "github.com/fsn-dev/dcrm-sdk/crypto/dcrm/cryptocoins/config"
+	config "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
 )
 
 var Coinmap map[string]string = make(map[string]string)

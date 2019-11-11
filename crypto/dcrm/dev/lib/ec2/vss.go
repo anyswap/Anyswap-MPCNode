@@ -18,8 +18,8 @@ package ec2
 
 import (
 	"errors"
-	"github.com/fsn-dev/dcrm-sdk/internal/common/math/random"
-	s256 "github.com/fsn-dev/dcrm-sdk/crypto/secp256k1"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/math/random"
+	s256 "github.com/fsn-dev/dcrm5-libcoins/crypto/secp256k1"
 	"math/big"
 )
 

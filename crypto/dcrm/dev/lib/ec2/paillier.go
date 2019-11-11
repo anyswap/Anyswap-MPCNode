@@ -18,8 +18,8 @@ package ec2
 
 import (
 	"errors"
-	"github.com/fsn-dev/dcrm-sdk/internal/common/math/random"
-	"github.com/fsn-dev/dcrm-sdk/crypto/sha3"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/math/random"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto/sha3"
 	"math/big"
 	"strconv"
 )

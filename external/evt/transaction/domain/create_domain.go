@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/fsn-dev/dcrm-sdk/external/evt/evttypes"
+	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evttypes"
 )
 
 const actionNewDomain = "newdomain"

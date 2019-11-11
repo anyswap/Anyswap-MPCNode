@@ -25,9 +25,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/fsn-dev/dcrm-sdk/internal/common"
-	"github.com/fsn-dev/dcrm-sdk/internal/common/mclock"
-	"github.com/fsn-dev/dcrm-sdk/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
+	"github.com/fsn-dev/dcrm5-libcoins/internal/common/mclock"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
 )
 
 const (

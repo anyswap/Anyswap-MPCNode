@@ -1,6 +1,6 @@
 package evt_link
 
-import "github.com/fsn-dev/dcrm-sdk/external/evt/evtapi/client"
+import "github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
 
 type GetTrxIdForLinkIdRequest struct {
 	LinkId string `json:"link_id"`

@@ -552,7 +552,7 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	    fmt.Println("===================makeSignedTransaction,err = %v ==================",err2)
 	    return nil,err2
 	}
-	fmt.Println("===================makeSignedTransaction,from = %v ==================",from)
+	fmt.Println("===================makeSignedTransaction,from = %v ==================",from.Hex())
 	////
 
 	return signedtx, nil

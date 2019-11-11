@@ -1244,6 +1244,11 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.groupid = self.groupid
 
 	    msgs := strings.Split(rr.Msg,":")
+	    if len(msgs) < 2 {
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("get msg error.")}
+		ch <- res2
+		return false
+	    }
 	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {

@@ -19,7 +19,6 @@ package eth
 import  (
 	"context"
 	"crypto/ecdsa"
-	//"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -27,16 +26,11 @@ import  (
 	"math/big"
 	"runtime/debug"
 	"strings"
-//	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
-
 	"github.com/fsn-dev/dcrm5-libcoins/internal/params"
-
-
 	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
 	ethcrypto "github.com/fsn-dev/dcrm5-libcoins/crypto"
 	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/eth/sha3"
 	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/eth/ethclient"
-
 	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
 	ctypes "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
 )
@@ -319,7 +313,7 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("=============== makeSignedTransaction,chain id ===============\n",chainID)
+	fmt.Println("=============== makeSignedTransaction,chain id = %v ===============",chainID)
 
 	message, err := hex.DecodeString(rsv)
 	if err != nil {
@@ -335,10 +329,10 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	//////
 	from, err2 := ctypes.Sender(signer, signedtx)
 	if err2 != nil {
-	    fmt.Printf("===================makeSignedTransaction,err = %v ==================",err2)
+	    fmt.Println("===================makeSignedTransaction,err = %v ==================",err2)
 	    return nil,err2
 	}
-	fmt.Printf("===================makeSignedTransaction,from = %v ==================\n",from)
+	fmt.Println("===================makeSignedTransaction,from = %v ==================",from)
 	////
 
 	return signedtx, nil

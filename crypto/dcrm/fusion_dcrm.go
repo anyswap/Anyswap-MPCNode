@@ -149,7 +149,7 @@ func LockOut(raw string) (string,error) {
     cointype := datas[3]
     Nonce := tx.Nonce() 
 
-    fmt.Println("==============dcrm_lockOut,from = %s,to = %s,value = %s,cointype = %s ==================",from.Hex(),to,value,cointype)
+    fmt.Println("========================================dcrm_lockOut,from = %s,to = %s,value = %s,cointype = %s ====================================",from.Hex(),to,value,cointype)
     if from.Hex() == "" || cointype == "" || value == "" || to == "" {
 	return "",fmt.Errorf("param error.")
     }

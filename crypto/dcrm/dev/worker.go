@@ -1153,6 +1153,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 
+	    fmt.Println("============RecvMsg.Run,msg = %s,res len = %v ====================",msg,len(self.msg))
 	    rch := make(chan interface{},1)
 	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
@@ -1403,6 +1404,8 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	ch <- res
 	return false
     }
+    
+    fmt.Println("============LockOutSendMsgToDcrm.Run,msg = %s,res len = %v ====================",msg,len(res))
     s := SendToGroupAllNodes(GroupId,res)
     if strings.EqualFold(s,"send fail.") {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}

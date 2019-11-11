@@ -122,14 +122,14 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
     return ret,nil
 }
 
-func LockOut(raw string) string {
+func LockOut(raw string) (string,error) {
 
     fmt.Println("==========LockOut,raw = %v ===========",raw)
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
     if err := rlp.DecodeBytes(raws, tx); err != nil {
 	fmt.Println("==========LockOut,raw = %s,err = %s ===========",raw,err)
-	return err.Error() 
+	return "",err
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
@@ -138,7 +138,7 @@ func LockOut(raw string) string {
 	signer = types.NewEIP155Signer(big.NewInt(4)) //
 	from, err = types.Sender(signer, tx)
 	if err != nil {
-	    return err.Error() 
+	    return "",err
 	}
     }
 
@@ -151,7 +151,7 @@ func LockOut(raw string) string {
 
     fmt.Println("==============dcrm_lockOut,from = %s,to = %s,value = %s,cointype = %s ==================",from.Hex(),to,value,cointype)
     if from.Hex() == "" || cointype == "" || value == "" || to == "" {
-	return "param error."
+	return "",fmt.Errorf("param error.")
     }
    
     var errtmp error
@@ -160,7 +160,7 @@ func LockOut(raw string) string {
 	txhash,err2 := SendReqToGroup(msg,"rpc_lockout")
 	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
 	if err2 == nil && txhash != "" {
-	    return txhash
+	    return txhash,nil
 	}
 
 	errtmp = err2
@@ -170,10 +170,10 @@ func LockOut(raw string) string {
 
     if errtmp != nil {
 	fmt.Println("============dcrm_lockOut,err = %s ================",errtmp.Error())
-	return errtmp.Error()
+	return "",errtmp
     }
 
-    return "LockOut fail."
+    return "",fmt.Errorf("LockOut fail.")
 }
 
 func GetBalance(account string, cointype string) string {

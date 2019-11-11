@@ -113,8 +113,17 @@ func (this *Service) ReqDcrmAddr(account string,cointype string) string {   //å‡
 }
 */
 
-func (this *Service) LockOut(raw string) string {
-    return dcrm.LockOut(raw)
+func (this *Service) LockOut(raw string) map[string]interface{} {
+    txhash,err := dcrm.LockOut(raw)
+    if err != nil {
+	return map[string]interface{}{
+		"Error": err.Error(),
+	}
+    }
+
+    return map[string]interface{}{
+	    "TxHash": txhash,
+    }
 }
 
 func (this *Service) GetBalance(account string,cointype string) string {

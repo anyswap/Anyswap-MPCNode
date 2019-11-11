@@ -40,29 +40,6 @@ func listenSignal(exit chan int) {
 
 type Service struct {}
 
-// this will be called by dcrm_genPubKey
-// keytype: ECDSA/ED25519
-func (this *Service) GenPubKey(keytype string) map[string]interface{} {   //函数名首字母必须大写
-    fmt.Println("==============dcrm_genPubKey==================")
-    if (!strings.EqualFold(keytype,"ECDSA") && !strings.EqualFold(keytype,"ED25519")) || keytype == "" {
-	return map[string]interface{}{
-		"error": "keytype not supported.",
-	}
-    }
-
-    pubkey,err := dcrm.SendReqToGroup(keytype,"rpc_gen_pubkey")
-    if pubkey == "" && err != nil {
-	fmt.Println("===========dcrm_genPubKey,err=%v============",err)
-	return map[string]interface{}{
-		"error": err.Error(),
-	}
-    }
-    
-    return map[string]interface{}{
-	    "pubkey": pubkey,
-    }
-}
-
 // this will be called by dcrm_reqDcrmAddr
 // cointype: ALL/BTC/ETH/XRP/.....
 func (this *Service) ReqDcrmAddr(account string,cointype string) string {   //函数名首字母必须大写
@@ -81,37 +58,6 @@ func (this *Service) ReqDcrmAddr(account string,cointype string) string {   //�
 
     return addr
 }
-
-// this will be called by dcrm_lockOut
-// cointype: BTC/ETH/XRP/.....
-/*func (this *Service) LockOut(pubkey string,cointype string,value string,to string) string {
-    fmt.Println("==============dcrm_lockOut==================")
-    if pubkey == "" || cointype == "" || value == "" || to == "" {
-	return "param error."
-    }
-   
-    var err error
-    for i:=0;i<10;i++ {
-	msg := pubkey + ":" + cointype + ":" + value + ":" + to
-	txhash,err2 := dcrm.SendReqToGroup(msg,"rpc_lockout")
-	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
-	if err2 == nil && txhash != "" {
-	    return txhash
-	}
-
-	err = err2
-	
-	time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-    }
-
-    if err != nil {
-	fmt.Println("============dcrm_lockOut,err = %s ================",err.Error())
-	return err.Error()
-    }
-
-    return "LockOut fail."
-}
-*/
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
     txhash,err := dcrm.LockOut(raw)
@@ -140,35 +86,6 @@ func (this *Service) GetNonce(account string,cointype string) string {
     }
 
     return dcrm.GetNonce(account,cointype)
-}
-
-// this will be called by dcrm_sign
-func (this *Service) Sign(pubkey string,message string) map[string]interface{} {
-    fmt.Println("==============dcrm_sign==================")
-    keytype := "ECDSA"  //tmp
-    if pubkey == "" || message == "" {
-	return map[string]interface{}{
-		"error": "pubkey is empty.",
-	}
-    }
-
-    if (!strings.EqualFold(keytype,"ECDSA") && !strings.EqualFold(keytype,"ED25519")) || keytype == "" {
-	return map[string]interface{}{
-		"error": "keytype not supported.",
-	}
-    }
-
-    msg := pubkey + ":" + keytype + ":" + message
-    rsv,err := dcrm.SendReqToGroup(msg,"rpc_sign")
-    if rsv == "" && err != nil {
-	return map[string]interface{}{
-		"error": err.Error(),
-	}
-    }
-    
-    return map[string]interface{}{
-	    "rsv": rsv,
-    }
 }
 
 var (

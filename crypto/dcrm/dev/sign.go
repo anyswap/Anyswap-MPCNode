@@ -41,96 +41,6 @@ import (
     "runtime/debug"
 )
 
-func validate_sign(wsid string,pubkey string,cointype string,message string,ch chan interface{}) {
-    fmt.Println("========validate_sign============")
-    lock5.Lock()
-    pub, err := hex.DecodeString(pubkey)
-    if err != nil {
-        res := RpcDcrmRes{Ret:"",Err:err}
-        ch <- res
-        lock5.Unlock()
-        return
-    }
-
-    //db
-    dir := GetDbDir()
-    ////////
-    db, err := leveldb.OpenFile(dir, nil) 
-    if err != nil { 
-        fmt.Println("===========validate_sign,open db fail.=============")
-        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("open db fail.")}
-        ch <- res
-        lock5.Unlock()
-        return
-    } 
-
-    var data string
-    var b bytes.Buffer 
-    b.WriteString("") 
-    b.WriteByte(0) 
-    b.WriteString("") 
-    iter := db.NewIterator(nil, nil) 
-    for iter.Next() { 
-	key := string(iter.Key())
-	value := string(iter.Value())
-	if strings.EqualFold(key,string(pub)) {
-	    data = value
-	    break
-	}
-    }
-    iter.Release()
-    ///////
-    if data == "" {
-	fmt.Println("===========get generate save data fail.=============")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail.")}
-	ch <- res
-	db.Close()
-	lock5.Unlock()
-	return
-    }
-    
-    datas := strings.Split(data,Sep)
-
-    realdcrmpubkey := hex.EncodeToString([]byte(datas[0]))
-    if !strings.EqualFold(realdcrmpubkey,pubkey) {
-        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get data fail")}
-        ch <- res
-        db.Close()
-        lock5.Unlock()
-        return
-    }
-
-    save := datas[1] 
-    dcrmpub := datas[0]
-
-    var dcrmpkx *big.Int
-    var dcrmpky *big.Int
-    if !types.IsDefaultED25519(cointype) {
-	dcrmpks := []byte(dcrmpub)
-	dcrmpkx,dcrmpky = secp256k1.S256().Unmarshal(dcrmpks[:])
-    }
-    
-    db.Close()
-    lock5.Unlock()
-
-    rch := make(chan interface{}, 1)
-    if types.IsDefaultED25519(cointype) {
-	dcrm_sign_ed(wsid,message,save,dcrmpub,cointype,rch)
-    } else {
-	dcrm_sign(wsid,message,save,dcrmpkx,dcrmpky,cointype,rch)
-    }
-    ret,cherr := GetChannelValue(ch_t,rch)
-    if cherr != nil {
-	    res := RpcDcrmRes{Ret:"",Err:cherr}
-	    ch <- res
-	    return
-    }
-
-    res := RpcDcrmRes{Ret:ret,Err:nil}
-    ch <- res
-    return
-}
-
 func GetNonce(account string,cointype string) (string,error) {
      //db
     lock5.Lock()
@@ -200,6 +110,7 @@ func SetNonce(account string,cointype string,nonce string) error {
     lock5.Unlock()
     return nil
 }
+
 func validate_lockout(wsid string,account string,cointype string,value string,to string,nonce string,ch chan interface{}) {
     fmt.Println("========validate_lockout============")
     var ret2 Err
@@ -292,8 +203,6 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
     // The real transaction maker is eospubkey.
     var eosaccount string
     if strings.EqualFold(cointype,"EOS") {
-	    //realdcrmfrom, _, _ = GetEosAccount()
-	    //if realdcrmfrom == "" {
 	    eosaccount, _, _ = GetEosAccount()
 	    if eosaccount == "" {
 		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetRealEosUserFail)}

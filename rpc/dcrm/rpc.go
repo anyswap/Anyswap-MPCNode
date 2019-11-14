@@ -59,6 +59,15 @@ func (this *Service) ReqDcrmAddr(raw string,model string) string {   //函数名
     return ret
 }
 
+func (this *Service) AcceptLockOut(raw string) string {
+    ret,err := dcrm.AcceptLockOut(raw)
+    if err != nil {
+	return err.Error()
+    }
+
+    return ret
+}
+
 func (this *Service) LockOut(raw string) map[string]interface{} {
     txhash,err := dcrm.LockOut(raw)
     if err != nil {

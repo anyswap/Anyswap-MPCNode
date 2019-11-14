@@ -40,6 +40,7 @@ var (
     cur_enode string
     init_times = 0
     PubLock sync.Mutex
+    SignLock sync.Mutex
 )
 
 func Start() {
@@ -58,6 +59,88 @@ type DcrmAddrRes struct {
     PubKey string
     DcrmAddr string
     Cointype string
+}
+
+func GetPubKeyData(key []byte,account string,cointype string) (string,error) {
+    if key == nil || cointype == "" {
+	return "",fmt.Errorf("get pubkey data param error.")
+    }
+
+    PubLock.Lock()
+    dir := dev.GetDbDir()
+    ////////
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        PubLock.Unlock()
+        return "",err
+    }
+    
+    da,err := db.Get(key,nil)
+    ///////
+    if err != nil {
+	db.Close()
+	PubLock.Unlock()
+	return "",err
+    }
+
+    ds,err := dev.UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	PubLock.Unlock()
+	return "",err
+    }
+
+    dss,err := dev.Decode2(ds,"PubKeyData")
+    if err != nil {
+	db.Close()
+	PubLock.Unlock()
+	return "",err
+    }
+
+    pubs := dss.(*dev.PubKeyData)
+    pubkey := hex.EncodeToString([]byte(pubs.Pub))
+    db.Close()
+    PubLock.Unlock()
+    ///////////
+    var m interface{}
+    if !strings.EqualFold(cointype, "ALL") {
+
+	h := cryptocoins.NewCryptocoinHandler(cointype)
+	if h == nil {
+	    return "",fmt.Errorf("req addr fail.cointype is not supported.")
+	}
+
+	ctaddr, err := h.PublicKeyToAddress(pubkey)
+	if err != nil {
+	    return "",fmt.Errorf("req addr fail.")
+	}
+
+	m = &DcrmAddrRes{Account:account,PubKey:pubkey,DcrmAddr:ctaddr,Cointype:cointype}
+	b,_ := json.Marshal(m)
+	return string(b),nil
+    }
+    
+    addrmp := make(map[string]string)
+    for _, ct := range cryptocoins.Cointypes {
+	if strings.EqualFold(ct, "ALL") {
+	    continue
+	}
+
+	h := cryptocoins.NewCryptocoinHandler(ct)
+	if h == nil {
+	    continue
+	}
+	ctaddr, err := h.PublicKeyToAddress(pubkey)
+	if err != nil {
+	    continue
+	}
+	
+	addrmp[ct] = ctaddr
+    }
+
+    m = &DcrmPubkeyRes{Account:account,PubKey:pubkey,Address:addrmp}
+    b,_ := json.Marshal(m)
+    return string(b),nil
 }
 
 func ExsitPubKey(account string,cointype string) (string,bool) {
@@ -275,6 +358,84 @@ func ReqDcrmAddr(raw string,model string) (string,error) {
     }
 
     return addr,nil
+}
+
+type AcceptLockOutData struct {
+    Account string
+    GroupId string
+    Nonce string
+    DcrmFrom string
+    DcrmTo string
+    Value string
+    Cointype string
+    LimitNum string
+}
+
+func AcceptLockOut(raw string) (string,error) {
+    fmt.Println("==========AcceptLockOut,raw = %s ===========",raw)
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	fmt.Println("==========AcceptLockOut,raw = %s,err = %s ===========",raw,err)
+	return "",err
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+    _, err := types.Sender(signer, tx)
+    if err != nil {
+	signer = types.NewEIP155Signer(big.NewInt(4)) //
+	_, err = types.Sender(signer, tx)
+	if err != nil {
+	    return "",err
+	}
+    }
+
+    data := string(tx.Data())
+    datas := strings.Split(data,":")
+
+    if len(datas) < 9 {
+	return "",fmt.Errorf("tx.data error.")
+    }
+
+    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold
+    if datas[0] != "ACCEPTLOCKOUT" {
+	return "",fmt.Errorf("tx.data error,it is not ACCEPTLOCKOUT tx.")
+    }
+
+    pubdata,err := GetPubKeyData([]byte(datas[4]),datas[1],datas[7])
+    if err != nil {
+	return "",err
+    }
+
+    SignLock.Lock()
+    dir := dev.GetAcceptLockOutDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        SignLock.Unlock()
+        return "",err
+    }
+    
+    key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[8]))).Hex()
+    alo := &AcceptLockOutData{Account:datas[1],GroupId:datas[2],Nonce:datas[3],DcrmFrom:datas[4],DcrmTo:datas[5],Value:datas[6],Cointype:datas[7],LimitNum:datas[8]}
+    
+    alos,err := dev.Encode2(alo)
+    if err != nil {
+	db.Close()
+	SignLock.Unlock()
+	return "",err
+    }
+    
+    ss,err := dev.Compress([]byte(alos))
+    if err != nil {
+	db.Close()
+	SignLock.Unlock()
+	return "",err 
+    }
+   
+    db.Put([]byte(key),[]byte(ss),nil)
+    db.Close()
+    SignLock.Unlock()
+    return pubdata,nil
 }
 
 func LockOut(raw string) (string,error) {

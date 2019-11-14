@@ -1978,6 +1978,13 @@ func GetDbDir() string {
     dir += "/dcrmdata/dcrmdb" + cur_enode
     return dir
 }
+
+func GetAcceptLockOutDir() string {
+    dir := DefaultDataDir()
+    dir += "/dcrmdata/dcrmdb/accept" + cur_enode
+    return dir
+}
+
 func homeDir() string {
 	if home := os.Getenv("HOME"); home != "" {
 		return home

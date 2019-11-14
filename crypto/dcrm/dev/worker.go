@@ -32,7 +32,7 @@ import (
     "strings"
     "fmt"
     "strconv"
-    "github.com/syndtr/goleveldb/leveldb"
+    //"github.com/syndtr/goleveldb/leveldb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
 )
@@ -47,6 +47,7 @@ var (
     sendtogroup_lilo_timeout = 80 
     sendtogroup_timeout = 80
     ch_t = 10
+    lock5 sync.Mutex
 
     //callback
     GetGroup func(string) (int,string)
@@ -86,7 +87,7 @@ func RegDcrmGetEosAccountCallBack(f func() (string,string,string)) {
     GetEosAccount = f
 }
 
-func PutGroup(groupId string) bool {
+/*func PutGroup(groupId string) bool {
     if groupId == "" {
 	return false
     }
@@ -137,13 +138,13 @@ func PutGroup(groupId string) bool {
     db.Close()
     lock.Unlock()
     return true
-}
+}*/
 
 func InitDev(groupId string) {
     cur_enode = GetSelfEnode()
-    if !PutGroup(groupId) {
-	return
-    }
+    //if !PutGroup(groupId) {
+//	return
+//    }
 
     fmt.Println("=========InitDev===========","groupId",groupId)
     peerscount, _ := GetGroup(groupId)
@@ -164,8 +165,6 @@ var (
     Enode_cnts int
     NodeCnt = 3
     ThresHold = 3
-    lock5 sync.Mutex
-    lock sync.Mutex
 )
 
 type RpcDcrmRes struct {
@@ -190,6 +189,7 @@ type RpcReqWorker struct {
     rpcquit        chan bool
     id int
     groupid string
+    limitnum string
     ch chan interface{}
     retres *list.List
     //
@@ -437,6 +437,7 @@ func (w *RpcReqWorker) Clear() {
 
     w.sid = ""
     w.groupid = ""
+    w.limitnum = ""
     
     var next *list.Element
     
@@ -942,22 +943,12 @@ type WorkReq interface {
 //RecvMsg
 type RecvMsg struct {
     msg string
-    groupid string
 }
 
 func Dcrmcall(msg interface{},enode string) <-chan string {
     ch := make(chan string, 1)
-    GroupId := GetGroupIdByEnode(enode)
-    fmt.Println("=========Dcrmcall===========","GroupId",GroupId,"enode",enode)
-    //if !strings.EqualFold(GroupId,enode) {
-    if strings.EqualFold(GroupId,"") {
-	ret := ("fail"+Sep+"xxx"+Sep+"error group id")
-	ch <- ret 
-	return ch
-    }
-    
     s := msg.(string)
-    v := RecvMsg{msg:s,groupid:GroupId}
+    v := RecvMsg{msg:s}
     rch := make(chan interface{},1)
     req := RpcReq{rpcdata:&v,ch:rch}
     RpcReqQueue <- req
@@ -1125,7 +1116,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     if err != nil {
 	return false
     }
-    r,err := Decode2(res)
+    r,err := Decode2(res,"SendMsg")
     if err != nil {
 	return false
     }
@@ -1148,7 +1139,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	if rr.MsgType == "rpc_lockout" {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-	    w.groupid = self.groupid
+	    //w.groupid = self.groupid
 	    //msg = account:cointype:value:to:nonce
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
@@ -1178,19 +1169,21 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
-	    //msg = account:cointype 
+	    //msg = account:cointype:groupid:threshold
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-	    w.groupid = self.groupid
 
 	    msgs := strings.Split(rr.Msg,":")
-	    if len(msgs) < 2 {
+	    if len(msgs) < 4 {
 		fmt.Println("=========RecvMsg.Run,get msg error. rr.Msg = %s ==========",rr.Msg)
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("get msg error.")}
 		ch <- res2
 		return false
 	    }
+	    
+	    w.groupid = msgs[2]
+	    w.limitnum = msgs[3]
 	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
@@ -1213,16 +1206,31 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
     return true 
 }
+
 type SendMsg struct {
     MsgType string
     Nonce string 
     WorkId int
     Msg string
 }
+
+type PubKeyData struct {
+    Pub string
+    Save string
+    Nonce string
+}
+
 func Encode2(obj interface{}) (string,error) {
     switch obj.(type) {
     case *SendMsg:
 	ch := obj.(*SendMsg)
+	ret,err := json.Marshal(ch)
+	if err != nil {
+	    return "",err
+	}
+	return string(ret),nil
+    case *PubKeyData:
+	ch := obj.(*PubKeyData)
 	ret,err := json.Marshal(ch)
 	if err != nil {
 	    return "",err
@@ -1233,15 +1241,30 @@ func Encode2(obj interface{}) (string,error) {
     }
 }
 
-func Decode2(s string) (interface{},error) {
-    var m SendMsg
-    err := json.Unmarshal([]byte(s), &m)
-    if err != nil {
-	return nil,err
+func Decode2(s string,datatype string) (interface{},error) {
+    if datatype == "SendMsg" {
+	var m SendMsg
+	err := json.Unmarshal([]byte(s), &m)
+	if err != nil {
+	    return nil,err
+	}
+
+	return &m,nil
     }
 
-    return &m,nil
-} 
+    if datatype == "PubKeyData" {
+	var m PubKeyData
+	err := json.Unmarshal([]byte(s), &m)
+	if err != nil {
+	    return nil,err
+	}
+
+	return &m,nil
+    }
+    
+    return nil,fmt.Errorf("decode obj fail.")
+}
+
 ///////
 
 ////compress
@@ -1301,6 +1324,8 @@ func Keccak256Hash(data ...[]byte) (h DcrmHash) {
 type ReqAddrSendMsgToDcrm struct {
     Account string
     Cointype string
+    GroupId string
+    LimitNum string
 }
 
 func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -1313,9 +1338,9 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     GetEnodesInfo()
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
-    nonce := Keccak256Hash([]byte(self.Account + ":" + self.Cointype + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
+    nonce := Keccak256Hash([]byte(self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
     
-    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype}
+    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum}
     res,err := Encode2(sm)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Err:err}
@@ -1330,15 +1355,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    GroupId := GetGroupIdByEnode(cur_enode)
-    fmt.Println("=========ReqAddrSendMsgToMsg.Run===========","GroupId",GroupId,"cur_enode",cur_enode)
-    if strings.EqualFold(GroupId,"") {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
-	ch <- res
-	return false
-    }
-
-    s := SendToGroupAllNodes(GroupId,res)
+    s := SendToGroupAllNodes(self.GroupId,res)
     
     if strings.EqualFold(s,"send fail.") {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
@@ -1346,7 +1363,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    fmt.Println("=========ReqAddrSendMsgToMsg.Run,waiting for result===========","GroupId",GroupId,"cur_enode",cur_enode)
+    fmt.Println("=========ReqAddrSendMsgToMsg.Run,waiting for result===========","GroupId",self.GroupId,"cur_enode",cur_enode)
     w := workers[workid]
     chret,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
     if cherr != nil {
@@ -1354,6 +1371,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	ch <- res2
 	return false
     }
+
     res2 := RpcDcrmRes{Ret:chret,Err:cherr}
     ch <- res2
 
@@ -1397,7 +1415,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    GroupId := GetGroupIdByEnode(cur_enode)
+    GroupId := ""//GetGroupIdByEnode(cur_enode)
     fmt.Println("=========LockOutSendMsgToDcrm.Run===========","GroupId",GroupId,"cur_enode",cur_enode)
     if strings.EqualFold(GroupId,"") {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
@@ -1449,7 +1467,7 @@ func IsInGroup(enode string,groupId string) bool {
     return false
 }
 
-func GetGroupIdByEnode(enode string) string {
+/*func GetGroupIdByEnode(enode string) string {
     if enode == "" {
 	return ""
     }
@@ -1496,10 +1514,10 @@ func GetGroupIdByEnode(enode string) string {
     db.Close()
     lock.Unlock()
     return ""
-}
+}*/
 
 func GetEnodesInfo() {
-    GroupId := GetGroupIdByEnode(cur_enode)
+    GroupId := ""//GetGroupIdByEnode(cur_enode)
     if GroupId == "" {
 	return
     }
@@ -1512,9 +1530,9 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
     var req RpcReq
     switch rpctype {
 	case "rpc_req_dcrmaddr":
-	    //msg = account : cointype
+	    //msg = account : cointype : groupid : threshold 
 	    msgs := strings.Split(msg,":")
-	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1]}
+	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],LimitNum:msgs[3]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_lockout":

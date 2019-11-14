@@ -41,22 +41,22 @@ func listenSignal(exit chan int) {
 type Service struct {}
 
 // this will be called by dcrm_reqDcrmAddr
-// cointype: ALL/BTC/ETH/XRP/.....
-func (this *Service) ReqDcrmAddr(account string,cointype string) string {   //函数名首字母必须大写
+// raw: tx raw data
+// model: "0"  self-group; "1" non self-group
+//return pubkey and coins addr
+func (this *Service) ReqDcrmAddr(raw string,model string) string {   //函数名首字母必须大写
     fmt.Println("==============dcrm_reqDcrmAddr==================")
 
-    if account == "" || cointype == "" {
+    if raw == "" || model == "" || (model != "0" && model != "1") {
 	return "param error."
     }
 
-    msg := account + ":" + cointype
-    addr,err := dcrm.SendReqToGroup(msg,"rpc_req_dcrmaddr")
-    if addr == "" && err != nil {
-	fmt.Println("===========dcrm_reqDcrmAddr,err= ============",err.Error())
+    ret,err := dcrm.ReqDcrmAddr(raw,model)
+    if err != nil {
 	return err.Error()
     }
 
-    return addr
+    return ret
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
@@ -186,7 +186,7 @@ func startRpcServer() error {
 	    vhosts := make([]string, 0)
 	    cors := splitAndTrim("*")
 	    go rpc.NewHTTPServer(cors, vhosts, rpc.DefaultHTTPTimeouts,server).Serve(listener)
-	    rpcstring := "\n==================== RPC Service Already Start! url = " + fmt.Sprintf("http://%s", endpoint) + " =====================\n"
+	    rpcstring := "\n==================== RPC Service Start! url = " + fmt.Sprintf("http://%s", endpoint) + " =====================\n"
 	    fmt.Println(rpcstring)
 
 	    exit := make(chan int)

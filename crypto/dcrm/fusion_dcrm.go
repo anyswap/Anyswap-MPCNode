@@ -24,18 +24,22 @@ import (
 	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
 	"strconv"
 	"time"
+	"sync"
 	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/dev"
 	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
 	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins"
 	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
 	cryptocoinsconfig "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
 	"encoding/json"
+	"github.com/syndtr/goleveldb/leveldb"
+	"encoding/hex"
 )
 
 var (
     tmp2 string
     cur_enode string
     init_times = 0
+    PubLock sync.Mutex
 )
 
 func Start() {
@@ -56,10 +60,56 @@ type DcrmAddrRes struct {
     Cointype string
 }
 
+func ExsitPubKey(account string,cointype string) (string,bool) {
+     //db
+    PubLock.Lock()
+    dir := dev.GetDbDir()
+    ////////
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        PubLock.Unlock()
+        return "",false
+    }
+    
+    key := dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	key = dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
+	da,err = db.Get([]byte(key),nil)
+	///////
+	if err != nil {
+	    db.Close()
+	    PubLock.Unlock()
+	    return "",false
+	}
+    }
+
+    ds,err := dev.UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	PubLock.Unlock()
+	return "",false
+    }
+
+    dss,err := dev.Decode2(ds,"PubKeyData")
+    if err != nil {
+	db.Close()
+	PubLock.Unlock()
+	return "",false
+    }
+
+    pubs := dss.(*dev.PubKeyData)
+    pubkey := hex.EncodeToString([]byte(pubs.Pub))
+    db.Close()
+    PubLock.Unlock()
+    return pubkey,true
+}
+
 func SendReqToGroup(msg string,rpctype string) (string,error) {
     if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
 	msgs := strings.Split(msg,":")
-	if len(msgs) < 2 {
+	if len(msgs) < 4 {
 	    return "",fmt.Errorf("param error.")
 	}
 
@@ -68,28 +118,72 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    coin = msgs[1]
 	}
 
-	str := msgs[0] + ":" + coin
+	//account:cointype:groupid:threshold
+	str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3]
 	ret,err := dev.SendReqToGroup(str,rpctype)
 	if err != nil || ret == "" {
 	    return "",err
 	}
 
+	ss,err := dev.UnCompress(ret)
+	if err != nil {
+	    return "",err
+	}
+	pubs,err := dev.Decode2(ss,"PubKeyData")
+	if err != nil {
+	    return "",err
+	}
+	
+	pubkeyhex := hex.EncodeToString([]byte((pubs.(*dev.PubKeyData)).Pub))
+
 	var m interface{}
-	if !strings.EqualFold(msgs[1], "All") {
+	if !strings.EqualFold(msgs[1], "ALL") {
+	    PubLock.Lock()
+	    dir := dev.GetDbDir()
+	    db, err := leveldb.OpenFile(dir, nil) 
+	    if err != nil { 
+		PubLock.Unlock()
+		return "",err
+	    }
+
 	    h := cryptocoins.NewCryptocoinHandler(msgs[1])
 	    if h == nil {
+		db.Close()
+		PubLock.Unlock()
 		return "",fmt.Errorf("req addr fail.cointype is not supported.")
 	    }
 
-	    ctaddr, err := h.PublicKeyToAddress(ret)
+	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 	    if err != nil {
+		db.Close()
+		PubLock.Unlock()
 		return "",fmt.Errorf("req addr fail.")
 	    }
+
+	    db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
+	    key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
+	    db.Put([]byte(key),[]byte(ret),nil)
+	    db.Put([]byte(ctaddr),[]byte(ret),nil)
+	    db.Close()
+	    PubLock.Unlock()
+	    //
 	    
-	    m = &DcrmAddrRes{Account:msgs[0],PubKey:ret,DcrmAddr:ctaddr,Cointype:msgs[1]}
+	    m = &DcrmAddrRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddr:ctaddr,Cointype:msgs[1]}
 	    b,_ := json.Marshal(m)
 	    return string(b),nil
 	}
+	
+	PubLock.Lock()
+	dir := dev.GetDbDir()
+	db, err := leveldb.OpenFile(dir, nil) 
+	if err != nil { 
+	    PubLock.Unlock()
+	    return "",err
+	}
+
+	db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
+	key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
+	db.Put([]byte(key),[]byte(ret),nil)
 	
 	addrmp := make(map[string]string)
 	for _, ct := range cryptocoins.Cointypes {
@@ -101,15 +195,21 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    if h == nil {
 		continue
 	    }
-	    ctaddr, err := h.PublicKeyToAddress(ret)
+	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 	    if err != nil {
 		fmt.Printf("============ generate address,error = %+v ==========\n", err.Error())
 		continue
 	    }
+	    
 	    addrmp[ct] = ctaddr
+	    
+	    db.Put([]byte(ctaddr),[]byte(ret),nil)
 	}
 
-	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:ret,Address:addrmp}
+	db.Close()
+	PubLock.Unlock()
+	
+	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,Address:addrmp}
 	b,_ := json.Marshal(m)
 	return string(b),nil
     }
@@ -120,6 +220,61 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
     }
 
     return ret,nil
+}
+
+func ReqDcrmAddr(raw string,model string) (string,error) {
+    fmt.Println("==========ReqDcrmAddr,raw = %s,model = %s ===========",raw,model)
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	fmt.Println("==========ReqDcrmAddr,raw = %s,err = %s ===========",raw,err)
+	return "",err
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+    from, err := types.Sender(signer, tx)
+    if err != nil {
+	signer = types.NewEIP155Signer(big.NewInt(4)) //
+	from, err = types.Sender(signer, tx)
+	if err != nil {
+	    return "",err
+	}
+    }
+
+    data := string(tx.Data())
+    datas := strings.Split(data,":")
+    if len(datas) < 3 {
+	return "",fmt.Errorf("tx.data error.")
+    }
+
+    if datas[0] != "REQDCRMADDR" {
+	return "",fmt.Errorf("tx type error.")
+    }
+
+    if model == "1" { //non self-group
+	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
+	    return da,nil
+	}
+    }
+
+    groupid := datas[1]
+    if groupid == "" {
+	return "",fmt.Errorf("get group id fail.")
+    }
+    
+    threshold := datas[2]
+    if threshold == "" {
+	return "",fmt.Errorf("get threshold fail.")
+    }
+
+    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + threshold
+    addr,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
+    if addr == "" && err != nil {
+	fmt.Println("===========ReqDcrmAddr,err= ============",err)
+	return "",err
+    }
+
+    return addr,nil
 }
 
 func LockOut(raw string) (string,error) {
@@ -177,7 +332,7 @@ func LockOut(raw string) (string,error) {
 }
 
 func GetBalance(account string, cointype string) string {
-    pubkey,b := dev.ExsitPubKey(account,cointype) 
+    pubkey,b := ExsitPubKey(account,cointype) 
     if b == false {
 	return "get balance fail,there is no dcrm addr in account."
     }

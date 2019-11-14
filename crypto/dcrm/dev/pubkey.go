@@ -21,10 +21,8 @@ import (
     "bytes"
     "io"
     "math/big"
-    "github.com/syndtr/goleveldb/leveldb"
     "github.com/fsn-dev/dcrm5-libcoins/crypto/secp256k1"
     "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/dev/lib/ec2"
-    "encoding/hex"
     "strconv"
     "strings"
     "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/dev/lib/ed"
@@ -34,40 +32,6 @@ import (
     "crypto/sha512"
     "github.com/astaxie/beego/logs"
 )
-
-func ExsitPubKey(account string,cointype string) (string,bool) {
-     //db
-    lock.Lock()
-    dir := GetDbDir()
-    ////////
-    db, err := leveldb.OpenFile(dir, nil)
-    if err != nil {
-        lock.Unlock()
-        return "",false
-    }
-    
-    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    da,err := db.Get([]byte(key),nil)
-    ///////
-    if err != nil {
-	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-	da,err = db.Get([]byte(key),nil)
-	///////
-	if err != nil {
-	    db.Close()
-	    lock.Unlock()
-	    return "",false
-	}
-    }
-
-    
-    data := string(da)
-    datas := strings.Split(data,Sep)
-    pubkey := hex.EncodeToString([]byte(datas[0]))
-    db.Close()
-    lock.Unlock()
-    return pubkey,true
-}
 
 //ec2
 //msgprex = hash 
@@ -90,18 +54,9 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     }
     id := wk.id
 
-    if da,b := ExsitPubKey(account,cointype); b == true {
-	res := RpcDcrmRes{Ret:da,Err:nil}
-	ch <- res
-	return
-    }
-
     if types.IsDefaultED25519(cointype) {
 	ok2 := KeyGenerate_ed(msgprex,ch,id,cointype)
 	if ok2 == false {
-	    logs.Debug("========dcrm_genPubKey,addr generate fail.=========")
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("addr generate fail")}
-	    ch <- res
 	    return
 	}
 
@@ -121,31 +76,25 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    ch <- res
 	    return
 	}
+	
 	sedsave := itertmp.Value.(string)
-
-	lock.Lock()
-	dir := GetDbDir()
-	db, err := leveldb.OpenFile(dir, nil) 
-	if err != nil { 
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrCreateDbFail)}
+	pubs := &PubKeyData{Pub:string(sedpk),Save:sedsave,Nonce:"0"}
+	epubs,err := Encode2(pubs)
+	if err != nil {
+	    res := RpcDcrmRes{Ret:"",Err:err}
 	    ch <- res
-	    lock.Unlock()
 	    return
 	}
-
-	pubkeyhex2 := hex.EncodeToString(sedpk[:])
-	logs.Debug("========key gen=========","pubkeyhex2",pubkeyhex2,"sedpk len",len(sedpk))
-	s := []string{string(sedpk),sedsave,"0"}
-	ss := strings.Join(s,common.Sep)
-	//db.Put(sedpk[:],[]byte(ss),nil)
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	db.Put([]byte(key),[]byte(ss),nil)
-
-	res := RpcDcrmRes{Ret:pubkeyhex2,Err:nil}
+	
+	ss,err := Compress([]byte(epubs))
+	if err != nil {
+	    res := RpcDcrmRes{Ret:"",Err:err}
+	    ch <- res
+	    return
+	}
+	
+	res := RpcDcrmRes{Ret:ss,Err:nil}
 	ch <- res
-
-	db.Close()
-	lock.Unlock()
 	return
     }
     
@@ -179,27 +128,22 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	return
     }
     save := iter.Value.(string)
-
-    lock.Lock()
-    dir := GetDbDir()
-    db, err := leveldb.OpenFile(dir, nil) 
-    if err != nil { 
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrCreateDbFail)}
+    pubs := &PubKeyData{Pub:string(ys),Save:save,Nonce:"0"}
+    epubs,err := Encode2(pubs)
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
 	ch <- res
-	lock.Unlock()
 	return
     }
-
-    pubkeyhex := hex.EncodeToString(ys)
-
-    s := []string{string(ys),save,"0"}
-    ss := strings.Join(s,Sep)
-    //db.Put(ys,[]byte(ss),nil)
-    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    db.Put([]byte(key),[]byte(ss),nil)
-    db.Close()
-    lock.Unlock()
-    res := RpcDcrmRes{Ret:pubkeyhex,Err:nil}
+    
+    ss,err := Compress([]byte(epubs))
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return
+    }
+    
+    res := RpcDcrmRes{Ret:ss,Err:nil}
     ch <- res
 }
 

@@ -579,6 +579,17 @@ func GetNonce(account string,cointype string,dcrmaddr string) string {
     return nonce
 }
 
+func GetLockOutReply(account string,groupid string,nonce string,dcrmaddr string,threshold string) string {
+    msg := account + ":" + groupid + ":" + nonce + ":" + dcrmaddr + ":" + threshold
+    reply,err := SendReqToGroup(msg,"rpc_get_lockout_reply")
+    if reply == "" && err != nil {
+	fmt.Println("===========GetLockOutReply,err =%s ============",err)
+	return err.Error()
+    }
+
+    return reply
+}
+
 func init(){
 	p2pdcrm.RegisterRecvCallback(Call)
 	p2pdcrm.SdkProtocol_registerBroadcastInGroupCallback(dev.Call)

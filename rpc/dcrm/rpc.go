@@ -97,6 +97,14 @@ func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) st
     return dcrm.GetNonce(account,cointype,dcrmaddr)
 }
 
+func (this *Service) GetLockOutReply(account string,groupid string,nonce string,dcrmaddr string,threshold string) string {
+    if account == "" || groupid == "" || nonce == "" || dcrmaddr == "" || threshold == "" {
+	return "param error."
+    }
+
+    return dcrm.GetLockOutReply(account,groupid,nonce,dcrmaddr,threshold)
+}
+
 var (
 	rpcport  int
 	endpoint string = "0.0.0.0"

@@ -1007,6 +1007,34 @@ func Dcrmcallret(msg interface{},enode string) {
 	    }
 	}
 
+	if ss[2] == "rpc_get_lockout_reply" {
+	    
+	    if w.retres.Len() == NodeCnt {
+		var ret2 []string
+
+		var err2 error
+		iter := w.retres.Front()
+		for iter != nil {
+		    ll := iter.Value.(*RpcDcrmRes)
+		    err2 = ll.Err
+		    if err2 == nil {
+			ret2 = append(ret2,ll.Ret)
+		    } else {
+			ret2 = append(ret2,err2.Error())
+		    }
+
+		    iter = iter.Next()
+		}
+
+		reply := "{"
+		rettmp := strings.Join(ret2,",")
+		reply += rettmp
+		reply += "}"
+		res2 := RpcDcrmRes{Ret:reply,Err:nil}
+		w.ch <- res2
+	    }
+	}
+	    
 	return
     }
     
@@ -1032,6 +1060,33 @@ func Dcrmcallret(msg interface{},enode string) {
 	    }
 	}
 	
+	if ss[2] == "rpc_get_lockout_reply" {
+	    if w.retres.Len() == NodeCnt {
+		var ret2 []string
+
+		var err2 error
+		iter := w.retres.Front()
+		for iter != nil {
+		    ll := iter.Value.(*RpcDcrmRes)
+		    err2 = ll.Err
+		    if err2 == nil {
+			ret2 = append(ret2,ll.Ret)
+		    } else {
+			ret2 = append(ret2,err2.Error())
+		    }
+
+		    iter = iter.Next()
+		}
+
+		reply := "{"
+		rettmp := strings.Join(ret2,",")
+		reply += rettmp
+		reply += "}"
+		res2 := RpcDcrmRes{Ret:reply,Err:nil}
+		w.ch <- res2
+	    }
+	}
+
 	return
     }
 }
@@ -1225,6 +1280,27 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    }
 	    
 	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
+	    ch <- res2
+	    return true
+	}
+
+	//rpc_get_lockout_reply
+	if rr.MsgType == "rpc_get_lockout_reply" {
+	    w := workers[workid]
+	    w.sid = rr.Nonce
+	    //msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
+	    msg := rr.Msg
+	    msgs := strings.Split(msg,":")
+
+	    ////check weather accept lockout
+	    if !AcceptLockOut(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4]) {
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf(cur_enode+":0")}
+		ch <- res2
+		return false
+	    }
+	    ////
+
+	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+cur_enode+":1",Err:nil}
 	    ch <- res2
 	    return true
 	}
@@ -1472,6 +1548,67 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     return true
 }
 
+//msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
+type GetLockOutReplySendMsgToDcrm struct {
+    Account string
+    GroupId string
+    Nonce string
+    DcrmAddr string
+    LimitNum string
+}
+
+func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
+    if workid < 0 || workid >= RpcMaxWorker {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	ch <- res
+	return false
+    }
+
+    GetEnodesInfo(self.GroupId)
+    msg := self.Account + ":" + self.GroupId + ":" + self.Nonce + ":" + self.DcrmAddr + ":" + self.LimitNum
+    timestamp := time.Now().Unix()
+    tt := strconv.Itoa(int(timestamp))
+    nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
+    
+    sm := &SendMsg{MsgType:"rpc_get_lockout_reply",Nonce:nonce,WorkId:workid,Msg:msg}
+    res,err := Encode2(sm)
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return false
+    }
+
+    res,err = Compress([]byte(res))
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Err:err}
+	ch <- res
+	return false
+    }
+
+    fmt.Println("============GetLockOutReplySendMsgToDcrm.Run,msg = %s,res len = %v ====================",msg,len(res))
+    s := SendToGroupAllNodes(self.GroupId,res)
+    if strings.EqualFold(s,"send fail.") {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
+	ch <- res
+	return false
+    }
+
+    fmt.Println("=========GetLockOutReplySendMsgToDcrm.Run,Waiting For Result.===========","GroupId",self.GroupId,"cur_enode",cur_enode)
+    w := workers[workid]
+    chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
+    fmt.Println("========GetLockOutReplySendMsgToDcrm.Run,return result = %s, err = %s ============",chret,cherr)
+    if cherr != nil {
+	res2 := RpcDcrmRes{Ret:"",Err:cherr}
+	ch <- res2
+	return false
+    }
+
+    res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+    ch <- res2
+
+    return true
+}
+
 func IsInGroup(enode string,groupId string) bool {
     if groupId == "" || enode == "" {
 	return false
@@ -1565,6 +1702,12 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 	    m := strings.Split(msg,":")
 	    v := LockOutSendMsgToDcrm{Account:m[0],DcrmFrom:m[1],DcrmTo:m[2],Value:m[3],Cointype:m[4],GroupId:m[5],Nonce:m[6],LimitNum:m[7]}
+	    rch := make(chan interface{},1)
+	    req = RpcReq{rpcdata:&v,ch:rch}
+	case "rpc_get_lockout_reply":
+	    //msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
+	    m := strings.Split(msg,":")
+	    v := GetLockOutReplySendMsgToDcrm{Account:m[0],GroupId:m[1],Nonce:m[2],DcrmAddr:m[3],LimitNum:m[4]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	default:

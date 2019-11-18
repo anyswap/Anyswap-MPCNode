@@ -125,6 +125,7 @@ func startP2pNode(c *cli.Context) error {
 			return err
 		}
 
+		layer2.InitServer(nodeserv)
 		//fmt.Printf("\nNodeInfo: %+v\n", nodeserv.NodeInfo())
 		fmt.Println("\n=================== P2P Service Start! ===================\n")
 		select {}

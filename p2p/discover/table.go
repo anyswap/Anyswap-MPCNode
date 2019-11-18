@@ -89,6 +89,7 @@ type transport interface {
 	//TODO: group
 	findgroup(gid, toid NodeID, addr *net.UDPAddr, target NodeID, p2pType int) ([]*Node, error)
 	sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) error
+	sendStatusToPeer(toid NodeID, toaddr *net.UDPAddr, msg *groupStatusMsg, p2pType int) error
 	sendMsgToPeer(toid NodeID, toaddr *net.UDPAddr, msg string) error
 	sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) (string, error)
 	close()

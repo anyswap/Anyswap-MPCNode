@@ -41,7 +41,8 @@ import (
     "runtime/debug"
 )
 
-func GetNonce(account string,cointype string) (string,error) {
+func GetNonce(account string,cointype string,dcrmaddr string) (string,error) {
+
      //db
     lock5.Lock()
     dir := GetDbDir()
@@ -53,30 +54,38 @@ func GetNonce(account string,cointype string) (string,error) {
         return "",err
     }
     
-    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(dcrmaddr),nil)
     ///////
     if err != nil {
-	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-	da,err = db.Get([]byte(key),nil)
-	///////
-	if err != nil {
-	    fmt.Println("=========GetNonce,key = %s,err = %v ============",key,err)
-	    db.Close()
-	    lock5.Unlock()
-	    return "",fmt.Errorf("leveldb not found account %s,cointype %s",account,"ALL")
-	}
+	db.Close()
+	lock5.Unlock()
+	return "",fmt.Errorf("leveldb not found account = %s,cointype = %s",account,cointype)
     }
 
-    data := string(da)
-    datas := strings.Split(data,Sep)
-    nonce := datas[2]
+    ss,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "",err
+    }
+    
+    pubs,err := Decode2(ss,"PubKeyData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "",err
+    }
+   
+    ////check account?? //TODO
+    ////
+
+    nonce := (pubs.(*PubKeyData)).Nonce
     db.Close()
     lock5.Unlock()
     return nonce,nil
 }
 
-func SetNonce(account string,cointype string,nonce string) error {
+func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error {
      //db
     lock5.Lock()
     dir := GetDbDir()
@@ -88,32 +97,97 @@ func SetNonce(account string,cointype string,nonce string) error {
         return err
     }
     
-    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(dcrmaddr),nil)
     ///////
     if err != nil {
-	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-	da,err = db.Get([]byte(key),nil)
-	///////
-	if err != nil {
-	    fmt.Println("=========SetNonce,key = %s,err = %v ============",key,err)
-	    db.Close()
-	    lock5.Unlock()
-	    return fmt.Errorf("leveldb not found account %s,cointype %s",account,"ALL")
-	}
+	db.Close()
+	lock5.Unlock()
+	return fmt.Errorf("leveldb not found account = %s,cointype = %s",account,cointype)
     }
 
-    data := string(da)
-    datas := strings.Split(data,Sep)
-    datas[2] = nonce
-    s := strings.Join(datas,Sep)
-    db.Put([]byte(key),[]byte(s),nil)
+    ss,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+    
+    pubs,err := Decode2(ss,"PubKeyData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+   
+    ////check account?? //TODO
+    ////
+    (pubs.(*PubKeyData)).Nonce = nonce
+
+    epubs,err := Encode2(pubs.(*PubKeyData))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+    
+    ss,err = Compress([]byte(epubs))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+
+    ///update db
+    pubkeyhex := hex.EncodeToString([]byte((pubs.(*PubKeyData)).Pub))
+
+    if !strings.EqualFold(cointype, "ALL") {
+
+	h := cryptocoins.NewCryptocoinHandler(cointype)
+	if h == nil {
+	    db.Close()
+	    lock5.Unlock()
+	    return fmt.Errorf("set nonce fail.cointype is not supported.")
+	}
+
+	ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+	if err != nil {
+	    db.Close()
+	    lock5.Unlock()
+	    return err
+	}
+
+	db.Put([]byte((pubs.(*PubKeyData)).Pub),[]byte(ss),nil)
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
+	db.Put([]byte(key),[]byte(ss),nil)
+	db.Put([]byte(ctaddr),[]byte(ss),nil)
+    } else {
+	db.Put([]byte((pubs.(*PubKeyData)).Pub),[]byte(ss),nil)
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
+	db.Put([]byte(key),[]byte(ss),nil)
+	for _, ct := range cryptocoins.Cointypes {
+	    if strings.EqualFold(ct, "ALL") {
+		continue
+	    }
+
+	    h := cryptocoins.NewCryptocoinHandler(ct)
+	    if h == nil {
+		continue
+	    }
+	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+	    if err != nil {
+		continue
+	    }
+	    
+	    db.Put([]byte(ctaddr),[]byte(ss),nil)
+	}
+    }
+    //
     db.Close()
     lock5.Unlock()
     return nil
 }
 
-func validate_lockout(wsid string,account string,cointype string,value string,to string,nonce string,ch chan interface{}) {
+func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
     fmt.Println("========validate_lockout============")
     var ret2 Err
     chandler := cryptocoins.NewCryptocoinHandler(cointype)
@@ -126,7 +200,7 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
     Nonce,_ := new(big.Int).SetString(nonce,10)
 
     //nonce check
-    cur_nonce_str,err := GetNonce(account,cointype)
+    cur_nonce_str,err := GetNonce(account,cointype,dcrmaddr)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Err:err}
 	ch <- res
@@ -157,28 +231,36 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
         return
     } 
     
-    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(dcrmaddr),nil)
     ///////
     if err != nil {
-	key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-	da,err = db.Get([]byte(key),nil)
-	///////
-	if err != nil {
-	    fmt.Println("=========validate_lockout,get save data fail,key = %s,err = %v ============",key,err)
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("leveldb not found account %s,cointype %s",account,"ALL")}
-	    ch <- res
-	    db.Close()
-	    lock5.Unlock()
-	    return
-	}
+        res := RpcDcrmRes{Ret:"",Err:err}
+        ch <- res
+	db.Close()
+	lock5.Unlock()
+	return 
+    }
+
+    ss,err := UnCompress(string(da))
+    if err != nil {
+        res := RpcDcrmRes{Ret:"",Err:err}
+        ch <- res
+	db.Close()
+	lock5.Unlock()
+	return
     }
     
-    data := string(da)
-    datas := strings.Split(data,Sep)
-
-    save := datas[1]
-    dcrmpub := datas[0]
+    pubs,err := Decode2(ss,"PubKeyData")
+    if err != nil {
+        res := RpcDcrmRes{Ret:"",Err:err}
+        ch <- res
+	db.Close()
+	lock5.Unlock()
+	return
+    }
+   
+    save := (pubs.(*PubKeyData)).Save
+    dcrmpub := (pubs.(*PubKeyData)).Pub
 
     var dcrmpkx *big.Int
     var dcrmpky *big.Int
@@ -190,10 +272,16 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
     db.Close()
     lock5.Unlock()
 
-    pubkey := hex.EncodeToString([]byte(datas[0]))
+    pubkey := hex.EncodeToString([]byte(dcrmpub))
     realdcrmfrom, err := chandler.PublicKeyToAddress(pubkey)
     if err != nil {
         res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get dcrm addr fail")}
+        ch <- res
+        return
+    }
+    
+    if !strings.EqualFold(dcrmaddr,realdcrmfrom) {
+        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("check dcrm addr fail.")}
         ch <- res
         return
     }
@@ -205,12 +293,12 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
     // The real transaction maker is eospubkey.
     var eosaccount string
     if strings.EqualFold(cointype,"EOS") {
-	    eosaccount, _, _ = GetEosAccount()
-	    if eosaccount == "" {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetRealEosUserFail)}
-		ch <- res
-		return
-	    }
+	eosaccount, _, _ = GetEosAccount()
+	if eosaccount == "" {
+	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetRealEosUserFail)}
+	    ch <- res
+	    return
+	}
     }
     
     var lockouttx interface{}
@@ -258,6 +346,7 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
 		    ch <- res
 		    return
 	    }
+	    
 	    //bug
 	    rets := []rune(ret)
 	    if len(rets) != 130 {
@@ -297,7 +386,7 @@ func validate_lockout(wsid string,account string,cointype string,value string,to
     /////////
     
     if lockout_tx_hash != "" {
-	if SetNonce(account,cointype,nonce) != nil {
+	if SetNonce(account,cointype,dcrmaddr,nonce) != nil {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("update nonce error.")}
 	    ch <- res
 	    return
@@ -400,7 +489,6 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	for i := 0; i < 1; i++ {
 		bak_sig = Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx2,dcrmpky2,ch1,id)
 		ret,_ = GetChannelValue(ch_t,ch1)
-		//log.Debug("======== dcrm_sign eos","signature",ret,"bak sig",bak_sig,"","========")
 		//if ret != "" && eos.IsCanonical([]byte(ret)) == true 
 		if ret == "" {
 			w := workers[id]
@@ -427,17 +515,6 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
     }
     
     /////////////
-    GetEnodesInfo() 
-    
-    if int32(Enode_cnts) != int32(NodeCnt) {
-	fmt.Println("============the net group is not ready.please try again.================")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("group not ready.")}
-	ch <- res
-	return ""
-    }
-
-    fmt.Println("===================!!!Start!!!====================")
-
     txhashs := []rune(txhash)
     if string(txhashs[0:2]) == "0x" {
 	txhash = string(txhashs[2:])
@@ -451,6 +528,17 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	return ""
     }
     id := w.id
+
+    GetEnodesInfo(w.groupid) 
+    
+    if int32(Enode_cnts) != int32(NodeCnt) {
+	fmt.Println("============the net group is not ready.please try again.================")
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("group not ready.")}
+	ch <- res
+	return ""
+    }
+
+    fmt.Println("===================!!!Start!!!====================")
 
     ///////
      if strings.EqualFold(cointype,"EVT1") == true {
@@ -509,12 +597,12 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 //msgprex = hash
 //return value is the backup for the dcrm sig
 func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big.Int,pky *big.Int,ch chan interface{},id int) string {
-    //gc := getgroupcount()
     if id < 0 || id >= len(workers) || id >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
 	ch <- res
 	return ""
     }
+    
     w := workers[id]
     GroupId := w.groupid
     fmt.Println("========Sign_ec2============","GroupId",GroupId)
@@ -1737,17 +1825,6 @@ func Verify2(r *big.Int,s *big.Int,v int32,message string,pkx *big.Int,pky *big.
 //return value is the backup for dcrm sig.
 func dcrm_sign_ed(msgprex string,txhash string,save string,pk string,cointype string,ch chan interface{}) string {
 
-    GetEnodesInfo() 
-    
-    if int32(Enode_cnts) != int32(NodeCnt) {
-	logs.Debug("============the net group is not ready.please try again.================")
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
-	ch <- res
-	return ""
-    }
-
-    logs.Debug("===================!!!Start!!!====================")
-
     txhashs := []rune(txhash)
     if string(txhashs[0:2]) == "0x" {
 	txhash = string(txhashs[2:])
@@ -1761,6 +1838,17 @@ func dcrm_sign_ed(msgprex string,txhash string,save string,pk string,cointype st
 	return ""
     }
     id := w.id
+
+    GetEnodesInfo(w.groupid) 
+    
+    if int32(Enode_cnts) != int32(NodeCnt) {
+	logs.Debug("============the net group is not ready.please try again.================")
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	ch <- res
+	return ""
+    }
+
+    logs.Debug("===================!!!Start!!!====================")
 
     bak_sig := Sign_ed(msgprex,save,txhash,cointype,pk,ch,id)
     return bak_sig
@@ -1782,6 +1870,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	ch <- res
 	return ""
     }
+
     w := workers[id]
     GroupId := w.groupid 
     fmt.Println("========Sign_ed============","GroupId",GroupId)
@@ -1800,7 +1889,6 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     }
     
     logs.Debug("===========Sign_ed============","save len",len(save),"save",save)
-    //log.Debug("===========Sign_ed============","pk",pk)
 
     ids := GetIds(cointype,GroupId)
     idSign := ids[:ThresHold]

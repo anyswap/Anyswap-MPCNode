@@ -81,20 +81,20 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
     }
 }
 
-func (this *Service) GetBalance(account string,cointype string) string {
-    if account == "" || cointype == "" {
+func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) string {
+    if account == "" || cointype == "" || dcrmaddr == "" {
 	return "param error."
     }
 
-    return dcrm.GetBalance(account,cointype)
+    return dcrm.GetBalance(account,cointype,dcrmaddr)
 }
 
-func (this *Service) GetNonce(account string,cointype string) string {
-    if account == "" || cointype == "" {
+func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) string {
+    if account == "" || cointype == "" || dcrmaddr == "" {
 	return "param error."
     }
 
-    return dcrm.GetNonce(account,cointype)
+    return dcrm.GetNonce(account,cointype,dcrmaddr)
 }
 
 var (

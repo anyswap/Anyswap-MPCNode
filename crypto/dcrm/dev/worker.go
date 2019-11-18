@@ -32,7 +32,7 @@ import (
     "strings"
     "fmt"
     "strconv"
-    //"github.com/syndtr/goleveldb/leveldb"
+    "github.com/syndtr/goleveldb/leveldb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
 )
@@ -150,7 +150,7 @@ func InitDev(groupId string) {
     peerscount, _ := GetGroup(groupId)
    NodeCnt = peerscount
    Enode_cnts = peerscount //bug
-    GetEnodesInfo()
+    GetEnodesInfo(groupId)
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -1092,6 +1092,29 @@ func SetUpMsgList(msg string) {
     RpcReqQueue <- req
 }
 
+func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string) bool {
+    lock5.Lock()
+    dir := GetAcceptLockOutDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+        return false
+    }
+    
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
+    _,err = db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return false
+    }
+
+    db.Close()
+    lock5.Unlock()
+    return true
+}
+
 func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     if workid < 0 || workid >= RpcMaxWorker { //TODO
 	res2 := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
@@ -1139,14 +1162,23 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	if rr.MsgType == "rpc_lockout" {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-	    //w.groupid = self.groupid
-	    //msg = account:cointype:value:to:nonce
+	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 
+	    ////check weather accept lockout
+	    if !AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) {
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("don't accept lockout.")}
+		ch <- res2
+		return false
+	    }
+	    ////
+
+	    w.groupid = msgs[5] 
+
 	    fmt.Println("============RecvMsg.Run,msg = %s,res len = %v ====================",msg,len(self.msg))
 	    rch := make(chan interface{},1)
-	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],rch)
+	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[4],msgs[3],msgs[2],msgs[6],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
@@ -1155,9 +1187,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    }
 
 	    if cherr != nil {
-		var ret2 Err
-		ret2.Info = cherr.Error() 
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:ret2}
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:cherr}
 		ch <- res2
 		return false
 	    }
@@ -1335,7 +1365,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    GetEnodesInfo()
+    GetEnodesInfo(self.GroupId)
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1378,13 +1408,16 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     return true
 }
 
-//msg := pubkey + ":" + cointype + ":" + value + ":" + to
+//msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 type LockOutSendMsgToDcrm struct {
     Account string
-    Cointype string
+    DcrmFrom string
+    DcrmTo string
     Value string
-    To string
+    Cointype string
+    GroupId string
     Nonce string
+    LimitNum string
 }
 
 func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -1394,8 +1427,8 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    GetEnodesInfo()
-    msg := self.Account + ":" + self.Cointype + ":" + self.Value + ":" + self.To + ":" + self.Nonce
+    GetEnodesInfo(self.GroupId)
+    msg := self.Account + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1415,23 +1448,15 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    GroupId := ""//GetGroupIdByEnode(cur_enode)
-    fmt.Println("=========LockOutSendMsgToDcrm.Run===========","GroupId",GroupId,"cur_enode",cur_enode)
-    if strings.EqualFold(GroupId,"") {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
-	ch <- res
-	return false
-    }
-    
     fmt.Println("============LockOutSendMsgToDcrm.Run,msg = %s,res len = %v ====================",msg,len(res))
-    s := SendToGroupAllNodes(GroupId,res)
+    s := SendToGroupAllNodes(self.GroupId,res)
     if strings.EqualFold(s,"send fail.") {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false
     }
 
-    fmt.Println("=========LockOutSendMsgToDcrm.Run,waiting for result.===========","GroupId",GroupId,"cur_enode",cur_enode)
+    fmt.Println("=========LockOutSendMsgToDcrm.Run,Waiting For Result.===========","GroupId",self.GroupId,"cur_enode",cur_enode)
     w := workers[workid]
     chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
     fmt.Println("========LockOutSendMsgToDcrm.Run,return result = %s, err = %s ============",chret,cherr)
@@ -1440,6 +1465,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	ch <- res2
 	return false
     }
+
     res2 := RpcDcrmRes{Ret:chret,Err:cherr}
     ch <- res2
 
@@ -1516,11 +1542,11 @@ func IsInGroup(enode string,groupId string) bool {
     return ""
 }*/
 
-func GetEnodesInfo() {
-    GroupId := ""//GetGroupIdByEnode(cur_enode)
+func GetEnodesInfo(GroupId string) {
     if GroupId == "" {
 	return
     }
+    
     Enode_cnts,_ = GetGroup(GroupId)
     NodeCnt = Enode_cnts
     cur_enode = GetSelfEnode()
@@ -1536,9 +1562,9 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_lockout":
-	    //msg = account : cointype : value : to : nonce
+	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 	    m := strings.Split(msg,":")
-	    v := LockOutSendMsgToDcrm{Account:m[0],Cointype:m[1],Value:m[2],To:m[3],Nonce:m[4]}
+	    v := LockOutSendMsgToDcrm{Account:m[0],DcrmFrom:m[1],DcrmTo:m[2],Value:m[3],Cointype:m[4],GroupId:m[5],Nonce:m[6],LimitNum:m[7]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	default:

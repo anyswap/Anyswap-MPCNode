@@ -38,13 +38,6 @@ import (
 func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interface{}) {
 
     fmt.Println("========dcrm_genPubKey============")
-    GetEnodesInfo()
-
-    if int32(Enode_cnts) != int32(NodeCnt) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
-	ch <- res
-	return
-    }
 
     wk,err := FindWorker(msgprex)
     if err != nil || wk == nil {
@@ -53,6 +46,14 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	return
     }
     id := wk.id
+    
+    GetEnodesInfo(wk.groupid)
+
+    if int32(Enode_cnts) != int32(NodeCnt) {
+	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	ch <- res
+	return
+    }
 
     if types.IsDefaultED25519(cointype) {
 	ok2 := KeyGenerate_ed(msgprex,ch,id,cointype)

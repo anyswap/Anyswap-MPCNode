@@ -35,6 +35,7 @@ import (
     "github.com/syndtr/goleveldb/leveldb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
+    "encoding/hex"
 )
 
 var (
@@ -982,6 +983,7 @@ func Dcrmcallret(msg interface{},enode string) {
     status := ss[0]
     //msgtype := ss[2]
     ret := ss[3]
+    fmt.Println("=========Dcrmcallret, ret = %s,len(ret) = %v ==============",ret,len(ret))
     workid,err := strconv.Atoi(ss[1])
     if err != nil || workid < 0 || workid >= RpcMaxWorker {
 	return
@@ -1147,7 +1149,79 @@ func SetUpMsgList(msg string) {
     RpcReqQueue <- req
 }
 
-func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string) bool {
+func GetLockOutReply() (string,error) {
+    lock5.Lock()
+    dir := GetAcceptLockOutDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+        return "",err 
+    }
+   
+    var ret []string
+    var b bytes.Buffer 
+    b.WriteString("") 
+    b.WriteByte(0) 
+    b.WriteString("") 
+    iter := db.NewIterator(nil, nil) 
+    for iter.Next() { 
+	//key := string(iter.Key()) //TODO
+	value := string(iter.Value())
+	////
+	ds,err := UnCompress(value)
+	if err != nil {
+	    continue
+	}
+
+	dss,err := Decode2(ds,"AcceptLockOutData")
+	if err != nil {
+	    continue
+	}
+
+	ac := dss.(*AcceptLockOutData)
+	if ac.Deal == true {
+	    continue
+	}
+
+	tmp := "{"
+	tmp += "\"Account\":"
+	tmp += ac.Account
+	tmp += ","
+	tmp += "\"GroupId\":"
+	tmp += ac.GroupId
+	tmp += ","
+	tmp += "\"Nonce\":"
+	tmp += ac.Nonce
+	tmp += ","
+	tmp += "\"DcrmFrom\":"
+	tmp += ac.DcrmFrom
+	tmp += ","
+	tmp += "\"DcrmTo\":"
+	tmp += ac.DcrmTo
+	tmp += ","
+	tmp += "\"Value\":"
+	tmp += ac.Value
+	tmp += ","
+	tmp += "\"Cointype\":"
+	tmp += ac.Cointype
+	tmp += ","
+	tmp += "\"LimitNum\":"
+	tmp += ac.LimitNum
+	tmp += "}"
+	ret = append(ret,tmp)
+	////
+    }
+    iter.Release()
+    
+    ///////
+    ss := strings.Join(ret,"|")
+    db.Close()
+    lock5.Unlock()
+
+    return ss,nil
+}
+
+func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) bool {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db, err := leveldb.OpenFile(dir, nil)
@@ -1157,7 +1231,7 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-    _,err = db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key),nil)
     ///////
     if err != nil {
 	db.Close()
@@ -1165,9 +1239,81 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
 	return false
     }
 
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return false
+    }
+
+    dss,err := Decode2(ds,"AcceptLockOutData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return false
+    }
+
+    ac := dss.(*AcceptLockOutData)
+
     db.Close()
     lock5.Unlock()
-    return true
+    return ac.Accept 
+}
+
+func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept bool) error {
+    lock5.Lock()
+    dir := GetAcceptLockOutDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+        return err
+    }
+    
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+
+    dss,err := Decode2(ds,"AcceptLockOutData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+
+    ac := dss.(*AcceptLockOutData)
+    ac.Accept = accept
+    ac.Deal = deal
+
+    e,err := Encode2(ac)
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+
+    es,err := Compress([]byte(e))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+
+    db.Put([]byte(key),[]byte(es),nil)
+    db.Close()
+    lock5.Unlock()
+    return nil
 }
 
 func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
@@ -1220,13 +1366,33 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
+	     
+	    ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Deal:false,Accept:false}
+	    SaveAcceptData(ac) 
+	    
+	    ////
+	    var reply bool 
+	    timeout := make(chan bool, 1)
+	    go func(timeout chan bool) {
+		 time.Sleep(time.Duration(20)*time.Second) //1000 == 1s
+		 reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) 
+		 timeout <- true
+	     }(timeout)
+	     <-timeout
 
-	    ////check weather accept lockout
-	    if !AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) {
+	     if reply == false {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("don't accept lockout.")}
 		ch <- res2
 		return false
-	    }
+	     }
+	    ////
+
+	    ////check weather accept lockout
+	    //if !AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) {
+	//	res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("don't accept lockout.")}
+	//	ch <- res2
+	//	return false
+	//    }
 	    ////
 
 	    w.groupid = msgs[5] 
@@ -1279,6 +1445,23 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		return false
 	    }
 	    
+	    ////
+	    ds,err := UnCompress(chret)
+	    if err != nil {
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:err}
+		ch <- res2
+		return false
+	    }
+	    dss,err := Decode2(ds,"PubKeyData")
+	    if err != nil {
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:err}
+		ch <- res2
+		return false
+	    }
+	    ac := dss.(*PubKeyData)
+	    chret = hex.EncodeToString([]byte(ac.Pub))
+	    ////
+
 	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
 	    ch <- res2
 	    return true
@@ -1288,16 +1471,13 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	if rr.MsgType == "rpc_get_lockout_reply" {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-	    //msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
-	    msg := rr.Msg
-	    msgs := strings.Split(msg,":")
 
 	    ////check weather accept lockout
-	    if !AcceptLockOut(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4]) {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf(cur_enode+":0")}
-		ch <- res2
-		return false
-	    }
+	    //if !AcceptLockOut(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4]) {
+	//	res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf(cur_enode+":0")}
+	//	ch <- res2
+	//	return false
+	  //  }
 	    ////
 
 	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+cur_enode+":1",Err:nil}
@@ -1342,6 +1522,13 @@ func Encode2(obj interface{}) (string,error) {
 	    return "",err
 	}
 	return string(ret),nil
+    case *AcceptLockOutData:
+	ch := obj.(*AcceptLockOutData)
+	ret,err := json.Marshal(ch)
+	if err != nil {
+	    return "",err
+	}
+	return string(ret),nil
     default:
 	return "",fmt.Errorf("encode obj fail.")
     }
@@ -1360,6 +1547,16 @@ func Decode2(s string,datatype string) (interface{},error) {
 
     if datatype == "PubKeyData" {
 	var m PubKeyData
+	err := json.Unmarshal([]byte(s), &m)
+	if err != nil {
+	    return nil,err
+	}
+
+	return &m,nil
+    }
+    
+    if datatype == "AcceptLockOutData" {
+	var m AcceptLockOutData
 	err := json.Unmarshal([]byte(s), &m)
 	if err != nil {
 	    return nil,err
@@ -1478,6 +1675,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
+    fmt.Println("=========ReqAddrSendMsgToMsg.Run,get result =%s,len(ret) =%v ===========",chret,len(chret))
     res2 := RpcDcrmRes{Ret:chret,Err:cherr}
     ch <- res2
 
@@ -1533,6 +1731,22 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     fmt.Println("=========LockOutSendMsgToDcrm.Run,Waiting For Result.===========","GroupId",self.GroupId,"cur_enode",cur_enode)
+    ////
+    var reply error
+    timeout := make(chan bool, 1)
+    go func(timeout chan bool) {
+	 time.Sleep(time.Duration(10)*time.Second) //1000 == 1s
+	 reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true) 
+	 timeout <- true
+     }(timeout)
+     <-timeout
+
+     if reply != nil {
+	res2 := RpcDcrmRes{Ret:"",Err:reply}
+	ch <- res2
+	return false
+     }
+    ////
     w := workers[workid]
     chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
     fmt.Println("========LockOutSendMsgToDcrm.Run,return result = %s, err = %s ============",chret,cherr)
@@ -1550,11 +1764,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
 //msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
 type GetLockOutReplySendMsgToDcrm struct {
-    Account string
-    GroupId string
-    Nonce string
-    DcrmAddr string
-    LimitNum string
+    Enode string
 }
 
 func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -1564,49 +1774,66 @@ func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bo
 	return false
     }
 
-    GetEnodesInfo(self.GroupId)
-    msg := self.Account + ":" + self.GroupId + ":" + self.Nonce + ":" + self.DcrmAddr + ":" + self.LimitNum
-    timestamp := time.Now().Unix()
-    tt := strconv.Itoa(int(timestamp))
-    nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
-    
-    sm := &SendMsg{MsgType:"rpc_get_lockout_reply",Nonce:nonce,WorkId:workid,Msg:msg}
-    res,err := Encode2(sm)
+    ret,err := GetLockOutReply()
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
-	ch <- res
-	return false
-    }
-
-    res,err = Compress([]byte(res))
-    if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
-	ch <- res
-	return false
-    }
-
-    fmt.Println("============GetLockOutReplySendMsgToDcrm.Run,msg = %s,res len = %v ====================",msg,len(res))
-    s := SendToGroupAllNodes(self.GroupId,res)
-    if strings.EqualFold(s,"send fail.") {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
-	ch <- res
-	return false
-    }
-
-    fmt.Println("=========GetLockOutReplySendMsgToDcrm.Run,Waiting For Result.===========","GroupId",self.GroupId,"cur_enode",cur_enode)
-    w := workers[workid]
-    chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
-    fmt.Println("========GetLockOutReplySendMsgToDcrm.Run,return result = %s, err = %s ============",chret,cherr)
-    if cherr != nil {
-	res2 := RpcDcrmRes{Ret:"",Err:cherr}
+	res2 := RpcDcrmRes{Ret:"",Err:err}
 	ch <- res2
 	return false
     }
 
-    res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+    res2 := RpcDcrmRes{Ret:ret,Err:nil}
     ch <- res2
 
     return true
+}
+
+type AcceptLockOutData struct {
+    Account string
+    GroupId string
+    Nonce string
+    DcrmFrom string
+    DcrmTo string
+    Value string
+    Cointype string
+    LimitNum string
+
+    Deal bool
+    Accept bool
+}
+
+func SaveAcceptData(ac *AcceptLockOutData) error {
+    if ac == nil {
+	return fmt.Errorf("no accept data.")
+    }
+
+    lock5.Lock()
+    dir := GetAcceptLockOutDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+        return err
+    }
+    
+    key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
+    
+    alos,err := Encode2(ac)
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+    
+    ss,err := Compress([]byte(alos))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err 
+    }
+   
+    db.Put([]byte(key),[]byte(ss),nil)
+    db.Close()
+    lock5.Unlock()
+    return nil
 }
 
 func IsInGroup(enode string,groupId string) bool {
@@ -1705,9 +1932,7 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_get_lockout_reply":
-	    //msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
-	    m := strings.Split(msg,":")
-	    v := GetLockOutReplySendMsgToDcrm{Account:m[0],GroupId:m[1],Nonce:m[2],DcrmAddr:m[3],LimitNum:m[4]}
+	    v := GetLockOutReplySendMsgToDcrm{Enode:msg}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	default:

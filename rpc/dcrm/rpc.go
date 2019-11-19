@@ -97,12 +97,26 @@ func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) st
     return dcrm.GetNonce(account,cointype,dcrmaddr)
 }
 
-func (this *Service) GetLockOutReply(account string,groupid string,nonce string,dcrmaddr string,threshold string) string {
-    if account == "" || groupid == "" || nonce == "" || dcrmaddr == "" || threshold == "" {
-	return "param error."
+func (this *Service) GetLockOutReply(enode string) map[string]interface{} {
+    if enode == "" {
+	return map[string]interface{}{
+		"Error": "enode is empty.",
+	}
     }
 
-    return dcrm.GetLockOutReply(account,groupid,nonce,dcrmaddr,threshold)
+    s,err := dcrm.GetLockOutReply(enode)
+    if err != nil {
+	return map[string]interface{}{
+		"Error": err.Error(),
+	}
+    }
+
+    ret := make(map[string]interface{})
+    for k,v := range s {
+	ret[strconv.Itoa(k)] = v
+    }
+
+    return ret
 }
 
 var (

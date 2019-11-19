@@ -386,6 +386,20 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     /////////
     
     if lockout_tx_hash != "" {
+	w,err := FindWorker(wsid)
+	if w == nil || err != nil {
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get worker error.")}
+	    ch <- res
+	    return
+	}
+
+	reply := AcceptLockOut(account,w.groupid,nonce,dcrmaddr,w.limitnum,true,true) 
+	if reply != nil {
+	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("update lockout status error.")}
+	    ch <- res
+	    return
+	}
+
 	if SetNonce(account,cointype,dcrmaddr,nonce) != nil {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("update nonce error.")}
 	    ch <- res

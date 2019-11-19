@@ -400,17 +400,6 @@ func ReqDcrmAddr(raw string,model string) (string,error) {
     return addr,nil
 }
 
-type AcceptLockOutData struct {
-    Account string
-    GroupId string
-    Nonce string
-    DcrmFrom string
-    DcrmTo string
-    Value string
-    Cointype string
-    LimitNum string
-}
-
 func AcceptLockOut(raw string) (string,error) {
     fmt.Println("==========AcceptLockOut,raw = %s ===========",raw)
     tx := new(types.Transaction)
@@ -447,34 +436,11 @@ func AcceptLockOut(raw string) (string,error) {
 	return "",err
     }
 
-    SignLock.Lock()
-    dir := dev.GetAcceptLockOutDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,true)
     if err != nil {
-        SignLock.Unlock()
-        return "",err
-    }
-    
-    key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[8]))).Hex()
-    alo := &AcceptLockOutData{Account:datas[1],GroupId:datas[2],Nonce:datas[3],DcrmFrom:datas[4],DcrmTo:datas[5],Value:datas[6],Cointype:datas[7],LimitNum:datas[8]}
-    
-    alos,err := dev.Encode2(alo)
-    if err != nil {
-	db.Close()
-	SignLock.Unlock()
 	return "",err
     }
-    
-    ss,err := dev.Compress([]byte(alos))
-    if err != nil {
-	db.Close()
-	SignLock.Unlock()
-	return "",err 
-    }
-   
-    db.Put([]byte(key),[]byte(ss),nil)
-    db.Close()
-    SignLock.Unlock()
+
     return pubdata,nil
 }
 
@@ -513,13 +479,13 @@ func LockOut(raw string) (string,error) {
     threshold := datas[6]
     Nonce := tx.Nonce() 
 
-    fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold)
+    fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,Nonce)
     if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" {
 	return "",fmt.Errorf("param error.")
     }
    
     var errtmp error
-    for i:=0;i<10;i++ {
+    for i:=0;i<1;i++ {
 	msg := from.Hex() + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold
 	txhash,err2 := SendReqToGroup(msg,"rpc_lockout")
 	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
@@ -579,15 +545,15 @@ func GetNonce(account string,cointype string,dcrmaddr string) string {
     return nonce
 }
 
-func GetLockOutReply(account string,groupid string,nonce string,dcrmaddr string,threshold string) string {
-    msg := account + ":" + groupid + ":" + nonce + ":" + dcrmaddr + ":" + threshold
-    reply,err := SendReqToGroup(msg,"rpc_get_lockout_reply")
-    if reply == "" && err != nil {
+func GetLockOutReply(enode string) ([]string,error) {
+    reply,err := SendReqToGroup(enode,"rpc_get_lockout_reply")
+    if reply == "" || err != nil {
 	fmt.Println("===========GetLockOutReply,err =%s ============",err)
-	return err.Error()
+	return nil,err 
     }
 
-    return reply
+    ss := strings.Split(reply,"|")
+    return ss,nil 
 }
 
 func init(){

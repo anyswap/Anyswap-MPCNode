@@ -49,6 +49,7 @@ const (
 )
 
 var (
+	p2pServer p2p.Server
 	bootNodeIP *net.UDPAddr
 	callback   func(interface{}, string)
 	Dcrm_callback   func(interface{}) <-chan string
@@ -58,7 +59,7 @@ var (
 	dccpGroup  *Group
 	xpGroup    *Group
 	selfid     discover.NodeID
-	sdkGroup   map[discover.NodeID]*Group = make(map[discover.NodeID]*Group)
+	SdkGroup   map[discover.NodeID]*Group = make(map[discover.NodeID]*Group)
 )
 
 type Dcrm struct {
@@ -120,11 +121,16 @@ type group struct {
 	id    discover.NodeID
 	ip    net.IP
 	port  uint16
-	enode string
+	Enode string
+	Status string
 }
 type Group struct {
 	sync.Mutex
-	group map[string]*group
+	Gname string
+	Mode string
+	Status string
+	Got bool
+	Group map[string]*group
 }
 
 type Transaction struct {

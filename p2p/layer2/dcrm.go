@@ -18,10 +18,13 @@ package layer2
 
 import (
 	"context"
+	"math"
 	"net"
+	"sort"
 	"time"
 	"fmt"
 
+	//"github.com/fsn-dev/dcrm5-libcoins/crypto"
 	"github.com/fsn-dev/dcrm5-libcoins/p2p"
 	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
 	"github.com/fsn-dev/dcrm5-libcoins/rpc"
@@ -260,5 +263,65 @@ func SdkProtocol_registerSendToGroupCallback(sdkcallback func(interface{}, strin
 // recv return from sendToGroup...
 func SdkProtocol_registerSendToGroupReturnCallback(sdkcallback func(interface{}, string)) {
 	discover.RegisterSdkMsgRetCallback(sdkcallback)
+}
+
+// 1 + 1 + 1
+func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, string) {
+	count := len(enodes)
+	sort.Sort(sort.StringSlice(enodes))
+	enode := []*discover.Node{}
+	selfid := fmt.Sprintf("%v", discover.GetLocalID())
+	sliceCount := int(math.Ceil(float64(len(selfid)) / float64(count)))
+	fmt.Printf("sliceCount: %v\n", sliceCount)
+	for _, un := range enodes {
+		fmt.Printf("for un: %v\n", un)
+		node, err := discover.ParseNode(un)
+		if err != nil {
+			fmt.Printf("CreateSDKGroup, parse err: %v\n", un)
+			return gname, "", 0, "enode wrong format"
+		}
+		fmt.Printf("for selfid: %v, node.ID: %v\n", selfid, node.ID)
+		if selfid != node.ID.String() {
+			p := emitter.peers[node.ID]
+			if p == nil {
+				fmt.Printf("CreateSDKGroup, peers err: %v\n", un)
+				return gname, "", 0, "enode is not peer"
+			}
+		}
+		n := fmt.Sprintf("%v", node.ID)
+		fmt.Printf("CreateSDKGroup, n: %v\n", n)
+		//startlen := sliceCount*i
+		//if len(selfid) < startlen {
+		//	startlen = len(selfid)
+		//}
+		//endlen := sliceCount*(i+1)
+		//if len(selfid) < endlen {
+		//	endlen = len(selfid)
+		//}
+		//fmt.Printf("CreateSDKGroup, startlen: %v, endlen: %v\n", startlen, endlen)
+		//id = fmt.Sprintf("%v%v", id, n[startlen:endlen])
+		//fmt.Printf("CreateSDKGroup, id: %v\n", id)
+		enode = append(enode, node)
+	}
+	//id := crypto.Keccak256Hash([]byte(enodes))
+	id := fmt.Sprintf("%v", selfid) // test:
+	fmt.Printf("CreateSDKGroup, gid: %v\n", id)
+	gid, _ := discover.HexID(id)
+	fmt.Printf("CreateSDKGroup, gid -> id: %v\n", gid)
+	name, retErr := discover.StartCreateSDKGroup(gname, gid, mode, enode)
+	fmt.Printf("CreateSDKGroup, name: %v\n", name)
+	return name, id, count, retErr
+}
+
+func GetEnodeStatus(enode string) (string, string) {
+	return discover.GetEnodeStatus(enode)
+}
+
+func SetCreateGroupStatus(gname, enode, approval string) error {
+	return discover.SetCreateGroupStatus(gname, enode, approval)
+}
+
+func GetCreateGroupStatus(gname, enode string) (string, error) {
+	return discover.GetCreateGroupStatus(gname, enode)
 }
 

@@ -595,6 +595,8 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 		req = new(group)
 	case Dcrm_groupInfoPacket:
 		req = new(groupmessage)
+	case Sdk_groupStatusPacket:
+		req = new(groupStatusMsg)
 	case PeerMsgPacket:
 		req = new(message)
 	case getDcrmPacket:
@@ -618,6 +620,7 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 }
 
 func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
+	go updateRemoteIP(req.To.IP, req.To.UDP)
 	if expired(req.Expiration) {
 		return errExpired
 	}

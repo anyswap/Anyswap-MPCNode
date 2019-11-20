@@ -83,7 +83,7 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 
 func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) string {
     if account == "" || cointype == "" || dcrmaddr == "" {
-	return "param error."
+	return "0"
     }
 
     return dcrm.GetBalance(account,cointype,dcrmaddr)
@@ -91,13 +91,14 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
 
 func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) string {
     if account == "" || cointype == "" || dcrmaddr == "" {
-	return "param error."
+	return "0"
     }
 
     return dcrm.GetNonce(account,cointype,dcrmaddr)
 }
 
-func (this *Service) GetLockOutReply(enode string) map[string]interface{} {
+func (this *Service) GetCurNodeLockOutInfo() map[string]interface{} {
+    enode := "xxx" //TODO
     if enode == "" {
 	return map[string]interface{}{
 		"Error": "enode is empty.",

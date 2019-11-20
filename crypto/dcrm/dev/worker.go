@@ -45,8 +45,8 @@ var (
     SepDel = "dcrmsepdel"
 
     PaillierKeyLength = 2048
-    sendtogroup_lilo_timeout = 80 
-    sendtogroup_timeout = 80
+    sendtogroup_lilo_timeout = 100 
+    sendtogroup_timeout = 100
     ch_t = 10
     lock5 sync.Mutex
 
@@ -1374,7 +1374,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    var reply bool 
 	    timeout := make(chan bool, 1)
 	    go func(timeout chan bool) {
-		 time.Sleep(time.Duration(20)*time.Second) //1000 == 1s
+		 time.Sleep(time.Duration(60)*time.Second) //1000 == 1s
 		 reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) 
 		 timeout <- true
 	     }(timeout)
@@ -1385,14 +1385,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		ch <- res2
 		return false
 	     }
-	    ////
-
-	    ////check weather accept lockout
-	    //if !AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) {
-	//	res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("don't accept lockout.")}
-	//	ch <- res2
-	//	return false
-	//    }
 	    ////
 
 	    w.groupid = msgs[5] 
@@ -1471,14 +1463,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	if rr.MsgType == "rpc_get_lockout_reply" {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-
-	    ////check weather accept lockout
-	    //if !AcceptLockOut(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4]) {
-	//	res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf(cur_enode+":0")}
-	//	ch <- res2
-	//	return false
-	  //  }
-	    ////
 
 	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+cur_enode+":1",Err:nil}
 	    ch <- res2

@@ -137,6 +137,9 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 
 func getGroupSDK(gid discover.NodeID) (discover.NodeID, *Group) {
 	for id, g := range SdkGroup {
+		if g.Status != "SUCCESS" {
+			continue
+		}
 		index := id.String()
 		gf := gid.String()
 	//	log.Debug("getGroupSDK", "id", id, "gid", gid)
@@ -145,6 +148,18 @@ func getGroupSDK(gid discover.NodeID) (discover.NodeID, *Group) {
 		}
 	}
 	return discover.NodeID{}, nil
+}
+
+func updateSDKGroupStatus(gid discover.NodeID, status string) {
+	for id, g := range SdkGroup {
+		index := id.String()
+		gf := gid.String()
+	//	log.Debug("getGroupSDK", "id", id, "gid", gid)
+		if index[:8] == gf[:8] {
+			g.Status = status
+			return
+		}
+	}
 }
 
 func init() {
@@ -298,8 +313,9 @@ func recvStatusInfo(gname string, gid discover.NodeID, count uint64, node *disco
 	fmt.Printf("==== recvStatusInfo() ====, gid: %v\n", gid)
 	if gid == node.ID {
 		if status == "SUCCESS" {
-			_, xvcGroup := getGroupSDK(gid)
-			xvcGroup.Status = "SUCCESS"
+			updateSDKGroupStatus(gid, status)
+			//_, xvcGroup := getGroupSDK(gid)
+			//xvcGroup.Status = "SUCCESS"
 		} else if status == "FAILED" {
 			delete(SdkGroup, gid)
 		}

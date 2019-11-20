@@ -229,29 +229,55 @@ func ParseNodeID(enode string) string {
 //================   API   SDK    =====================
 func SdkProtocol_sendToGroupOneNode(gID, msg string) string {
 	gid, _ := discover.HexID(gID)
+	if checkExistGroup(gid) == false {
+		fmt.Printf("sendToGroupOneNode, group gid: %v not exist\n", gid)
+		return "sendToGroupOneNode error"
+	}
 	return discover.SendToGroup(gid, msg, false, Sdkprotocol_type)
 }
 
 func SdkProtocol_SendToGroupAllNodes(gID, msg string) string {
 	gid, _ := discover.HexID(gID)
+	if checkExistGroup(gid) == false {
+		fmt.Printf("SendToGroupAllNodes, group gid: %v not exist\n", gid)
+		return "SendToGroupAllNodes error"
+	}
 	return discover.SendToGroup(gid, msg, true, Sdkprotocol_type)
 }
 
 func SdkProtocol_broadcastInGroupOthers(gID, msg string) { // without self
 	gid, _ := discover.HexID(gID)
+	if checkExistGroup(gid) == false {
+		fmt.Printf("broadcastInGroupOthers, group gid: %v not exist\n", gid)
+		return
+	}
 	BroadcastToGroup(gid, msg, Sdkprotocol_type, false)
 }
 
 func SdkProtocol_broadcastInGroupAll(gID, msg string) { // within self
 	gid, _ := discover.HexID(gID)
+	if checkExistGroup(gid) == false {
+		fmt.Printf("broadcastInGroupAll, group gid: %v not exist\n", gid)
+		return
+	}
 	BroadcastToGroup(gid, msg, Sdkprotocol_type, true)
 }
 
 func SdkProtocol_getGroup(gID string) (int, string) {
 	gid, _ := discover.HexID(gID)
+	if checkExistGroup(gid) == false {
+		fmt.Printf("broadcastInGroupAll, group gid: %v not exist\n", gid)
+		return 0, ""
+	}
 	return getGroup(gid, Sdkprotocol_type)
 }
 
+func checkExistGroup(gid discover.NodeID) bool {
+	if SdkGroup[gid] != nil && SdkGroup[gid].Status == "SUCCESS" {
+		return true
+	}
+	return false
+}
 
 //  ---------------------   API  callback   ----------------------
 // recv from broadcastInGroup...

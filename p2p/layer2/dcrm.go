@@ -18,7 +18,8 @@ package layer2
 
 import (
 	"context"
-	"math"
+	"errors"
+	//"math"
 	"net"
 	"sort"
 	"strings"
@@ -272,8 +273,6 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 	sort.Sort(sort.StringSlice(enodes))
 	enode := []*discover.Node{}
 	selfid := fmt.Sprintf("%v", discover.GetLocalID())
-	sliceCount := int(math.Ceil(float64(len(selfid)) / float64(count)))
-	fmt.Printf("sliceCount: %v\n", sliceCount)
 	id := ""
 	for _, un := range enodes {
 		fmt.Printf("for un: %v\n", un)
@@ -324,5 +323,47 @@ func SetCreateGroupStatus(gname, enode, approval string) error {
 
 func GetCreateGroupStatus(gname, enode string) (string, error) {
 	return discover.GetCreateGroupStatus(gname, enode)
+}
+
+func CheckAddPeer(enodes []string) error {
+	addpeer := false
+	selfid := fmt.Sprintf("%v", discover.GetLocalID())
+	var nodes []*discover.Node
+	for _, enode := range enodes {
+		node, err := discover.ParseNode(enode)
+		if err != nil {
+			msg := fmt.Sprintf("CheckAddPeer, parse err enode: %v\n", enode)
+			return errors.New(msg)
+		}
+		if selfid == node.ID.String() {
+			continue
+		}
+
+		status, _ := GetEnodeStatus(enode)
+		if status == "OffLine" {
+			msg := fmt.Sprintf("CheckAddPeer, enode: %v offline\n", enode)
+			return errors.New(msg)
+		}
+		p := emitter.peers[node.ID]
+		if p == nil {
+			nodes = append(nodes, node)
+			go p2pServer.AddPeer(node)
+			addpeer = true
+		}
+	}
+	if addpeer {
+		fmt.Printf("CheckAddPeer, waitting add peer ...\n")
+		time.Sleep(time.Duration(4) * time.Second)
+		for _, node := range nodes {
+			p := emitter.peers[node.ID]
+			if p == nil {
+				fmt.Printf("CheckAddPeer, add peer failed node: %v\n", node)
+				msg := fmt.Sprintf("CheckAddPeer, add peer failed node: %v\n", node)
+				return errors.New(msg)
+			}
+			fmt.Printf("CheckAddPeer, add peer success node: %v\n", node)
+		}
+	}
+	return nil
 }
 

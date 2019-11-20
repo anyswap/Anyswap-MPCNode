@@ -70,6 +70,12 @@ func (this *Service) CreateSDKGroup(gname, mode string, enodes []string) string 
 		gif, _ := json.Marshal(ret)
 		return string(gif)
 	}
+	err := layer2.CheckAddPeer(enodes)
+	if err != nil {
+		ret := &GroupInfo{Gname: gname, Mode: mode, Error: err.Error()}
+		gif, _ := json.Marshal(ret)
+		return string(gif)
+	}
 	name, gid, count, retErr := layer2.CreateSDKGroup(gname, mode, enodes)
 	if retErr != "" {
 		if name != gname {

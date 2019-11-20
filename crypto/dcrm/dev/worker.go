@@ -35,7 +35,7 @@ import (
     "github.com/syndtr/goleveldb/leveldb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
-    "encoding/hex"
+    "encoding/gob"
 )
 
 var (
@@ -49,6 +49,7 @@ var (
     sendtogroup_timeout = 100
     ch_t = 10
     lock5 sync.Mutex
+    lock sync.Mutex
 
     //callback
     GetGroup func(string) (int,string)
@@ -949,6 +950,7 @@ type RecvMsg struct {
 func Dcrmcall(msg interface{},enode string) <-chan string {
     ch := make(chan string, 1)
     s := msg.(string)
+    fmt.Println("=============Dcrmcall, receiv = %s,len(receiv) = %v ==============",s,len(s))
     v := RecvMsg{msg:s}
     rch := make(chan interface{},1)
     req := RpcReq{rpcdata:&v,ch:rch}
@@ -973,8 +975,6 @@ func Dcrmcallret(msg interface{},enode string) {
 	return
     }
    
-    fmt.Println("=========Dcrmcallret,node count=%v,msg = %s ==============",NodeCnt,res)
-
     ss := strings.Split(res,Sep)
     if len(ss) != 4 {
 	return
@@ -1419,7 +1419,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	    msgs := strings.Split(rr.Msg,":")
 	    if len(msgs) < 4 {
-		fmt.Println("=========RecvMsg.Run,get msg error. rr.Msg = %s ==========",rr.Msg)
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("get msg error.")}
 		ch <- res2
 		return false
@@ -1430,15 +1429,13 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
-		var ret2 Err
-		ret2.Info = cherr.Error()
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:ret2}
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:cherr}
 		ch <- res2
 		return false
 	    }
 	    
 	    ////
-	    ds,err := UnCompress(chret)
+	    /*ds,err := UnCompress(chret)
 	    if err != nil {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:err}
 		ch <- res2
@@ -1451,7 +1448,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		return false
 	    }
 	    ac := dss.(*PubKeyData)
-	    chret = hex.EncodeToString([]byte(ac.Pub))
+	    chret = hex.EncodeToString([]byte(ac.Pub))*/
 	    ////
 
 	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
@@ -1501,11 +1498,20 @@ func Encode2(obj interface{}) (string,error) {
 	return string(ret),nil
     case *PubKeyData:
 	ch := obj.(*PubKeyData)
-	ret,err := json.Marshal(ch)
-	if err != nil {
-	    return "",err
+	//ret,err := json.Marshal(ch)
+	//if err != nil {
+	//    return "",err
+	//}
+	//return string(ret),nil
+
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+
+	err1 := enc.Encode(ch)
+	if err1 != nil {
+	    return "",err1
 	}
-	return string(ret),nil
+	return buff.String(),nil
     case *AcceptLockOutData:
 	ch := obj.(*AcceptLockOutData)
 	ret,err := json.Marshal(ch)
@@ -1530,13 +1536,26 @@ func Decode2(s string,datatype string) (interface{},error) {
     }
 
     if datatype == "PubKeyData" {
-	var m PubKeyData
-	err := json.Unmarshal([]byte(s), &m)
+	//var m PubKeyData
+	//err := json.Unmarshal([]byte(s), &m)
+	//if err != nil {
+	//    return nil,err
+	//}
+
+	//return &m,nil
+
+	var data bytes.Buffer
+	data.Write([]byte(s))
+	
+	dec := gob.NewDecoder(&data)
+
+	var res PubKeyData 
+	err := dec.Decode(&res)
 	if err != nil {
 	    return nil,err
 	}
 
-	return &m,nil
+	return &res,nil
     }
     
     if datatype == "AcceptLockOutData" {
@@ -1650,7 +1669,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    fmt.Println("=========ReqAddrSendMsgToMsg.Run,waiting for result===========","GroupId",self.GroupId,"cur_enode",cur_enode)
+    fmt.Println("=============ReqAddrSendMsgToMsg.Run,Waiting For Result===========")
     w := workers[workid]
     chret,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
     if cherr != nil {
@@ -1659,7 +1678,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    fmt.Println("=========ReqAddrSendMsgToMsg.Run,get result =%s,len(ret) =%v ===========",chret,len(chret))
+    fmt.Println("=========ReqAddrSendMsgToMsg.Run,Get Result = ===========",chret)
     res2 := RpcDcrmRes{Ret:chret,Err:cherr}
     ch <- res2
 

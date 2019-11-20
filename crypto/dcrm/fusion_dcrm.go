@@ -189,7 +189,8 @@ func ExsitPubKey(account string,cointype string) (string,bool) {
     return pubkey,true
 }
 
-func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string,bool) {
+func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string,error) {
+    fmt.Println("============GetPubKeyByDcrmAddr,account =%s,cointype =%s,dcrmaddr =%s =============",account,cointype,dcrmaddr)
      //db
     PubLock.Lock()
     dir := dev.GetDbDir()
@@ -197,36 +198,43 @@ func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
         PubLock.Unlock()
-        return "",false
+	fmt.Println("============GetPubKeyByDcrmAddr,err 11111 =%v =============",err)
+        return "",err
     }
     
-    da,err := db.Get([]byte(dcrmaddr),nil)
+    key2 := dev.Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    da,err := db.Get([]byte(key2),nil)
     ///////
     if err != nil {
 	db.Close()
 	PubLock.Unlock()
-	return "",false
+	fmt.Println("============GetPubKeyByDcrmAddr,err 22222 =%v =============",err)
+	return "",err
     }
 
     ds,err := dev.UnCompress(string(da))
     if err != nil {
 	db.Close()
 	PubLock.Unlock()
-	return "",false
+	fmt.Println("============GetPubKeyByDcrmAddr,err 33333 =%v =============",err)
+	return "",err
     }
 
     dss,err := dev.Decode2(ds,"PubKeyData")
     if err != nil {
 	db.Close()
 	PubLock.Unlock()
-	return "",false
+	fmt.Println("============GetPubKeyByDcrmAddr,err 44444 =%v =============",err)
+	return "",err
     }
 
     pubs := dss.(*dev.PubKeyData)
+    fmt.Println("================GetPubKeyByDcrmAddr,pubs =%v =================",pubs)
     pubkey := hex.EncodeToString([]byte(pubs.Pub))
+    fmt.Println("================GetPubKeyByDcrmAddr,pubkey =%s =================",pubkey)
     db.Close()
     PubLock.Unlock()
-    return pubkey,true
+    return pubkey,nil
 }
 
 func SendReqToGroup(msg string,rpctype string) (string,error) {
@@ -248,7 +256,7 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    return "",err
 	}
 
-	ss,err := dev.UnCompress(ret)
+	/*ss,err := dev.UnCompress(ret)
 	if err != nil {
 	    return "",err
 	}
@@ -257,38 +265,40 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    return "",err
 	}
 	
-	pubkeyhex := hex.EncodeToString([]byte((pubs.(*dev.PubKeyData)).Pub))
+	pubkeyhex := hex.EncodeToString([]byte((pubs.(*dev.PubKeyData)).Pub))*/
+	pubkeyhex := ret
+	fmt.Println("====================dcrm.SendReqToGroup,pubkey = %s =====================",ret)
 
 	var m interface{}
 	if !strings.EqualFold(msgs[1], "ALL") {
-	    PubLock.Lock()
+	    /*PubLock.Lock()
 	    dir := dev.GetDbDir()
 	    db, err := leveldb.OpenFile(dir, nil) 
 	    if err != nil { 
 		PubLock.Unlock()
 		return "",err
-	    }
+	    }*/
 
 	    h := cryptocoins.NewCryptocoinHandler(msgs[1])
 	    if h == nil {
-		db.Close()
-		PubLock.Unlock()
+	//	db.Close()
+	//	PubLock.Unlock()
 		return "",fmt.Errorf("req addr fail.cointype is not supported.")
 	    }
 
 	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 	    if err != nil {
-		db.Close()
-		PubLock.Unlock()
-		return "",fmt.Errorf("req addr fail.")
+	//	db.Close()
+	//	PubLock.Unlock()
+		return "",err
 	    }
 
-	    db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
-	    key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
-	    db.Put([]byte(key),[]byte(ret),nil)
-	    db.Put([]byte(ctaddr),[]byte(ret),nil)
-	    db.Close()
-	    PubLock.Unlock()
+	    //db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
+	    //key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
+	    //db.Put([]byte(key),[]byte(ret),nil)
+	    //db.Put([]byte(ctaddr),[]byte(ret),nil)
+	    //db.Close()
+	    //PubLock.Unlock()
 	    //
 	    
 	    m = &DcrmAddrRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddr:ctaddr,Cointype:msgs[1]}
@@ -296,17 +306,17 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    return string(b),nil
 	}
 	
-	PubLock.Lock()
+	/*PubLock.Lock()
 	dir := dev.GetDbDir()
 	db, err := leveldb.OpenFile(dir, nil) 
 	if err != nil { 
 	    PubLock.Unlock()
 	    return "",err
-	}
+	}*/
 
-	db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
-	key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
-	db.Put([]byte(key),[]byte(ret),nil)
+	//db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
+	//key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
+	//db.Put([]byte(key),[]byte(ret),nil)
 	
 	addrmp := make(map[string]string)
 	for _, ct := range cryptocoins.Cointypes {
@@ -320,17 +330,16 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    }
 	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 	    if err != nil {
-		fmt.Printf("============ generate address,error = %+v ==========\n", err.Error())
 		continue
 	    }
 	    
 	    addrmp[ct] = ctaddr
 	    
-	    db.Put([]byte(ctaddr),[]byte(ret),nil)
+	    //db.Put([]byte(ctaddr),[]byte(ret),nil)
 	}
 
-	db.Close()
-	PubLock.Unlock()
+	//db.Close()
+	//PubLock.Unlock()
 	
 	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,Address:addrmp}
 	b,_ := json.Marshal(m)
@@ -346,11 +355,9 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 }
 
 func ReqDcrmAddr(raw string,model string) (string,error) {
-    fmt.Println("==========ReqDcrmAddr,raw = %s,model = %s ===========",raw,model)
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
     if err := rlp.DecodeBytes(raws, tx); err != nil {
-	fmt.Println("==========ReqDcrmAddr,raw = %s,err = %s ===========",raw,err)
 	return "",err
     }
 
@@ -393,7 +400,6 @@ func ReqDcrmAddr(raw string,model string) (string,error) {
     msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + threshold
     addr,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
     if addr == "" && err != nil {
-	fmt.Println("===========ReqDcrmAddr,err= ============",err)
 	return "",err
     }
 
@@ -401,11 +407,9 @@ func ReqDcrmAddr(raw string,model string) (string,error) {
 }
 
 func AcceptLockOut(raw string) (string,error) {
-    fmt.Println("==========AcceptLockOut,raw = %s ===========",raw)
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
     if err := rlp.DecodeBytes(raws, tx); err != nil {
-	fmt.Println("==========AcceptLockOut,raw = %s,err = %s ===========",raw,err)
 	return "",err
     }
 
@@ -445,12 +449,9 @@ func AcceptLockOut(raw string) (string,error) {
 }
 
 func LockOut(raw string) (string,error) {
-
-    fmt.Println("==========LockOut,raw = %s ===========",raw)
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
     if err := rlp.DecodeBytes(raws, tx); err != nil {
-	fmt.Println("==========LockOut,raw = %s,err = %s ===========",raw,err)
 	return "",err
     }
 
@@ -507,9 +508,21 @@ func LockOut(raw string) (string,error) {
 }
 
 func GetBalance(account string, cointype string,dcrmaddr string) string {
-    pubkey,b := GetPubKeyByDcrmAddr(account,cointype,dcrmaddr) 
-    if b == false {
-	return "get balance fail,there is no dcrm addr in account."
+    /*pubkey,err := GetPubKeyByDcrmAddr(account,cointype,dcrmaddr) 
+    if err != nil {
+	return err.Error()
+    }*/
+
+    if strings.EqualFold(cointype, "BCH") {
+	return "0"  //TODO
+    }
+
+    if strings.EqualFold(cointype, "USDT") {
+	return "0"  //TODO
+    }
+
+    if strings.EqualFold(cointype, "BEP2GZX_754") {
+	return "0"  //TODO
     }
 
     h := cryptocoins.NewCryptocoinHandler(cointype)
@@ -517,13 +530,16 @@ func GetBalance(account string, cointype string,dcrmaddr string) string {
 	return "coin type is not supported."
     }
 
-    ctaddr, err := h.PublicKeyToAddress(pubkey)
+    /*ctaddr, err := h.PublicKeyToAddress(pubkey)
     if err != nil {
+	fmt.Println("================GetBalance 11111,err =%v =================",err)
 	return err.Error()
-    }
+    }*/
 
-    ba,err := h.GetAddressBalance(ctaddr,"")
+    //ba,err := h.GetAddressBalance(ctaddr,"")
+    ba,err := h.GetAddressBalance(dcrmaddr,"")
     if err != nil {
+	fmt.Println("================GetBalance 22222,err =%v =================",err)
 	return err.Error()
     }
 

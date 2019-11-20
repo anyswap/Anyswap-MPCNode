@@ -54,7 +54,8 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,error) {
         return "",err
     }
     
-    da,err := db.Get([]byte(dcrmaddr),nil)
+    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    da,err := db.Get([]byte(key2),nil)
     ///////
     if err != nil {
 	db.Close()
@@ -97,7 +98,8 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error
         return err
     }
     
-    da,err := db.Get([]byte(dcrmaddr),nil)
+    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    da,err := db.Get([]byte(key2),nil)
     ///////
     if err != nil {
 	db.Close()
@@ -231,7 +233,8 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
         return
     } 
     
-    da,err := db.Get([]byte(dcrmaddr),nil)
+    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    da,err := db.Get([]byte(key2),nil)
     ///////
     if err != nil {
         res := RpcDcrmRes{Ret:"",Err:err}

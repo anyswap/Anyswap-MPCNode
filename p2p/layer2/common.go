@@ -294,9 +294,18 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 	return count, enode
 }
 
-func recvStatusInfo(gname string, gid discover.NodeID, count uint64, enode *discover.Node, status string) {
+func recvStatusInfo(gname string, gid discover.NodeID, count uint64, node *discover.Node, status string) {
 	fmt.Printf("==== recvStatusInfo() ====, gid: %v\n", gid)
-	discover.CallGroupStatus(gname, gid, count, enode, status)
+	if gid == node.ID {
+		if status == "SUCCESS" {
+			_, xvcGroup := getGroupSDK(gid)
+			xvcGroup.Status = "SUCCESS"
+		} else if status == "FAILED" {
+			delete(SdkGroup, gid)
+		}
+		return
+	}
+	discover.CallGroupStatus(gname, gid, count, node, status)
 }
 
 func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface{}, p2pType int) {
@@ -316,6 +325,7 @@ func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface
 		groupTmp.Mode = mode
 		SdkGroup[gid] = groupTmp
 		xvcGroup = groupTmp
+		fmt.Printf("==== recvGroupInfo() ====, SdkGroup[gid: %v] =  %v\n", gid, SdkGroup[gid])
 		break
 	case DcrmProtocol_type:
 		dccpGroup = NewGroup()
@@ -335,6 +345,7 @@ func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface
 		xvcGroup.Group[node.ID.String()] = &group{id: node.ID, ip: node.IP, port: node.UDP, Enode: enode.String()}
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
 	}
+	fmt.Printf("==== recvGroupInfo() ====, xvcGroup: %v\n", xvcGroup)
 	//for i, g := range SdkGroup {
 	//	log.Info("\nGroupInfo", "i", i, "g", g)
 	//}

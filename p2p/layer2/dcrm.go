@@ -21,10 +21,11 @@ import (
 	"math"
 	"net"
 	"sort"
+	"strings"
 	"time"
 	"fmt"
 
-	//"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	"github.com/fsn-dev/dcrm5-libcoins/crypto"
 	"github.com/fsn-dev/dcrm5-libcoins/p2p"
 	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
 	"github.com/fsn-dev/dcrm5-libcoins/rpc"
@@ -273,6 +274,7 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 	selfid := fmt.Sprintf("%v", discover.GetLocalID())
 	sliceCount := int(math.Ceil(float64(len(selfid)) / float64(count)))
 	fmt.Printf("sliceCount: %v\n", sliceCount)
+	id := ""
 	for _, un := range enodes {
 		fmt.Printf("for un: %v\n", un)
 		node, err := discover.ParseNode(un)
@@ -290,24 +292,23 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 		}
 		n := fmt.Sprintf("%v", node.ID)
 		fmt.Printf("CreateSDKGroup, n: %v\n", n)
-		//startlen := sliceCount*i
-		//if len(selfid) < startlen {
-		//	startlen = len(selfid)
-		//}
-		//endlen := sliceCount*(i+1)
-		//if len(selfid) < endlen {
-		//	endlen = len(selfid)
-		//}
-		//fmt.Printf("CreateSDKGroup, startlen: %v, endlen: %v\n", startlen, endlen)
-		//id = fmt.Sprintf("%v%v", id, n[startlen:endlen])
-		//fmt.Printf("CreateSDKGroup, id: %v\n", id)
+		if id == "" {
+			id = crypto.Keccak256Hash([]byte(node.ID.String())).String()
+		} else {
+			id = crypto.Keccak256Hash([]byte(id), []byte(node.ID.String())).String()
+		}
 		enode = append(enode, node)
 	}
 	//id := crypto.Keccak256Hash([]byte(enodes))
-	id := fmt.Sprintf("%v", selfid) // test:
-	fmt.Printf("CreateSDKGroup, gid: %v\n", id)
-	gid, _ := discover.HexID(id)
-	fmt.Printf("CreateSDKGroup, gid -> id: %v\n", gid)
+	id = fmt.Sprintf("%v%v", id, strings.TrimPrefix(id, "0x")) // test:
+	fmt.Printf("CreateSDKGroup, id: %v\n", id)
+	gid, err := discover.HexID(id)
+	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
+	for i, g := range SdkGroup {
+		if g.Gname == gname || i == gid{
+			return g.Gname, "", 0, "group is exist"
+		}
+	}
 	name, retErr := discover.StartCreateSDKGroup(gname, gid, mode, enode)
 	fmt.Printf("CreateSDKGroup, name: %v\n", name)
 	return name, id, count, retErr

@@ -665,16 +665,21 @@ func addGroupSDK(n *Node) {
 
 func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node) (string, string) {
 	fmt.Printf("==== StartCreateSDKGroup() ====, gid: %v\n", gid)
-	if SDK_groupList[gid] != nil {
-		fmt.Printf("StartCreateSDKGroup, gid: %v is exist\n", gid)
-		return SDK_groupList[gid].Gname, "group is exist"
-	}
+	buildSDKGroup(gname, gid, mode, enode)
 	initGroupNodesStatus(gname, gid, enode)
-	if waitSDKGroupReady(gid, enode) == "AGREE" {
-		buildSDKGroup(gname, gid, mode, enode)
+	if waitSDKGroupReady(gname, gid, enode) == "AGREE" {
+		delete(SDK_groupList, gid)
+		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
+		status := "SUCCESS"
+		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
+		//buildSDKGroup(gname, gid, mode, enode)
 		return gname, ""
 	} else {
-		destroySDKGroup(gid)//TODO
+		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
+		status := "FAILED"
+		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
+		delete(SDK_groupList, gid)
+		//destroySDKGroup(gid)//TODO
 		return gname, "create group failed"
 	}
 	fmt.Printf("==== StartCreateSDKGroup() ====, end\n")
@@ -689,11 +694,11 @@ func initGroupNodesStatus(gname string, gid NodeID, enode []*Node) {
 		if node.ID.String() == selfid {
 			status = "AGREE"
 		}
-		updateGroupNodeStatus(gname, gid, enode, node, status)
+		updateGroupNodeStatus(gname, gid, enode, node, status, false)
 	}
 }
 
-func updateGroupNodeStatus(gname string, gid NodeID, enode []*Node, node *Node, status string) {
+func updateGroupNodeStatus(gname string, gid NodeID, enode []*Node, node *Node, status string, all bool) {
 	fmt.Printf("==== updateGroupNodeStatus() ====, gname: %v, gid: %v, node: %v, status: %v, enode: %v\n", gname, gid, node, status, enode)
 	groupstatus := &groupStatusMsg{Gname: gname, Gid: gid}
 	selfid := fmt.Sprintf("%v", GetLocalID())
@@ -704,7 +709,7 @@ func updateGroupNodeStatus(gname string, gid NodeID, enode []*Node, node *Node, 
 		for _, node1 := range enode {
 			go func(node1 *Node) {
 			fmt.Printf("==== updateGroupNodeStatus() ====, node1.ID.String: %v, selfid: %v\n", node1.ID.String(), selfid)
-				if node1.ID.String() == selfid {
+				if node1.ID.String() == selfid && !all {
 					CallGroupStatus(gname, gid, uint64(len(enode)), groupstatus.Enode, groupstatus.EnodeStatus)
 				} else {
 					ipa := &net.UDPAddr{IP: node1.IP, Port: int(node1.UDP)}
@@ -715,7 +720,7 @@ func updateGroupNodeStatus(gname string, gid NodeID, enode []*Node, node *Node, 
 	}(node)
 }
 
-func waitSDKGroupReady(gid NodeID, enode []*Node) string {
+func waitSDKGroupReady(gname string, gid NodeID, enode []*Node) string {
 	fmt.Printf("==== waitSDKGroupReady() ====, gid: %v\n", gid)
 	for {
 		id := <-groupStatusChan
@@ -728,7 +733,7 @@ func waitSDKGroupReady(gid NodeID, enode []*Node) string {
 				break
 			}
 			if s == "DISAGREE" {
-			return "DISAGREE"
+				return "DISAGREE"
 			}
 			if s == "AGREE" {
 				count += 1
@@ -739,7 +744,7 @@ func waitSDKGroupReady(gid NodeID, enode []*Node) string {
 			return "AGREE"
 		}
 	}
-	return "AGREE"
+	return "DISAGREE"
 }
 
 func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node) {
@@ -1272,7 +1277,7 @@ func SendStatusToPeer(toid NodeID, toaddr *net.UDPAddr, groupstatus *groupStatus
 }
 func (t *udp) sendStatusToPeer(toid NodeID, toaddr *net.UDPAddr, req *groupStatusMsg, p2pType int) error {
 //	log.Debug("====  (t *udp) sendStatusToPeer()  ====")
-	fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, toaddr: %v, groupstatus: %v\n", toaddr, req)
+	fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, toaddr: %v, req: %v\n", toaddr, req)
 	if req == nil {
 		return nil
 	}
@@ -1344,7 +1349,7 @@ func SetCreateGroupStatus(gname, node, approval string) error {
 	for i, g := range groupStatusArray {
 		if g.Gname == gname {
 			n := MustParseNode(node)
-			updateGroupNodeStatus(gname, i, g.Enodes, n, approval)
+			updateGroupNodeStatus(gname, i, g.Enodes, n, approval, false)
 			return nil
 		}
 	}

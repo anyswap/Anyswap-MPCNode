@@ -86,7 +86,7 @@ func (this *Service) CreateSDKGroup(gname, mode string, enodes []string) string 
 		return string(gif)
 	}
 	fmt.Printf("==== CreateSDKGroup() ====, gid: %v, count: %v\n", gid, count)
-	ret := &GroupInfo{Gname: name, Gid: gid, Mode: mode, Number: count, Enodes: enodes, Status: "NEW"}
+	ret := &GroupInfo{Gname: name, Gid: gid, Mode: mode, Number: count, Enodes: enodes, Status: "NEW (create group starting ...)"}
 	gif, _ := json.Marshal(ret)
 	return string(gif)
 }

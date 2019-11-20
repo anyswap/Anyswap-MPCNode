@@ -450,8 +450,10 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
                        Msg:        msg,
                        Expiration: uint64(time.Now().Add(expiration).Unix()),
                })
+	       if err != nil {
                //log.Debug("dcrm handle", "send to from: ", from, ", message: ", msg)
-               //fmt.Printf("dcrm handle, send to target: %v, from: %v, msg(len = %v): %v, err: %v\n", fromID, from, len(msg), msg[:100], err)
+			fmt.Printf("dcrm handle, send to target: %v, from: %v, msg(len = %v), err: %v\n", fromID, from, len(msg), err)
+	       }
        }()
        return nil
 }
@@ -672,23 +674,23 @@ func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node) (
 	fmt.Printf("==== StartCreateSDKGroup() ====, gid: %v\n", gid)
 	buildSDKGroup(gname, gid, mode, enode)
 	initGroupNodesStatus(gname, gid, enode)
-	if waitSDKGroupReady(gname, gid, enode) == "AGREE" {
-		//delete(SDK_groupList, gid)
-		//SDK_groupList[gid].status = "SUCCESS"
-		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
-		status := "SUCCESS"
-		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
-		//buildSDKGroup(gname, gid, mode, enode)
-		return gname, ""
-	} else {
-		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
-		status := "FAILED"
-		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
-		delete(SDK_groupList, gid)
-		//destroySDKGroup(gid)//TODO
-		return gname, "create group failed"
-	}
-	fmt.Printf("==== StartCreateSDKGroup() ====, end\n")
+	go func() {
+		if waitSDKGroupReady(gname, gid, enode) == "AGREE" {
+			//delete(SDK_groupList, gid)
+			//SDK_groupList[gid].status = "SUCCESS"
+			node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
+			status := "SUCCESS"
+			updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
+			//buildSDKGroup(gname, gid, mode, enode)
+		} else {
+			node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
+			status := "FAILED"
+			updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
+			delete(SDK_groupList, gid)
+			//destroySDKGroup(gid)//TODO
+		}
+		fmt.Printf("==== StartCreateSDKGroup() ====, end\n")
+	}()
 	return gname, ""
 }
 

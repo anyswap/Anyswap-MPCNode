@@ -81,6 +81,7 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,error) {
     ////
 
     nonce := (pubs.(*PubKeyData)).Nonce
+    fmt.Println("=========GetNonce,nonce = %v ============",nonce)
     db.Close()
     lock5.Unlock()
     return nonce,nil

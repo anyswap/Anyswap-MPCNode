@@ -60,7 +60,7 @@ func (this *Service) ReqDcrmAddr(raw string,model string) string {   //函数名
 }
 
 func (this *Service) AcceptLockOut(raw string) string {
-    fmt.Println("==========AcceptLockOut===========")
+    fmt.Println("==========dcrm_acceptLockOut,raw =%s ===========",raw)
     ret,err := dcrm.AcceptLockOut(raw)
     if err != nil {
 	return err.Error()
@@ -70,7 +70,7 @@ func (this *Service) AcceptLockOut(raw string) string {
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
-    fmt.Println("==========LockOut===========")
+    fmt.Println("==========dcrm_lockOut,raw =%s ===========",raw)
     txhash,err := dcrm.LockOut(raw)
     if err != nil {
 	return map[string]interface{}{
@@ -84,6 +84,7 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) string {
+    fmt.Println("==============dcrm_getBalance================")
     if account == "" || cointype == "" || dcrmaddr == "" {
 	return "0"
     }
@@ -92,6 +93,7 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
 }
 
 func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) string {
+    fmt.Println("==============dcrm_getNonce================")
     if account == "" || cointype == "" || dcrmaddr == "" {
 	return "0"
     }
@@ -100,6 +102,7 @@ func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) st
 }
 
 func (this *Service) GetCurNodeLockOutInfo() map[string]interface{} {
+    fmt.Println("==============dcrm_getCurNodeLockOutInfo================")
     enode := "xxx" //TODO
     if enode == "" {
 	return map[string]interface{}{

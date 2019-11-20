@@ -1380,6 +1380,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	     }(timeout)
 	     <-timeout
 
+	     fmt.Println("===============RecvMsg.Run,Get Accept LockOut Result =%v ================",reply)
 	     if reply == false {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("don't accept lockout.")}
 		ch <- res2
@@ -1389,7 +1390,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	    w.groupid = msgs[5] 
 
-	    fmt.Println("============RecvMsg.Run,msg = %s,res len = %v ====================",msg,len(self.msg))
 	    rch := make(chan interface{},1)
 	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[4],msgs[3],msgs[2],msgs[6],rch)
 	    chret,cherr := GetChannelValue(ch_t,rch)
@@ -1725,7 +1725,6 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    fmt.Println("============LockOutSendMsgToDcrm.Run,msg = %s,res len = %v ====================",msg,len(res))
     s := SendToGroupAllNodes(self.GroupId,res)
     if strings.EqualFold(s,"send fail.") {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
@@ -1733,7 +1732,6 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    fmt.Println("=========LockOutSendMsgToDcrm.Run,Waiting For Result.===========","GroupId",self.GroupId,"cur_enode",cur_enode)
     ////
     var reply error
     timeout := make(chan bool, 1)
@@ -1744,6 +1742,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
      }(timeout)
      <-timeout
 
+    fmt.Println("============LockOutSendMsgToDcrm.Run,get accept lockout result, err = %v ============",reply)
      if reply != nil {
 	res2 := RpcDcrmRes{Ret:"",Err:reply}
 	ch <- res2
@@ -1752,7 +1751,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     ////
     w := workers[workid]
     chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
-    fmt.Println("========LockOutSendMsgToDcrm.Run,return result = %s, err = %s ============",chret,cherr)
+    fmt.Println("========LockOutSendMsgToDcrm.Run,Get Result = %s, err = %v ============",chret,cherr)
     if cherr != nil {
 	res2 := RpcDcrmRes{Ret:"",Err:cherr}
 	ch <- res2

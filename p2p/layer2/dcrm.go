@@ -344,6 +344,16 @@ func GetEnodeStatus(enode string) (string, string) {
 }
 
 func SetCreateGroupStatus(gname, enode, approval string) error {
+	selfid := fmt.Sprintf("%v", discover.GetLocalID())
+	node, err := discover.ParseNode(enode)
+	if err != nil {
+		msg := fmt.Sprintf("SetCreateGroupStatus, parse err enode: %v\n", enode)
+		return errors.New(msg)
+	}
+	if selfid != node.ID.String() {
+		msg := fmt.Sprintf("SetCreateGroupStatus, not myself enode: %v\n", enode)
+		return errors.New(msg)
+	}
 	return discover.SetCreateGroupStatus(gname, enode, approval)
 }
 

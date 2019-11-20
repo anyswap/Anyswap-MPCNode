@@ -134,18 +134,26 @@ func (this *Service) GetEnodeStatus(enode string) string {
 	return string(res)
 }
 
-type groupNodeStatus struct {
+type getGroupNodeStatus struct {
+	//Gname string
+	Enode string
+	//Status string
+	Error string
+	GroupList []GroupInfo
+}
+
+type setGroupNodeStatus struct {
 	Gname string
 	Enode string
 	Status string
 	Error string
-	GroupList []GroupInfo
+	//GroupList []GroupInfo
 }
 
 func (this *Service) SetGroupNodeStatus(gname, enode, approval string) string {
 	fmt.Printf("==== (this *Service) SetGroupNodeStatus() ====, gname: %v, enode: %v, approval: %v\n", gname, enode, approval)
 	err := layer2.SetCreateGroupStatus(gname, enode, approval)
-	sgi := &groupNodeStatus{Gname: gname, Enode: enode, Status: approval}
+	sgi := &setGroupNodeStatus{Gname: gname, Enode: enode, Status: approval}
 	if err != nil {
 		sgi.Error = err.Error()
 	}
@@ -156,27 +164,17 @@ func (this *Service) SetGroupNodeStatus(gname, enode, approval string) string {
 func (this *Service) GetGroupNodeStatus(enode string) string {
 	fmt.Printf("==== (this *Service) GetGroupNodeStatus() ====, enode: %v\n", enode)
 	retGroup := getSDKGroup(enode, "NEW")
-	fmt.Printf("\nretGroup: %v\n", retGroup)
-	sgi := &groupNodeStatus{Enode: enode}
+	fmt.Printf("retGroup: %v\n", retGroup)
+	sgi := &getGroupNodeStatus{Enode: enode}
 	rg := sdkGroupInfo{}
 	errg := json.Unmarshal([]byte(retGroup), &rg)
 	if errg != nil {
 		sgi.Error = errg.Error()
 	} else {
-		//TODO rg
-		fmt.Printf("\nrg: %v\n", rg)
+		fmt.Printf("GetGroupNodeStatus, groupList: %v\n", rg)
 		if len(rg.Group) == 0 {
 			sgi.Error = "group is null"
 		} else {
-			//for _, g := range rg.Group {
-			//	ret, err := layer2.GetCreateGroupStatus(g.Gname, enode)
-			//	if err != nil {
-			//		sgi.Error = err.Error()
-			//		continue
-			//	}
-			//	sgi.Gname = g.Gname
-			//	sgi.Status = ret
-			//}
 			sgi.GroupList = rg.Group
 		}
 	}

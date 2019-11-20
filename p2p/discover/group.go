@@ -434,7 +434,7 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
 
        go func() {
                //log.Debug("getmessage", "callEvent msg: ", msgp)
-               fmt.Printf("getmessage, callMsgEvent msg: %v\n", msgp[100])
+               //fmt.Printf("getmessage, callMsgEvent msg: %v\n", msgp[100])
                msgc := callMsgEvent(msgp, int(req.P2pType), fromID.String())
                //callUpdateOrderCacheEvent(msgp)//for mongo
                //log.Debug("getmessage", "callEvent retmsg: ", msgc)
@@ -442,7 +442,7 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
                //tmpdcrmmsg.Number = [3]byte{}
                //t.send(from, gotDcrmPacket, &getdcrmmessage{
                //log.Debug("getmessage", "send(from", from, "msg", msg)
-               fmt.Printf("ret callback getmessage, send from: %v, msg: %v, req.P2pType: %v\n", from, msg[:100], req.P2pType)
+               //fmt.Printf("ret callback getmessage, send from: %v, msg: %v, req.P2pType: %v\n", from, msg[:100], req.P2pType)
                gotpacket := getGotPacket(int(req.P2pType))
                _, err := t.send(from, byte(gotpacket), &dcrmmessage{
                        Target:     fromID,
@@ -451,7 +451,7 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
                        Expiration: uint64(time.Now().Add(expiration).Unix()),
                })
                //log.Debug("dcrm handle", "send to from: ", from, ", message: ", msg)
-               fmt.Printf("dcrm handle, send to target: %v, from: %v, msg(len = %v): %v, err: %v\n", fromID, from, len(msg), msg[:100], err)
+               //fmt.Printf("dcrm handle, send to target: %v, from: %v, msg(len = %v): %v, err: %v\n", fromID, from, len(msg), msg[:100], err)
        }()
        return nil
 }
@@ -1292,12 +1292,14 @@ func (t *udp) sendStatusToPeer(toid NodeID, toaddr *net.UDPAddr, req *groupStatu
 		return true
 	})
 //	log.Warn("====  (t *udp) sendStatusToPeer()  ====", "sendtoAddress", toaddr)
-	fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, t.send, toaddr: %v, groupstatus: %v\n", toaddr, req)
+	//fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, t.send, toaddr: %v, groupstatus: %v\n", toaddr, req)
 	req.Expiration = uint64(time.Now().Add(expiration).Unix())
 	_, errs := t.send(toaddr, byte(Sdk_groupStatusPacket), req)
-	fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, t.send end errs: %v\n", errs)
+	if errs != nil {
+		fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, t.send end errs: %v\n", errs)
+	}
 	err := <-errc
-	fmt.Printf("====  (t *udp) sendStatusToPeer()  ====,  err : %v <-errc\n", err)
+	//fmt.Printf("====  (t *udp) sendStatusToPeer()  ====,  err : %v <-errc\n", err)
 	return err
 }
 func (req *groupStatusMsg) name() string { return "GROUPSTATUS/v4" }

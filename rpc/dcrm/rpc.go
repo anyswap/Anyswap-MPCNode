@@ -45,7 +45,7 @@ type Service struct {}
 // model: "0"  self-group; "1" non self-group
 //return pubkey and coins addr
 func (this *Service) ReqDcrmAddr(raw string,model string) string {   //函数名首字母必须大写
-    fmt.Println("==============dcrm_reqDcrmAddr==================")
+    fmt.Println("==========dcrm_reqDcrmAddr,raw = %s,model = %s ===========",raw,model)
 
     if raw == "" || model == "" || (model != "0" && model != "1") {
 	return "param error."
@@ -60,6 +60,7 @@ func (this *Service) ReqDcrmAddr(raw string,model string) string {   //函数名
 }
 
 func (this *Service) AcceptLockOut(raw string) string {
+    fmt.Println("==========AcceptLockOut===========")
     ret,err := dcrm.AcceptLockOut(raw)
     if err != nil {
 	return err.Error()
@@ -69,6 +70,7 @@ func (this *Service) AcceptLockOut(raw string) string {
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
+    fmt.Println("==========LockOut===========")
     txhash,err := dcrm.LockOut(raw)
     if err != nil {
 	return map[string]interface{}{

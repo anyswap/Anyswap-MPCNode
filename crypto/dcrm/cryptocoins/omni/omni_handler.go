@@ -403,6 +403,10 @@ func (h *OmniHandler) GetAddressBalance(address string, jsonstring string) (bala
 
 	var retObj interface{}
 	json.Unmarshal([]byte(ret), &retObj)
+	if retObj == nil {
+	    err = fmt.Errorf("unmarshal response string error.")
+	    return
+	}
 
 	result := retObj.(map[string]interface{})["result"]
 	balanceStr := result.(map[string]interface{})["balance"].(string)

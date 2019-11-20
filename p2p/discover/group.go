@@ -94,6 +94,7 @@ type (
 		Gname      string
 		Mode      string
 		msg        string
+		status        string
 		count      int
 		P2pType    byte
 		Nodes      []rpcNode
@@ -177,6 +178,9 @@ func getGroupList(gid NodeID, p2pType int) *group {
 
 func getGroupSDK(gid NodeID) *group{
 	for id, g := range SDK_groupList {
+		//if g.status != "SUCCESS" {
+		//	continue
+		//}
 		index := id.String()
 		gf := gid.String()
 		fmt.Printf("getGroupSDK, id: %v, gid: %v\n", id, gid)
@@ -514,6 +518,7 @@ func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int) string {
 		}
 		groupMemNum = gg.count
 	} else {
+		fmt.Printf("Not found gid(%v) from local, from bootnode ...\n", gid)
 		bn := Table4group.nursery[0]
 		if bn == nil {
 //			log.Warn("SendToGroup(), bootnode is nil\n")
@@ -668,7 +673,8 @@ func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node) (
 	buildSDKGroup(gname, gid, mode, enode)
 	initGroupNodesStatus(gname, gid, enode)
 	if waitSDKGroupReady(gname, gid, enode) == "AGREE" {
-		delete(SDK_groupList, gid)
+		//delete(SDK_groupList, gid)
+		//SDK_groupList[gid].status = "SUCCESS"
 		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
 		status := "SUCCESS"
 		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
@@ -752,6 +758,7 @@ func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node) {
 	groupTmp := new(group)
 	groupTmp.Gname = gname
 	groupTmp.Mode = mode
+	//groupTmp.status = "NEW"
 	groupTmp.Nodes = make([]rpcNode, len(enode))
 	for i, node := range enode {
 		groupTmp.Nodes[i] = nodeToRPC(node)

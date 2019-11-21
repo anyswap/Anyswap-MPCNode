@@ -502,23 +502,24 @@ func InitGroup(groupsNum, nodesNum int) error {
 	return nil
 }
 
-func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int) string {
+func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node) string {
 //	log.Debug("==== SendToGroup() ====", "p2pType", p2pType)
 	fmt.Printf("==== SendToGroup() ====, gid: %v, allNodes: %v, p2pType: %v\n", gid, allNodes, p2pType)
-	gg := getGroupSDK(gid)
+	//gg := getGroupSDK(gid)
 	groupMemNum := 0
 	g := make([]*Node, 0, bucketSize)
 	if gg != nil {
-		for _, rn := range gg.Nodes {
-			n := NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
-			err := n.validateComplete()
-			if err != nil {
-				fmt.Printf("Invalid neighbor node received, ip: %v, err: %v\n", rn.IP, err)
-				continue
-			}
-			g = append(g, n)
-		}
-		groupMemNum = gg.count
+		//for _, rn := range gg.Nodes {
+		//	n := NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
+		//	err := n.validateComplete()
+		//	if err != nil {
+		//		fmt.Printf("Invalid neighbor node received, ip: %v, err: %v\n", rn.IP, err)
+		//		continue
+		//	}
+		//	g = append(g, n)
+		//}
+		g = gg
+		groupMemNum = len(gg)
 	} else {
 		fmt.Printf("Not found gid(%v) from local, from bootnode ...\n", gid)
 		bn := Table4group.nursery[0]
@@ -1267,7 +1268,7 @@ func GetEnodeStatus(enode string) (string, string) {
 	selfid := fmt.Sprintf("%v", GetLocalID())
 	fmt.Printf("GetEnodeStatus selfid: %v, node.ID: %v\n", selfid, n.ID)
 	if n.ID.String() == selfid {
-		return "OnLine", "enode is myself"
+		return "OnLine", ""
 	} else {
 		ipa := &net.UDPAddr{IP: n.IP, Port: int(n.UDP)}
 		errp := Table4group.net.ping(n.ID, ipa)

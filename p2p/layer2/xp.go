@@ -28,7 +28,7 @@ import (
 
 // txs start
 func Xprotocol_sendToGroupOneNode(msg string) string {
-	return discover.SendToGroup(discover.NodeID{}, msg, false, Xprotocol_type)
+	return discover.SendToGroup(discover.NodeID{}, msg, false, Xprotocol_type, nil)
 }
 
 // broadcast

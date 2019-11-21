@@ -382,20 +382,25 @@ func CheckAddPeer(enodes []string) error {
 		}
 		p := emitter.peers[node.ID]
 		if p == nil {
+			addpeer = true
 			nodes = append(nodes, node)
 			go p2pServer.AddPeer(node)
-			addpeer = true
 		}
 	}
 	if addpeer {
 		fmt.Printf("CheckAddPeer, waitting add peer ...\n")
-		time.Sleep(time.Duration(4) * time.Second)
+		count := 0
 		for _, node := range nodes {
 			p := emitter.peers[node.ID]
 			if p == nil {
-				fmt.Printf("CheckAddPeer, add peer failed node: %v\n", node)
-				msg := fmt.Sprintf("CheckAddPeer, add peer failed node: %v\n", node)
-				return errors.New(msg)
+				time.Sleep(time.Duration(1) * time.Second)
+				count += 1
+				if count > (len(nodes) * 10) {
+					fmt.Printf("CheckAddPeer, add peer failed node: %v\n", node)
+					msg := fmt.Sprintf("CheckAddPeer, add peer failed node: %v\n", node)
+					return errors.New(msg)
+				}
+				continue
 			}
 			fmt.Printf("CheckAddPeer, add peer success node: %v\n", node)
 		}

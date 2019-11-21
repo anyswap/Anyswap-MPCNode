@@ -468,7 +468,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        //      return errUnsolicitedReply
        //}
        //log.Debug("dcrmmessage", "handle, callReturn req.Msg", req.Msg)
-       fmt.Printf("dcrmmessage, handle, callCCReturn req.Msg: %v\n", req.Msg[:100])
+       fmt.Printf("dcrmmessage, handle, callCCReturn\n")
        go callCCReturn(req.Msg, int(req.P2pType), fromID.String())
        return nil
 }
@@ -504,7 +504,7 @@ func InitGroup(groupsNum, nodesNum int) error {
 
 func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int) string {
 //	log.Debug("==== SendToGroup() ====", "p2pType", p2pType)
-	fmt.Printf("==== SendToGroup() ====, gid: %v, msg: %v, allNodes: %v, p2pType: %v\n", gid, msg[:100], allNodes, p2pType)
+	fmt.Printf("==== SendToGroup() ====, gid: %v, allNodes: %v, p2pType: %v\n", gid, allNodes, p2pType)
 	gg := getGroupSDK(gid)
 	groupMemNum := 0
 	g := make([]*Node, 0, bucketSize)

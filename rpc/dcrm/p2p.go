@@ -23,6 +23,21 @@ import (
 	"github.com/fsn-dev/dcrm5-libcoins/p2p/layer2"
 )
 
+const (
+	SUCCESS string = "Success"
+	FAIL string = "Error"
+	NULLRET string = "Null"
+	REPEAT string = "Repeat"
+	PENDING string = "Pending"
+)
+
+type Result struct {
+	Status string // Success, Error, Null, Repeat, Pending
+	Tip string
+	Error string
+	Data interface{}
+}
+
 type Enode struct {
 	Enode string
 }
@@ -30,115 +45,124 @@ type Enode struct {
 type EnodeStatus struct {
 	Enode string
 	Status string
-	Error string
 }
 
-type NID struct {
-	Nid string
+func packageResult(status, tip, errors string, msg interface{}) string {
+	ret := &Result{Status: status, Tip: tip, Error: errors, Data: msg}
+	retnid, _ := json.Marshal(ret)
+	return string(retnid)
 }
 
 func (this *Service) GetEnode() string {
 	en := layer2.GetEnode()
-	ret := &Enode{Enode: en}
-	nid, _ := json.Marshal(ret)
-	fmt.Printf("==== GetEnode() ====, en: %v, ret: %v, nid: %v\n", en, ret, string(nid))
-	return string(nid)
-}
-
-func (this *Service) GetNodeID() string {
-	id := layer2.GetSelfID()
-	ret := &NID{Nid: id}
-	nid, _ := json.Marshal(ret)
-	fmt.Printf("==== GetNodeID() ====, id: %v, ret: %v, nid: %v\n", id, ret, string(nid))
-	return string(nid)
+	reten := &Enode{Enode: en}
+	fmt.Printf("==== GetEnode() ====, en: %v, ret: %v\n", en, reten)
+	return packageResult(SUCCESS, "", "", reten)
 }
 
 type GroupInfo struct {
 	Gname string
 	Gid string
 	Mode string
+	Status string
 	Number int
 	Enodes []string
-	Status string // group status: NEW, SUCCESS, FAILED
-	Error string
 }
 
 func (this *Service) CreateSDKGroup(gname, mode string, enodes []string) string {
 	fmt.Printf("==== CreateSDKGroup() ====\n")
 	if len(enodes) == 0 {
-		ret := &GroupInfo{Gname: gname, Error: "nodes is nil"}
-		gif, _ := json.Marshal(ret)
-		return string(gif)
+		ret := &GroupInfo{Gname: gname}
+		return packageResult(FAIL, "args 3rd is null", "enodes is null", ret)
 	}
 	err := layer2.CheckAddPeer(enodes)
 	if err != nil {
-		ret := &GroupInfo{Gname: gname, Mode: mode, Error: err.Error()}
-		gif, _ := json.Marshal(ret)
-		return string(gif)
+		ret := &GroupInfo{Gname: gname, Mode: mode}
+		return packageResult(FAIL, "add peer failed", err.Error(), ret)
 	}
 	name, gid, count, retErr := layer2.CreateSDKGroup(gname, mode, enodes)
 	if retErr != "" {
-		if name != gname {
-			gname = fmt.Sprintf("%v(new) %v(exist)", gname, name)
+		status := FAIL
+		tip := ""
+		if name != "" {
+			tip = fmt.Sprintf("group %v exist", name)
+			status = REPEAT
 		}
-		ret := &GroupInfo{Gname: gname, Gid: gid, Mode: mode, Number: count, Enodes: enodes, Error: retErr}
-		gif, _ := json.Marshal(ret)
-		return string(gif)
+		ret := &GroupInfo{Gname: gname, Gid: gid, Mode: mode, Number: count, Enodes: enodes}
+		return packageResult(status, tip, retErr, ret)
 	}
 	fmt.Printf("==== CreateSDKGroup() ====, gid: %v, count: %v\n", gid, count)
-	ret := &GroupInfo{Gname: name, Gid: gid, Mode: mode, Number: count, Enodes: enodes, Status: "NEW (create group starting ...)"}
-	gif, _ := json.Marshal(ret)
-	return string(gif)
+	ret := &GroupInfo{Gname: name, Gid: gid, Mode: mode, Number: count, Enodes: enodes}
+	return packageResult(PENDING, "waitting create group approval", "create group started, waitting create group approval", ret)
 }
 
 type sdkGroupInfo struct {
-	Group []GroupInfo
+	Enode string
+	GroupList []GroupInfo
 }
 
 func (this *Service) GetSDKGroup(enode string) string {
-	return getSDKGroup(enode, "SUCCESS")
+	return getSDKGroup(enode, "SUCCESS", false)
 }
 
-func getSDKGroup(enode, status string) string {
+func getSDKGroup(enode, build string, status bool) string {
 	group := make([]GroupInfo, 0)
 	nodeid := layer2.ParseNodeID(enode)
+	stat := SUCCESS
+	tip := ""
 	addGroup := false
 	for gid, g := range layer2.SdkGroup {
 		fmt.Printf("gid: %v, g: %v\n", gid, g)
 		addGroup = false
 		enodes := make([]string, 0)
-		fmt.Printf("g.Status: %v, status: %v\n", g.Status, status)
-		if g.Status != status {
+		fmt.Printf("g.Status: %v, build: %v\n", g.Status, build)
+		if g.Status != build {
 			continue
 		}
 		for id, en := range g.Group {
 			enodes = append(enodes, en.Enode)
+			fmt.Printf("getSDKGroup, id: %v, nodeid: %v\n", id, nodeid)
 			if id == nodeid {
 				addGroup = true
 			}
 		}
 		if addGroup {
-			ret := &GroupInfo{Gname: g.Gname, Gid: gid.String(), Mode: g.Mode, Number: len(g.Group), Enodes: enodes, Status: g.Status}
+			ret := &GroupInfo{Gname: g.Gname, Gid: gid.String(), Mode: g.Mode, Number: len(g.Group), Enodes: enodes}
+			if status {
+				st, err := layer2.GetCreateGroupStatus(g.Gname, enode)
+				if err != nil {
+					stat = FAIL
+					tip = err.Error()
+					group = append(group, *ret)
+					sgi := &sdkGroupInfo{Enode: enode, GroupList: group}
+					return packageResult(stat, tip, tip, sgi)
+				}
+				ret.Status = st
+			}
 			group = append(group, *ret)
 		}
 	}
-	sgi := &sdkGroupInfo{Group: group}
-	gif, _ := json.Marshal(sgi)
-	return string(gif)
+	if !addGroup {
+		stat = NULLRET
+		tip = "group is null"
+	}
+	sgi := &sdkGroupInfo{Enode: enode, GroupList: group}
+	return packageResult(stat, tip, tip, sgi)
 }
 
 func (this *Service) GetEnodeStatus(enode string) string {
 	es := &EnodeStatus{Enode: enode}
-	es.Status, es.Error = layer2.GetEnodeStatus(enode)
-	res, _ := json.Marshal(es)
-	return string(res)
+	status := SUCCESS
+	stat, err := layer2.GetEnodeStatus(enode)
+	if stat == "" {
+		status = FAIL
+	}
+	es.Status = stat
+	return packageResult(status, err, err, es)
 }
 
 type getGroupNodeStatus struct {
-	//Gname string
 	Enode string
-	//Status string
-	Error string
 	GroupList []GroupInfo
 }
 
@@ -146,7 +170,6 @@ type setGroupNodeStatus struct {
 	Gname string
 	Enode string
 	Status string
-	Error string
 	//GroupList []GroupInfo
 }
 
@@ -154,31 +177,17 @@ func (this *Service) SetGroupNodeStatus(gname, enode, approval string) string {
 	fmt.Printf("==== (this *Service) SetGroupNodeStatus() ====, gname: %v, enode: %v, approval: %v\n", gname, enode, approval)
 	err := layer2.SetCreateGroupStatus(gname, enode, approval)
 	sgi := &setGroupNodeStatus{Gname: gname, Enode: enode, Status: approval}
+	status := SUCCESS
+	tip := ""
 	if err != nil {
-		sgi.Error = err.Error()
+		status = FAIL
+		tip = err.Error()
 	}
-	gif, _ := json.Marshal(sgi)
-	return string(gif)
+	return packageResult(status, tip, tip, sgi)
 }
 
 func (this *Service) GetGroupNodeStatus(enode string) string {
 	fmt.Printf("==== (this *Service) GetGroupNodeStatus() ====, enode: %v\n", enode)
-	retGroup := getSDKGroup(enode, "NEW")
-	fmt.Printf("retGroup: %v\n", retGroup)
-	sgi := &getGroupNodeStatus{Enode: enode}
-	rg := sdkGroupInfo{}
-	errg := json.Unmarshal([]byte(retGroup), &rg)
-	if errg != nil {
-		sgi.Error = errg.Error()
-	} else {
-		fmt.Printf("GetGroupNodeStatus, groupList: %v\n", rg)
-		if len(rg.Group) == 0 {
-			sgi.Error = "group is null"
-		} else {
-			sgi.GroupList = rg.Group
-		}
-	}
-	gif, _ := json.Marshal(sgi)
-	return string(gif)
+	return getSDKGroup(enode, "NEW", true)
 }
 

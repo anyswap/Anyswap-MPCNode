@@ -132,6 +132,9 @@ func getSDKGroup(enode, build string, status bool, groupMode string) string {
 			}
 		} else {
 			fmt.Printf("g.Status: %v, build: %v\n", g.Status, build)
+			if g.Type == "1+2" {
+				continue
+			}
 			if g.Status != build {
 				continue
 			}

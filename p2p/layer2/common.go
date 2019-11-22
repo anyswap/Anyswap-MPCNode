@@ -311,7 +311,7 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 
 func recvStatusInfo(gname string, gid discover.NodeID, count uint64, node *discover.Node, status string) {
 	fmt.Printf("==== recvStatusInfo() ====, gid: %v\n", gid)
-	if gid == node.ID {
+	if gid == node.ID { // gid
 		if status == "SUCCESS" {
 			updateSDKGroupStatus(gid, status)
 			//_, xvcGroup := getGroupSDK(gid)
@@ -358,7 +358,7 @@ func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface
 	for _, enode := range req.([]*discover.Node) {
 	//	log.Debug("recvGroupInfo", "i: ", i, "e: ", enode)
 		node, _ := discover.ParseNode(enode.String())
-		xvcGroup.Group[node.ID.String()] = &group{id: node.ID, ip: node.IP, port: node.UDP, Enode: enode.String()}
+		xvcGroup.Group[node.ID.String()] = &group{id: node.ID, ip: node.IP, port: node.UDP, Enode: enode.String(), Status: "NEW"}
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
 	}
 	fmt.Printf("==== recvGroupInfo() ====, xvcGroup: %v\n", xvcGroup)

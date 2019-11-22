@@ -468,7 +468,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        //      return errUnsolicitedReply
        //}
        //log.Debug("dcrmmessage", "handle, callReturn req.Msg", req.Msg)
-       //fmt.Printf("dcrmmessage, handle, callCCReturn req.Msg: %v\n", req.Msg[:100])
+       fmt.Printf("dcrmmessage, handle, callCCReturn\n")
        go callCCReturn(req.Msg, int(req.P2pType), fromID.String())
        return nil
 }
@@ -502,23 +502,24 @@ func InitGroup(groupsNum, nodesNum int) error {
 	return nil
 }
 
-func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int) string {
+func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node) string {
 //	log.Debug("==== SendToGroup() ====", "p2pType", p2pType)
-	//fmt.Printf("==== SendToGroup() ====, gid: %v, msg: %v, allNodes: %v, p2pType: %v\n", gid, msg[:100], allNodes, p2pType)
-	gg := getGroupSDK(gid)
+	fmt.Printf("==== SendToGroup() ====, gid: %v, allNodes: %v, p2pType: %v\n", gid, allNodes, p2pType)
+	//gg := getGroupSDK(gid)
 	groupMemNum := 0
 	g := make([]*Node, 0, bucketSize)
 	if gg != nil {
-		for _, rn := range gg.Nodes {
-			n := NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
-			err := n.validateComplete()
-			if err != nil {
-				fmt.Printf("Invalid neighbor node received, ip: %v, err: %v\n", rn.IP, err)
-				continue
-			}
-			g = append(g, n)
-		}
-		groupMemNum = gg.count
+		//for _, rn := range gg.Nodes {
+		//	n := NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
+		//	err := n.validateComplete()
+		//	if err != nil {
+		//		fmt.Printf("Invalid neighbor node received, ip: %v, err: %v\n", rn.IP, err)
+		//		continue
+		//	}
+		//	g = append(g, n)
+		//}
+		g = gg
+		groupMemNum = len(gg)
 	} else {
 		fmt.Printf("Not found gid(%v) from local, from bootnode ...\n", gid)
 		bn := Table4group.nursery[0]
@@ -621,6 +622,44 @@ func setGroup(n *Node, replace string) {
 	setGroupCC(n, replace, Dcrmprotocol_type)
 }
 
+func sendSDKGroupInfo(groupList *group, p2pType int) {
+	count := 0
+	enode := ""
+	for i := 0; i < groupList.count; i++ {
+		count++
+		node := groupList.Nodes[i]
+		if enode != "" {
+			enode += Dcrmdelimiter
+		}
+		e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
+		enode += e
+		//if bytes.Equal(n.IP, node.IP) == true && n.UDP == node.UDP {
+			ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+			go SendToPeer(groupList.ID, node.ID, ipa, "", p2pType)
+		//}
+	}
+	//enodes := fmt.Sprintf("%v,%v,%v", groupList.ID, count, enode)
+//	log.Debug("send group to nodes", "group: ", enodes)
+//	log.Warn("send group to nodes", "group: ", enodes)
+}
+
+func sendSDKGroupPrivKey(groupList *group, p2pType int) {
+	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
+		//go callPrivKeyEvent(enodes)
+		var tmp int = 0
+		for i := 0; i < groupList.count; i++ {
+			node := groupList.Nodes[i]
+			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
+			tmp++
+			//go SendToPeer(enode, cDPrivKey)
+			go func (node rpcNode, msg string) {
+				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+				SendMsgToNode(node.ID, ipa, msg)
+			}(node, cDPrivKey)
+		}
+	}
+}
+
 func sendGroupInfo(groupList *group, p2pType int) {
 	count := 0
 	enode := ""
@@ -682,6 +721,9 @@ func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node) (
 			status := "SUCCESS"
 			updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
 			//buildSDKGroup(gname, gid, mode, enode)
+			if SDK_groupList != nil && SDK_groupList[gid] != nil {
+				go sendSDKGroupPrivKey(SDK_groupList[gid], Sdkprotocol_type) //TODO
+			}
 		} else {
 			node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
 			status := "FAILED"
@@ -768,7 +810,7 @@ func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node) {
 	}
 	groupTmp.ID = gid
 	SDK_groupList[groupTmp.ID] = groupTmp
-	go sendGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type) //TODO
+	go sendSDKGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type) //TODO
 }
 
 func destroySDKGroup(gid NodeID) {
@@ -1267,7 +1309,7 @@ func GetEnodeStatus(enode string) (string, string) {
 	selfid := fmt.Sprintf("%v", GetLocalID())
 	fmt.Printf("GetEnodeStatus selfid: %v, node.ID: %v\n", selfid, n.ID)
 	if n.ID.String() == selfid {
-		return "OnLine", "enode is myself"
+		return "OnLine", ""
 	} else {
 		ipa := &net.UDPAddr{IP: n.IP, Port: int(n.UDP)}
 		errp := Table4group.net.ping(n.ID, ipa)

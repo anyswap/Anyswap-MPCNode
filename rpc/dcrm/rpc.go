@@ -28,15 +28,14 @@ import (
 )
 
 func listenSignal(exit chan int) {
-	sig := make(chan os.Signal)
-	signal.Notify(sig)
+    sig := make(chan os.Signal)
+    signal.Notify(sig)
 
-	for {
-		<-sig
-		exit <- 1
-	}
+    for {
+	<-sig
+	exit <- 1
+    }
 }
-
 
 type Service struct {}
 
@@ -44,85 +43,183 @@ type Service struct {}
 // raw: tx raw data
 // model: "0"  self-group; "1" non self-group
 //return pubkey and coins addr
-func (this *Service) ReqDcrmAddr(raw string,model string) string {   //函数名首字母必须大写
+func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{} {   //函数名首字母必须大写
     fmt.Println("==========dcrm_reqDcrmAddr,raw = %s,model = %s ===========",raw,model)
 
+    data := make(map[string]interface{})
     if raw == "" || model == "" || (model != "0" && model != "1") {
-	return "param error."
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": "parameter error",
+		"Error": "parameter error",
+		"Data": data,
+	}
     }
 
-    ret,err := dcrm.ReqDcrmAddr(raw,model)
+    ret,tip,err := dcrm.ReqDcrmAddr(raw,model)
     if err != nil {
-	return err.Error()
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
+		"Error": err.Error(),
+		"Data": data,
+	}
     }
 
-    return ret
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
 }
 
-func (this *Service) AcceptLockOut(raw string) string {
+func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
     fmt.Println("==========dcrm_acceptLockOut,raw =%s ===========",raw)
-    ret,err := dcrm.AcceptLockOut(raw)
+
+    data := make(map[string]interface{})
+    ret,tip,err := dcrm.AcceptLockOut(raw)
     if err != nil {
-	return err.Error()
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
+		"Error": err.Error(),
+		"Data": data,
+	}
     }
 
-    return ret
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
     fmt.Println("==========dcrm_lockOut,raw =%s ===========",raw)
-    txhash,err := dcrm.LockOut(raw)
+
+    data := make(map[string]interface{})
+    txhash,tip,err := dcrm.LockOut(raw)
     if err != nil {
+	data["result"] = ""
 	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
 		"Error": err.Error(),
+		"Data": data,
 	}
     }
 
+    data["result"] = txhash
     return map[string]interface{}{
-	    "TxHash": txhash,
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
     }
 }
 
-func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) string {
+func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) map[string]interface{} {
     fmt.Println("==============dcrm_getBalance================")
+
+    data := make(map[string]interface{})
     if account == "" || cointype == "" || dcrmaddr == "" {
-	return "0"
+	data["result"] = "0"
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip": "parameter error,but return 0",
+		"Error": "parameter error",
+		"Data": data,
+	}
     }
 
-    return dcrm.GetBalance(account,cointype,dcrmaddr)
+    ret,tip,err := dcrm.GetBalance(account,cointype,dcrmaddr)
+
+    if err != nil {
+	data["result"] = "0" 
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip": tip + ",but return 0",
+		"Error": err.Error(),
+		"Data": data,
+	}
+    }
+
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
 }
 
-func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) string {
+func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) map[string]interface{} {
     fmt.Println("==============dcrm_getNonce================")
+
+    data := make(map[string]interface{})
     if account == "" || cointype == "" || dcrmaddr == "" {
-	return "0"
+	data["result"] = "0"
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip": "parameter error,but return 0",
+		"Error": "parameter error",
+		"Data": data,
+	}
     }
 
-    return dcrm.GetNonce(account,cointype,dcrmaddr)
+    ret,tip,err := dcrm.GetNonce(account,cointype,dcrmaddr)
+
+    if err != nil {
+	data["result"] = "0" 
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip": tip + ",but return 0",
+		"Error": err.Error(),
+		"Data": data,
+	}
+    }
+
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
 }
 
 func (this *Service) GetCurNodeLockOutInfo() map[string]interface{} {
     fmt.Println("==============dcrm_getCurNodeLockOutInfo================")
-    enode := "xxx" //TODO
-    if enode == "" {
-	return map[string]interface{}{
-		"Error": "enode is empty.",
-	}
-    }
 
-    s,err := dcrm.GetLockOutReply(enode)
+    data := make(map[string]interface{})
+    s,tip,err := dcrm.GetLockOutReply()
     if err != nil {
+	data["result"] = ""
 	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
 		"Error": err.Error(),
+		"Data": data,
 	}
     }
 
-    ret := make(map[string]interface{})
     for k,v := range s {
-	ret[strconv.Itoa(k)] = v
+	data[strconv.Itoa(k)] = v
     }
 
-    return ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
 }
 
 var (

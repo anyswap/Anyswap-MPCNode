@@ -41,7 +41,7 @@ import (
     "runtime/debug"
 )
 
-func GetNonce(account string,cointype string,dcrmaddr string) (string,error) {
+func GetNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
 
      //db
     lock5.Lock()
@@ -51,7 +51,7 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,error) {
     if err != nil {
         lock5.Unlock()
 	fmt.Println("=========GetNonce,err = %v ============",err)
-        return "",err
+	return "","dcrm back-end internal error:open level db fail in func GetNonce",err
     }
     
     key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
@@ -60,21 +60,21 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,error) {
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return "",fmt.Errorf("leveldb not found account = %s,cointype = %s",account,cointype)
+	return "","dcrm back-end internal error:get nonce from db fail",fmt.Errorf("leveldb not found account = %s,cointype = %s",account,cointype)
     }
 
     ss,err := UnCompress(string(da))
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return "",err
+	return "","dcrm back-end internal error:uncompress nonce data from db fail",err
     }
     
     pubs,err := Decode2(ss,"PubKeyData")
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return "",err
+	return "","dcrm back-end internal error:decode nonce data from db fail",err
     }
    
     ////check account?? //TODO
@@ -84,10 +84,10 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,error) {
     fmt.Println("=========GetNonce,nonce = %v ============",nonce)
     db.Close()
     lock5.Unlock()
-    return nonce,nil
+    return nonce,"",nil
 }
 
-func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error {
+func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {
      //db
     lock5.Lock()
     dir := GetDbDir()
@@ -96,7 +96,7 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error
     if err != nil {
         lock5.Unlock()
 	fmt.Println("=========SetNonce,err = %v ============",err)
-        return err
+	return "dcrm back-end internal error:open level db fail",err
     }
     
     key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
@@ -105,21 +105,21 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return fmt.Errorf("leveldb not found account = %s,cointype = %s",account,cointype)
+	return "dcrm back-end internal error:get nonce data from db fail",fmt.Errorf("leveldb not found account = %s,cointype = %s",account,cointype)
     }
 
     ss,err := UnCompress(string(da))
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:uncompress nonce data from db fail",err
     }
     
     pubs,err := Decode2(ss,"PubKeyData")
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:decode nonce data from db fail",err
     }
    
     ////check account?? //TODO
@@ -130,14 +130,14 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:encode nonce data fail",err
     }
     
     ss,err = Compress([]byte(epubs))
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:compress nonce data fail",err
     }
 
     ///update db
@@ -149,14 +149,14 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error
 	if h == nil {
 	    db.Close()
 	    lock5.Unlock()
-	    return fmt.Errorf("set nonce fail.cointype is not supported.")
+	    return "cointype is not supported in lockout",fmt.Errorf("set nonce fail.cointype is not supported.")
 	}
 
 	ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 	if err != nil {
 	    db.Close()
 	    lock5.Unlock()
-	    return err
+	    return "dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,err
 	}
 
 	db.Put([]byte((pubs.(*PubKeyData)).Pub),[]byte(ss),nil)
@@ -187,7 +187,7 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) error
     //
     db.Close()
     lock5.Unlock()
-    return nil
+    return "",nil
 }
 
 func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
@@ -195,7 +195,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     var ret2 Err
     chandler := cryptocoins.NewCryptocoinHandler(cointype)
     if chandler == nil {
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrCoinTypeNotSupported)}
+	    res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:GetRetErr(ErrCoinTypeNotSupported)}
 	    ch <- res
 	    return
     }
@@ -203,9 +203,9 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     Nonce,_ := new(big.Int).SetString(nonce,10)
 
     //nonce check
-    cur_nonce_str,err := GetNonce(account,cointype,dcrmaddr)
+    cur_nonce_str,tip,err := GetNonce(account,cointype,dcrmaddr)
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:err}
 	ch <- res
 	return
     }
@@ -214,7 +214,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     one,_ := new(big.Int).SetString("1",10)
     cur_nonce = new(big.Int).Add(cur_nonce,one)
     if Nonce.Cmp(cur_nonce) != 0 {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("nonce error.")}
+	res := RpcDcrmRes{Ret:"",Tip:"lockout tx nonce error",Err:fmt.Errorf("nonce error.")}
 	ch <- res
 	return
     }
@@ -228,7 +228,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     db, err := leveldb.OpenFile(dir, nil) 
     if err != nil { 
         fmt.Println("===========validate_lockout,open db fail.=============")
-        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("open db fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:fmt.Errorf("open db fail.")}
         ch <- res
         lock5.Unlock()
         return
@@ -238,7 +238,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     da,err := db.Get([]byte(key2),nil)
     ///////
     if err != nil {
-        res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout data from db fail",Err:err}
         ch <- res
 	db.Close()
 	lock5.Unlock()
@@ -247,7 +247,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 
     ss,err := UnCompress(string(da))
     if err != nil {
-        res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:uncompress lockout data from db fail",Err:err}
         ch <- res
 	db.Close()
 	lock5.Unlock()
@@ -256,7 +256,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     
     pubs,err := Decode2(ss,"PubKeyData")
     if err != nil {
-        res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:decode lockout data from db fail",Err:err}
         ch <- res
 	db.Close()
 	lock5.Unlock()
@@ -279,13 +279,13 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     pubkey := hex.EncodeToString([]byte(dcrmpub))
     realdcrmfrom, err := chandler.PublicKeyToAddress(pubkey)
     if err != nil {
-        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get dcrm addr fail")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get dcrm addr error from pubkey:"+pubkey,Err:fmt.Errorf("get dcrm addr fail")}
         ch <- res
         return
     }
     
     if !strings.EqualFold(dcrmaddr,realdcrmfrom) {
-        res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("check dcrm addr fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"verify lockout dcrm addr fail,maybe input parameter error",Err:fmt.Errorf("check dcrm addr fail.")}
         ch <- res
         return
     }
@@ -299,7 +299,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     if strings.EqualFold(cointype,"EOS") {
 	eosaccount, _, _ = GetEosAccount()
 	if eosaccount == "" {
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetRealEosUserFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"get real eos user fail",Err:GetRetErr(ErrGetRealEosUserFail)}
 	    ch <- res
 	    return
 	}
@@ -315,7 +315,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     }
     
     if buildTxErr != nil {
-	    res := RpcDcrmRes{Ret:"",Err:buildTxErr}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:build unsign transaction fail",Err:buildTxErr}
 	    ch <- res
 	    return
     }
@@ -328,9 +328,9 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 
 	    if types.IsDefaultED25519(cointype) {
 		bak_sig := dcrm_sign_ed(wsid,digest,save,dcrmpub,cointype,rch)
-		ret,cherr := GetChannelValue(ch_t,rch)
+		ret,tip,cherr := GetChannelValue(ch_t,rch)
 		if cherr != nil {
-			res := RpcDcrmRes{Ret:"",Err:cherr}
+		    res := RpcDcrmRes{Ret:"",Tip:tip,Err:cherr}
 			ch <- res
 			return
 		}
@@ -344,9 +344,9 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    }
 
 	    bak_sig := dcrm_sign(wsid,digest,save,dcrmpkx,dcrmpky,cointype,rch)
-	    ret,cherr := GetChannelValue(ch_t,rch)
+	    ret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
-		    res := RpcDcrmRes{Ret:"",Err:cherr}
+		    res := RpcDcrmRes{Ret:"",Tip:tip,Err:cherr}
 		    ch <- res
 		    return
 	    }
@@ -354,7 +354,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    //bug
 	    rets := []rune(ret)
 	    if len(rets) != 130 {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrDcrmSigWrongSize)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:wrong rsv size",Err:GetRetErr(ErrDcrmSigWrongSize)}
 		ch <- res
 		return
 	    }
@@ -367,7 +367,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     signedTx, err := chandler.MakeSignedTransaction(sigs, lockouttx)
     if err != nil {
 	    ret2.Info = err.Error()
-	    res := RpcDcrmRes{Ret:"",Err:ret2}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:new sign transaction fail",Err:ret2}
 	    ch <- res
 	    return
     }
@@ -379,7 +379,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 
 	signedTx, err = chandler.MakeSignedTransaction(bak_sigs, lockouttx)
 	if err != nil {
-		res := RpcDcrmRes{Ret:"",Err:err}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:new sign transaction fail",Err:err}
 		ch <- res
 		return
 	}
@@ -392,36 +392,37 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     if lockout_tx_hash != "" {
 	w,err := FindWorker(wsid)
 	if w == nil || err != nil {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get worker error.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:fmt.Errorf("get worker error.")}
 	    ch <- res
 	    return
 	}
 
-	reply := AcceptLockOut(account,w.groupid,nonce,dcrmaddr,w.limitnum,true,true) 
+	tip,reply := AcceptLockOut(account,w.groupid,nonce,dcrmaddr,w.limitnum,true,true) 
 	if reply != nil {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("update lockout status error.")}
+	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update lockout status error.")}
 	    ch <- res
 	    return
 	}
 
-	if SetNonce(account,cointype,dcrmaddr,nonce) != nil {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("update nonce error.")}
+	tip,err = SetNonce(account,cointype,dcrmaddr,nonce)
+	if err != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update nonce error.")}
 	    ch <- res
 	    return
 	}
 
-	res := RpcDcrmRes{Ret:lockout_tx_hash,Err:err}
+	res := RpcDcrmRes{Ret:lockout_tx_hash,Tip:tip,Err:err}
 	ch <- res
 	return
     }
 
     if err != nil {
-	    res := RpcDcrmRes{Ret:"",Err:err}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send lockout tx to network fail",Err:err}
 	    ch <- res
 	    return
     }
     
-    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendTxToNetFail)}
+    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:lockout fail",Err:GetRetErr(ErrSendTxToNetFail)}
     ch <- res
     return
 }
@@ -438,7 +439,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	db, err := leveldb.OpenFile(dir, nil) 
 	if err != nil {
 	    fmt.Println("===========open db fail.=============")
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrCreateDbFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail in func dcrm_sign",Err:GetRetErr(ErrCreateDbFail)}
 	    ch <- res
 	    lock5.Unlock()
 	    return ""
@@ -461,7 +462,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	iter.Release()
 	///////
 	if eosstr == "" {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get save date fail.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get eos setting data from db fail",Err:fmt.Errorf("get save date fail.")}
 	    ch <- res
 	    db.Close()
 	    lock5.Unlock()
@@ -474,7 +475,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	if len(eosstrs) != 5 {
 	    var ret2 Err
 	    ret2.Info = "get eos settings error: "+string(eosstr)
-	    res := RpcDcrmRes{Ret:"",Err:ret2}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:eos setting data error",Err:ret2}
 	    ch <- res
 	    return ""
 	}
@@ -493,7 +494,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	w,err := FindWorker(msgprex)
 	if w == nil || err != nil {
 	    logs.Debug("===========get worker fail.=============")
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrNoFindWorker)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:GetRetErr(ErrNoFindWorker)}
 	    ch <- res
 	    return ""
 	}
@@ -502,11 +503,12 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	var ch1 = make(chan interface{}, 1)
 	var flag = false
 	var ret string
+	var tip string
 	var bak_sig string
 	//25-->1
 	for i := 0; i < 1; i++ {
 		bak_sig = Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx2,dcrmpky2,ch1,id)
-		ret,_ = GetChannelValue(ch_t,ch1)
+		ret,tip,_ = GetChannelValue(ch_t,ch1)
 		//if ret != "" && eos.IsCanonical([]byte(ret)) == true 
 		if ret == "" {
 			w := workers[id]
@@ -522,12 +524,12 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 		w.Clear2()
 	}
 	if flag == false {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrDcrmSigFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:eos dcrm sign fail",Err:GetRetErr(ErrDcrmSigFail)}
 		ch <- res
 		return ""
 	}
 
-	res := RpcDcrmRes{Ret:ret,Err:nil}
+	res := RpcDcrmRes{Ret:ret,Tip:tip,Err:nil}
 	ch <- res
 	return bak_sig
     }
@@ -541,7 +543,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
     w,err := FindWorker(msgprex)
     if w == nil || err != nil {
 	fmt.Println("===========get worker fail.=============")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:fmt.Errorf("no find worker.")}
 	ch <- res
 	return ""
     }
@@ -551,7 +553,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
     
     if int32(Enode_cnts) != int32(NodeCnt) {
 	fmt.Println("============the net group is not ready.please try again.================")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("group not ready.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:fmt.Errorf("group not ready.")}
 	ch <- res
 	return ""
     }
@@ -565,12 +567,13 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	var ch1 = make(chan interface{}, 1)
 	var flag = false
 	var ret string
+	var tip string
 	var cherr error
 	var bak_sig string
 	//25-->1
 	for i := 0; i < 1; i++ {
 		bak_sig = Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx,dcrmpky,ch1,id)
-		ret, cherr = GetChannelValue(ch_t,ch1)
+		ret, tip,cherr = GetChannelValue(ch_t,ch1)
 		if cherr != nil {
 			logs.Debug("======== dcrm_sign evt","cherr",cherr)
 			time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
@@ -596,12 +599,12 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	}
 	logs.Debug("======== dcrm_sign evt","got rsv flag",flag,"ret",ret,"","========")
 	if flag == false {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrDcrmSigFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:dcrm sign fail",Err:GetRetErr(ErrDcrmSigFail)}
 		ch <- res
 		return ""
 	}
 	//ch <- ret
-	res := RpcDcrmRes{Ret:ret,Err:cherr}
+	res := RpcDcrmRes{Ret:ret,Tip:tip,Err:cherr}
 	ch <- res
 	return bak_sig
     } else {
@@ -616,7 +619,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 //return value is the backup for the dcrm sig
 func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big.Int,pky *big.Int,ch chan interface{},id int) string {
     if id < 0 || id >= len(workers) || id >= RpcMaxWorker {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:fmt.Errorf("no find worker.")}
 	ch <- res
 	return ""
     }
@@ -625,14 +628,14 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     GroupId := w.groupid
     fmt.Println("========Sign_ec2============","GroupId",GroupId)
     if GroupId == "" {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"get group id fail",Err:fmt.Errorf("get group id fail.")}
 	ch <- res
 	return ""
     }
     
     hashBytes, err2 := hex.DecodeString(message)
     if err2 != nil {
-	res := RpcDcrmRes{Ret:"",Err:err2}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:decode message fail",Err:err2}
 	ch <- res
 	return ""
     }
@@ -654,6 +657,8 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     }
 
     if self == nil {
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get self uid fail in dcrm ec2 sign",Err:err2}
+	ch <- res
 	return ""
     }
 
@@ -677,14 +682,14 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     // 2. select k and gamma randomly
     u1K := GetRandomIntFromZn(secp256k1.S256().N)
     if u1K == nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random u1K fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get random u1K fail",Err:fmt.Errorf("get random u1K fail.")}
 	ch <- res
 	return ""
     }
 
     u1Gamma := GetRandomIntFromZn(secp256k1.S256().N)
     if u1Gamma == nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random u1Gamma fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get random u1Gamma fail",Err:fmt.Errorf("get random u1Gamma fail.")}
 	ch <- res
 	return ""
     }
@@ -704,9 +709,9 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 1. Receive Broadcast
     //	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
-     _,cherr := GetChannelValue(ch_t,w.bc11)
+     _,tip,cherr := GetChannelValue(ch_t,w.bc11)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetC11Timeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetC11Timeout)}
 	ch <- res
 	return ""
     }
@@ -756,9 +761,9 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	}
     }
 
-    _,cherr = GetChannelValue(ch_t,w.bmtazk1proof)
+    _,tip,cherr = GetChannelValue(ch_t,w.bmtazk1proof)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetMTAZK1PROOFTimeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetMTAZK1PROOFTimeout)}
 	ch <- res
 	return ""
     }
@@ -774,9 +779,9 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 2.4 Receive Broadcast c_k, zk(k)
     // u1KCipher, u2KCipher, u3KCipher
-     _,cherr = GetChannelValue(ch_t,w.bkc)
+     _,tip,cherr = GetChannelValue(ch_t,w.bkc)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetKCTimeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetKCTimeout)}
 	ch <- res
 	return ""
     }
@@ -784,7 +789,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     var i int
     kcs := make([]string,ThresHold-1)
     if w.msg_kc.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllKCFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_kc fail",Err:GetRetErr(ErrGetAllKCFail)}
 	ch <- res
 	return ""
     }
@@ -818,7 +823,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     // example for u1, receive: u1u1MtAZK1Proof from u1, u2u1MtAZK1Proof from u2, u3u1MtAZK1Proof from u3
     mtazk1s := make([]string,ThresHold-1)
     if w.msg_mtazk1proof.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllMTAZK1PROOFFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_mtazk1proof fail",Err:GetRetErr(ErrGetAllMTAZK1PROOFFail)}
 	ch <- res
 	return ""
     }
@@ -862,48 +867,48 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	if IsCurNode(enodes,cur_enode) {
 	    u1rlt1 := zk1proof[cur_enode].MtAZK1Verify(ukc[cur_enode],ukc3[cur_enode],zkfactproof[cur_enode])
 	    if !u1rlt1 {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:mtazk1proof verification fail",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 		ch <- res
 		return ""
 	    }
 	} else {
 	    if len(en) <= 0 {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:mtazk1proof verification fail",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 		ch <- res
 		return ""
 	    }
 
 	    _,exsit := zk1proof[en[0]]
 	    if exsit == false {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:mtazk1proof verification fail",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 		ch <- res
 		return ""
 	    }
 
 	    _,exsit = ukc[en[0]]
 	    if exsit == false {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:mtazk1proof not pass",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 		ch <- res
 		return ""
 	    }
 	    
 	    u1PaillierPk := GetPaillierPk(save,k)
 	    if u1PaillierPk == nil {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find paillier pk data",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 		ch <- res
 		return ""
 	    }
 
 	    _,exsit = zkfactproof[cur_enode]
 	    if exsit == false {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find zkfactproof data",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 		ch <- res
 		return ""
 	    }
 
 	    u1rlt1 := zk1proof[en[0]].MtAZK1Verify(ukc[en[0]],u1PaillierPk,zkfactproof[cur_enode])
 	    if !u1rlt1 {
-		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:mtazk1 verification fail",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 		ch <- res
 		return ""
 	    }
@@ -927,7 +932,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     for i=0;i<ThresHold;i++ {
 	beta1U1Star := GetRandomIntFromZn(NSubN2)
 	if beta1U1Star == nil {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random beta1U1Star fail.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get random beta1U1Star fail",Err:fmt.Errorf("get random beta1U1Star fail.")}
 	    ch <- res
 	    return ""
 	}
@@ -941,7 +946,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     for i=0;i<ThresHold;i++ {
 	v1U1Star := GetRandomIntFromZn(NSubN2)
 	if v1U1Star == nil {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get random v1U1Star fail.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get random v1U1Star fail",Err:fmt.Errorf("get random v1U1Star fail.")}
 	    ch <- res
 	    return ""
 	}
@@ -1040,16 +1045,16 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 2.9
     // receive c_kGamma from proper node, MtA(k, gamma)   zk
-     _,cherr = GetChannelValue(ch_t,w.bmkg)
+     _,tip,cherr = GetChannelValue(ch_t,w.bmkg)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetMKGTimeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetMKGTimeout)}
 	ch <- res
 	return ""
     }
 
     mkgs := make([]string,ThresHold-1)
     if w.msg_mkg.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllMKGFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_mkg fail",Err:GetRetErr(ErrGetAllMKGFail)}
 	ch <- res
 	return ""
     }
@@ -1095,16 +1100,16 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 2.10
     // receive c_kw from proper node, MtA(k, w)    zk
-    _,cherr = GetChannelValue(ch_t,w.bmkw)
+    _,tip,cherr = GetChannelValue(ch_t,w.bmkw)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetMKWTimeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetMKWTimeout)}
 	ch <- res
 	return ""
     }
 
     mkws := make([]string,ThresHold-1)
     if w.msg_mkw.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllMKWFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_mkw fail",Err:GetRetErr(ErrGetAllMKWFail)}
 	ch <- res
 	return ""
     }
@@ -1154,14 +1159,14 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	en := strings.Split(string(enodes[8:]),"@")
 	rlt111 := mkg_mtazk2[en[0]].MtAZK2Verify(ukc[cur_enode], mkg[en[0]],ukc3[cur_enode], zkfactproof[en[0]])
 	if !rlt111 {
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMKGFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:mtazk2 verification fail",Err:GetRetErr(ErrVerifyMKGFail)}
 	    ch <- res
 	    return ""
 	}
 
 	rlt112 := mkw_mtazk2[en[0]].MtAZK2Verify(ukc[cur_enode], mkw[en[0]], ukc3[cur_enode], zkfactproof[en[0]])
 	if !rlt112 {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("mkw mtazk2 verify fail.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:mkw mtazk2 verify fail",Err:fmt.Errorf("mkw mtazk2 verify fail.")}
 	    ch <- res
 	    return ""
 	}
@@ -1181,7 +1186,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     u1PaillierSk := GetPaillierSk(save,index)
     if u1PaillierSk == nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get sk fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get sk fail",Err:fmt.Errorf("get sk fail.")}
 	ch <- res
 	return ""
     }
@@ -1247,9 +1252,9 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 1. Receive Broadcast
     // delta: delta1, delta2, delta3
-     _,cherr = GetChannelValue(ch_t,w.bdelta1)
+     _,tip,cherr = GetChannelValue(ch_t,w.bdelta1)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all delta timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all delta timeout.")}
 	ch <- res
 	return ""
     }
@@ -1259,7 +1264,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     dels := make([]string,ThresHold-1)
     if w.msg_delta1.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all delta fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_delta1 fail",Err:fmt.Errorf("get all delta fail.")}
 	ch <- res
 	return ""
     }
@@ -1316,7 +1321,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	if deltaSum == nil || len(en) < 1 || delta1s[en[0]] == nil {
 	    var ret2 Err
 	    ret2.Info = "calc deltaSum error"
-	    res := RpcDcrmRes{Ret:"",Err:ret2}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:calc deltasum error",Err:ret2}
 	    ch <- res
 	    return ""
 	}
@@ -1342,16 +1347,16 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 1. Receive Broadcast
     // commitU1GammaG.D, commitU2GammaG.D, commitU3GammaG.D
-    _,cherr = GetChannelValue(ch_t,w.bd11_1)
+    _,tip,cherr = GetChannelValue(ch_t,w.bd11_1)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all c11 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all c11 fail.")}
 	ch <- res
 	return ""
     }
 
     d11s := make([]string,ThresHold-1)
     if w.msg_d11_1.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all c11 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_d11_1 fail",Err:fmt.Errorf("get all c11 fail.")}
 	ch <- res
 	return ""
     }
@@ -1366,7 +1371,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     c11s := make([]string,ThresHold-1)
     if w.msg_c11.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all c11 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_c11 fail",Err:fmt.Errorf("get all c11 fail.")}
 	ch <- res
 	return ""
     }
@@ -1414,20 +1419,20 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	en := strings.Split(string(enodes[8:]),"@")
 	//bug
 	if len(en) <= 0 {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify commit fail.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:verify commit fail",Err:fmt.Errorf("verify commit fail.")}
 	    ch <- res
 	    return ""
 	}
 	_,exsit := udecom[en[0]]
 	if exsit == false {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify commit fail.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:verify commit fail",Err:fmt.Errorf("verify commit fail.")}
 	    ch <- res
 	    return ""
 	}
 	//
 
 	if udecom[en[0]].Verify() == false {
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify commit fail.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:verify commit fail",Err:fmt.Errorf("verify commit fail.")}
 	    ch <- res
 	    return ""
 	}
@@ -1472,7 +1477,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     if r.Cmp(zero) == 0 {
 //	log.Debug("sign error: r equal zero.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("r == 0.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:r = 0",Err:fmt.Errorf("r == 0.")}
 	ch <- res
 	return ""
     }
@@ -1500,9 +1505,9 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 1. Receive Broadcast
     // S: S1, S2, S3
-    _,cherr = GetChannelValue(ch_t,w.bs1)
+    _,tip,cherr = GetChannelValue(ch_t,w.bs1)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get s1 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get s1 timeout.")}
 	ch <- res
 	return ""
     }
@@ -1513,7 +1518,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     us1s := make([]string,ThresHold-1)
     if w.msg_s1.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get s1 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_s1 fail",Err:fmt.Errorf("get s1 fail.")}
 	ch <- res
 	return ""
     }
@@ -1573,7 +1578,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     SAllComputex, SAllComputey := secp256k1.S256().Add(mMtAGx, mMtAGy, rMtAPKx, rMtAPKy)
 
     if SAllx.Cmp(SAllComputex) != 0 || SAlly.Cmp(SAllComputey) != 0 {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify SAll != m*G + r*PK in sign ec2.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:SAll != m*G + r*PK",Err:fmt.Errorf("verify SAll != m*G + r*PK in sign ec2.")}
 	ch <- res
 	return ""
     }
@@ -1589,9 +1594,9 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     // 1. Receive Broadcast
     // s: s1, s2, s3
-    _,cherr = GetChannelValue(ch_t,w.bss1)
+    _,tip,cherr = GetChannelValue(ch_t,w.bss1)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ss1 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ss1 timeout.")}
 	ch <- res
 	return ""
     }
@@ -1601,7 +1606,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     uss1s := make([]string,ThresHold-1)
     if w.msg_ss1.Len() != (ThresHold-1) {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ss1 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_ss1 fail",Err:fmt.Errorf("get ss1 fail.")}
 	ch <- res
 	return ""
     }
@@ -1662,7 +1667,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     s := sSum
     if s.Cmp(zero) == 0 {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("s == 0.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:s = 0",Err:fmt.Errorf("s == 0.")}
 	ch <- res
 	return ""
     }
@@ -1709,7 +1714,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     if Verify(signature.GetR(),signature.GetS(),signature.GetRecoveryParam(),message,pkx,pky) == false {
 	fmt.Println("===================dcrm sign,verify is false=================")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("sign verify fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:sign verify fail",Err:fmt.Errorf("sign verify fail.")}
 	ch <- res
 	return ""
     }
@@ -1851,7 +1856,7 @@ func dcrm_sign_ed(msgprex string,txhash string,save string,pk string,cointype st
     w,err := FindWorker(msgprex)
     if w == nil || err != nil {
 	logs.Debug("===========get worker fail.=============")
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrNoFindWorker)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:GetRetErr(ErrNoFindWorker)}
 	ch <- res
 	return ""
     }
@@ -1861,7 +1866,7 @@ func dcrm_sign_ed(msgprex string,txhash string,save string,pk string,cointype st
     
     if int32(Enode_cnts) != int32(NodeCnt) {
 	logs.Debug("============the net group is not ready.please try again.================")
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
 	return ""
     }
@@ -1884,7 +1889,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 
     logs.Debug("===================Sign_ed====================")
     if id < 0 || id >= len(workers) || id >= RpcMaxWorker {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return ""
     }
@@ -1893,7 +1898,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     GroupId := w.groupid 
     fmt.Println("========Sign_ed============","GroupId",GroupId)
     if GroupId == "" {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"get group id fail",Err:fmt.Errorf("get group id fail.")}
 	ch <- res
 	return ""
     }
@@ -1901,7 +1906,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     ns,_ := GetGroup(GroupId)
     if ns != NodeCnt {
 	logs.Debug("Sign_ed,get nodes info error.")
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
 	return "" 
     }
@@ -1973,17 +1978,17 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     logs.Debug("================sign ed round one,send msg,code is EDC21==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr := GetChannelValue(ch_t,w.bedc21)
+    _,tip,cherr := GetChannelValue(ch_t,w.bedc21)
     if cherr != nil {
 	logs.Debug("get w.bedc21 timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed c21 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed c21 timeout.")}
 	ch <- res
 	return "" 
     }
 
     if w.msg_edc21.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edc21 fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed c21 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_edc21 fail",Err:fmt.Errorf("get all ed c21 fail.")}
 	ch <- res
 	return ""
     }
@@ -2019,17 +2024,17 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     logs.Debug("================sign ed round one,send msg,code is EDZKR==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr = GetChannelValue(ch_t,w.bedzkr)
+    _,tip,cherr = GetChannelValue(ch_t,w.bedzkr)
     if cherr != nil {
 	logs.Debug("get w.bedzkr timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed zkr timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed zkr timeout.")}
 	ch <- res
 	return ""
     }
 
     if w.msg_edzkr.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edzkr fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed zkr fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edzkr fail",Err:fmt.Errorf("get all ed zkr fail.")}
 	ch <- res
 	return ""
     }
@@ -2066,17 +2071,17 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     logs.Debug("================sign ed round one,send msg,code is EDD21==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr = GetChannelValue(ch_t,w.bedd21)
+    _,tip,cherr = GetChannelValue(ch_t,w.bedd21)
     if cherr != nil {
 	logs.Debug("get w.bedd21 timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed d21 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed d21 timeout.")}
 	ch <- res
 	return ""
     }
 
     if w.msg_edd21.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edd21 fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed d21 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edd21 fail",Err:fmt.Errorf("get all ed d21 fail.")}
 	ch <- res
 	return ""
     }
@@ -2112,7 +2117,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	CRFlag := ed.Verify(crs[en[0]],drs[en[0]])
 	if !CRFlag {
 	    fmt.Println("Error: Commitment(R) Not Pass at User: %s", en[0])
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("Commitment(R) Not Pass.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:commitment verification fail in ed sign",Err:fmt.Errorf("Commitment(R) Not Pass.")}
 	    ch <- res
 	    return ""
 	}
@@ -2128,7 +2133,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	zkRFlag := ed.Verify_zk(zkrs[en[0]], temR)
 	if !zkRFlag {
 	    fmt.Println("Error: ZeroKnowledge Proof (R) Not Pass at User: %s", en[0])
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("ZeroKnowledge Proof (R) Not Pass.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:zeroknowledge verification fail in ed sign",Err:fmt.Errorf("ZeroKnowledge Proof (R) Not Pass.")}
 	    ch <- res
 	    return ""
 	}
@@ -2204,17 +2209,17 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     logs.Debug("================sign ed round one,send msg,code is EDC31==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr = GetChannelValue(ch_t,w.bedc31)
+    _,tip,cherr = GetChannelValue(ch_t,w.bedc31)
     if cherr != nil {
 	logs.Debug("get w.bedc31 timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed c31 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed c31 timeout.")}
 	ch <- res
 	return ""
     }
 
     if w.msg_edc31.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edc31 fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed c31 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_edc31 fail",Err:fmt.Errorf("get all ed c31 fail.")}
 	ch <- res
 	return ""
     }
@@ -2250,17 +2255,17 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     logs.Debug("================sign ed round one,send msg,code is EDD31==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr = GetChannelValue(ch_t,w.bedd31)
+    _,tip,cherr = GetChannelValue(ch_t,w.bedd31)
     if cherr != nil {
 	logs.Debug("get w.bedd31 timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed d31 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed d31 timeout.")}
 	ch <- res
 	return "" 
     }
 
     if w.msg_edd31.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edd31 fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed d31 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edd31 fail",Err:fmt.Errorf("get all ed d31 fail.")}
 	ch <- res
 	return ""
     }
@@ -2296,7 +2301,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	CSBFlag := ed.Verify(csbs[en[0]],dsbs[en[0]])
 	if !CSBFlag {
 	    fmt.Println("Error: Commitment(SB) Not Pass at User: %s",en[0])
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("Commitment(SB) Not Pass.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:commitment(CSB) not pass",Err:fmt.Errorf("Commitment(SB) Not Pass.")}
 	    ch <- res
 	    return ""
 	}
@@ -2343,7 +2348,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 
     if !bytes.Equal(sBBytes2[:], sBCalBytes[:]) {
 	fmt.Println("Error: Not Pass Verification (SB = SBCal) at User: %s", cur_enode)
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("Error: Not Pass Verification (SB = SBCal).")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:not pass verification (CSB == SBCal)",Err:fmt.Errorf("Error: Not Pass Verification (SB = SBCal).")}
 	ch <- res
 	return ""
     }
@@ -2354,17 +2359,17 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     logs.Debug("================sign ed round one,send msg,code is EDS==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr = GetChannelValue(ch_t,w.beds)
+    _,tip,cherr = GetChannelValue(ch_t,w.beds)
     if cherr != nil {
 	logs.Debug("get w.beds timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed s timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed s timeout.")}
 	ch <- res
 	return ""
     }
 
     if w.msg_eds.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_eds fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed s fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_eds fail",Err:fmt.Errorf("get all ed s fail.")}
 	ch <- res
 	return ""
     }
@@ -2420,7 +2425,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     fmt.Println("===========ed verify pass again=%v===============",suss)
     //////
 
-    res := RpcDcrmRes{Ret:rx+":"+sx,Err:nil}
+    res := RpcDcrmRes{Ret:rx+":"+sx,Tip:"",Err:nil}
     ch <- res
     return ""
 }

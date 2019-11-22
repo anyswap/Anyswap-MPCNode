@@ -44,7 +44,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 
     wk,err := FindWorker(msgprex)
     if err != nil || wk == nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:err}
 	ch <- res
 	return
     }
@@ -53,7 +53,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     GetEnodesInfo(wk.groupid)
 
     if int32(Enode_cnts) != int32(NodeCnt) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:group is not ready",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
 	return
     }
@@ -67,7 +67,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	itertmp := workers[id].edpk.Front()
 	if itertmp == nil {
 	    logs.Debug("get workers[id].edpk fail.")
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetGenPubkeyFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get workers[id].edpk fail",Err:GetRetErr(ErrGetGenPubkeyFail)}
 	    ch <- res
 	    return
 	}
@@ -76,7 +76,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	itertmp = workers[id].edsave.Front()
 	if itertmp == nil {
 	    logs.Debug("get workers[id].edsave fail.")
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetGenSaveDataFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get workers[id].edsave fail",Err:GetRetErr(ErrGetGenSaveDataFail)}
 	    ch <- res
 	    return
 	}
@@ -85,14 +85,14 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	pubs := &PubKeyData{Pub:string(sedpk),Save:sedsave,Nonce:"0"}
 	epubs,err := Encode2(pubs)
 	if err != nil {
-	    res := RpcDcrmRes{Ret:"",Err:err}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ed pubkey",Err:err}
 	    ch <- res
 	    return
 	}
 	
 	ss,err := Compress([]byte(epubs))
 	if err != nil {
-	    res := RpcDcrmRes{Ret:"",Err:err}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:compress PubKeyData fail in req ed pubkey",Err:err}
 	    ch <- res
 	    return
 	}
@@ -106,7 +106,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    db, err := leveldb.OpenFile(dir, nil) 
 	    if err != nil { 
 		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Err:err}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
 		ch <- res
 		return
 	    }
@@ -115,7 +115,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    if h == nil {
 		db.Close()
 		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
+		res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
 		ch <- res
 		return
 	    }
@@ -124,7 +124,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    if err != nil {
 		db.Close()
 		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Err:err}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,Err:err}
 		ch <- res
 		return
 	    }
@@ -142,7 +142,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    db, err := leveldb.OpenFile(dir, nil) 
 	    if err != nil { 
 		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Err:err}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
 		ch <- res
 		return
 	    }
@@ -173,7 +173,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    lock.Unlock()
 	}
 
-	res := RpcDcrmRes{Ret:pubkeyhex,Err:nil}
+	res := RpcDcrmRes{Ret:pubkeyhex,Tip:"",Err:nil}
 	ch <- res
 	return
     }
@@ -185,7 +185,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 
     iter := workers[id].pkx.Front()
     if iter == nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetGenPubkeyFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get pkx fail in req ec2 pubkey",Err:GetRetErr(ErrGetGenPubkeyFail)}
 	ch <- res
 	return
     }
@@ -193,7 +193,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     pkx := new(big.Int).SetBytes([]byte(spkx))
     iter = workers[id].pky.Front()
     if iter == nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetGenPubkeyFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get pky fail in req ec2 pubkey",Err:GetRetErr(ErrGetGenPubkeyFail)}
 	ch <- res
 	return
     }
@@ -203,7 +203,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 
     iter = workers[id].save.Front()
     if iter == nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetGenSaveDataFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get save data fail in req ec2 pubkey",Err:GetRetErr(ErrGetGenSaveDataFail)}
 	ch <- res
 	return
     }
@@ -211,14 +211,14 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     pubs := &PubKeyData{Pub:string(ys),Save:save,Nonce:"0"}
     epubs,err := Encode2(pubs)
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey",Err:err}
 	ch <- res
 	return
     }
     
     ss,err := Compress([]byte(epubs))
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey",Err:err}
 	ch <- res
 	return
     }
@@ -232,7 +232,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	db, err := leveldb.OpenFile(dir, nil) 
 	if err != nil { 
 	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Err:err}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
 	    ch <- res
 	    return
 	}
@@ -241,7 +241,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	if h == nil {
 	    db.Close()
 	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
 	    ch <- res
 	    return
 	}
@@ -250,7 +250,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	if err != nil {
 	    db.Close()
 	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Err:err}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,Err:err}
 	    ch <- res
 	    return
 	}
@@ -268,7 +268,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	db, err := leveldb.OpenFile(dir, nil) 
 	if err != nil { 
 	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Err:err}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
 	    ch <- res
 	    return
 	}
@@ -299,7 +299,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	lock.Unlock()
     }
     
-    res := RpcDcrmRes{Ret:pubkeyhex,Err:nil}
+    res := RpcDcrmRes{Ret:pubkeyhex,Tip:"",Err:nil}
     ch <- res
 }
 
@@ -307,7 +307,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 //msgprex = hash
 func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) bool {
     if id < 0 || id >= RpcMaxWorker || id >= len(workers) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker id",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
     }
@@ -316,7 +316,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     GroupId := w.groupid 
     fmt.Println("========KeyGenerate_ed============","GroupId",GroupId)
     if GroupId == "" {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"get group id fail",Err:fmt.Errorf("get group id fail.")}
 	ch <- res
 	return false
     }
@@ -324,7 +324,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     ns,_ := GetGroup(GroupId)
     if ns != NodeCnt {
 	logs.Debug("KeyGenerate_ed,get nodes info error.")
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
 	return false 
     }
@@ -370,17 +370,17 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     logs.Debug("================kg ed round one,send msg,code is EDC11==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr := GetChannelValue(ch_t,w.bedc11)
+    _,tip,cherr := GetChannelValue(ch_t,w.bedc11)
     if cherr != nil {
 	logs.Debug("get w.bedc11 timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed c11 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed c11 timeout.")}
 	ch <- res
 	return false 
     }
 
     if w.msg_edc11.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edc11 fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed c11 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edc11 fail",Err:fmt.Errorf("get all ed c11 fail.")}
 	ch <- res
 	return false
     }
@@ -416,17 +416,17 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     logs.Debug("================kg ed round one,send msg,code is EDZK==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr = GetChannelValue(ch_t,w.bedzk)
+    _,tip,cherr = GetChannelValue(ch_t,w.bedzk)
     if cherr != nil {
 	logs.Debug("get w.bedzk timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed zk timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed zk timeout.")}
 	ch <- res
 	return false 
     }
 
     if w.msg_edzk.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edzk fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed zk fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get w.msg_edzk fail",Err:fmt.Errorf("get all ed zk fail.")}
 	ch <- res
 	return false
     }
@@ -463,17 +463,17 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     logs.Debug("================kg ed round one,send msg,code is EDD11==================")
     SendMsgToDcrmGroup(ss,GroupId)
     
-    _,cherr = GetChannelValue(ch_t,w.bedd11)
+    _,tip,cherr = GetChannelValue(ch_t,w.bedd11)
     if cherr != nil {
 	logs.Debug("get w.bedd11 timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed d11 timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed d11 timeout.")}
 	ch <- res
 	return false 
     }
 
     if w.msg_edd11.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edd11 fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed d11 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_edd11 fail",Err:fmt.Errorf("get all ed d11 fail.")}
 	ch <- res
 	return false
     }
@@ -528,7 +528,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	CPkFlag := ed.Verify(cpks[en[0]],dpks[en[0]])
 	if !CPkFlag {
 	    fmt.Println("Error: Commitment(PK) Not Pass at User: %s",en[0])
-	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("Commitment(PK) Not Pass at User.")}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:commitment check fail in req ed pubkey",Err:fmt.Errorf("Commitment(PK) Not Pass at User.")}
 	    ch <- res
 	    return false
 	}
@@ -543,7 +543,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	zkPkFlag := ed.Verify_zk(zks[en[0]], t)
 	if !zkPkFlag {
 		fmt.Println("Error: ZeroKnowledge Proof (Pk) Not Pass at User: %s", en[0])
-		res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("ZeroKnowledge Proof (Pk) Not Pass.")}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:zeroknowledge check fail",Err:fmt.Errorf("ZeroKnowledge Proof (Pk) Not Pass.")}
 		ch <- res
 		return false
 	}
@@ -589,7 +589,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 
 	if enodes == "" {
 	    logs.Debug("=========KeyGenerate_ed,don't find proper enodes========")
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetEnodeByUIdFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get enode by uid fail",Err:GetRetErr(ErrGetEnodeByUIdFail)}
 	    ch <- res
 	    return false
 	}
@@ -611,10 +611,10 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	}
     }
 
-    _,cherr = GetChannelValue(ch_t,w.bedshare1)
+    _,tip,cherr = GetChannelValue(ch_t,w.bedshare1)
     if cherr != nil {
 	logs.Debug("get w.bedshare1 timeout in keygenerate.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed share1 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed share1 fail.")}
 	ch <- res
 	return false 
     }
@@ -622,7 +622,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 
     if w.msg_edshare1.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edshare1 fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed share1 fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edshare1 fail",Err:fmt.Errorf("get all ed share1 fail.")}
 	ch <- res
 	return false
     }
@@ -664,17 +664,17 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     logs.Debug("================kg ed round two,send msg,code is EDCFSB==================")
     SendMsgToDcrmGroup(ss,GroupId)
 
-     _,cherr = GetChannelValue(ch_t,w.bedcfsb)
+     _,tip,cherr = GetChannelValue(ch_t,w.bedcfsb)
     if cherr != nil {
 	logs.Debug("get w.bedcfsb timeout.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ed cfsb timeout.")}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ed cfsb timeout.")}
 	ch <- res
 	return false 
     }
 
     if w.msg_edcfsb.Len() != (NodeCnt-1) {
 	logs.Debug("get w.msg_edcfsb fail.")
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ed cfsb fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edcfsb fail",Err:fmt.Errorf("get all ed cfsb fail.")}
 	ch <- res
 	return false
     }
@@ -721,7 +721,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 
 	if !shareUFlag {
 		fmt.Println("Error: VSS Share Verification Not Pass at User: %s",en[0])
-		res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("VSS Share Verification Not Pass.")}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:VSS Share verification fail",Err:fmt.Errorf("VSS Share Verification Not Pass.")}
 		ch <- res
 		return false
 	}
@@ -766,7 +766,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	tt := t2[0]
 	if !bytes.Equal(askBBytes[:], tt[:]) {
 		fmt.Println("Error: VSS Coefficient Verification Not Pass at User: %s",en[0])
-		res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("VSS Coefficient Verification Not Pass.")}
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:VSS Coefficient verification fail",Err:fmt.Errorf("VSS Coefficient Verification Not Pass.")}
 		ch <- res
 		return false
 	}
@@ -828,7 +828,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 //msgprex = hash 
 func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) bool {
     if id < 0 || id >= RpcMaxWorker || id >= len(workers) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
     }
@@ -837,14 +837,14 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     GroupId := w.groupid 
     fmt.Println("========KeyGenerate_ec2============","GroupId",GroupId)
     if GroupId == "" {
-	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
+	res := RpcDcrmRes{Ret:"",Tip:"get group id fail in req ec2 pubkey",Err:fmt.Errorf("get group id fail.")}
 	ch <- res
 	return false
     }
     
     ns,_ := GetGroup(GroupId)
     if ns != NodeCnt {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
 	return false 
     }
@@ -876,9 +876,9 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     // 1. Receive Broadcast
     // commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
     // u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk
-     _,cherr := GetChannelValue(ch_t,w.bc1)
+     _,tip,cherr := GetChannelValue(ch_t,w.bc1)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetC1Timeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetC1Timeout)}
 	ch <- res
 	return false 
     }
@@ -891,7 +891,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 
     u1PolyG, _, u1Shares, err := ec2.Vss(u1, ids, ThresHold, NodeCnt)
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:generate vss fail",Err:err}
 	ch <- res
 	return false 
     }
@@ -907,7 +907,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 
 	if enodes == "" {
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetEnodeByUIdFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get enode by uid fail",Err:GetRetErr(ErrGetEnodeByUIdFail)}
 	    ch <- res
 	    return false
 	}
@@ -968,24 +968,24 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     // 1. Receive Broadcast
     // commitU1G.D, commitU2G.D, commitU3G.D, commitU4G.D, commitU5G.D
     // u1PolyG, u2PolyG, u3PolyG, u4PolyG, u5PolyG
-    _,cherr = GetChannelValue(ch_t,w.bd1_1)
+    _,tip,cherr = GetChannelValue(ch_t,w.bd1_1)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetD1Timeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetD1Timeout)}
 	ch <- res
 	return false 
     }
 
     // 2. Receive Personal Data
-    _,cherr = GetChannelValue(ch_t,w.bshare1)
+    _,tip,cherr = GetChannelValue(ch_t,w.bshare1)
     if cherr != nil {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetSHARE1Timeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetSHARE1Timeout)}
 	ch <- res
 	return false 
     }
 	 
     shares := make([]string,NodeCnt-1)
     if w.msg_share1.Len() != (NodeCnt-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllSHARE1Fail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_share1 fail",Err:GetRetErr(ErrGetAllSHARE1Fail)}
 	ch <- res
 	return false
     }
@@ -1019,7 +1019,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 
     ds := make([]string,NodeCnt-1)
     if w.msg_d1_1.Len() != (NodeCnt-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllD1Fail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_d1_1 fail",Err:GetRetErr(ErrGetAllD1Fail)}
 	ch <- res
 	return false
     }
@@ -1063,7 +1063,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
 	if sstruct[en[0]].Verify(upg[en[0]]) == false {
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifySHARE1Fail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:verification share1 fail",Err:GetRetErr(ErrVerifySHARE1Fail)}
 	    ch <- res
 	    return false
 	}
@@ -1073,7 +1073,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     // for all nodes, construct the commitment by the receiving C and D
     cs := make([]string,NodeCnt-1)
     if w.msg_c1.Len() != (NodeCnt-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllC1Fail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_c1 fail",Err:GetRetErr(ErrGetAllC1Fail)}
 	ch <- res
 	return false
     }
@@ -1117,7 +1117,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
 	if udecom[en[0]].Verify() == false {
-	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrKeyGenVerifyCommitFail)}
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:verification commitment fail",Err:GetRetErr(ErrKeyGenVerifyCommitFail)}
 	    ch <- res
 	    return false
 	}
@@ -1238,10 +1238,10 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 
     // 1. Receive Broadcast zk
     // u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
-    _,cherr = GetChannelValue(ch_t,w.bzkfact)
+    _,tip,cherr = GetChannelValue(ch_t,w.bzkfact)
     if cherr != nil {
 //	logs.Debug("get w.bzkfact timeout in keygenerate.")
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetZKFACTPROOFTimeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetZKFACTPROOFTimeout)}
 	ch <- res
 	return false 
     }
@@ -1260,10 +1260,10 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 
     // 9. Receive Broadcast zk
     // u1zkUProof, u2zkUProof, u3zkUProof, u4zkUProof, u5zkUProof
-    _,cherr = GetChannelValue(ch_t,w.bzku)
+    _,tip,cherr = GetChannelValue(ch_t,w.bzku)
     if cherr != nil {
 //	logs.Info("get w.bzku timeout in keygenerate.")
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetZKUPROOFTimeout)}
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetZKUPROOFTimeout)}
 	ch <- res
 	return false 
     }
@@ -1274,7 +1274,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     // for all nodes, verify zk of paillier key
     zkfacts := make([]string,NodeCnt-1)
     if w.msg_zkfact.Len() != (NodeCnt-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllZKFACTPROOFFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_zkface fail",Err:GetRetErr(ErrGetAllZKFACTPROOFFail)}
 	ch <- res
 	return false
     }
@@ -1312,7 +1312,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 		//////
 
 		if !u1PaillierPk2.ZkFactVerify(zkFactProof) {
-		    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyZKFACTPROOFFail)}
+		    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:zkfact verification fail",Err:GetRetErr(ErrVerifyZKFACTPROOFFail)}
 		    ch <- res
 	    
 		    return false 
@@ -1326,7 +1326,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     // for all nodes, verify zk of u
     zku := make([]string,NodeCnt-1)
     if w.msg_zku.Len() != (NodeCnt-1) {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllZKUPROOFFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_zku fail",Err:GetRetErr(ErrGetAllZKUPROOFFail)}
 	ch <- res
 	return false
     }
@@ -1351,7 +1351,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 		s := new(big.Int).SetBytes([]byte(mm[3]))
 		zkUProof := &ec2.ZkUProof{E: e, S: s}
 		if !ec2.ZkUVerify(ug[en[0]],zkUProof) {
-		    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyZKUPROOFFail)}
+		    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:zkuproof verification fail",Err:GetRetErr(ErrVerifyZKUPROOFFail)}
 		    ch <- res
 		    return false 
 		}

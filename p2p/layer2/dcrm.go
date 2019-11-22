@@ -395,7 +395,7 @@ func CheckAddPeer(enodes []string) error {
 			if p == nil {
 				time.Sleep(time.Duration(1) * time.Second)
 				count += 1
-				if count > (len(nodes) * 5) {
+				if count > (len(nodes) * 10) {
 					fmt.Printf("CheckAddPeer, add peer failed node: %v\n", node)
 					msg := fmt.Sprintf("CheckAddPeer, add peer failed node: %v\n", node)
 					return errors.New(msg)

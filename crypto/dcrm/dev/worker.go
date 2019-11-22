@@ -89,65 +89,8 @@ func RegDcrmGetEosAccountCallBack(f func() (string,string,string)) {
     GetEosAccount = f
 }
 
-/*func PutGroup(groupId string) bool {
-    if groupId == "" {
-	return false
-    }
-
-    lock.Lock()
-    dir := GetGroupDir()
-    db, err := leveldb.OpenFile(dir, nil) 
-    if err != nil {
-	lock.Unlock()
-	return false
-    }
-
-    var data string
-    var b bytes.Buffer 
-    b.WriteString("") 
-    b.WriteByte(0) 
-    b.WriteString("") 
-    iter := db.NewIterator(nil, nil) 
-    for iter.Next() { 
-	key := string(iter.Key())
-	value := string(iter.Value())
-	if strings.EqualFold(key,"GroupIds") {
-	    data = value
-	    break
-	}
-    }
-    iter.Release()
-    ///////
-    if data == "" {
-	db.Put([]byte("GroupIds"),[]byte(groupId),nil)
-	db.Close()
-	lock.Unlock()
-	return true 
-    }
-
-    m := strings.Split(data,":")
-    for _,v := range m {
-	if strings.EqualFold(v,groupId) {
-	    db.Close()
-	    lock.Unlock()
-	    return true 
-	}
-    }
-
-    data += ":" + groupId
-    db.Put([]byte("GroupIds"),[]byte(data),nil)
-   
-    db.Close()
-    lock.Unlock()
-    return true
-}*/
-
 func InitDev(groupId string) {
     cur_enode = GetSelfEnode()
-    //if !PutGroup(groupId) {
-//	return
-//    }
-
     fmt.Println("=========InitDev===========","groupId",groupId)
     peerscount, _ := GetGroup(groupId)
    NodeCnt = peerscount
@@ -171,6 +114,7 @@ var (
 
 type RpcDcrmRes struct {
     Ret string
+    Tip string
     Err error
 }
 
@@ -955,10 +899,10 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
     rch := make(chan interface{},1)
     req := RpcReq{rpcdata:&v,ch:rch}
     RpcReqQueue <- req
-    chret,cherr := GetChannelValue(sendtogroup_timeout,rch)
+    chret,tip,cherr := GetChannelValue(sendtogroup_timeout,rch)
     if cherr != nil {
-	//fail:chret:error
-	ret := ("fail"+Sep+chret+Sep+cherr.Error())
+	//fail:chret:tip:error
+	ret := ("fail"+Sep+chret+Sep+tip+Sep+cherr.Error())
 	ch <- ret 
 	return ch
     }
@@ -970,20 +914,27 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
 }
 
 func Dcrmcallret(msg interface{},enode string) {
+
+    //msg = success:workid:msgtype:ret  or fail:workid:msgtype:tip:error
     res := msg.(string)
     if res == "" {
 	return
     }
    
     ss := strings.Split(res,Sep)
-    if len(ss) != 4 {
+    if len(ss) < 4 {
 	return
     }
 
     status := ss[0]
+    if strings.EqualFold(status, "fail") {
+	if len(ss) < 5 {
+	    return
+	}
+    }
+
     //msgtype := ss[2]
-    ret := ss[3]
-    fmt.Println("=========Dcrmcallret, ret = %s,len(ret) = %v ==============",ret,len(ret))
+    fmt.Println("=========Dcrmcallret, ret = %s,len(ret) = %v ==============",ss[3],len(ss[3]))
     workid,err := strconv.Atoi(ss[1])
     if err != nil || workid < 0 || workid >= RpcMaxWorker {
 	return
@@ -992,7 +943,7 @@ func Dcrmcallret(msg interface{},enode string) {
     //success:workid:msgtype:ret
     if status == "success" {
 	w := workers[workid]
-	res2 := RpcDcrmRes{Ret:ss[3],Err:nil}
+	res2 := RpcDcrmRes{Ret:ss[3],Tip:"",Err:nil}
 	w.retres.PushBack(&res2)
 
 	if ss[2] == "rpc_lockout" {
@@ -1012,40 +963,18 @@ func Dcrmcallret(msg interface{},enode string) {
 	if ss[2] == "rpc_get_lockout_reply" {
 	    
 	    if w.retres.Len() == NodeCnt {
-		var ret2 []string
-
-		var err2 error
-		iter := w.retres.Front()
-		for iter != nil {
-		    ll := iter.Value.(*RpcDcrmRes)
-		    err2 = ll.Err
-		    if err2 == nil {
-			ret2 = append(ret2,ll.Ret)
-		    } else {
-			ret2 = append(ret2,err2.Error())
-		    }
-
-		    iter = iter.Next()
-		}
-
-		reply := "{"
-		rettmp := strings.Join(ret2,",")
-		reply += rettmp
-		reply += "}"
-		res2 := RpcDcrmRes{Ret:reply,Err:nil}
-		w.ch <- res2
 	    }
 	}
 	    
 	return
     }
     
-    //fail:workid:msgtype:error
+    //fail:workid:msgtype:tip:error
     if status == "fail" {
 	w := workers[workid]
 	var ret2 Err
-	ret2.Info = ret
-	res2 := RpcDcrmRes{Ret:"",Err:ret2}
+	ret2.Info = ss[4] 
+	res2 := RpcDcrmRes{Ret:"",Tip:ss[3],Err:ret2}
 	w.retres.PushBack(&res2)
 
 	if ss[2] == "rpc_lockout" {
@@ -1064,28 +993,6 @@ func Dcrmcallret(msg interface{},enode string) {
 	
 	if ss[2] == "rpc_get_lockout_reply" {
 	    if w.retres.Len() == NodeCnt {
-		var ret2 []string
-
-		var err2 error
-		iter := w.retres.Front()
-		for iter != nil {
-		    ll := iter.Value.(*RpcDcrmRes)
-		    err2 = ll.Err
-		    if err2 == nil {
-			ret2 = append(ret2,ll.Ret)
-		    } else {
-			ret2 = append(ret2,err2.Error())
-		    }
-
-		    iter = iter.Next()
-		}
-
-		reply := "{"
-		rettmp := strings.Join(ret2,",")
-		reply += rettmp
-		reply += "}"
-		res2 := RpcDcrmRes{Ret:reply,Err:nil}
-		w.ch <- res2
 	    }
 	}
 
@@ -1095,7 +1002,7 @@ func Dcrmcallret(msg interface{},enode string) {
 
 func GetGroupRes(wid int) RpcDcrmRes {
     if wid < 0 || wid >= RpcMaxWorker {
-	res2 := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get work id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	return res2
     }
 
@@ -1104,7 +1011,7 @@ func GetGroupRes(wid int) RpcDcrmRes {
     l = w.retres
 
     if l == nil {
-	res2 := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetNoResFromGroupMem)}
+	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get result from group fail",Err:GetRetErr(ErrGetNoResFromGroupMem)}
 	return res2
     }
 
@@ -1123,13 +1030,13 @@ func GetGroupRes(wid int) RpcDcrmRes {
     for iter != nil {
 	ll := iter.Value.(*RpcDcrmRes)
 	err = ll.Err
-	res2 := RpcDcrmRes{Ret:"",Err:err}
+	res2 := RpcDcrmRes{Ret:"",Tip:ll.Tip,Err:err}
 	return res2
 	
 	iter = iter.Next()
     }
     
-    res2 := RpcDcrmRes{Ret:"",Err:nil}
+    res2 := RpcDcrmRes{Ret:"",Tip:"",Err:nil}
     return res2
 }
 
@@ -1149,13 +1056,13 @@ func SetUpMsgList(msg string) {
     RpcReqQueue <- req
 }
 
-func GetLockOutReply() (string,error) {
+func GetLockOutReply() (string,string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
         lock5.Unlock()
-        return "",err 
+	return "","dcrm back-end internal error:open level db fail",err 
     }
    
     var ret []string
@@ -1218,16 +1125,16 @@ func GetLockOutReply() (string,error) {
     db.Close()
     lock5.Unlock()
 
-    return ss,nil
+    return ss,"",nil
 }
 
-func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) bool {
+func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
         lock5.Unlock()
-        return false
+	return "dcrm back-end internal error:open level db fail",false
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
@@ -1236,37 +1143,37 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return false
+	return "dcrm back-end internal error:get accept result from db fail",false
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return false
+	return "dcrm back-end internal error:uncompress accept result fail",false
     }
 
     dss,err := Decode2(ds,"AcceptLockOutData")
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return false
+	return "dcrm back-end internal error:decode accept result fail",false
     }
 
     ac := dss.(*AcceptLockOutData)
 
     db.Close()
     lock5.Unlock()
-    return ac.Accept 
+    return "",ac.Accept 
 }
 
-func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept bool) error {
+func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept bool) (string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
         lock5.Unlock()
-        return err
+	return "dcrm back-end internal error:open level db fail",err
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
@@ -1275,21 +1182,21 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:get accept data fail from db",err
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:uncompress accept data fail",err
     }
 
     dss,err := Decode2(ds,"AcceptLockOutData")
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:decode accept data fail",err
     }
 
     ac := dss.(*AcceptLockOutData)
@@ -1300,25 +1207,25 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:encode accept data fail",err
     }
 
     es,err := Compress([]byte(e))
     if err != nil {
 	db.Close()
 	lock5.Unlock()
-	return err
+	return "dcrm back-end internal error:compress accept data fail",err
     }
 
     db.Put([]byte(key),[]byte(es),nil)
     db.Close()
     lock5.Unlock()
-    return nil
+    return "",nil
 }
 
 func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     if workid < 0 || workid >= RpcMaxWorker { //TODO
-	res2 := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
+	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:fmt.Errorf("no find worker.")}
 	ch <- res2
 	return false
     }
@@ -1326,6 +1233,8 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     /////////
     res := self.msg
     if res == "" { //TODO
+	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get data fail in RecvMsg.Run",Err:fmt.Errorf("no find worker.")}
+	ch <- res2
 	return false 
     }
 
@@ -1338,26 +1247,20 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     
     res,err := UnCompress(res)
     if err != nil {
+	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:uncompress data fail in RecvMsg.Run",Err:fmt.Errorf("uncompress data fail in recvmsg.run")}
+	ch <- res2
 	return false
     }
     r,err := Decode2(res,"SendMsg")
     if err != nil {
+	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run",Err:fmt.Errorf("decode data to SendMsg fail in recvmsg.run")}
+	ch <- res2
 	return false
     }
 
     switch r.(type) {
     case *SendMsg:
 	rr := r.(*SendMsg)
-
-	if rr.MsgType == "ec2_data" {
-	    mm := strings.Split(rr.Msg,Sep)
-	    if len(mm) >= 2 {
-		//msg:  hash-enode:C1:X1:X2
-		DisMsg(rr.Msg)
-		return true 
-	    }
-	    return true
-	}
 
 	//rpc_lockout
 	if rr.MsgType == "rpc_lockout" {
@@ -1372,17 +1275,18 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    
 	    ////
 	    var reply bool 
+	    var tip string 
 	    timeout := make(chan bool, 1)
 	    go func(timeout chan bool) {
 		 time.Sleep(time.Duration(60)*time.Second) //1000 == 1s
-		 reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) 
+		 tip,reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) 
 		 timeout <- true
 	     }(timeout)
 	     <-timeout
 
 	     fmt.Println("===============RecvMsg.Run,Get Accept LockOut Result =%v ================",reply)
 	     if reply == false {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("don't accept lockout.")}
+		 res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:fmt.Errorf("don't accept lockout.")}
 		ch <- res2
 		return false
 	     }
@@ -1392,20 +1296,21 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	    rch := make(chan interface{},1)
 	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[4],msgs[3],msgs[2],msgs[6],rch)
-	    chret,cherr := GetChannelValue(ch_t,rch)
+	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
+		fmt.Println("==============RecvMsg.Run,Get LockOut Result.TxHash = %s =================",chret)
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Tip:"",Err:nil}
 		ch <- res2
 		return true
 	    }
 
 	    if cherr != nil {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:cherr}
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:cherr}
 		ch <- res2
 		return false
 	    }
 	    
-	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("send tx to net fail.")}
+	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:fmt.Errorf("send tx to net fail.")}
 	    ch <- res2
 	    return true
 	}
@@ -1419,7 +1324,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	    msgs := strings.Split(rr.Msg,":")
 	    if len(msgs) < 4 {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:fmt.Errorf("get msg error.")}
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:"dcrm back-end internal error:parameter error in req addr",Err:fmt.Errorf("get msg error.")}
 		ch <- res2
 		return false
 	    }
@@ -1427,43 +1332,20 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.groupid = msgs[2]
 	    w.limitnum = msgs[3]
 	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch)
-	    chret,cherr := GetChannelValue(ch_t,rch)
+	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:cherr}
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:cherr}
 		ch <- res2
 		return false
 	    }
 	    
-	    ////
-	    /*ds,err := UnCompress(chret)
-	    if err != nil {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:err}
-		ch <- res2
-		return false
-	    }
-	    dss,err := Decode2(ds,"PubKeyData")
-	    if err != nil {
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Err:err}
-		ch <- res2
-		return false
-	    }
-	    ac := dss.(*PubKeyData)
-	    chret = hex.EncodeToString([]byte(ac.Pub))*/
-	    ////
-
-	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Err:nil}
+	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+chret,Tip:"",Err:nil}
 	    ch <- res2
 	    return true
 	}
 
 	//rpc_get_lockout_reply
 	if rr.MsgType == "rpc_get_lockout_reply" {
-	    w := workers[workid]
-	    w.sid = rr.Nonce
-
-	    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType+Sep+cur_enode+":1",Err:nil}
-	    ch <- res2
-	    return true
 	}
 
     default:
@@ -1636,7 +1518,7 @@ type ReqAddrSendMsgToDcrm struct {
 
 func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     if workid < 0 || workid >= RpcMaxWorker {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no worker id",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
     }
@@ -1649,14 +1531,14 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum}
     res,err := Encode2(sm)
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode SendMsg fail in req addr",Err:err}
 	ch <- res
 	return false
     }
 
     res,err = Compress([]byte(res))
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:compress SendMsg data fail in req addr",Err:err}
 	ch <- res
 	return false
     }
@@ -1664,22 +1546,22 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     s := SendToGroupAllNodes(self.GroupId,res)
     
     if strings.EqualFold(s,"send fail.") {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail in req addr",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false
     }
 
     fmt.Println("=============ReqAddrSendMsgToMsg.Run,Waiting For Result===========")
     w := workers[workid]
-    chret,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
+    chret,tip,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
     if cherr != nil {
-	res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+	res2 := RpcDcrmRes{Ret:chret,Tip:tip,Err:cherr}
 	ch <- res2
 	return false
     }
 
     fmt.Println("=========ReqAddrSendMsgToMsg.Run,Get Result = ===========",chret)
-    res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+    res2 := RpcDcrmRes{Ret:chret,Tip:tip,Err:cherr}
     ch <- res2
 
     return true
@@ -1699,7 +1581,7 @@ type LockOutSendMsgToDcrm struct {
 
 func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     if workid < 0 || workid >= RpcMaxWorker {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id error",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
     }
@@ -1713,52 +1595,53 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     sm := &SendMsg{MsgType:"rpc_lockout",Nonce:nonce,WorkId:workid,Msg:msg}
     res,err := Encode2(sm)
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode SendMsg fail in lockout",Err:err}
 	ch <- res
 	return false
     }
 
     res,err = Compress([]byte(res))
     if err != nil {
-	res := RpcDcrmRes{Ret:"",Err:err}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:compress SendMsg data error in lockout",Err:err}
 	ch <- res
 	return false
     }
 
     s := SendToGroupAllNodes(self.GroupId,res)
     if strings.EqualFold(s,"send fail.") {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrSendDataToGroupFail)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false
     }
 
     ////
     var reply error
+    var tip string
     timeout := make(chan bool, 1)
     go func(timeout chan bool) {
 	 time.Sleep(time.Duration(10)*time.Second) //1000 == 1s
-	 reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true) 
+	 tip,reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true) 
 	 timeout <- true
      }(timeout)
      <-timeout
 
     fmt.Println("============LockOutSendMsgToDcrm.Run,get accept lockout result, err = %v ============",reply)
      if reply != nil {
-	res2 := RpcDcrmRes{Ret:"",Err:reply}
+	 res2 := RpcDcrmRes{Ret:"",Tip:tip,Err:reply}
 	ch <- res2
 	return false
      }
     ////
     w := workers[workid]
-    chret,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
+    chret,tip,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
     fmt.Println("========LockOutSendMsgToDcrm.Run,Get Result = %s, err = %v ============",chret,cherr)
     if cherr != nil {
-	res2 := RpcDcrmRes{Ret:"",Err:cherr}
+	res2 := RpcDcrmRes{Ret:"",Tip:tip,Err:cherr}
 	ch <- res2
 	return false
     }
 
-    res2 := RpcDcrmRes{Ret:chret,Err:cherr}
+    res2 := RpcDcrmRes{Ret:chret,Tip:tip,Err:cherr}
     ch <- res2
 
     return true
@@ -1766,24 +1649,23 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
 //msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
 type GetLockOutReplySendMsgToDcrm struct {
-    Enode string
 }
 
 func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     if workid < 0 || workid >= RpcMaxWorker {
-	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetWorkerIdError)}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
 	return false
     }
 
-    ret,err := GetLockOutReply()
+    ret,tip,err := GetLockOutReply()
     if err != nil {
-	res2 := RpcDcrmRes{Ret:"",Err:err}
+	res2 := RpcDcrmRes{Ret:"",Tip:tip,Err:err}
 	ch <- res2
 	return false
     }
 
-    res2 := RpcDcrmRes{Ret:ret,Err:nil}
+    res2 := RpcDcrmRes{Ret:ret,Tip:"",Err:nil}
     ch <- res2
 
     return true
@@ -1918,7 +1800,7 @@ func GetEnodesInfo(GroupId string) {
     cur_enode = GetSelfEnode()
 }
 
-func SendReqToGroup(msg string,rpctype string) (string,error) {
+func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     var req RpcReq
     switch rpctype {
 	case "rpc_req_dcrmaddr":
@@ -1934,11 +1816,11 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	case "rpc_get_lockout_reply":
-	    v := GetLockOutReplySendMsgToDcrm{Enode:msg}
+	    v := GetLockOutReplySendMsgToDcrm{}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	default:
-	    return "",nil
+	    return "","",nil
     }
 
     var t int
@@ -1949,15 +1831,15 @@ func SendReqToGroup(msg string,rpctype string) (string,error) {
     }
 
     RpcReqQueue <- req
-    chret,cherr := GetChannelValue(t,req.ch)
+    chret,tip,cherr := GetChannelValue(t,req.ch)
     if cherr != nil {
-	return chret,cherr
+	return chret,tip,cherr
     }
 
-    return chret,nil
+    return chret,"",nil
 }
 
-func GetChannelValue(t int,obj interface{}) (string,error) {
+func GetChannelValue(t int,obj interface{}) (string,string,error) {
     timeout := make(chan bool, 1)
     go func(timeout chan bool) {
 	 time.Sleep(time.Duration(t)*time.Second) //1000 == 1s
@@ -1971,52 +1853,52 @@ func GetChannelValue(t int,obj interface{}) (string,error) {
 		 case v := <- ch :
 		     ret,ok := v.(RpcDcrmRes)
 		     if ok == true {
-			 return ret.Ret,ret.Err
+			 return ret.Ret,ret.Tip,ret.Err
 		     }
 		 case <- timeout :
-		     return "",fmt.Errorf("get data from node fail.")
+		     return "","dcrm back-end internal error:get result from channel timeout",fmt.Errorf("get data from node fail.")
 	     }
 	 case chan string:
 	     ch := obj.(chan string)
 	     select {
 		 case v := <- ch :
-			    return v,nil 
+			    return v,"",nil 
 		 case <- timeout :
-		     return "",fmt.Errorf("get data from node fail.")
+		     return "","dcrm back-end internal error:get result from channel timeout",fmt.Errorf("get data from node fail.")
 	     }
 	 case chan int64:
 	     ch := obj.(chan int64)
 	     select {
 		 case v := <- ch :
-		    return strconv.Itoa(int(v)),nil 
+		    return strconv.Itoa(int(v)),"",nil 
 		 case <- timeout :
-		     return "",fmt.Errorf("get data from node fail.")
+		     return "","dcrm back-end internal error:get result from channel timeout",fmt.Errorf("get data from node fail.")
 	     }
 	 case chan int:
 	     ch := obj.(chan int)
 	     select {
 		 case v := <- ch :
-		    return strconv.Itoa(v),nil 
+		    return strconv.Itoa(v),"",nil 
 		 case <- timeout :
-		     return "",fmt.Errorf("get data from node fail.")
+		     return "","dcrm back-end internal error:get result from channel timeout",fmt.Errorf("get data from node fail.")
 	     }
 	 case chan bool:
 	     ch := obj.(chan bool)
 	     select {
 		 case v := <- ch :
 		    if !v {
-			return "false",nil
+			return "false","",nil
 		    } else {
-			return "true",nil
+			return "true","",nil
 		    }
 		 case <- timeout :
-		     return "",fmt.Errorf("get data from node fail.")
+		     return "","dcrm back-end internal error:get result from channel timeout",fmt.Errorf("get data from node fail.")
 	     }
 	 default:
-	    return "",fmt.Errorf("unknown ch type.") 
+	     return "","dcrm back-end internal error:unknown channel type",fmt.Errorf("unknown ch type.") 
      }
 
-     return "",fmt.Errorf("get value fail.")
+     return "","dcrm back-end internal error:unknown error.",fmt.Errorf("get value fail.")
  }
 
 //error type 1

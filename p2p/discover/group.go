@@ -37,8 +37,8 @@ var (
 	Xp_groupList   *group
 	tmpdcrmmsg     = &getdcrmmessage{Number: [3]byte{0, 0, 0}, Msg: ""}
 	setlocaliptrue = false
-	localIP        = "0.0.0.0"
-	RemoteIP       = "0.0.0.0"
+	localIP        = "127.0.0.1"
+	RemoteIP       = "127.0.0.1"
 	RemotePort     = "0"
 	changed        = 0
 	Xp_changed     = 0
@@ -1254,6 +1254,9 @@ func GetRemoteIP() string {
 }
 
 func GetRemotePort() string {
+	if RemotePort == "0" {
+		RemotePort = fmt.Sprintf("%v", Table4group.self.UDP)
+	}
 	return RemotePort
 }
 
@@ -1262,12 +1265,12 @@ func GetLocalID() NodeID {
 }
 
 func GetEnode() string {
-	//return fmt.Sprintf("%v", Table4group.self)
 	return fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), GetRemoteIP(), GetRemotePort())
 }
 
 func updateRemoteIP(ip net.IP, port uint16) {
-	if RemoteIP == "0.0.0.0" {
+	if RemoteIP == "127.0.0.1" {
+		fmt.Printf("updateRemoteIP, IP:port = %v%v\n", ip, port)
 		RemoteIP = fmt.Sprintf("%v", ip)
 		RemotePort = fmt.Sprintf("%v", port)
 	}

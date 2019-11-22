@@ -129,6 +129,7 @@ type Group struct {
 	Gname string
 	Mode string
 	Status string
+	Type string
 	Got bool
 	Group map[string]*group
 }

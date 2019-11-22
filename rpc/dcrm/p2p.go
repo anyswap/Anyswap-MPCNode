@@ -102,28 +102,46 @@ type sdkGroupInfo struct {
 }
 
 func (this *Service) GetSDKGroup(enode string) string {
-	return getSDKGroup(enode, "SUCCESS", false)
+	return getSDKGroup(enode, "SUCCESS", false, "")
 }
 
-func getSDKGroup(enode, build string, status bool) string {
+func (this *Service) GetSDKGroupPerson(enode string) string {
+	return getSDKGroup(enode, "", false, "1+2")
+}
+
+func getSDKGroup(enode, build string, status bool, groupMode string) string {
 	group := make([]GroupInfo, 0)
 	nodeid := layer2.ParseNodeID(enode)
 	stat := SUCCESS
 	tip := ""
-	addGroup := false
+	addGroupChanged := false
 	for gid, g := range layer2.SdkGroup {
+		addGroup := false
 		fmt.Printf("gid: %v, g: %v\n", gid, g)
-		addGroup = false
 		enodes := make([]string, 0)
-		fmt.Printf("g.Status: %v, build: %v\n", g.Status, build)
-		if g.Status != build {
-			continue
-		}
-		for id, en := range g.Group {
-			enodes = append(enodes, en.Enode)
-			fmt.Printf("getSDKGroup, id: %v, nodeid: %v\n", id, nodeid)
-			if id == nodeid {
-				addGroup = true
+		if groupMode == "1+2" {
+			if g.Type == groupMode {
+				for id, en := range g.Group {
+					enodes = append(enodes, en.Enode)
+					fmt.Printf("getSDKGroup, id: %v, nodeid: %v\n", id, nodeid)
+					if id == nodeid {
+						addGroup = true
+						addGroupChanged = true
+					}
+				}
+			}
+		} else {
+			fmt.Printf("g.Status: %v, build: %v\n", g.Status, build)
+			if g.Status != build {
+				continue
+			}
+			for id, en := range g.Group {
+				enodes = append(enodes, en.Enode)
+				fmt.Printf("getSDKGroup, id: %v, nodeid: %v\n", id, nodeid)
+				if id == nodeid {
+					addGroup = true
+					addGroupChanged = true
+				}
 			}
 		}
 		if addGroup {
@@ -142,7 +160,7 @@ func getSDKGroup(enode, build string, status bool) string {
 			group = append(group, *ret)
 		}
 	}
-	if !addGroup {
+	if !addGroupChanged {
 		stat = NULLRET
 		tip = "group is null"
 	}
@@ -188,6 +206,6 @@ func (this *Service) SetGroupNodeStatus(gname, enode, approval string) string {
 
 func (this *Service) GetGroupNodeStatus(enode string) string {
 	fmt.Printf("==== (this *Service) GetGroupNodeStatus() ====, enode: %v\n", enode)
-	return getSDKGroup(enode, "NEW", true)
+	return getSDKGroup(enode, "NEW", true, "")
 }
 

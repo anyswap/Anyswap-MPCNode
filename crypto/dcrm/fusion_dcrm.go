@@ -383,7 +383,30 @@ func ReqDcrmAddr(raw string,model string) (string,string,error) {
 
     if model == "1" { //non self-group
 	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
-	    return da,"",nil
+	    ///
+	    var m interface{}
+	    addrmp := make(map[string]string)
+	    for _, ct := range cryptocoins.Cointypes {
+		if strings.EqualFold(ct, "ALL") {
+		    continue
+		}
+
+		h := cryptocoins.NewCryptocoinHandler(ct)
+		if h == nil {
+		    continue
+		}
+		ctaddr, err := h.PublicKeyToAddress(da)
+		if err != nil {
+		    continue
+		}
+		
+		addrmp[ct] = ctaddr
+	    }
+
+	    m = &DcrmPubkeyRes{Account:from.Hex(),PubKey:da,Address:addrmp}
+	    bb,_ := json.Marshal(m)
+	    return string(bb),"",nil
+	    ///
 	}
     }
 
@@ -426,13 +449,17 @@ func AcceptLockOut(raw string) (string,string,error) {
     data := string(tx.Data())
     datas := strings.Split(data,":")
 
-    if len(datas) < 9 {
+    if len(datas) < 10 {
 	return "","transacion data format error",fmt.Errorf("tx.data error.")
     }
 
-    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold
+    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:accept
     if datas[0] != "ACCEPTLOCKOUT" {
 	return "","transaction data format error,it is not ACCEPTLOCKOUT tx",fmt.Errorf("tx.data error,it is not ACCEPTLOCKOUT tx.")
+    }
+
+    if datas[9] != "AGREE" && datas[9] != "DISAGREE" {
+	return "","transaction data format error,the lastest segment is not AGREE or DISAGREE",fmt.Errorf("transaction data format error")
     }
 
     key2 := dev.Keccak256Hash([]byte(strings.ToLower(datas[4]))).Hex()
@@ -441,7 +468,12 @@ func AcceptLockOut(raw string) (string,string,error) {
 	return "",tip,err
     }
 
-    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,true)
+    accept := false
+    if datas[9] == "AGREE" {
+	accept = true
+    }
+
+    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept)
     if err != nil {
 	return "",tip,err
     }

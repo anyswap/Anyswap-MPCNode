@@ -1270,7 +1270,7 @@ func GetEnode() string {
 
 func updateRemoteIP(ip net.IP, port uint16) {
 	if RemoteIP == "127.0.0.1" {
-		fmt.Printf("updateRemoteIP, IP:port = %v%v\n", ip, port)
+		//fmt.Printf("updateRemoteIP, IP:port = %v%v\n", ip, port)
 		RemoteIP = fmt.Sprintf("%v", ip)
 		RemotePort = fmt.Sprintf("%v", port)
 	}

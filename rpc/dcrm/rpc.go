@@ -58,6 +58,7 @@ func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{}
     }
 
     ret,tip,err := dcrm.ReqDcrmAddr(raw,model)
+    fmt.Println("===========dcrm_reqDcrmAddr,ret = %s,tip =%s,err =%v===========",ret,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

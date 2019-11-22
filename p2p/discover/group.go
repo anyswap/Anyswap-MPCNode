@@ -622,6 +622,44 @@ func setGroup(n *Node, replace string) {
 	setGroupCC(n, replace, Dcrmprotocol_type)
 }
 
+func sendSDKGroupInfo(groupList *group, p2pType int) {
+	count := 0
+	enode := ""
+	for i := 0; i < groupList.count; i++ {
+		count++
+		node := groupList.Nodes[i]
+		if enode != "" {
+			enode += Dcrmdelimiter
+		}
+		e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
+		enode += e
+		//if bytes.Equal(n.IP, node.IP) == true && n.UDP == node.UDP {
+			ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+			go SendToPeer(groupList.ID, node.ID, ipa, "", p2pType)
+		//}
+	}
+	//enodes := fmt.Sprintf("%v,%v,%v", groupList.ID, count, enode)
+//	log.Debug("send group to nodes", "group: ", enodes)
+//	log.Warn("send group to nodes", "group: ", enodes)
+}
+
+func sendSDKGroupPrivKey(groupList *group, p2pType int) {
+	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
+		//go callPrivKeyEvent(enodes)
+		var tmp int = 0
+		for i := 0; i < groupList.count; i++ {
+			node := groupList.Nodes[i]
+			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
+			tmp++
+			//go SendToPeer(enode, cDPrivKey)
+			go func (node rpcNode, msg string) {
+				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+				SendMsgToNode(node.ID, ipa, msg)
+			}(node, cDPrivKey)
+		}
+	}
+}
+
 func sendGroupInfo(groupList *group, p2pType int) {
 	count := 0
 	enode := ""
@@ -683,6 +721,9 @@ func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node) (
 			status := "SUCCESS"
 			updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
 			//buildSDKGroup(gname, gid, mode, enode)
+			if SDK_groupList != nil && SDK_groupList[gid] != nil {
+				go sendSDKGroupPrivKey(SDK_groupList[gid], Sdkprotocol_type) //TODO
+			}
 		} else {
 			node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
 			status := "FAILED"
@@ -769,7 +810,7 @@ func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node) {
 	}
 	groupTmp.ID = gid
 	SDK_groupList[groupTmp.ID] = groupTmp
-	go sendGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type) //TODO
+	go sendSDKGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type) //TODO
 }
 
 func destroySDKGroup(gid NodeID) {

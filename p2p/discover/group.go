@@ -775,27 +775,34 @@ func updateGroupNodeStatus(gname string, gid NodeID, enode []*Node, node *Node, 
 }
 
 func waitSDKGroupReady(gname string, gid NodeID, enode []*Node) string {
+	agreeWaitTime := 3 * time.Minute
+	agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 	fmt.Printf("==== waitSDKGroupReady() ====, gid: %v\n", gid)
 	for {
-		id := <-groupStatusChan
-		if id != gid {
-			continue
-		}
-		count := uint64(0)
-		for _, s := range groupStatusArray[gid].EnodeStatus {
-			if s == "NEW" {
-				break
+		select {
+		case id := <-groupStatusChan:
+			if id != gid {
+				continue
 			}
-			if s == "DISAGREE" {
-				return "DISAGREE"
+			count := uint64(0)
+			for _, s := range groupStatusArray[gid].EnodeStatus {
+				if s == "NEW" {
+					break
+				}
+				if s == "DISAGREE" {
+					return "DISAGREE"
+				}
+				if s == "AGREE" {
+					count += 1
+				}
 			}
-			if s == "AGREE" {
-				count += 1
+			fmt.Printf("count: %v, groupStatusArray[gid].Count: %v\n", count, groupStatusArray[gid].Count)
+			if count == groupStatusArray[gid].Count {
+				return "AGREE"
 			}
-		}
-		fmt.Printf("count: %v, groupStatusArray[gid].Count: %v\n", count, groupStatusArray[gid].Count)
-		if count == groupStatusArray[gid].Count {
-			return "AGREE"
+		case <-agreeWaitTimeOut.C:
+			fmt.Printf("==== waitSDKGroupReady() ====, gname: %v, gid: %v, wait timeout\n", gname, gid)
+			return "DISAGREE"
 		}
 	}
 	return "DISAGREE"

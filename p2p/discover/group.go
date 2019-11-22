@@ -40,6 +40,7 @@ var (
 	localIP        = "127.0.0.1"
 	RemoteIP       = "127.0.0.1"
 	RemotePort     = "0"
+	RemoteUpdate   = false
 	changed        = 0
 	Xp_changed     = 0
 
@@ -98,6 +99,7 @@ type (
 		count      int
 		P2pType    byte
 		Nodes      []rpcNode
+		Type       string // group type: 1+2, 1+1+1
 		//userID      []string
 		Expiration uint64
 		// Ignore additional fields (for forward compatibility).
@@ -113,6 +115,7 @@ type (
 		count      int
 		P2pType    byte
 		Nodes      []rpcNode
+		Type       string // group type: 1+2, 1+1+1
 		Expiration uint64
 		// Ignore additional fields (for forward compatibility).
 		Rest []rlp.RawValue `rlp:"tail"`
@@ -705,6 +708,7 @@ func addGroupSDK(n *Node) {
 	groupTmp.Nodes[len(groupSDKList)] = nodeToRPC(n)
 	groupTmp.count++
 	groupTmp.ID = n.ID
+	groupTmp.Type = "1+2"
 	//fmt.Printf("addGroupSDK, gid: %v\n", groupTmp.ID)
 	SDK_groupList[groupTmp.ID] = groupTmp
 }
@@ -802,6 +806,7 @@ func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node) {
 	groupTmp := new(group)
 	groupTmp.Gname = gname
 	groupTmp.Mode = mode
+	groupTmp.Type = "1+1+1"
 	//groupTmp.status = "NEW"
 	groupTmp.Nodes = make([]rpcNode, len(enode))
 	for i, node := range enode {
@@ -1065,7 +1070,7 @@ func (req *groupmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []
 //	log.Debug("group msg handle", "req.Nodes: ", nodes)
 //	log.Warn("group msg handle", "req.Nodes: ", nodes)
 	fmt.Sprintf("group msg handle, callGroupEvent(), req.Nodes: %v\n", nodes)
-	go callGroupEvent(req.Gname, req.ID, req.Mode, nodes, int(req.P2pType))
+	go callGroupEvent(req.Gname, req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
 	return nil
 }
 
@@ -1095,15 +1100,15 @@ func (req *message) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte)
 	return nil
 }
 
-var groupcallback func(string, NodeID, string, interface{}, int)
+var groupcallback func(string, NodeID, string, interface{}, int, string)
 
-func RegisterGroupCallback(callbackfunc func(string, NodeID, string, interface{}, int)) {
+func RegisterGroupCallback(callbackfunc func(string, NodeID, string, interface{}, int, string)) {
 	groupcallback = callbackfunc
 }
 
-func callGroupEvent(gname string, gid NodeID, mode string, n []*Node, p2pType int) {
+func callGroupEvent(gname string, gid NodeID, mode string, n []*Node, p2pType int, groupType string) {
 	fmt.Printf("callGroupEvent\n")
-	groupcallback(gname, gid, mode, n, p2pType)
+	groupcallback(gname, gid, mode, n, p2pType, groupType)
 }
 
 var prikeycallback func(interface{})
@@ -1269,8 +1274,9 @@ func GetEnode() string {
 }
 
 func updateRemoteIP(ip net.IP, port uint16) {
-	if RemoteIP == "127.0.0.1" {
-		//fmt.Printf("updateRemoteIP, IP:port = %v%v\n", ip, port)
+	if RemoteUpdate == false && RemoteIP == "127.0.0.1" {
+		RemoteUpdate = true
+		fmt.Printf("updateRemoteIP, IP:port = %v%v\n", ip, port)
 		RemoteIP = fmt.Sprintf("%v", ip)
 		RemotePort = fmt.Sprintf("%v", port)
 	}

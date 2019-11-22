@@ -292,8 +292,12 @@ func SdkProtocol_getGroup(gID string) (int, string) {
 }
 
 func checkExistGroup(gid discover.NodeID) bool {
-	if SdkGroup[gid] != nil && SdkGroup[gid].Status == "SUCCESS" {
-		return true
+	if SdkGroup[gid] != nil {
+		if SdkGroup[gid].Type == "1+2" {
+			return true
+		} else if SdkGroup[gid].Status == "SUCCESS" {
+			return true
+		}
 	}
 	return false
 }

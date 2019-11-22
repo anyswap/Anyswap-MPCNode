@@ -324,7 +324,7 @@ func recvStatusInfo(gname string, gid discover.NodeID, count uint64, node *disco
 	discover.CallGroupStatus(gname, gid, count, node, status)
 }
 
-func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface{}, p2pType int) {
+func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface{}, p2pType int, groupType string) {
 	//log.Debug("==== recvGroupInfo() ====", "gid", gid, "req", req)
 	fmt.Printf("==== recvGroupInfo() ====, gid: %v, req: %v\n", gid, req)
 	//selfid = discover.GetLocalID()
@@ -339,6 +339,7 @@ func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface
 		groupTmp = NewGroup()
 		groupTmp.Gname = gname
 		groupTmp.Mode = mode
+		groupTmp.Type = groupType
 		SdkGroup[gid] = groupTmp
 		xvcGroup = groupTmp
 		fmt.Printf("==== recvGroupInfo() ====, SdkGroup[gid: %v] =  %v\n", gid, SdkGroup[gid])

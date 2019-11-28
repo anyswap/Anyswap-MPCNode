@@ -335,3 +335,31 @@ func startRpcServer() error {
 	return nil
 }
 
+type pubAccounts struct {
+       Group []AccountsList
+}
+type AccountsList struct {
+       GroupID string
+       Accounts []string
+}
+
+func (this *Service) GetAccounts(raw string) string {
+       retGids := this.GetSDKGids()
+       al := make([]AccountsList, 0)
+       for _, gid := range retGids {//goroutine
+               retAccount := make([]string, 0)
+               ga := dcrm.GetAccount(gid)
+               for _, a := range ga {
+                       retAccount = append(retAccount, a)
+               }
+               alNew := AccountsList{GroupID: gid, Accounts: retAccount}
+               al = append(al, alNew)
+       }
+       stat := NULLRET
+       if len(al) > 0 {
+               stat = SUCCESS
+       }
+       pa := &pubAccounts{Group: al}
+       return packageResult(stat, "", "", pa)
+}
+

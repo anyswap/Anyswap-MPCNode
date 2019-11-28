@@ -25,17 +25,17 @@ import (
 
 const (
 	SUCCESS string = "Success"
-	FAIL string = "Error"
+	FAIL    string = "Error"
 	NULLRET string = "Null"
-	REPEAT string = "Repeat"
+	REPEAT  string = "Repeat"
 	PENDING string = "Pending"
 )
 
 type Result struct {
 	Status string // Success, Error, Null, Repeat, Pending
-	Tip string
-	Error string
-	Data interface{}
+	Tip    string
+	Error  string
+	Data   interface{}
 }
 
 type Enode struct {
@@ -43,7 +43,7 @@ type Enode struct {
 }
 
 type EnodeStatus struct {
-	Enode string
+	Enode  string
 	Status string
 }
 
@@ -61,9 +61,9 @@ func (this *Service) GetEnode() string {
 }
 
 type GroupInfo struct {
-	Gname string
-	Gid string
-	Mode string
+	Gname  string
+	Gid    string
+	Mode   string
 	Status string
 	Number int
 	Enodes []string
@@ -97,11 +97,16 @@ func (this *Service) CreateSDKGroup(gname, mode string, enodes []string) string 
 }
 
 type sdkGroupInfo struct {
-	Enode string
+	Enode     string
 	GroupList []GroupInfo
 }
 
 func (this *Service) GetSDKGroup(enode string) string {
+	return getSDKGroup(enode, "SUCCESS", false, "")
+}
+
+func (this *Service) GetSDKGroup4Dcrm() string {
+	enode := layer2.GetEnode()
 	return getSDKGroup(enode, "SUCCESS", false, "")
 }
 
@@ -183,13 +188,13 @@ func (this *Service) GetEnodeStatus(enode string) string {
 }
 
 type getGroupNodeStatus struct {
-	Enode string
+	Enode     string
 	GroupList []GroupInfo
 }
 
 type setGroupNodeStatus struct {
-	Gname string
-	Enode string
+	Gname  string
+	Enode  string
 	Status string
 	//GroupList []GroupInfo
 }
@@ -212,3 +217,19 @@ func (this *Service) GetGroupNodeStatus(enode string) string {
 	return getSDKGroup(enode, "NEW", true, "")
 }
 
+func (this *Service) GetSDKGids() []string {
+	retGroup := this.GetSDKGroup4Dcrm()
+	var msg json.RawMessage
+	buf := Result{Data: &msg}
+	err := json.Unmarshal([]byte(retGroup), &buf)
+	fmt.Printf("GetSDKGids, buf = %v, err = %v\n", buf, err)
+	group := sdkGroupInfo{}
+	err = json.Unmarshal(msg, &group)
+	fmt.Printf("GetSDKGids, grouplist = %v\n", group)
+
+	ret := make([]string, 0)
+	for _, g := range group.GroupList {
+		ret = append(ret, g.Gid)
+	}
+	return ret
+}

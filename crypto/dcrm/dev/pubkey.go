@@ -225,6 +225,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     
     pubkeyhex := hex.EncodeToString(ys)
     fmt.Println("===============dcrm_genPubKey,pubkey = %s ==================",pubkeyhex)
+    tip, err := StorePubAccount(wk.groupid, pubkeyhex)
+    fmt.Printf("==== dcrm_genPubKey() ====, StorePubAccount tip: %v, err: %v\n", tip, err)
     ////save to db
     if !strings.EqualFold(cointype, "ALL") {
 	lock.Lock()

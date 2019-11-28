@@ -36,6 +36,7 @@ import (
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
+    "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins"
 )
 
 var (
@@ -1405,6 +1406,20 @@ type PubKeyData struct {
 
 func Encode2(obj interface{}) (string,error) {
     switch obj.(type) {
+    case *AccountSubAddress:
+       ch := obj.(*AccountSubAddress)
+       ret,err := json.Marshal(ch)
+       if err != nil {
+           return "",err
+       }
+       return string(ret),nil
+    case *GroupAccount:
+       ch := obj.(*GroupAccount)
+       ret,err := json.Marshal(ch)
+       if err != nil {
+           return "",err
+       }
+       return string(ret),nil
     case *SendMsg:
 	ch := obj.(*SendMsg)
 	ret,err := json.Marshal(ch)
@@ -1441,6 +1456,26 @@ func Encode2(obj interface{}) (string,error) {
 }
 
 func Decode2(s string,datatype string) (interface{},error) {
+    if datatype == "AccountSubAddress" {
+       var m AccountSubAddress
+       err := json.Unmarshal([]byte(s), &m)
+       if err != nil {
+           return nil,err
+       }
+
+       return &m,nil
+    }
+
+    if datatype == "GroupAccount" {
+       var m GroupAccount
+       err := json.Unmarshal([]byte(s), &m)
+       if err != nil {
+           return nil,err
+       }
+
+       return &m,nil
+    }
+
     if datatype == "SendMsg" {
 	var m SendMsg
 	err := json.Unmarshal([]byte(s), &m)
@@ -1714,6 +1749,19 @@ func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bo
     ch <- res2
 
     return true
+}
+
+type GroupAccount struct {
+    Group []AccountInfo
+}
+
+type AccountInfo struct {
+    GroupID string
+    Account []string
+}
+
+type AccountSubAddress struct {
+    SubAddress string
 }
 
 type AcceptLockOutData struct {
@@ -2343,5 +2391,133 @@ func GetEosDbDir() string {
     dir := DefaultDataDir()
     dir += "/dcrmdata/eosdb"
     return dir
+}
+
+func StorePubAccount(gid, pubkey string) (string, error) {
+    fmt.Printf("==== storePubAccount() ====, gid: %v, pubkey: %v\n", gid, pubkey)
+    if gid == "" || pubkey == "" {
+       return "", fmt.Errorf("no store data.")
+    }
+
+    lock5.Lock()
+    defer lock5.Unlock()
+
+    dir := GetGroupDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        return "", err
+    }
+    defer db.Close()
+
+    key := Keccak256Hash([]byte(strings.ToLower(cur_enode))).Hex()
+    da, err := db.Get([]byte(key),nil)
+    if err != nil {
+        a := make([]string, 0)
+       a = append(a, pubkey)
+       group := make([]AccountInfo, 0)
+       group = append(group, AccountInfo{GroupID: gid, Account: a})
+        ac := &GroupAccount{group}
+        alos, err := Encode2(ac)
+        if err != nil {
+            return "", err
+        }
+        ss, err := Compress([]byte(alos))
+        if err != nil {
+            return "", err
+        }
+
+        db.Put([]byte(key),[]byte(ss),nil)
+    } else {
+        ds,err := UnCompress(string(da))
+        if err != nil {
+            return "dcrm back-end internal error:uncompress accept data fail",err
+        }
+
+        dss,err := Decode2(ds,"GroupAccount")
+        if err != nil {
+            fmt.Printf("==== StorePubAccount() ====, dcrm back-end internal error:decode accept data     fail\n")
+            return "dcrm back-end internal error:decode accept data fail",err
+        }
+
+           h := cryptocoins.NewCryptocoinHandler("ETH")
+           if h == nil {
+           }
+           ctaddr, err := h.PublicKeyToAddress(pubkey)
+           if err != nil {
+           }
+        ac := dss.(*GroupAccount)
+       fmt.Printf("==== StorePubAccount() ====, ac: %v\n", ac)
+        a := make([]string, 0)
+       for _, g := range ac.Group {
+               if g.GroupID == gid {
+                       a = g.Account
+                       break
+               }
+       }
+       a = append(a, pubkey)
+       group := make([]AccountInfo, 0)
+       group = append(group, AccountInfo{GroupID: gid, Account: a})
+        ac = &GroupAccount{group}
+       fmt.Printf("==== StorePubAccount() ==== after for, ac: %v\n", ac)
+        e, err := Encode2(ac)
+        if err != nil {
+            return "dcrm back-end internal error:encode accept data fail",err
+        }
+
+        fmt.Printf("==== StorePubAccount() ====, Compress\n")
+        es, err := Compress([]byte(e))
+        if err != nil {
+            return "dcrm back-end internal error:compress accept data fail",err
+        }
+
+        fmt.Printf("==== StorePubAccount() ====, account: %v, key: %v, value: %v\n", ctaddr, key, es    )
+        db.Put([]byte(key),[]byte(es),nil)
+    }
+    return "", nil
+}
+
+func GetPubAccount(gid string) ([]string, string, error) {
+    fmt.Printf("==== dev.getPubAccount() ====, gid: %v\n", gid)
+    retmsg := make([]string, 0)
+    if gid == "" {
+       return retmsg, "", fmt.Errorf("no store data.")
+    }
+
+    lock5.Lock()
+    defer lock5.Unlock()
+
+    dir := GetGroupDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        return retmsg, "", err
+    }
+    defer db.Close()
+
+    key := Keccak256Hash([]byte(strings.ToLower(cur_enode))).Hex()
+    da, err := db.Get([]byte(key),nil)
+    if err != nil {
+        return retmsg, "", err
+    } else {
+        ds,err := UnCompress(string(da))
+        if err != nil {
+            return retmsg, "dcrm back-end internal error:uncompress data fail",err
+        }
+
+        fmt.Printf("==== GetPubAccount() ====, decode2 ds: %v\n", ds)
+        dss,err := Decode2(ds,"GroupAccount")
+        if err != nil {
+            fmt.Printf("==== GetPubAccount() ====, dcrm back-end internal error:decode data fail\n")
+            return retmsg, "dcrm back-end internal error:decode accept data fail",err
+        }
+
+        ac := dss.(*GroupAccount)
+       for _, g := range ac.Group {
+               if g.GroupID == gid {
+                       fmt.Printf("==== GetPubAccount() ====, g.Account: %v\n", g.Account)
+                       return g.Account, "", nil
+               }
+       }
+    }
+    return retmsg, "", nil
 }
 

@@ -685,3 +685,9 @@ func SetUpMsgList(msg string) {
 }
 //==========================================================
 
+func GetAccount(gid string) []string {
+    account, tip, err := dev.GetPubAccount(gid)
+    fmt.Printf("==== GetAccount() ====, account = %v, tip: %v, err: %v\n", account, tip, err)
+    return account
+}
+

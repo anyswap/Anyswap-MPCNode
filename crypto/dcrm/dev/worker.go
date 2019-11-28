@@ -1657,7 +1657,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     GetEnodesInfo(self.GroupId)
-    msg := self.Account + ":" self.Address + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum
+    msg := self.Account + ":" + self.Address + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1694,8 +1694,8 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
        for {
           select {
           case account := <-acceptLockOutChan:
-              tip,reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.Li     mitNum,false,true)
-               fmt.Printf("==== (self *RecvMsg) Run() ====, account: %v, tip: %v, GetAcceptRes = %     v\n", account, tip, reply)
+              tip,reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true)
+               fmt.Printf("==== (self *RecvMsg) Run() ====, account: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
               timeout <- true
           case <-agreeWaitTimeOut.C:
                fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)

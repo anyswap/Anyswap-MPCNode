@@ -126,6 +126,19 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
     }
 }
 
+func (this *Service) GetAccountsBalance(pubkey string) string {
+    if pubkey == "" {
+        return packageResult(FAIL, "args account is null", "", "")
+    }
+    stat := SUCCESS
+    ret, tip, err := dcrm.GetPubAccountBalance(pubkey)
+    if err != nil {
+        stat = FAIL
+    }
+    fmt.Printf("==== GetAccountsBalance() ====, ret: %v\n", ret)
+    return packageResult(stat, tip, "", ret)
+}
+
 func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) map[string]interface{} {
     fmt.Println("==============dcrm_getBalance================")
 

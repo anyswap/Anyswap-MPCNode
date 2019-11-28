@@ -278,6 +278,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	db.Put(ys,[]byte(ss),nil)
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	db.Put([]byte(key),[]byte(ss),nil)
+        key = Keccak256Hash([]byte(strings.ToLower(pubkeyhex))).Hex()
+        db.Put([]byte(key),[]byte(ss),nil)
 	
 	for _, ct := range cryptocoins.Cointypes {
 	    if strings.EqualFold(ct, "ALL") {

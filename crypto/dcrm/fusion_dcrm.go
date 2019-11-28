@@ -51,7 +51,15 @@ func Start() {
 type DcrmPubkeyRes struct {
     Account string
     PubKey string
-    Address map[string]string
+    Address string
+    Balances []SubAddressBalance
+    DcrmAddress map[string]string
+}
+
+type SubAddressBalance struct {
+    Cointype string
+    DcrmAddr string
+    Balance string
 }
 
 type DcrmAddrRes struct {
@@ -138,7 +146,7 @@ func GetPubKeyData(key []byte,account string,cointype string) (string,string,err
 	addrmp[ct] = ctaddr
     }
 
-    m = &DcrmPubkeyRes{Account:account,PubKey:pubkey,Address:addrmp}
+    m = &DcrmPubkeyRes{Account:account, PubKey:pubkey, DcrmAddress:addrmp}
     b,_ := json.Marshal(m)
     return string(b),"",nil
 }
@@ -341,7 +349,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	//db.Close()
 	//PubLock.Unlock()
 	
-	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,Address:addrmp}
+	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddress:addrmp}
 	b,_ := json.Marshal(m)
 	return string(b),"",nil
     }
@@ -403,7 +411,7 @@ func ReqDcrmAddr(raw string,model string) (string,string,error) {
 		addrmp[ct] = ctaddr
 	    }
 
-	    m = &DcrmPubkeyRes{Account:from.Hex(),PubKey:da,Address:addrmp}
+	    m = &DcrmPubkeyRes{Account:from.Hex(),PubKey:da,DcrmAddress:addrmp}
 	    bb,_ := json.Marshal(m)
 	    return string(bb),"",nil
 	    ///
@@ -546,6 +554,49 @@ func LockOut(raw string) (string,string,error) {
     }
 
     return "","unkwon error",fmt.Errorf("LockOut fail.")
+}
+
+func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
+    key := dev.Keccak256Hash([]byte(strings.ToLower(pubkey))).Hex()
+    ret, tip, err := GetPubKeyData([]byte(key), pubkey, "ALL")
+    fmt.Printf("GetPubAccountBalance, ret: %v, tip: %v, err: %v\n", ret, tip, err)
+    var m interface{}
+    if err == nil {
+        dp := DcrmPubkeyRes{}
+        _ = json.Unmarshal([]byte(ret), &dp)
+        balances := make([]SubAddressBalance, 0)
+        var wg sync.WaitGroup
+        var balanceLock sync.Mutex
+        for cointype, subaddr := range dp.DcrmAddress {
+            wg.Add(1)
+            go func (cointype, subaddr string) {
+                if cointype == "ERC20BNB" || cointype == "ATOM" || cointype == "BCH"     {
+                    wg.Done()
+                    return
+                }
+                balance, _, err := GetBalance(pubkey, cointype, subaddr)
+                fmt.Printf("cointype: %v, subaddr: %v, balance: %v, err: %v\n", cointype, subaddr, balance, err)
+                if err != nil {
+                    balance = "0"
+                }
+                b := SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
+                balanceLock.Lock()
+                balances = append(balances, b)
+                fmt.Printf("balances: %v\n", balances)
+                balanceLock.Unlock()
+                wg.Done()
+            }(cointype, subaddr)
+        }
+        wg.Wait()
+        h := cryptocoins.NewCryptocoinHandler("ETH")
+        if h == nil {
+        }
+        ctaddr, err := h.PublicKeyToAddress(pubkey)
+        if err != nil {
+        }
+        m = &DcrmPubkeyRes{PubKey:pubkey, Address: ctaddr, Balances:balances}
+    }
+    return m, tip, err
 }
 
 func GetBalance(account string, cointype string,dcrmaddr string) (string,string,error) {

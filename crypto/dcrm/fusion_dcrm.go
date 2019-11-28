@@ -540,6 +540,11 @@ func LockOut(raw string) (string,string,error) {
 	return "",tip,errtmp
     }
 
+    tip,err = dev.AcceptLockOut(dcrmaddr, groupid, fmt.Sprintf("%v", Nonce), from.Hex(), threshold,     false, true)
+    if err != nil {
+        fmt.Printf("dev.AcceptLockOut, err: %v\n", err.Error())
+    }
+
     return "","unkwon error",fmt.Errorf("LockOut fail.")
 }
 

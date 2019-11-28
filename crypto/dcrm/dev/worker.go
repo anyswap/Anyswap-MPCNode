@@ -59,6 +59,8 @@ var (
     SendToPeer func(string,string) error
     ParseNode func(string) string
     GetEosAccount func() (string,string,string)
+
+    acceptLockOutChan chan string = make(chan string, 10)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -1096,6 +1098,11 @@ func GetLockOutReply() (string,string,error) {
 	tmp += ac.Account
 	tmp += "\""
 	tmp += ","
+	tmp += "\"Address\":"
+	tmp += "\""
+	tmp += ac.Address
+	tmp += "\""
+	tmp += ","
 	tmp += "\"GroupId\":"
 	tmp += "\""
 	tmp += ac.GroupId
@@ -1236,6 +1243,7 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     db.Put([]byte(key),[]byte(es),nil)
     db.Close()
     lock5.Unlock()
+    acceptLockOutChan <- account
     return "",nil
 }
 
@@ -1282,11 +1290,11 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	if rr.MsgType == "rpc_lockout" {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
+	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 	     
-	    ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Deal:false,Accept:false}
+	    ac := &AcceptLockOutData{Account:msgs[0],Address:msgs[1],GroupId:msgs[6],Nonce:msgs[7],DcrmFrom:msgs[2],DcrmTo:msgs[3],Value:msgs[4],Cointype:msgs[5],LimitNum:msgs[8],Deal:false,Accept:false}
 	    SaveAcceptData(ac) 
 	    
 	    ////
@@ -1299,7 +1307,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                 for {
                    select {
                    case account := <-acceptLockOutChan:
-                       tip,reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7])
+                       tip,reply = GetAcceptRes(msgs[1],msgs[6],msgs[7],msgs[2],msgs[8])
                         fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcce     ptRes = %v\n", account, tip, reply)
                        timeout <- true
                    case <-agreeWaitTimeOut.C:
@@ -1318,10 +1326,10 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	     }
 	    ////
 
-	    w.groupid = msgs[5] 
+	    w.groupid = msgs[6] 
 
 	    rch := make(chan interface{},1)
-	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[4],msgs[3],msgs[2],msgs[6],rch)
+	    validate_lockout(w.sid,msgs[0],msgs[2],msgs[5],msgs[4],msgs[3],msgs[7],rch)
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
 		fmt.Println("==============RecvMsg.Run,Get LockOut Result.TxHash = %s =================",chret)
@@ -1596,6 +1604,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 type LockOutSendMsgToDcrm struct {
     Account string
+    Address string
     DcrmFrom string
     DcrmTo string
     Value string
@@ -1613,7 +1622,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     GetEnodesInfo(self.GroupId)
-    msg := self.Account + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum
+    msg := self.Account + ":" self.Address + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1645,9 +1654,19 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     var tip string
     timeout := make(chan bool, 1)
     go func(timeout chan bool) {
-	 time.Sleep(time.Duration(10)*time.Second) //1000 == 1s
-	 tip,reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true) 
-	 timeout <- true
+       agreeWaitTime := 3 * time.Minute
+       agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+       for {
+          select {
+          case account := <-acceptLockOutChan:
+              tip,reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.Li     mitNum,false,true)
+               fmt.Printf("==== (self *RecvMsg) Run() ====, account: %v, tip: %v, GetAcceptRes = %     v\n", account, tip, reply)
+              timeout <- true
+          case <-agreeWaitTimeOut.C:
+               fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
+              break
+          }
+      }
      }(timeout)
      <-timeout
 
@@ -1699,6 +1718,7 @@ func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bo
 
 type AcceptLockOutData struct {
     Account string
+    Address string
     GroupId string
     Nonce string
     DcrmFrom string
@@ -1724,7 +1744,7 @@ func SaveAcceptData(ac *AcceptLockOutData) error {
         return err
     }
     
-    key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
+    key := Keccak256Hash([]byte(strings.ToLower(ac.Address + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
     
     alos,err := Encode2(ac)
     if err != nil {
@@ -1835,16 +1855,19 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],LimitNum:msgs[3]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
+	    break
 	case "rpc_lockout":
-	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
+	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 	    m := strings.Split(msg,":")
-	    v := LockOutSendMsgToDcrm{Account:m[0],DcrmFrom:m[1],DcrmTo:m[2],Value:m[3],Cointype:m[4],GroupId:m[5],Nonce:m[6],LimitNum:m[7]}
+	    v := LockOutSendMsgToDcrm{Account:m[0],Address:m[1],DcrmFrom:m[2],DcrmTo:m[3],Value:m[4],Cointype:m[5],GroupId:m[6],Nonce:m[7],LimitNum:m[8]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
+	    break
 	case "rpc_get_lockout_reply":
 	    v := GetLockOutReplySendMsgToDcrm{}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
+	    break
 	default:
 	    return "","",nil
     }

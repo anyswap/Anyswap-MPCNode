@@ -1294,9 +1294,19 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    var tip string 
 	    timeout := make(chan bool, 1)
 	    go func(timeout chan bool) {
-		 time.Sleep(time.Duration(60)*time.Second) //1000 == 1s
-		 tip,reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7]) 
-		 timeout <- true
+                agreeWaitTime := 3 * time.Minute
+                agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+                for {
+                   select {
+                   case account := <-acceptLockOutChan:
+                       tip,reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7])
+                        fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcce     ptRes = %v\n", account, tip, reply)
+                       timeout <- true
+                   case <-agreeWaitTimeOut.C:
+                        fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime     )
+                       break
+                   }
+               }
 	     }(timeout)
 	     <-timeout
 

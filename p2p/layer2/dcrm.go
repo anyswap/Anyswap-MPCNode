@@ -238,8 +238,11 @@ func SdkProtocol_sendToGroupOneNode(gID, msg string) string {
 }
 
 func getSDKGroupNodes(gid discover.NodeID) []*discover.Node {
+	g := make([]*discover.Node, 0)
 	_, xvcGroup := getGroupSDK(gid)
-	g := make([]*discover.Node, 0, len(xvcGroup.Group))
+	if xvcGroup == nil {
+		return g
+	}
 	for _, e := range xvcGroup.Group {
 		enode := e.Enode
 		rn, _ := discover.ParseNode(enode)

@@ -1393,10 +1393,6 @@ func CallGroupStatus(gname string, gid NodeID, count uint64, enode *Node, status
 		gsa.Enodes = append(gsa.Enodes, enode)
 		gsa.EnodeStatus[enode.ID.String()] = status
 	}
-	for i, g := range groupStatusArray {
-		fmt.Printf("==== CallGroupStatus() ====, groupStatusArray gid: %v\n", i)
-		fmt.Printf("==== CallGroupStatus() ====, groupStatusArray gname: %v, gs.count: %v, gs.Enodestatus: %v\n", g.Gname, g.Count, g.EnodeStatus)
-	}
 	groupStatusChan <- gid
 }
 

@@ -211,8 +211,6 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     }
 
     cur_nonce,_ := new(big.Int).SetString(cur_nonce_str,10)
-    one,_ := new(big.Int).SetString("1",10)
-    cur_nonce = new(big.Int).Add(cur_nonce,one)
     if Nonce.Cmp(cur_nonce) != 0 {
 	res := RpcDcrmRes{Ret:"",Tip:"lockout tx nonce error",Err:fmt.Errorf("nonce error.")}
 	ch <- res

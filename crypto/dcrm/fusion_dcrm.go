@@ -523,7 +523,7 @@ func LockOut(raw string) (string,string,error) {
     Nonce := tx.Nonce() 
 
     fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,Nonce)
-    if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" {
+    if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || address == "" {
 	return "","parameter error from raw data,maybe raw data error",fmt.Errorf("param error.")
     }
    
@@ -546,11 +546,6 @@ func LockOut(raw string) (string,string,error) {
     if errtmp != nil {
 	fmt.Println("============dcrm_lockOut,err = %s ================",errtmp.Error())
 	return "",tip,errtmp
-    }
-
-    tip,err = dev.AcceptLockOut(dcrmaddr, groupid, fmt.Sprintf("%v", Nonce), from.Hex(), threshold,     false, true)
-    if err != nil {
-        fmt.Printf("dev.AcceptLockOut, err: %v\n", err.Error())
     }
 
     return "","unkwon error",fmt.Errorf("LockOut fail.")

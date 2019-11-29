@@ -1302,7 +1302,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    var reply bool 
 	    var tip string 
 	    timeout := make(chan bool, 1)
-	    go func(timeout chan bool) {
+	    go func() {
                 agreeWaitTime := 3 * time.Minute
                 agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
                 for {
@@ -1311,13 +1311,14 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                        tip,reply = GetAcceptRes(msgs[1],msgs[6],msgs[7],msgs[2],msgs[8])
                        fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
                        timeout <- true
-		       break
+		       return
                    case <-agreeWaitTimeOut.C:
                        fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
-                       break
+                       timeout <- true
+                       return
                    }
                }
-	     }(timeout)
+	     }()
 	     <-timeout
 
 	     fmt.Println("===============RecvMsg.Run,Get Accept LockOut Result =%v ================",reply)
@@ -1686,33 +1687,10 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     ////
-    var reply error
     var tip string
-    timeout := make(chan bool, 1)
-    go func(timeout chan bool) {
-       agreeWaitTime := 3 * time.Minute
-       agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
-       for {
-          select {
-          case account := <-acceptLockOutChan:
-              tip,reply = AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true)
-               fmt.Printf("==== (self *RecvMsg) Run() ====, account: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
-              timeout <- true
-          case <-agreeWaitTimeOut.C:
-               fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
-              break
-          }
-      }
-     }(timeout)
-     <-timeout
+    time.Sleep(time.Duration(3) * time.Second)
+    AcceptLockOut(self.Address,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true)
 
-    fmt.Println("============LockOutSendMsgToDcrm.Run,get accept lockout result, err = %v ============",reply)
-     if reply != nil {
-	 res2 := RpcDcrmRes{Ret:"",Tip:tip,Err:reply}
-	ch <- res2
-	return false
-     }
-    ////
     w := workers[workid]
     chret,tip,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
     fmt.Println("========LockOutSendMsgToDcrm.Run,Get Result = %s, err = %v ============",chret,cherr)
@@ -1939,10 +1917,10 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 
 func GetChannelValue(t int,obj interface{}) (string,string,error) {
     timeout := make(chan bool, 1)
-    go func(timeout chan bool) {
+    go func() {
 	 time.Sleep(time.Duration(t)*time.Second) //1000 == 1s
 	 timeout <- true
-     }(timeout)
+     }()
 
      switch obj.(type) {
 	 case chan interface{} :

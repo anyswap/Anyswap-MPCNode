@@ -2476,48 +2476,62 @@ func StorePubAccount(gid, pubkey string) (string, error) {
     return "", nil
 }
 
-func GetPubAccount(gid string) ([]string, string, error) {
-    fmt.Printf("==== dev.getPubAccount() ====, gid: %v\n", gid)
-    retmsg := make([]string, 0)
-    if gid == "" {
-       return retmsg, "", fmt.Errorf("no store data.")
-    }
+type pubAccounts struct {
+       Group []AccountsList
+}
+type AccountsList struct {
+       GroupID string
+       Accounts []string
+}
 
+func GetPubAccount(gid string) (interface{}, int, string, error) {
+    fmt.Printf("==== dev.getPubAccount() ====, gid: %v\n", gid)
     lock5.Lock()
     defer lock5.Unlock()
 
     dir := GetGroupDir()
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
-        return retmsg, "", err
+        return nil, 0, "", err
     }
     defer db.Close()
 
     key := Keccak256Hash([]byte(strings.ToLower(cur_enode))).Hex()
     da, err := db.Get([]byte(key),nil)
     if err != nil {
-        return retmsg, "", err
+        return nil, 0, "", err
     } else {
         ds,err := UnCompress(string(da))
         if err != nil {
-            return retmsg, "dcrm back-end internal error:uncompress data fail",err
+            return nil, 0, "dcrm back-end internal error:uncompress data fail", err
         }
 
         fmt.Printf("==== GetPubAccount() ====, decode2 ds: %v\n", ds)
         dss,err := Decode2(ds,"GroupAccount")
         if err != nil {
             fmt.Printf("==== GetPubAccount() ====, dcrm back-end internal error:decode data fail\n")
-            return retmsg, "dcrm back-end internal error:decode accept data fail",err
+            return nil, 0, "dcrm back-end internal error:decode accept data fail", err
         }
 
+        al := make([]AccountsList, 0)
         ac := dss.(*GroupAccount)
-       for _, g := range ac.Group {
-               if g.GroupID == gid {
-                       fmt.Printf("==== GetPubAccount() ====, g.Account: %v\n", g.Account)
-                       return g.Account, "", nil
-               }
-       }
+        for _, g := range ac.Group {
+            alNew := AccountsList{GroupID: g.GroupID, Accounts: g.Account}
+            if gid != "" {
+                if g.GroupID == gid {
+                    al = append(al, alNew)
+                    pa := &pubAccounts{Group: al}
+                    fmt.Printf("==== GetPubAccount() ====, g.Account: %v\n", g.Account)
+                    return pa, len(al), "", nil
+                }
+                continue
+            }
+            al = append(al, alNew)
+        }
+        pa := &pubAccounts{Group: al}
+        fmt.Printf("==== GetPubAccount() ====, PubAccounts: %v\n", pa)
+        return pa, len(al), "", nil
     }
-    return retmsg, "", nil
+    return nil, 0, "", nil
 }
 

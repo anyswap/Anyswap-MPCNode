@@ -126,19 +126,6 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
     }
 }
 
-func (this *Service) GetAccountsBalance(pubkey string) string {
-    if pubkey == "" {
-        return packageResult(FAIL, "args account is null", "", "")
-    }
-    stat := SUCCESS
-    ret, tip, err := dcrm.GetPubAccountBalance(pubkey)
-    if err != nil {
-        stat = FAIL
-    }
-    fmt.Printf("==== GetAccountsBalance() ====, ret: %v\n", ret)
-    return packageResult(stat, tip, "", ret)
-}
-
 func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) map[string]interface{} {
     fmt.Println("==============dcrm_getBalance================")
 
@@ -348,31 +335,31 @@ func startRpcServer() error {
 	return nil
 }
 
-type pubAccounts struct {
-       Group []AccountsList
-}
-type AccountsList struct {
-       GroupID string
-       Accounts []string
+func (this *Service) GetAccounts(raw string) string {
+	stat := NULLRET
+	e := ""
+	ret, count, tip, err := dcrm.GetAccount("")
+	if err != nil {
+		stat = FAIL
+		e = err.Error()
+	}
+	if count > 0 {
+		stat = SUCCESS
+	}
+	fmt.Printf("==== GetAccounts() ====, ret: %v\n", ret)
+	return packageResult(stat, tip, e, ret)
 }
 
-func (this *Service) GetAccounts(raw string) string {
-       retGids := this.GetSDKGids()
-       al := make([]AccountsList, 0)
-       for _, gid := range retGids {//goroutine
-               retAccount := make([]string, 0)
-               ga := dcrm.GetAccount(gid)
-               for _, a := range ga {
-                       retAccount = append(retAccount, a)
-               }
-               alNew := AccountsList{GroupID: gid, Accounts: retAccount}
-               al = append(al, alNew)
-       }
-       stat := NULLRET
-       if len(al) > 0 {
-               stat = SUCCESS
-       }
-       pa := &pubAccounts{Group: al}
-       return packageResult(stat, "", "", pa)
+func (this *Service) GetAccountsBalance(pubkey string) string {
+	if pubkey == "" {
+		return packageResult(FAIL, "args account is null", "", "")
+	}
+	stat := SUCCESS
+	ret, tip, err := dcrm.GetPubAccountBalance(pubkey)
+	if err != nil {
+		stat = FAIL
+	}
+	fmt.Printf("==== GetAccountsBalance() ====, ret: %v\n", ret)
+	return packageResult(stat, tip, "", ret)
 }
 

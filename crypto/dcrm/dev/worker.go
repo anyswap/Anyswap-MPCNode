@@ -46,9 +46,9 @@ var (
     SepDel = "dcrmsepdel"
 
     PaillierKeyLength = 2048
-    sendtogroup_lilo_timeout = 100 
+    sendtogroup_lilo_timeout = 100
     sendtogroup_timeout = 100
-    ch_t = 10
+    ch_t = 100
     lock5 sync.Mutex
     lock sync.Mutex
 

@@ -566,12 +566,12 @@ func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
         _ = json.Unmarshal([]byte(ret), &dp)
         balances := make([]SubAddressBalance, 0)
         var wg sync.WaitGroup
-        var balanceLock sync.Mutex
+	var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
         for cointype, subaddr := range dp.DcrmAddress {
             wg.Add(1)
             go func (cointype, subaddr string) {
-                if cointype == "ERC20BNB" || cointype == "ATOM" || cointype == "BCH"     {
-                    wg.Done()
+                defer wg.Done()
+                if cointype != "ETH" {
                     return
                 }
                 balance, _, err := GetBalance(pubkey, cointype, subaddr)
@@ -579,15 +579,17 @@ func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
                 if err != nil {
                     balance = "0"
                 }
-                b := SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
-                balanceLock.Lock()
-                balances = append(balances, b)
-                fmt.Printf("balances: %v\n", balances)
-                balanceLock.Unlock()
-                wg.Done()
+		ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
             }(cointype, subaddr)
         }
         wg.Wait()
+	for _, cointype := range cryptocoins.Cointypes {
+                 if ret[cointype] != nil {
+                     balances = append(balances, *(ret[cointype]))
+                     fmt.Printf("balances: %v\n", balances)
+                     delete(ret, cointype)
+                 }
+            }
         h := cryptocoins.NewCryptocoinHandler("ETH")
         if h == nil {
         }

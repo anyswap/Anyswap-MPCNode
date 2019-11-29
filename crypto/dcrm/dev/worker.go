@@ -1309,10 +1309,11 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                    select {
                    case account := <-acceptLockOutChan:
                        tip,reply = GetAcceptRes(msgs[1],msgs[6],msgs[7],msgs[2],msgs[8])
-                        fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcce     ptRes = %v\n", account, tip, reply)
+                       fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
                        timeout <- true
+		       break
                    case <-agreeWaitTimeOut.C:
-                        fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime     )
+                       fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
                        break
                    }
                }

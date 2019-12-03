@@ -46,8 +46,8 @@ var (
     SepDel = "dcrmsepdel"
 
     PaillierKeyLength = 2048
-    sendtogroup_lilo_timeout = 100
-    sendtogroup_timeout = 100
+    sendtogroup_lilo_timeout = 180
+    sendtogroup_timeout = 180
     ch_t = 100
     lock5 sync.Mutex
     lock sync.Mutex
@@ -62,6 +62,7 @@ var (
     GetEosAccount func() (string,string,string)
 
     acceptLockOutChan chan string = make(chan string, 10)
+    acceptWaitLockOutChan chan string = make(chan string, 10)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -1291,43 +1292,46 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	if rr.MsgType == "rpc_lockout" {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
+	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
-	     
-	    ac := &AcceptLockOutData{Account:msgs[0],Address:msgs[1],GroupId:msgs[6],Nonce:msgs[7],DcrmFrom:msgs[2],DcrmTo:msgs[3],Value:msgs[4],Cointype:msgs[5],LimitNum:msgs[8],Deal:false,Accept:false}
-	    SaveAcceptData(ac) 
-	    
-	    ////
-	    var reply bool 
-	    var tip string 
-	    timeout := make(chan bool, 1)
-	    go func() {
-                agreeWaitTime := 3 * time.Minute
-                agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
-                for {
-                   select {
-                   case account := <-acceptLockOutChan:
-                       tip,reply = GetAcceptRes(msgs[1],msgs[6],msgs[7],msgs[2],msgs[8])
-                       fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
-                       timeout <- true
-		       return
-                   case <-agreeWaitTimeOut.C:
-                       fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
-                       timeout <- true
-                       return
-                   }
-               }
-	     }()
-	     <-timeout
+	    if msgs[9] == "0" {// self-group
+	        ac := &AcceptLockOutData{Account:msgs[0],Address:msgs[1],GroupId:msgs[6],Nonce:msgs[7],DcrmFrom:msgs[2],DcrmTo:msgs[3],Value:msgs[4],Cointype:msgs[5],LimitNum:msgs[8],Deal:false,Accept:false}
+	        SaveAcceptData(ac)
 
-	     fmt.Println("===============RecvMsg.Run,Get Accept LockOut Result =%v ================",reply)
-	     if reply == false {
-		 res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:fmt.Errorf("don't accept lockout.")}
-		ch <- res2
-		return false
-	     }
-	    ////
+	        ////
+	        var reply bool
+	        var tip string
+	        timeout := make(chan bool, 1)
+	        go func() {
+                    agreeWaitTime := 3 * time.Minute
+                    agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+                    for {
+                       select {
+                       case account := <-acceptLockOutChan:
+                           tip,reply = GetAcceptRes(msgs[1],msgs[6],msgs[7],msgs[2],msgs[8])
+                           fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
+                           timeout <- true
+	                   return
+                       case <-agreeWaitTimeOut.C:
+                           fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
+                           timeout <- true
+                           return
+                       }
+                   }
+	        }()
+	        acceptWaitLockOutChan <- msgs[0]
+	        <-timeout
+
+	        fmt.Println("===============RecvMsg.Run,Get Accept LockOut Result =%v ================",reply)
+	        if reply == false {
+	            res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:fmt.Errorf("don't accept lockout.")}
+	           ch <- res2
+	           return false
+	        }
+	    } else {
+	        acceptWaitLockOutChan <- msgs[0]
+	    }
 
 	    w.groupid = msgs[6] 
 
@@ -1649,6 +1653,7 @@ type LockOutSendMsgToDcrm struct {
     GroupId string
     Nonce string
     LimitNum string
+    Mode string
 }
 
 func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -1659,7 +1664,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     GetEnodesInfo(self.GroupId)
-    msg := self.Account + ":" + self.Address + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum
+    msg := self.Account + ":" + self.Address + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1687,8 +1692,9 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     ////
+    <-acceptWaitLockOutChan
     var tip string
-    time.Sleep(time.Duration(3) * time.Second)
+    time.Sleep(time.Duration(1) * time.Second)
     AcceptLockOut(self.Address,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true)
 
     w := workers[workid]
@@ -1884,9 +1890,9 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
 	case "rpc_lockout":
-	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
+	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    m := strings.Split(msg,":")
-	    v := LockOutSendMsgToDcrm{Account:m[0],Address:m[1],DcrmFrom:m[2],DcrmTo:m[3],Value:m[4],Cointype:m[5],GroupId:m[6],Nonce:m[7],LimitNum:m[8]}
+	    v := LockOutSendMsgToDcrm{Account:m[0],Address:m[1],DcrmFrom:m[2],DcrmTo:m[3],Value:m[4],Cointype:m[5],GroupId:m[6],Nonce:m[7],LimitNum:m[8],Mode:m[9]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break

@@ -137,7 +137,7 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 
 func getGroupSDK(gid discover.NodeID) (discover.NodeID, *Group) {
 	for id, g := range SdkGroup {
-		if g.Status != "SUCCESS" {
+		if g.Status != "SUCCESS" && g.Type != "1+2" {
 			continue
 		}
 		index := id.String()

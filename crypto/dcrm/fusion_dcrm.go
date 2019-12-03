@@ -508,7 +508,7 @@ func LockOut(raw string) (string,string,error) {
 
     data := string(tx.Data())
     datas := strings.Split(data,":")
-    //LOCKOUT:address:dcrmaddr:dcrmto:value:cointype:groupid:threshold
+    //LOCKOUT:address:dcrmaddr:dcrmto:value:cointype:groupid:threshold:mode
     if datas[0] != "LOCKOUT" {
 	return "","transaction data format error,it is not LOCKOUT tx",fmt.Errorf("lock raw data error,it is not lockout tx.")
     }
@@ -520,17 +520,18 @@ func LockOut(raw string) (string,string,error) {
     cointype := datas[5]
     groupid := datas[6]
     threshold := datas[7]
+    mode := datas[8]
     Nonce := tx.Nonce() 
 
     fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,Nonce)
-    if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || address == "" {
+    if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || address == "" || mode == "" {
 	return "","parameter error from raw data,maybe raw data error",fmt.Errorf("param error.")
     }
    
     var errtmp error
     var tip string
     for i:=0;i<1;i++ {
-	msg := from.Hex() + ":" + address + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold
+	msg := from.Hex() + ":" + address + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
 	txhash,tip2,err2 := SendReqToGroup(msg,"rpc_lockout")
 	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
 	if err2 == nil && txhash != "" {

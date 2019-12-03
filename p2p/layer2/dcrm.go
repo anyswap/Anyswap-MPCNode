@@ -22,7 +22,6 @@ import (
 	//"math"
 	"net"
 	"sort"
-	"strings"
 	"time"
 	"fmt"
 
@@ -325,7 +324,7 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 	sort.Sort(sort.StringSlice(enodes))
 	enode := []*discover.Node{}
 	selfid := fmt.Sprintf("%v", discover.GetLocalID())
-	id := ""
+	id := []byte("")
 	for _, un := range enodes {
 		fmt.Printf("for un: %v\n", un)
 		node, err := discover.ParseNode(un)
@@ -343,17 +342,14 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 		}
 		n := fmt.Sprintf("%v", node.ID)
 		fmt.Printf("CreateSDKGroup, n: %v\n", n)
-		if id == "" {
-			id = crypto.Keccak256Hash([]byte(node.ID.String())).String()
+		if len(id) == 0 {
+			id = crypto.Keccak512([]byte(node.ID.String()))
 		} else {
-			id = crypto.Keccak256Hash([]byte(id), []byte(node.ID.String())).String()
+			id = crypto.Keccak512(id, []byte(node.ID.String()))
 		}
 		enode = append(enode, node)
 	}
-	//id := crypto.Keccak256Hash([]byte(enodes))
-	id = fmt.Sprintf("%v%v", id, strings.TrimPrefix(id, "0x")) // test:
-	fmt.Printf("CreateSDKGroup, id: %v\n", id)
-	gid, err := discover.HexID(id)
+	gid, err := discover.BytesID(id)
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
 	for i, g := range SdkGroup {
 		if g.Gname == gname || i == gid{
@@ -362,7 +358,7 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 	}
 	name, retErr := discover.StartCreateSDKGroup(gname, gid, mode, enode)
 	fmt.Printf("CreateSDKGroup, name: %v\n", name)
-	return name, id, count, retErr
+	return name, gid.String(), count, retErr
 }
 
 func GetEnodeStatus(enode string) (string, string) {

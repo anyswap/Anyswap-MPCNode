@@ -38,7 +38,7 @@ import (
 
 //ec2
 //msgprex = hash 
-func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interface{}) {
+func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interface{}, mode string) {
 
     fmt.Println("========dcrm_genPubKey============")
 
@@ -225,7 +225,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     
     pubkeyhex := hex.EncodeToString(ys)
     fmt.Println("===============dcrm_genPubKey,pubkey = %s ==================",pubkeyhex)
-    tip, err := StorePubAccount(wk.groupid, pubkeyhex)
+    tip, err := StorePubAccount(wk.groupid, pubkeyhex, mode)
     fmt.Printf("==== dcrm_genPubKey() ====, StorePubAccount tip: %v, err: %v\n", tip, err)
     ////save to db
     if !strings.EqualFold(cointype, "ALL") {

@@ -248,7 +248,7 @@ func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string
 func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
 	msgs := strings.Split(msg,":")
-	if len(msgs) < 4 {
+	if len(msgs) < 5 {
 	    return "","dcrm back-end internal parameter error in func SendReqToGroup",fmt.Errorf("param error.")
 	}
 
@@ -258,7 +258,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	}
 
 	//account:cointype:groupid:threshold
-	str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3]
+	str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4]
 	ret,tip,err := dev.SendReqToGroup(str,rpctype)
 	if err != nil || ret == "" {
 	    return "",tip,err
@@ -428,7 +428,7 @@ func ReqDcrmAddr(raw string,model string) (string,string,error) {
 	return "","no threshold value",fmt.Errorf("get threshold fail.")
     }
 
-    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + threshold
+    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + threshold + ":" + model
     addr,tip,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
     if addr == "" && err != nil {
 	return "",tip,err
@@ -733,7 +733,7 @@ func SetUpMsgList(msg string) {
     }
 }
 
-func GetAccount(gid string) (interface{}, int, string, error) {
-    return dev.GetPubAccount(gid)
+func GetAccount(mode string) (interface{}, int, string, error) {
+    return dev.GetPubAccount("", mode)
 }
 

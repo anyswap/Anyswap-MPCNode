@@ -1358,7 +1358,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
-	    //msg = account:cointype:groupid:threshold
+	    //msg = account:cointype:groupid:threshold:mode
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
 	    w.sid = rr.Nonce
@@ -1372,7 +1372,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    
 	    w.groupid = msgs[2]
 	    w.limitnum = msgs[3]
-	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch)
+	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[4])
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:cherr}
@@ -1589,6 +1589,7 @@ type ReqAddrSendMsgToDcrm struct {
     Cointype string
     GroupId string
     LimitNum string
+    Mode string
 }
 
 func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -1603,7 +1604,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
     
-    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum}
+    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum + ":" + self.Mode}
     res,err := Encode2(sm)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode SendMsg fail in req addr",Err:err}
@@ -1743,6 +1744,7 @@ type GroupAccount struct {
 type AccountInfo struct {
     GroupID string
     Account []string
+    Mode string//0, 1:person
 }
 
 type AccountSubAddress struct {
@@ -1883,9 +1885,9 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     var req RpcReq
     switch rpctype {
 	case "rpc_req_dcrmaddr":
-	    //msg = account : cointype : groupid : threshold 
+	    //msg = account : cointype : groupid : threshold : mode
 	    msgs := strings.Split(msg,":")
-	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],LimitNum:msgs[3]}
+	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],LimitNum:msgs[3], Mode:msgs[4]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
@@ -2378,8 +2380,8 @@ func GetEosDbDir() string {
     return dir
 }
 
-func StorePubAccount(gid, pubkey string) (string, error) {
-    fmt.Printf("==== storePubAccount() ====, gid: %v, pubkey: %v\n", gid, pubkey)
+func StorePubAccount(gid, pubkey, mode string) (string, error) {
+    fmt.Printf("==== storePubAccount() ====, gid: %v, pubkey: %v, mode: %v\n", gid, pubkey, mode)
     if gid == "" || pubkey == "" {
        return "", fmt.Errorf("no store data.")
     }
@@ -2400,8 +2402,9 @@ func StorePubAccount(gid, pubkey string) (string, error) {
         a := make([]string, 0)
        a = append(a, pubkey)
        group := make([]AccountInfo, 0)
-       group = append(group, AccountInfo{GroupID: gid, Account: a})
+       group = append(group, AccountInfo{GroupID: gid, Account: a, Mode: mode})
         ac := &GroupAccount{group}
+       fmt.Printf("==== StorePubAccount() ==== new, ac: %v\n", ac)
         alos, err := Encode2(ac)
         if err != nil {
             return "", err
@@ -2433,15 +2436,16 @@ func StorePubAccount(gid, pubkey string) (string, error) {
         ac := dss.(*GroupAccount)
        fmt.Printf("==== StorePubAccount() ====, ac: %v\n", ac)
         a := make([]string, 0)
+       group := make([]AccountInfo, 0)
        for _, g := range ac.Group {
-               if g.GroupID == gid {
-                       a = g.Account
-                       break
-               }
+           if g.GroupID == gid {
+                   a = g.Account
+                   continue
+           }
+           group = append(group, g)
        }
        a = append(a, pubkey)
-       group := make([]AccountInfo, 0)
-       group = append(group, AccountInfo{GroupID: gid, Account: a})
+       group = append(group, AccountInfo{GroupID: gid, Account: a, Mode: mode})
         ac = &GroupAccount{group}
        fmt.Printf("==== StorePubAccount() ==== after for, ac: %v\n", ac)
         e, err := Encode2(ac)
@@ -2469,8 +2473,8 @@ type AccountsList struct {
        Accounts []string
 }
 
-func GetPubAccount(gid string) (interface{}, int, string, error) {
-    fmt.Printf("==== dev.getPubAccount() ====, gid: %v\n", gid)
+func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
+    fmt.Printf("==== dev.getPubAccount() ====, gid: %v, mode: %v\n", gid, mode)
     lock5.Lock()
     defer lock5.Unlock()
 
@@ -2502,16 +2506,18 @@ func GetPubAccount(gid string) (interface{}, int, string, error) {
         ac := dss.(*GroupAccount)
         for _, g := range ac.Group {
             alNew := AccountsList{GroupID: g.GroupID, Accounts: g.Account}
-            if gid != "" {
-                if g.GroupID == gid {
-                    al = append(al, alNew)
-                    pa := &pubAccounts{Group: al}
-                    fmt.Printf("==== GetPubAccount() ====, g.Account: %v\n", g.Account)
-                    return pa, len(al), "", nil
+	    if g.Mode == mode {
+                if gid != "" {
+                    if g.GroupID == gid {
+                        al = append(al, alNew)
+                        pa := &pubAccounts{Group: al}
+                        fmt.Printf("==== GetPubAccount() ====, g.Account: %v\n", g.Account)
+                        return pa, len(al), "", nil
+                    }
+                    continue
                 }
-                continue
-            }
-            al = append(al, alNew)
+                al = append(al, alNew)
+	    }
         }
         pa := &pubAccounts{Group: al}
         fmt.Printf("==== GetPubAccount() ====, PubAccounts: %v\n", pa)

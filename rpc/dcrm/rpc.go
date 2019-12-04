@@ -335,10 +335,10 @@ func startRpcServer() error {
 	return nil
 }
 
-func (this *Service) GetAccounts(raw string) string {
+func (this *Service) GetAccounts(mode string) string {
 	stat := NULLRET
 	e := ""
-	ret, count, tip, err := dcrm.GetAccount("")
+	ret, count, tip, err := dcrm.GetAccount(mode)
 	if err != nil {
 		stat = FAIL
 		e = err.Error()

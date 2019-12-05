@@ -27,7 +27,7 @@ import (
 )
 
 // txs start
-func Xprotocol_sendToGroupOneNode(msg string) string {
+func Xprotocol_sendToGroupOneNode(msg string) (string, error) {
 	return discover.SendToGroup(discover.NodeID{}, msg, false, Xprotocol_type, nil)
 }
 

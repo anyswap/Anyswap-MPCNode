@@ -32,7 +32,7 @@ import (
 )
 
 // txs start
-func DcrmProtocol_sendToGroupOneNode(msg string) string {
+func DcrmProtocol_sendToGroupOneNode(msg string) (string, error) {
 	return discover.SendToGroup(discover.NodeID{}, msg, false, DcrmProtocol_type, nil)
 }
 
@@ -191,7 +191,7 @@ func SendMsg(msg string) {
 	DcrmProtocol_broadcastInGroupOthers(msg)
 }
 
-func SendToDcrmGroupAllNodes(msg string) string {
+func SendToDcrmGroupAllNodes(msg string) (string, error) {
 	return discover.SendToGroup(discover.NodeID{}, msg, true, DcrmProtocol_type, nil)
 }
 
@@ -226,11 +226,11 @@ func ParseNodeID(enode string) string {
 }
 
 //================   API   SDK    =====================
-func SdkProtocol_sendToGroupOneNode(gID, msg string) string {
+func SdkProtocol_sendToGroupOneNode(gID, msg string) (string, error) {
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		fmt.Printf("sendToGroupOneNode, group gid: %v not exist\n", gid)
-		return "sendToGroupOneNode error"
+		return "", errors.New("sendToGroupOneNode, gid not exist")
 	}
 	g := getSDKGroupNodes(gid)
 	return discover.SendToGroup(gid, msg, false, Sdkprotocol_type, g)
@@ -256,32 +256,32 @@ func getSDKGroupNodes(gid discover.NodeID) []*discover.Node {
 	return g
 }
 
-func SdkProtocol_SendToGroupAllNodes(gID, msg string) string {
+func SdkProtocol_SendToGroupAllNodes(gID, msg string) (string, error) {
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
-		fmt.Printf("SendToGroupAllNodes, group gid: %v not exist\n", gid)
-		return "SendToGroupAllNodes error"
+		e := fmt.Sprintf("SendGroupAllNodes, group gid: %v not exist", gid)
+		return "", errors.New(e)
 	}
 	g := getSDKGroupNodes(gid)
 	return discover.SendToGroup(gid, msg, true, Sdkprotocol_type, g)
 }
 
-func SdkProtocol_broadcastInGroupOthers(gID, msg string) { // without self
+func SdkProtocol_broadcastInGroupOthers(gID, msg string) (string, error) { // without self
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
-		fmt.Printf("broadcastInGroupOthers, group gid: %v not exist\n", gid)
-		return
+		e := fmt.Sprintf("broadcastInGroupOthers, group gid: %v not exist", gid)
+		return "", errors.New(e)
 	}
-	BroadcastToGroup(gid, msg, Sdkprotocol_type, false)
+	return BroadcastToGroup(gid, msg, Sdkprotocol_type, false)
 }
 
-func SdkProtocol_broadcastInGroupAll(gID, msg string) { // within self
+func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // within self
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
-		fmt.Printf("broadcastInGroupAll, group gid: %v not exist\n", gid)
-		return
+		e := fmt.Sprintf("broadcastInGroupAll, group gid: %v not exist", gid)
+		return "", errors.New(e)
 	}
-	BroadcastToGroup(gid, msg, Sdkprotocol_type, true)
+	return BroadcastToGroup(gid, msg, Sdkprotocol_type, true)
 }
 
 func SdkProtocol_getGroup(gID string) (int, string) {

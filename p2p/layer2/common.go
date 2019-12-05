@@ -30,13 +30,13 @@ import (
 	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
 )
 
-func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool) {
+func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool) (string, error) {
 	emitter.Lock()
 	defer emitter.Unlock()
 
 	//log.Debug("==== BroadcastToGroup() ====\n")
 	if msg == "" || emitter == nil {
-		return
+		return "", errors.New("BroadcastToGroup msg is nil")
 	}
 	//log.Debug("BroadcastToGroup", "sendMsg", msg)
 	dccpGroupfail := NewGroup()
@@ -107,7 +107,8 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 		}
 		break
 	default:
-		return
+		e := fmt.Sprintf("BroadcastToGroup p2pType=%v is not exist", p2pType)
+		return "", errors.New(e)
 	}
 	//log.Debug("BroadcastToGroup", "group: ", xvcGroup)
 	failret := broatcast(xvcGroup, myself, true)
@@ -132,7 +133,10 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	//			log.Debug("BroatcastToGroupFail", "group: ", "success")
 			}
 		}()
+		e := fmt.Sprintf("BroadcastToGroup send failed nodecount=%v", failret)
+		return "", errors.New(e)
 	}
+	return "BroadcastToGroup send Success", nil
 }
 
 func getGroupSDK(gid discover.NodeID) (discover.NodeID, *Group) {

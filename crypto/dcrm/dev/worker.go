@@ -54,9 +54,9 @@ var (
 
     //callback
     GetGroup func(string) (int,string)
-    SendToGroupAllNodes func(string,string) string
+    SendToGroupAllNodes func(string,string) (string,error)
     GetSelfEnode func() string
-    BroadcastInGroupOthers func(string,string)
+    BroadcastInGroupOthers func(string,string) (string,error)
     SendToPeer func(string,string) error
     ParseNode func(string) string
     GetEosAccount func() (string,string,string)
@@ -69,7 +69,7 @@ func RegP2pGetGroupCallBack(f func(string)(int,string)) {
     GetGroup = f
 }
 
-func RegP2pSendToGroupAllNodesCallBack(f func(string,string)string) {
+func RegP2pSendToGroupAllNodesCallBack(f func(string,string) (string,error)) {
     SendToGroupAllNodes = f
 }
 
@@ -77,7 +77,7 @@ func RegP2pGetSelfEnodeCallBack(f func()string) {
     GetSelfEnode = f
 }
 
-func RegP2pBroadcastInGroupOthersCallBack(f func(string,string)) {
+func RegP2pBroadcastInGroupOthersCallBack(f func(string,string) (string,error)) {
     BroadcastInGroupOthers = f
 }
 
@@ -1619,9 +1619,9 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    s := SendToGroupAllNodes(self.GroupId,res)
+    _,err = SendToGroupAllNodes(self.GroupId,res)
     
-    if strings.EqualFold(s,"send fail.") {
+    if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail in req addr",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false
@@ -1685,8 +1685,8 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    s := SendToGroupAllNodes(self.GroupId,res)
-    if strings.EqualFold(s,"send fail.") {
+    _,err = SendToGroupAllNodes(self.GroupId,res)
+    if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false

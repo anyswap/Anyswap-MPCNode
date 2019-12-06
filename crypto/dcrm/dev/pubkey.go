@@ -82,7 +82,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	}
 	
 	sedsave := itertmp.Value.(string)
-	pubs := &PubKeyData{Pub:string(sedpk),Save:sedsave,Nonce:"0"}
+	pubs := &PubKeyData{Pub:string(sedpk),Save:sedsave,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode}
 	epubs,err := Encode2(pubs)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ed pubkey",Err:err}
@@ -208,7 +208,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	return
     }
     save := iter.Value.(string)
-    pubs := &PubKeyData{Pub:string(ys),Save:save,Nonce:"0"}
+    pubs := &PubKeyData{Pub:string(ys),Save:save,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode}
     epubs,err := Encode2(pubs)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey",Err:err}
@@ -225,8 +225,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     
     pubkeyhex := hex.EncodeToString(ys)
     fmt.Println("===============dcrm_genPubKey,pubkey = %s ==================",pubkeyhex)
-    tip, err := StorePubAccount(wk.groupid, pubkeyhex, mode)
-    fmt.Printf("==== dcrm_genPubKey() ====, StorePubAccount tip: %v, err: %v\n", tip, err)
+    //tip, err := StorePubAccount(wk.groupid, pubkeyhex, mode)
+    //fmt.Printf("==== dcrm_genPubKey() ====, StorePubAccount tip: %v, err: %v\n", tip, err)
     ////save to db
     if !strings.EqualFold(cointype, "ALL") {
 	lock.Lock()

@@ -36,7 +36,6 @@ import (
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
-    "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins"
 )
 
 var (
@@ -1100,11 +1099,6 @@ func GetLockOutReply() (string,string,error) {
 	tmp += ac.Account
 	tmp += "\""
 	tmp += ","
-	tmp += "\"Address\":"
-	tmp += "\""
-	tmp += ac.Address
-	tmp += "\""
-	tmp += ","
 	tmp += "\"GroupId\":"
 	tmp += "\""
 	tmp += ac.GroupId
@@ -1292,11 +1286,11 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	if rr.MsgType == "rpc_lockout" {
 	    w := workers[workid]
 	    w.sid = rr.Nonce
-	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
+	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 	    if msgs[9] == "0" {// self-group
-	        ac := &AcceptLockOutData{Account:msgs[0],Address:msgs[1],GroupId:msgs[6],Nonce:msgs[7],DcrmFrom:msgs[2],DcrmTo:msgs[3],Value:msgs[4],Cointype:msgs[5],LimitNum:msgs[8],Deal:false,Accept:false}
+		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:false}
 	        SaveAcceptData(ac)
 
 	        ////
@@ -1309,7 +1303,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                     for {
                        select {
                        case account := <-acceptLockOutChan:
-                           tip,reply = GetAcceptRes(msgs[1],msgs[6],msgs[7],msgs[2],msgs[8])
+                           tip,reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7])
                            fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
                            timeout <- true
 	                   return
@@ -1333,10 +1327,11 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        acceptWaitLockOutChan <- msgs[0]
 	    }
 
-	    w.groupid = msgs[6] 
+	    w.groupid = msgs[5] 
 
 	    rch := make(chan interface{},1)
-	    validate_lockout(w.sid,msgs[0],msgs[2],msgs[5],msgs[4],msgs[3],msgs[7],rch)
+	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
+	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[4],msgs[3],msgs[2],msgs[6],rch)
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
 		fmt.Println("==============RecvMsg.Run,Get LockOut Result.TxHash = %s =================",chret)
@@ -1408,24 +1403,13 @@ type PubKeyData struct {
     Pub string
     Save string
     Nonce string
+    GroupId string
+    LimitNum string
+    Mode string
 }
 
 func Encode2(obj interface{}) (string,error) {
     switch obj.(type) {
-    case *AccountSubAddress:
-       ch := obj.(*AccountSubAddress)
-       ret,err := json.Marshal(ch)
-       if err != nil {
-           return "",err
-       }
-       return string(ret),nil
-    case *GroupAccount:
-       ch := obj.(*GroupAccount)
-       ret,err := json.Marshal(ch)
-       if err != nil {
-           return "",err
-       }
-       return string(ret),nil
     case *SendMsg:
 	ch := obj.(*SendMsg)
 	ret,err := json.Marshal(ch)
@@ -1435,11 +1419,6 @@ func Encode2(obj interface{}) (string,error) {
 	return string(ret),nil
     case *PubKeyData:
 	ch := obj.(*PubKeyData)
-	//ret,err := json.Marshal(ch)
-	//if err != nil {
-	//    return "",err
-	//}
-	//return string(ret),nil
 
 	var buff bytes.Buffer
 	enc := gob.NewEncoder(&buff)
@@ -1462,25 +1441,6 @@ func Encode2(obj interface{}) (string,error) {
 }
 
 func Decode2(s string,datatype string) (interface{},error) {
-    if datatype == "AccountSubAddress" {
-       var m AccountSubAddress
-       err := json.Unmarshal([]byte(s), &m)
-       if err != nil {
-           return nil,err
-       }
-
-       return &m,nil
-    }
-
-    if datatype == "GroupAccount" {
-       var m GroupAccount
-       err := json.Unmarshal([]byte(s), &m)
-       if err != nil {
-           return nil,err
-       }
-
-       return &m,nil
-    }
 
     if datatype == "SendMsg" {
 	var m SendMsg
@@ -1493,14 +1453,6 @@ func Decode2(s string,datatype string) (interface{},error) {
     }
 
     if datatype == "PubKeyData" {
-	//var m PubKeyData
-	//err := json.Unmarshal([]byte(s), &m)
-	//if err != nil {
-	//    return nil,err
-	//}
-
-	//return &m,nil
-
 	var data bytes.Buffer
 	data.Write([]byte(s))
 	
@@ -1646,7 +1598,6 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 type LockOutSendMsgToDcrm struct {
     Account string
-    Address string
     DcrmFrom string
     DcrmTo string
     Value string
@@ -1665,7 +1616,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     GetEnodesInfo(self.GroupId)
-    msg := self.Account + ":" + self.Address + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode
+    msg := self.Account + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
@@ -1696,7 +1647,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     <-acceptWaitLockOutChan
     var tip string
     time.Sleep(time.Duration(1) * time.Second)
-    AcceptLockOut(self.Address,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true)
+    AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true)
 
     w := workers[workid]
     chret,tip,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
@@ -1737,23 +1688,8 @@ func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bo
     return true
 }
 
-type GroupAccount struct {
-    Group []AccountInfo
-}
-
-type AccountInfo struct {
-    GroupID string
-    Account []string
-    Mode string//0, 1:person
-}
-
-type AccountSubAddress struct {
-    SubAddress string
-}
-
 type AcceptLockOutData struct {
     Account string
-    Address string
     GroupId string
     Nonce string
     DcrmFrom string
@@ -1761,6 +1697,7 @@ type AcceptLockOutData struct {
     Value string
     Cointype string
     LimitNum string
+    Mode string
 
     Deal bool
     Accept bool
@@ -1779,7 +1716,7 @@ func SaveAcceptData(ac *AcceptLockOutData) error {
         return err
     }
     
-    key := Keccak256Hash([]byte(strings.ToLower(ac.Address + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
+    key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
     
     alos,err := Encode2(ac)
     if err != nil {
@@ -1892,9 +1829,9 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
 	case "rpc_lockout":
-	    //msg = fusionaccount:address:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
+	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    m := strings.Split(msg,":")
-	    v := LockOutSendMsgToDcrm{Account:m[0],Address:m[1],DcrmFrom:m[2],DcrmTo:m[3],Value:m[4],Cointype:m[5],GroupId:m[6],Nonce:m[7],LimitNum:m[8],Mode:m[9]}
+	    v := LockOutSendMsgToDcrm{Account:m[0],DcrmFrom:m[1],DcrmTo:m[2],Value:m[3],Cointype:m[4],GroupId:m[5],Nonce:m[6],LimitNum:m[7],Mode:m[8]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
@@ -2380,7 +2317,7 @@ func GetEosDbDir() string {
     return dir
 }
 
-func StorePubAccount(gid, pubkey, mode string) (string, error) {
+/*func StorePubAccount(gid, pubkey, mode string) (string, error) {
     fmt.Printf("==== storePubAccount() ====, gid: %v, pubkey: %v, mode: %v\n", gid, pubkey, mode)
     if gid == "" || pubkey == "" {
        return "", fmt.Errorf("no store data.")
@@ -2418,21 +2355,15 @@ func StorePubAccount(gid, pubkey, mode string) (string, error) {
     } else {
         ds,err := UnCompress(string(da))
         if err != nil {
-            return "dcrm back-end internal error:uncompress accept data fail",err
+            return "dcrm back-end internal error:uncompress group account data fail",err
         }
 
         dss,err := Decode2(ds,"GroupAccount")
         if err != nil {
-            fmt.Printf("==== StorePubAccount() ====, dcrm back-end internal error:decode accept data     fail\n")
+            fmt.Printf("==== StorePubAccount() ====, dcrm back-end internal error:decode group account data fail\n")
             return "dcrm back-end internal error:decode accept data fail",err
         }
 
-           h := cryptocoins.NewCryptocoinHandler("ETH")
-           if h == nil {
-           }
-           ctaddr, err := h.PublicKeyToAddress(pubkey)
-           if err != nil {
-           }
         ac := dss.(*GroupAccount)
        fmt.Printf("==== StorePubAccount() ====, ac: %v\n", ac)
         a := make([]string, 0)
@@ -2459,7 +2390,6 @@ func StorePubAccount(gid, pubkey, mode string) (string, error) {
             return "dcrm back-end internal error:compress accept data fail",err
         }
 
-        fmt.Printf("==== StorePubAccount() ====, account: %v, key: %v, value: %v\n", ctaddr, key, es    )
         db.Put([]byte(key),[]byte(es),nil)
     }
     return "", nil
@@ -2525,4 +2455,5 @@ func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
     }
     return nil, 0, "", nil
 }
+*/
 

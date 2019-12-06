@@ -257,74 +257,32 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    coin = msgs[1]
 	}
 
-	//account:cointype:groupid:threshold
+	//account:cointype:groupid:threshold:mode
 	str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4]
 	ret,tip,err := dev.SendReqToGroup(str,rpctype)
 	if err != nil || ret == "" {
 	    return "",tip,err
 	}
 
-	/*ss,err := dev.UnCompress(ret)
-	if err != nil {
-	    return "",err
-	}
-	pubs,err := dev.Decode2(ss,"PubKeyData")
-	if err != nil {
-	    return "",err
-	}
-	
-	pubkeyhex := hex.EncodeToString([]byte((pubs.(*dev.PubKeyData)).Pub))*/
 	pubkeyhex := ret
 	fmt.Println("====================dcrm.SendReqToGroup,pubkey = %s =====================",ret)
 
 	var m interface{}
 	if !strings.EqualFold(msgs[1], "ALL") {
-	    /*PubLock.Lock()
-	    dir := dev.GetDbDir()
-	    db, err := leveldb.OpenFile(dir, nil) 
-	    if err != nil { 
-		PubLock.Unlock()
-		return "",err
-	    }*/
-
 	    h := cryptocoins.NewCryptocoinHandler(msgs[1])
 	    if h == nil {
-	//	db.Close()
-	//	PubLock.Unlock()
 		return "","cointype is not supported",fmt.Errorf("req addr fail.cointype is not supported.")
 	    }
 
 	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 	    if err != nil {
-		//	db.Close()
-		//	PubLock.Unlock()
 		return "","get dcrm addr fail from pubkey:" + pubkeyhex,err
 	    }
 
-	    //db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
-	    //key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
-	    //db.Put([]byte(key),[]byte(ret),nil)
-	    //db.Put([]byte(ctaddr),[]byte(ret),nil)
-	    //db.Close()
-	    //PubLock.Unlock()
-	    //
-	    
 	    m = &DcrmAddrRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddr:ctaddr,Cointype:msgs[1]}
 	    b,_ := json.Marshal(m)
 	    return string(b),"",nil
 	}
-	
-	/*PubLock.Lock()
-	dir := dev.GetDbDir()
-	db, err := leveldb.OpenFile(dir, nil) 
-	if err != nil { 
-	    PubLock.Unlock()
-	    return "",err
-	}*/
-
-	//db.Put([]byte((pubs.(*dev.PubKeyData)).Pub),[]byte(ret),nil)
-	//key := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1]))).Hex()
-	//db.Put([]byte(key),[]byte(ret),nil)
 	
 	addrmp := make(map[string]string)
 	for _, ct := range cryptocoins.Cointypes {
@@ -342,13 +300,8 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    }
 	    
 	    addrmp[ct] = ctaddr
-	    
-	    //db.Put([]byte(ctaddr),[]byte(ret),nil)
 	}
 
-	//db.Close()
-	//PubLock.Unlock()
-	
 	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddress:addrmp}
 	b,_ := json.Marshal(m)
 	return string(b),"",nil
@@ -362,7 +315,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     return ret,"",nil
 }
 
-func ReqDcrmAddr(raw string,model string) (string,string,error) {
+func ReqDcrmAddr(raw string,mode string) (string,string,error) {
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
     if err := rlp.DecodeBytes(raws, tx); err != nil {
@@ -379,6 +332,8 @@ func ReqDcrmAddr(raw string,model string) (string,string,error) {
 	}
     }
 
+    fmt.Println("===============ReqDcrmAddr,fusion account = %s================",from.Hex())
+
     data := string(tx.Data())
     datas := strings.Split(data,":")
     if len(datas) < 3 {
@@ -389,7 +344,7 @@ func ReqDcrmAddr(raw string,model string) (string,string,error) {
 	return "","transaction data format error,it is not REQDCRMADDR tx",fmt.Errorf("tx type error.")
     }
 
-    if model == "1" { //non self-group
+    if mode == "1" { //non self-group
 	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
 	    ///
 	    var m interface{}
@@ -428,7 +383,7 @@ func ReqDcrmAddr(raw string,model string) (string,string,error) {
 	return "","no threshold value",fmt.Errorf("get threshold fail.")
     }
 
-    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + threshold + ":" + model
+    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + threshold + ":" + mode
     addr,tip,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
     if addr == "" && err != nil {
 	return "",tip,err
@@ -506,32 +461,33 @@ func LockOut(raw string) (string,string,error) {
 	}
     }
 
+    fmt.Println("===================LockOut,fusion account =%s======================",from.Hex())
+
     data := string(tx.Data())
     datas := strings.Split(data,":")
-    //LOCKOUT:address:dcrmaddr:dcrmto:value:cointype:groupid:threshold:mode
+    //LOCKOUT:dcrmaddr:dcrmto:value:cointype:groupid:threshold:mode
     if datas[0] != "LOCKOUT" {
 	return "","transaction data format error,it is not LOCKOUT tx",fmt.Errorf("lock raw data error,it is not lockout tx.")
     }
 
-    address := datas[1]
-    dcrmaddr := datas[2]
-    dcrmto := datas[3]
-    value := datas[4]
-    cointype := datas[5]
-    groupid := datas[6]
-    threshold := datas[7]
-    mode := datas[8]
+    dcrmaddr := datas[1]
+    dcrmto := datas[2]
+    value := datas[3]
+    cointype := datas[4]
+    groupid := datas[5]
+    threshold := datas[6]
+    mode := datas[7]
     Nonce := tx.Nonce() 
 
-    fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,Nonce)
-    if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || address == "" || mode == "" {
+    fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,mode,Nonce)
+    if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" {
 	return "","parameter error from raw data,maybe raw data error",fmt.Errorf("param error.")
     }
    
     var errtmp error
     var tip string
     for i:=0;i<1;i++ {
-	msg := from.Hex() + ":" + address + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
+	msg := from.Hex() + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
 	txhash,tip2,err2 := SendReqToGroup(msg,"rpc_lockout")
 	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
 	if err2 == nil && txhash != "" {
@@ -567,9 +523,6 @@ func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
             wg.Add(1)
             go func (cointype, subaddr string) {
                 defer wg.Done()
-                if cointype != "ETH" {
-                    return
-                }
                 balance, _, err := GetBalance(pubkey, cointype, subaddr)
                 fmt.Printf("cointype: %v, subaddr: %v, balance: %v, err: %v\n", cointype, subaddr, balance, err)
                 if err != nil {
@@ -734,6 +687,7 @@ func SetUpMsgList(msg string) {
 }
 
 func GetAccount(mode string) (interface{}, int, string, error) {
-    return dev.GetPubAccount("", mode)
+    //return dev.GetPubAccount("", mode)
+    return nil,0,"",nil //TODO tmp
 }
 

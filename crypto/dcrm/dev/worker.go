@@ -36,6 +36,7 @@ import (
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
+    "encoding/hex"
 )
 
 var (
@@ -1132,6 +1133,11 @@ func GetLockOutReply() (string,string,error) {
 	tmp += "\"LimitNum\":"
 	tmp += "\""
 	tmp += ac.LimitNum
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Mode\":"
+	tmp += "\""
+	tmp += ac.Mode
 	tmp += "\""
 	tmp += "}"
 	ret = append(ret,tmp)
@@ -2456,4 +2462,77 @@ func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
     return nil, 0, "", nil
 }
 */
+
+type pubAccounts struct {
+       Group []AccountsList
+}
+type AccountsList struct {
+       GroupID string
+       Accounts []string
+}
+
+func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
+    lock.Lock()
+    dir := GetDbDir()
+    db, err := leveldb.OpenFile(dir, nil) 
+    if err != nil { 
+	lock.Unlock()
+        return nil, 0, "", err
+    }
+   
+    gp := make(map[string][]string)
+    var b bytes.Buffer 
+    b.WriteString("") 
+    b.WriteByte(0) 
+    b.WriteString("") 
+    iter := db.NewIterator(nil, nil) 
+    for iter.Next() { 
+	value := string(iter.Value())
+	ss,err := UnCompress(value)
+	if err != nil {
+	    continue
+	}
+	
+	pubs,err := Decode2(ss,"PubKeyData")
+	if err != nil {
+	    continue
+	}
+	
+	pb := (pubs.(*PubKeyData)).Pub
+	pubkeyhex := hex.EncodeToString([]byte(pb))
+	gid := (pubs.(*PubKeyData)).GroupId
+	md := (pubs.(*PubKeyData)).Mode
+	if mode == md {
+	    al,exsit := gp[gid]
+	    if exsit == true {
+		al = append(al,pubkeyhex)
+		gp[gid] = al
+	    } else {
+		a := make([]string,0)
+		a = append(a,pubkeyhex)
+		gp[gid] = a
+	    }
+	}
+    }
+    iter.Release()
+
+    als := make([]AccountsList, 0)
+    if gid != "" {
+	al,exsit := gp[gid]
+	if exsit == true {
+	    alNew := AccountsList{GroupID: gid, Accounts: al}
+	    als = append(als, alNew)
+	    pa := &pubAccounts{Group: als}
+	    return pa, len(als), "", nil
+	}
+    }
+
+    for k,v := range gp {
+	alNew := AccountsList{GroupID: k, Accounts: v}
+	als = append(als, alNew)
+    }
+    
+    pa := &pubAccounts{Group: als}
+    return pa, len(als), "", nil
+}
 

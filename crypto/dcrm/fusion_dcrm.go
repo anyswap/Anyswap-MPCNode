@@ -412,16 +412,16 @@ func AcceptLockOut(raw string) (string,string,error) {
     data := string(tx.Data())
     datas := strings.Split(data,":")
 
-    if len(datas) < 10 {
+    if len(datas) < 11 {
 	return "","transacion data format error",fmt.Errorf("tx.data error.")
     }
 
-    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:accept
+    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept
     if datas[0] != "ACCEPTLOCKOUT" {
 	return "","transaction data format error,it is not ACCEPTLOCKOUT tx",fmt.Errorf("tx.data error,it is not ACCEPTLOCKOUT tx.")
     }
 
-    if datas[9] != "AGREE" && datas[9] != "DISAGREE" {
+    if datas[10] != "AGREE" && datas[10] != "DISAGREE" {
 	return "","transaction data format error,the lastest segment is not AGREE or DISAGREE",fmt.Errorf("transaction data format error")
     }
 
@@ -432,7 +432,7 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
 
     accept := false
-    if datas[9] == "AGREE" {
+    if datas[10] == "AGREE" {
 	accept = true
     }
 
@@ -686,8 +686,7 @@ func SetUpMsgList(msg string) {
     }
 }
 
-func GetAccount(mode string) (interface{}, int, string, error) {
-    //return dev.GetPubAccount("", mode)
-    return nil,0,"",nil //TODO tmp
+func GetAccount(gid,mode string) (interface{}, int, string, error) {
+    return dev.GetPubAccount(gid, mode)
 }
 

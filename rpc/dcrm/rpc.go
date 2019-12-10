@@ -223,6 +223,30 @@ func (this *Service) GetCurNodeLockOutInfo() map[string]interface{} {
     }
 }
 
+func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
+    fmt.Println("==========dcrm_getLockOutStatus,key = %s ===========",key)
+
+    data := make(map[string]interface{})
+    ret,tip,err := dcrm.GetLockOutStatus(key)
+    if err != nil {
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
+		"Error": err.Error(),
+		"Data": data,
+	}
+    }
+
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
+}
+
 var (
 	rpcport  int
 	endpoint string = "0.0.0.0"

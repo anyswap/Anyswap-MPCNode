@@ -905,6 +905,30 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
     RpcReqQueue <- req
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,rch)
     if cherr != nil {
+	////
+	if s != "" {
+	    res,err := UnCompress(s)
+	    if err != nil {
+		//fail:chret:tip:error
+		ret := ("fail"+Sep+"no-data"+Sep+"dcrm back-end internal error:uncompress data fail in RecvMsg.Run"+Sep+"uncompress data fail in recvmsg.run") //TODO "no-data"
+		ch <- ret 
+		return ch
+	    }
+	    r,err := Decode2(res,"SendMsg")
+	    if err != nil {
+		//fail:chret:tip:error
+		ret := ("fail"+Sep+"no-data"+Sep+"dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run"+Sep+"decode data to SendMsg fail in recvmsg.run") //TODO "no-data"
+		ch <- ret 
+		return ch
+	    }
+	    
+	    rr := r.(*SendMsg)
+	    msg := rr.Msg
+	    msgs := strings.Split(msg,":")
+	    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,true,"Error","",tip,cherr.Error()) 
+	}
+	////
+
 	//fail:chret:tip:error
 	ret := ("fail"+Sep+chret+Sep+tip+Sep+cherr.Error())
 	ch <- ret 
@@ -1060,6 +1084,77 @@ func SetUpMsgList(msg string) {
     RpcReqQueue <- req
 }
 
+func GetLockOutStatus(key string) (string,string,error) {
+    lock5.Lock()
+    dir := GetAcceptLockOutDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+	return "","dcrm back-end internal error:open level db fail",err
+    }
+    
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "","dcrm back-end internal error:get accept data fail from db",err
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "","dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := Decode2(ds,"AcceptLockOutData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "","dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*AcceptLockOutData)
+    ret := "{"
+    ret += "\""
+    ret += "Status"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Status
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "OutTxHash"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.OutTxHash
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Tip"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Tip
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Error"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Error
+    ret += "\""
+    ret += "}"
+
+    db.Close()
+    lock5.Unlock()
+    return ret,"",nil
+}
+
 func GetLockOutReply() (string,string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
@@ -1192,7 +1287,7 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
     return "",ac.Accept 
 }
 
-func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept bool) (string,error) {
+func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept bool,status string,outhash string,tip string,errinfo string) (string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db, err := leveldb.OpenFile(dir, nil)
@@ -1227,6 +1322,10 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     ac := dss.(*AcceptLockOutData)
     ac.Accept = accept
     ac.Deal = deal
+    ac.OutTxHash = outhash
+    ac.Tip = tip
+    ac.Error = errinfo
+    ac.Status = status
 
     e,err := Encode2(ac)
     if err != nil {
@@ -1296,7 +1395,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 	    if msgs[9] == "0" {// self-group
-		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:false}
+		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:false,Status:"",OutTxHash:"",Tip:"",Error:""}
 	        SaveAcceptData(ac)
 
 	        ////
@@ -1653,7 +1752,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     <-acceptWaitLockOutChan
     var tip string
     time.Sleep(time.Duration(1) * time.Second)
-    AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true)
+    AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true,"","","","")
 
     w := workers[workid]
     chret,tip,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
@@ -1707,6 +1806,11 @@ type AcceptLockOutData struct {
 
     Deal bool
     Accept bool
+   
+    Status string
+    OutTxHash string
+    Tip string
+    Error string
 }
 
 func SaveAcceptData(ac *AcceptLockOutData) error {

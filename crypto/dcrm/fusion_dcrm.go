@@ -436,7 +436,7 @@ func AcceptLockOut(raw string) (string,string,error) {
 	accept = true
     }
 
-    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept)
+    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"","","","")
     if err != nil {
 	return "",tip,err
     }
@@ -484,28 +484,24 @@ func LockOut(raw string) (string,string,error) {
 	return "","parameter error from raw data,maybe raw data error",fmt.Errorf("param error.")
     }
    
-    var errtmp error
-    var tip string
-    for i:=0;i<1;i++ {
-	msg := from.Hex() + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
-	txhash,tip2,err2 := SendReqToGroup(msg,"rpc_lockout")
-	fmt.Println("============dcrm_lockOut,txhash = %s,err = %s ================",txhash,err2)
-	if err2 == nil && txhash != "" {
-	    return txhash,"",nil
+    go func() {
+	for i:=0;i<1;i++ {
+	    msg := from.Hex() + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
+	    txhash,_,err2 := SendReqToGroup(msg,"rpc_lockout")
+	    if err2 == nil && txhash != "" {
+		return
+	    }
+
+	    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
 	}
+    }()
+    
+    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
+    return key,"",nil
+}
 
-	errtmp = err2
-	tip = tip2
-	
-	time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-    }
-
-    if errtmp != nil {
-	fmt.Println("============dcrm_lockOut,err = %s ================",errtmp.Error())
-	return "",tip,errtmp
-    }
-
-    return "","unkwon error",fmt.Errorf("LockOut fail.")
+func GetLockOutStatus(key string) (string,string,error) {
+    return dev.GetLockOutStatus(key)
 }
 
 func GetPubAccountBalance(pubkey string) (interface{}, string, error) {

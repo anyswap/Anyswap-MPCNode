@@ -366,6 +366,7 @@ func recvGroupInfo(gname string, gid discover.NodeID, mode string, req interface
 		xvcGroup.Group[node.ID.String()] = &group{id: node.ID, ip: node.IP, port: node.UDP, Enode: enode.String(), Status: "NEW"}
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
 	}
+	xvcGroup.Status = "SUCCESS"
 	fmt.Printf("==== recvGroupInfo() ====, xvcGroup: %v\n", xvcGroup)
 	//for i, g := range SdkGroup {
 	//	log.Info("\nGroupInfo", "i", i, "g", g)

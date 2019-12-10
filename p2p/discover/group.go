@@ -722,27 +722,27 @@ func addGroupSDK(n *Node) {
 func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node) (string, string) {
 	fmt.Printf("==== StartCreateSDKGroup() ====, gid: %v\n", gid)
 	buildSDKGroup(gname, gid, mode, enode)
-	initGroupNodesStatus(gname, gid, enode)
-	go func() {
-		if waitSDKGroupReady(gname, gid, enode) == "AGREE" {
-			//delete(SDK_groupList, gid)
-			//SDK_groupList[gid].status = "SUCCESS"
-			node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
-			status := "SUCCESS"
-			updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
-			//buildSDKGroup(gname, gid, mode, enode)
-			if SDK_groupList != nil && SDK_groupList[gid] != nil {
-				go sendSDKGroupPrivKey(SDK_groupList[gid], Sdkprotocol_type) //TODO
-			}
-		} else {
-			node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
-			status := "FAILED"
-			updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
-			delete(SDK_groupList, gid)
-			//destroySDKGroup(gid)//TODO
-		}
-		fmt.Printf("==== StartCreateSDKGroup() ====, end\n")
-	}()
+	//initGroupNodesStatus(gname, gid, enode)
+	//go func() {
+	//	if waitSDKGroupReady(gname, gid, enode) == "AGREE" {
+	//		//delete(SDK_groupList, gid)
+	//		//SDK_groupList[gid].status = "SUCCESS"
+	//		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
+	//		status := "SUCCESS"
+	//		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
+	//		//buildSDKGroup(gname, gid, mode, enode)
+	//		if SDK_groupList != nil && SDK_groupList[gid] != nil {
+	//			go sendSDKGroupPrivKey(SDK_groupList[gid], Sdkprotocol_type) //TODO
+	//		}
+	//	} else {
+	//		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
+	//		status := "FAILED"
+	//		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
+	//		delete(SDK_groupList, gid)
+	//		//destroySDKGroup(gid)//TODO
+	//	}
+	//	fmt.Printf("==== StartCreateSDKGroup() ====, end\n")
+	//}()
 	return gname, ""
 }
 

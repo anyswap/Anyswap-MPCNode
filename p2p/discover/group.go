@@ -33,8 +33,8 @@ var (
 	setgroupNumber = 0
 	setgroup       = 0
 	Dcrmdelimiter  = "dcrmmsg"
-	Dcrm_groupList *group
-	Xp_groupList   *group
+	Dcrm_groupList *Group
+	Xp_groupList   *Group
 	tmpdcrmmsg     = &getdcrmmessage{Number: [3]byte{0, 0, 0}, Msg: ""}
 	setlocaliptrue = false
 	localIP        = "127.0.0.1"
@@ -44,11 +44,9 @@ var (
 	changed        = 0
 	Xp_changed     = 0
 
-	SDK_groupList map[NodeID]*group = make(map[NodeID]*group)
+	SDK_groupList map[NodeID]*Group = make(map[NodeID]*Group)
 	groupSDK sync.Mutex
 	groupSDKList []*Node
-	groupStatusArray map[NodeID]*GroupStatus = make(map[NodeID]*GroupStatus)
-	groupStatusChan chan NodeID = make(chan NodeID, 10)
 )
 var (
 	Dcrm_groupMemNum = 0
@@ -89,54 +87,21 @@ type (
 		Rest []rlp.RawValue `rlp:"tail"`
 	}
 
-	group struct {
+	Group struct {
 		sync.Mutex
 		ID      NodeID
-		Gname      string
-		Mode      string
+		//Gname      string
+		Mode      string // 2/3
 		msg        string
-		status        string
+		//status        string
 		count      int
 		P2pType    byte
-		Nodes      []rpcNode
+		Nodes      []RpcNode
 		Type       string // group type: 1+2, 1+1+1
 		//userID      []string
 		Expiration uint64
 		// Ignore additional fields (for forward compatibility).
 		Rest []rlp.RawValue `rlp:"tail"`
-	}
-
-	groupmessage struct {
-		sync.Mutex
-		ID      NodeID
-		Gname      string
-		Mode      string
-		msg        string
-		count      int
-		P2pType    byte
-		Nodes      []rpcNode
-		Type       string // group type: 1+2, 1+1+1
-		Expiration uint64
-		// Ignore additional fields (for forward compatibility).
-		Rest []rlp.RawValue `rlp:"tail"`
-	}
-
-	GroupStatus struct {
-		Gname string
-		Gid NodeID
-		Count uint64
-		Enodes []*Node
-		EnodeStatus map[string]string
-		Expiration uint64
-	}
-
-	groupStatusMsg struct {
-		Gname string
-		Gid NodeID
-		Count uint64
-		Enode *Node
-		EnodeStatus string
-		Expiration uint64
 	}
 
 	message struct {
@@ -164,9 +129,8 @@ type (
 )
 
 func (req *findgroup) name() string { return "FINDGROUP/v4" }
-func (req *group) name() string     { return "GROUP/v4" }
 
-func getGroupList(gid NodeID, p2pType int) *group {
+func getGroupList(gid NodeID, p2pType int) *Group {
 	switch p2pType {
 	case Sdkprotocol_type:
 		fmt.Printf("getGroupList, gid: %v, SDK_groupList[gid]: %v\n", gid, SDK_groupList[gid])
@@ -179,7 +143,7 @@ func getGroupList(gid NodeID, p2pType int) *group {
 	return nil
 }
 
-func getGroupSDK(gid NodeID) *group{
+func getGroupSDK(gid NodeID) *Group{
 	for id, g := range SDK_groupList {
 		//if g.status != "SUCCESS" {
 		//	continue
@@ -273,11 +237,11 @@ func (t *udp) findgroup(gid, toid NodeID, toaddr *net.UDPAddr, target NodeID, p2
 	findgroupPacket := getFindGroupPacket(p2pType)
 	groupMemNum := getGroupMemNum(p2pType)
 	errc := t.pending(toid, byte(groupPacket), func(r interface{}) bool {
-		reply := r.(*group)
+		reply := r.(*Group)
 		//log.Debug("findgroup", "reply", reply, "r", r)
 		for _, rn := range reply.Nodes {
 			nreceived++
-			n, err := t.nodeFromRPC(toaddr, rn)
+			n, err := t.nodeFromRPC(toaddr, rpcNode(rn))
 			if err != nil {
 				fmt.Printf("Invalid neighbor node received, ip: %v, addr: %v, err: %v\n", rn.IP, toaddr, err)
 				continue
@@ -288,12 +252,15 @@ func (t *udp) findgroup(gid, toid NodeID, toaddr *net.UDPAddr, target NodeID, p2
 		return nreceived >= groupMemNum
 	})
 	//log.Debug("findgroup, t.send", "toaddr", toaddr, "gid", gid, "p2pType", p2pType, "send packet", byte(findgroupPacket), "p2ptype", byte(p2pType))
-	t.send(toaddr, byte(findgroupPacket), &findgroup{
+	_, errs := t.send(toaddr, byte(findgroupPacket), &findgroup{
 		ID: gid,
 		P2pType:    byte(p2pType),
 		Target:     target,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
+	if errs != nil {
+		fmt.Printf("==== (t *udp) sendMsgToPeer ====, errs: %v\n", errs)
+	}
 	err := <-errc
 	return nodes, err
 }
@@ -316,24 +283,27 @@ func (req *findgroup) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byt
 	groupPacket := getGroupPacket(int(req.P2pType))
 	if p := getGroupInfo(req.ID, int(req.P2pType)); p != nil {
 		//log.Debug("====  (req *findgroup) handle()  ====", "getGroupInfo", p)
-		t.send(from, byte(groupPacket), p)
-       }
-       return nil
+		_, errs := t.send(from, byte(groupPacket), p)
+		if errs != nil {
+			fmt.Printf("==== (t *udp) sendMsgToPeer ====, errs: %v\n", errs)
+		}
+	}
+	return nil
 }
 
-func (req *group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-       //log.Debug("====  (req *group) handle()  ====")
-       //log.Debug("group handle", "group handle: ", req)
-       if expired(req.Expiration) {
-               return errExpired
-       }
-       groupPacket := getGroupPacket(int(req.P2pType))
-       if !t.handleReply(fromID, byte(groupPacket), req) {
-		//log.Debug("====  (req *group) handle()  ====", "errUnsolicitedReply", errUnsolicitedReply)
-		return errUnsolicitedReply
-       }
-       return nil
-}
+//func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
+//       //log.Debug("====  (req *group) handle()  ====")
+//       //log.Debug("group handle", "group handle: ", req)
+//       if expired(req.Expiration) {
+//               return errExpired
+//       }
+//       groupPacket := getGroupPacket(int(req.P2pType))
+//       if !t.handleReply(fromID, byte(groupPacket), req) {
+//		//log.Debug("====  (req *group) handle()  ====", "errUnsolicitedReply", errUnsolicitedReply)
+//		return errUnsolicitedReply
+//       }
+//       return nil
+//}
 
 func (req *getdcrmmessage) name() string { return "GETDCRMMSG/v4" }
 func (req *dcrmmessage) name() string    { return "DCRMMSG/v4" }
@@ -363,16 +333,22 @@ func (t *udp) sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pTyp
                        Msg:        msg,
                        Expiration: uint64(time.Now().Add(expiration).Unix()),
                })
+		if err != nil {
+			fmt.Printf("==== (t *udp) sendMsgToPeer ====, err: %v\n", err)
+		}
                //log.Debug("dcrm", "number = ", number, "msg(<800) = ", msg)
        } else if len(msg) > 800 && len(msg) < 1600 {
                number[1] = 1
                number[2] = 2
-               t.send(toaddr, byte(getCCPacket), &getdcrmmessage{
+               _, err = t.send(toaddr, byte(getCCPacket), &getdcrmmessage{
                        Number:     number,
                        P2pType:    byte(p2pType),
                        Msg:        msg[0:800],
                        Expiration: uint64(time.Now().Add(expiration).Unix()),
                })
+		if err != nil {
+			fmt.Printf("==== (t *udp) sendMsgToPeer ====, err: %v\n", err)
+		}
                //log.Debug("send", "msg(> 800):", msg)
                number[1] = 2
                number[2] = 2
@@ -382,6 +358,9 @@ func (t *udp) sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pTyp
                        Msg:        msg[800:],
                        Expiration: uint64(time.Now().Add(expiration).Unix()),
                })
+		if err != nil {
+			fmt.Printf("==== (t *udp) sendMsgToPeer ====, err: %v\n", err)
+		}
        } else {
                //log.Error("send, msg size > 1600, sent failed.\n")
                return "", errors.New("send fail, msg size > 1600")
@@ -476,7 +455,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        return nil
 }
 
-func getGroupInfo(gid NodeID, p2pType int) *group {
+func getGroupInfo(gid NodeID, p2pType int) *Group {
 //	log.Debug("getGroupInfo", "p2pType", p2pType)
 	//groupMemNum := getGroupMemNum(p2pType)
 	groupList := getGroupList(gid, p2pType)
@@ -500,8 +479,8 @@ func InitGroup(groupsNum, nodesNum int) error {
 	SDK_groupNum = nodesNum
 	Dcrm_groupMemNum = nodesNum
 	Xp_groupMemNum   = nodesNum
-	Dcrm_groupList = &group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
-	Xp_groupList = &group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
+	Dcrm_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
+	Xp_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
 	return nil
 }
 
@@ -593,6 +572,7 @@ func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node)
 	if (allNodes == false && count == 1) || (allNodes == true && count == groupMemNum) {
 		return retMsg, nil
 	}
+	fmt.Println(retMsg)
 	return "", errors.New(retMsg)
 }
 
@@ -631,7 +611,7 @@ func setGroup(n *Node, replace string) {
 	setGroupCC(n, replace, Dcrmprotocol_type)
 }
 
-func sendSDKGroupInfo(groupList *group, p2pType int) {
+func sendSDKGroupInfo(groupList *Group, p2pType int) {
 	count := 0
 	enode := ""
 	for i := 0; i < groupList.count; i++ {
@@ -652,7 +632,7 @@ func sendSDKGroupInfo(groupList *group, p2pType int) {
 //	log.Warn("send group to nodes", "group: ", enodes)
 }
 
-func sendSDKGroupPrivKey(groupList *group, p2pType int) {
+func sendSDKGroupPrivKey(groupList *Group, p2pType int) {
 	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
 		//go callPrivKeyEvent(enodes)
 		var tmp int = 0
@@ -661,7 +641,7 @@ func sendSDKGroupPrivKey(groupList *group, p2pType int) {
 			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
 			tmp++
 			//go SendToPeer(enode, cDPrivKey)
-			go func (node rpcNode, msg string) {
+			go func (node RpcNode, msg string) {
 				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
 				SendMsgToNode(node.ID, ipa, msg)
 			}(node, cDPrivKey)
@@ -669,7 +649,7 @@ func sendSDKGroupPrivKey(groupList *group, p2pType int) {
 	}
 }
 
-func sendGroupInfo(groupList *group, p2pType int) {
+func sendGroupInfo(groupList *Group, p2pType int) {
 	count := 0
 	enode := ""
 	for i := 0; i < groupList.count; i++ {
@@ -696,7 +676,7 @@ func sendGroupInfo(groupList *group, p2pType int) {
 			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
 			tmp++
 			//go SendToPeer(enode, cDPrivKey)
-			go func (node rpcNode, msg string) {
+			go func (node RpcNode, msg string) {
 				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
 				SendMsgToNode(node.ID, ipa, msg)
 			}(node, cDPrivKey)
@@ -705,125 +685,37 @@ func sendGroupInfo(groupList *group, p2pType int) {
 }
 
 func addGroupSDK(n *Node) {
-	groupTmp := new(group)
-	groupTmp.Nodes = make([]rpcNode, SDK_groupNum)
+	groupTmp := new(Group)
+	groupTmp.Nodes = make([]RpcNode, SDK_groupNum)
 	for i, node := range groupSDKList {
-		groupTmp.Nodes[i] = nodeToRPC(node)
+		groupTmp.Nodes[i] = RpcNode(nodeToRPC(node))
 		groupTmp.count++
 	}
-	groupTmp.Nodes[len(groupSDKList)] = nodeToRPC(n)
+	groupTmp.Nodes[len(groupSDKList)] = RpcNode(nodeToRPC(n))
 	groupTmp.count++
 	groupTmp.ID = n.ID
+	groupTmp.Mode = "3/3"
 	groupTmp.Type = "1+2"
 	//fmt.Printf("addGroupSDK, gid: %v\n", groupTmp.ID)
 	SDK_groupList[groupTmp.ID] = groupTmp
 }
 
-func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node) (string, string) {
+func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node, Type string) string {
 	fmt.Printf("==== StartCreateSDKGroup() ====, gid: %v\n", gid)
-	buildSDKGroup(gname, gid, mode, enode)
-	//initGroupNodesStatus(gname, gid, enode)
-	//go func() {
-	//	if waitSDKGroupReady(gname, gid, enode) == "AGREE" {
-	//		//delete(SDK_groupList, gid)
-	//		//SDK_groupList[gid].status = "SUCCESS"
-	//		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
-	//		status := "SUCCESS"
-	//		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
-	//		//buildSDKGroup(gname, gid, mode, enode)
-	//		if SDK_groupList != nil && SDK_groupList[gid] != nil {
-	//			go sendSDKGroupPrivKey(SDK_groupList[gid], Sdkprotocol_type) //TODO
-	//		}
-	//	} else {
-	//		node := NewNode(gid, net.IP{}, uint16(0), uint16(0))
-	//		status := "FAILED"
-	//		updateGroupNodeStatus(gname, gid, groupStatusArray[gid].Enodes, node, status, true)
-	//		delete(SDK_groupList, gid)
-	//		//destroySDKGroup(gid)//TODO
-	//	}
-	//	fmt.Printf("==== StartCreateSDKGroup() ====, end\n")
-	//}()
-	return gname, ""
+	buildSDKGroup(gname, gid, mode, enode, Type)
+	return ""
 }
 
-func initGroupNodesStatus(gname string, gid NodeID, enode []*Node) {
-	fmt.Printf("==== initGroupNodesStatus() ====, gname: %v, gid: %v, enode: %v\n", gname, gid, enode)
-	selfid := fmt.Sprintf("%v", GetLocalID())
-	for _, node := range enode {
-		status := "NEW"
-		if node.ID.String() == selfid {
-			status = "AGREE"
-		}
-		updateGroupNodeStatus(gname, gid, enode, node, status, false)
-	}
-}
-
-func updateGroupNodeStatus(gname string, gid NodeID, enode []*Node, node *Node, status string, all bool) {
-	fmt.Printf("==== updateGroupNodeStatus() ====, gname: %v, gid: %v, node: %v, status: %v, enode: %v\n", gname, gid, node, status, enode)
-	groupstatus := &groupStatusMsg{Gname: gname, Gid: gid}
-	selfid := fmt.Sprintf("%v", GetLocalID())
-	fmt.Printf("==== updateGroupNodeStatus() ====, send node: %v\n", node)
-	go func(node *Node) {
-		groupstatus.Enode = node
-		groupstatus.EnodeStatus = status
-		for _, node1 := range enode {
-			go func(node1 *Node) {
-			fmt.Printf("==== updateGroupNodeStatus() ====, node1.ID.String: %v, selfid: %v\n", node1.ID.String(), selfid)
-				if node1.ID.String() == selfid && !all {
-					CallGroupStatus(gname, gid, uint64(len(enode)), groupstatus.Enode, groupstatus.EnodeStatus)
-				} else {
-					ipa := &net.UDPAddr{IP: node1.IP, Port: int(node1.UDP)}
-					SendStatusToPeer(node1.ID, ipa, groupstatus, 3)
-				}
-			}(node1)
-		}
-	}(node)
-}
-
-func waitSDKGroupReady(gname string, gid NodeID, enode []*Node) string {
-	agreeWaitTime := 3 * time.Minute
-	agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
-	fmt.Printf("==== waitSDKGroupReady() ====, gid: %v\n", gid)
-	for {
-		select {
-		case id := <-groupStatusChan:
-			if id != gid {
-				continue
-			}
-			count := uint64(0)
-			for _, s := range groupStatusArray[gid].EnodeStatus {
-				if s == "NEW" {
-					break
-				}
-				if s == "DISAGREE" {
-					return "DISAGREE"
-				}
-				if s == "AGREE" {
-					count += 1
-				}
-			}
-			fmt.Printf("count: %v, groupStatusArray[gid].Count: %v\n", count, groupStatusArray[gid].Count)
-			if count == groupStatusArray[gid].Count {
-				return "AGREE"
-			}
-		case <-agreeWaitTimeOut.C:
-			fmt.Printf("==== waitSDKGroupReady() ====, gname: %v, gid: %v, wait timeout\n", gname, gid)
-			return "DISAGREE"
-		}
-	}
-	return "DISAGREE"
-}
-
-func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node) {
+func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node, Type string) {
 	fmt.Printf("==== buildSDKGroup() ====, gid: %v\n", gid)
-	groupTmp := new(group)
-	groupTmp.Gname = gname
+	groupTmp := new(Group)
+	//groupTmp.Gname = gname
 	groupTmp.Mode = mode
-	groupTmp.Type = "1+1+1"
+	groupTmp.Type = Type
 	//groupTmp.status = "NEW"
-	groupTmp.Nodes = make([]rpcNode, len(enode))
+	groupTmp.Nodes = make([]RpcNode, len(enode))
 	for i, node := range enode {
-		groupTmp.Nodes[i] = nodeToRPC(node)
+		groupTmp.Nodes[i] = RpcNode(nodeToRPC(node))
 		groupTmp.count++
 	}
 	groupTmp.ID = gid
@@ -831,19 +723,12 @@ func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node) {
 	go sendSDKGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type) //TODO
 }
 
-func destroySDKGroup(gid NodeID) {
-	fmt.Printf("==== distroySDKGroup() ====, gid: %v\n", gid)
-	//SDK_groupList[gid].Status = "FAILED"
-	//sendGroupInfo(SDK_groupList[gid], Sdkprotocol_type) //TODO
-	//delete(SDK_groupList, gid)
-}
-
 func updateGroupSDK(n *Node) {
 	groupTmp := SDK_groupList[n.ID]
 	for i, node := range groupTmp.Nodes {
 		if node.ID == n.ID {
 			groupTmp.Nodes = append(groupTmp.Nodes[:i], groupTmp.Nodes[i+1:]...)
-			groupTmp.Nodes = append(groupTmp.Nodes, nodeToRPC(n))
+			groupTmp.Nodes = append(groupTmp.Nodes, RpcNode(nodeToRPC(n)))
 			return
 		}
 	}
@@ -888,10 +773,6 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 		if checkSDKNodeExist(n) {
 			return
 		}
-		//if n.ID.String() == "ead5708649f3fb10343a61249ea8509b3d700f1f51270f13ecf889cdf8dafce5e7eb649df3ee872fb027b5a136e17de73965ec34c46ea8a5553b3e3150a0bf8d" ||
-		//	n.ID.String() == "bd6e097bb40944bce309f6348fe4d56ee46edbdf128cc75517df3cc586755737733c722d3279a3f37d000e26b5348c9ec9af7f5b83122d4cfd8c9ad836a0e1ee" ||
-		//	n.ID.String() == "1520992e0053bbb92179e7683b3637ea0d43bb2cd3694a94a1e90e909108421c2ce22e0abdb0a335efdd8e6391eb08ba967f641b42e4ebde39997c8ad000e8c8" {
-		//grouplist.gname = append(groupList.gname, "dddddddddd")
 		fmt.Printf("==== setGroupSDK() ====, len(groupSDKList) = %v, SDK_groupNum = %v\n", len(groupSDKList), SDK_groupNum)
 		if len(groupSDKList) == (SDK_groupNum - 1) {
 			if SDK_groupList[n.ID] == nil { // exist group
@@ -971,11 +852,8 @@ func setGroupCC(n *Node, replace string, p2pType int) {
 			return
 		}
 //		log.Debug("connect", "NodeID", n.ID.String())
-		//if n.ID.String() == "ead5708649f3fb10343a61249ea8509b3d700f1f51270f13ecf889cdf8dafce5e7eb649df3ee872fb027b5a136e17de73965ec34c46ea8a5553b3e3150a0bf8d" ||
-		//	n.ID.String() == "bd6e097bb40944bce309f6348fe4d56ee46edbdf128cc75517df3cc586755737733c722d3279a3f37d000e26b5348c9ec9af7f5b83122d4cfd8c9ad836a0e1ee" ||
-		//	n.ID.String() == "1520992e0053bbb92179e7683b3637ea0d43bb2cd3694a94a1e90e909108421c2ce22e0abdb0a335efdd8e6391eb08ba967f641b42e4ebde39997c8ad000e8c8" {
 		//grouplist.gname = append(groupList.gname, "dddddddddd")
-		groupList.Nodes = append(groupList.Nodes, nodeToRPC(n))
+		groupList.Nodes = append(groupList.Nodes, RpcNode(nodeToRPC(n)))
 		groupList.count++
 		if *groupChanged == 0 {
 			*groupChanged = 1
@@ -1057,13 +935,17 @@ func (t *udp) sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pT
 		return true
 	})
 //	log.Warn("====  (t *udp) sendToPeer()  ====", "sendtoAddress", toaddr)
-	fmt.Printf("====  (t *udp) sendToPeer()  ====, t.send, toaddr: %v, groupInfo: %v\n", toaddr, req)
-	t.send(toaddr, byte(Dcrm_groupInfoPacket), req)
+	_, errt := t.send(toaddr, byte(Dcrm_groupInfoPacket), req)
+	if errt != nil {
+		fmt.Printf("====  (t *udp) sendToPeer()  ====, t.send, toaddr: %v, err: %v\n", toaddr, errt)
+	} else {
+		fmt.Printf("====  (t *udp) sendToPeer()  ====, t.send, toaddr: %v, groupInfo: %v SUCCESS\n", toaddr, req)
+	}
 	err := <-errc
 	return err
 }
-func (req *groupmessage) name() string { return "GROUPMSG/v4" }
-func (req *groupmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
+func (req *Group) name() string { return "GROUPMSG/v4" }
+func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
 //	log.Debug("====  (req *groupmessage) handle()  ====")
 	fmt.Printf("====  (req *groupmessage) handle()  ====, req: %v\n", req)
 	if expired(req.Expiration) {
@@ -1072,7 +954,7 @@ func (req *groupmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []
 //	log.Debug("groupmessage", "req", req)
 	nodes := make([]*Node, 0, bucketSize)
 	for _, rn := range req.Nodes {
-		n, err := t.nodeFromRPC(from, rn)
+		n, err := t.nodeFromRPC(from, rpcNode(rn))
 		if err != nil {
 //			log.Trace("Invalid neighbor node received", "ip", rn.IP, "addr", from, "err", err)
 			continue
@@ -1083,7 +965,7 @@ func (req *groupmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []
 //	log.Debug("group msg handle", "req.Nodes: ", nodes)
 //	log.Warn("group msg handle", "req.Nodes: ", nodes)
 	fmt.Sprintf("group msg handle, callGroupEvent(), req.Nodes: %v\n", nodes)
-	go callGroupEvent(req.Gname, req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
+	go callGroupEvent(req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
 	return nil
 }
 
@@ -1093,10 +975,13 @@ func (t *udp) sendMsgToPeer(toid NodeID, toaddr *net.UDPAddr, msg string) error 
 	errc := t.pending(toid, PeerMsgPacket, func(r interface{}) bool {
 		return true
 	})
-	t.send(toaddr, PeerMsgPacket, &message{
+	_, errs := t.send(toaddr, PeerMsgPacket, &message{
 		Msg:        msg,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
+	if errs != nil {
+		fmt.Printf("==== (t *udp) sendMsgToPeer ====, errs: %v\n", errs)
+	}
 	err := <-errc
 	return err
 }
@@ -1113,15 +998,15 @@ func (req *message) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte)
 	return nil
 }
 
-var groupcallback func(string, NodeID, string, interface{}, int, string)
+var groupcallback func(NodeID, string, interface{}, int, string)
 
-func RegisterGroupCallback(callbackfunc func(string, NodeID, string, interface{}, int, string)) {
+func RegisterGroupCallback(callbackfunc func(NodeID, string, interface{}, int, string)) {
 	groupcallback = callbackfunc
 }
 
-func callGroupEvent(gname string, gid NodeID, mode string, n []*Node, p2pType int, groupType string) {
+func callGroupEvent(gid NodeID, mode string, n []*Node, p2pType int, Type string) {
 	fmt.Printf("callGroupEvent\n")
-	groupcallback(gname, gid, mode, n, p2pType, groupType)
+	groupcallback(gid, mode, n, p2pType, Type)
 }
 
 var prikeycallback func(interface{})
@@ -1342,114 +1227,3 @@ func GetEnodeStatus(enode string) (string, string) {
 	return "OffLine", ""
 }
 
-// group nodes confirm status
-func SendStatusToPeer(toid NodeID, toaddr *net.UDPAddr, groupstatus *groupStatusMsg, p2pType int) error {
-//	log.Debug("==== SendToPeer() ====", "msg", msg)
-	fmt.Printf("==== SendStatusToPeer() ====, toaddr: %v, groupstatus: %v\n", toaddr, groupstatus)
-	return Table4group.net.sendStatusToPeer(toid, toaddr, groupstatus, p2pType)
-}
-func (t *udp) sendStatusToPeer(toid NodeID, toaddr *net.UDPAddr, req *groupStatusMsg, p2pType int) error {
-//	log.Debug("====  (t *udp) sendStatusToPeer()  ====")
-	fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, toaddr: %v, req: %v\n", toaddr, req)
-	if req == nil {
-		return nil
-	}
-	errc := t.pending(toid, byte(Sdk_groupStatusPacket), func(r interface{}) bool {
-		return true
-	})
-//	log.Warn("====  (t *udp) sendStatusToPeer()  ====", "sendtoAddress", toaddr)
-	//fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, t.send, toaddr: %v, groupstatus: %v\n", toaddr, req)
-	req.Expiration = uint64(time.Now().Add(expiration).Unix())
-	_, errs := t.send(toaddr, byte(Sdk_groupStatusPacket), req)
-	if errs != nil {
-		fmt.Printf("====  (t *udp) sendStatusToPeer()  ====, t.send end errs: %v\n", errs)
-	}
-	err := <-errc
-	//fmt.Printf("====  (t *udp) sendStatusToPeer()  ====,  err : %v <-errc\n", err)
-	return err
-}
-func (req *groupStatusMsg) name() string { return "GROUPSTATUS/v4" }
-func (req *groupStatusMsg) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-//	log.Debug("====  (req *groupmessage) handle()  ====")
-	fmt.Printf("====  (req *groupStatusMsg) handle()  ====, req: %v\n", req)
-	if expired(req.Expiration) {
-		return errExpired
-	}
-//	log.Debug("group msg handle", "req.Nodes: ", nodes)
-//	log.Warn("group msg handle", "req.Nodes: ", nodes)
-	fmt.Printf("group status msg handle, callGroupStatus(), req: %v\n", req)
-	callStatusEvent(req.Gname, req.Gid, req.Count, req.Enode, req.EnodeStatus/*, req.EnodeStatus*/)
-	return nil
-}
-
-func CallGroupStatus(gname string, gid NodeID, count uint64, enode *Node, status string/*, enodeStatus map[string]string*/) {
-	fmt.Printf("==== callGroupStatus() ====, gname: %v, gid: %v, count: %v, enode: %v, enodeStatus: %v\n", gname, gid, count, enode, status)
-	gsa := groupStatusArray[gid]
-	if gsa == nil {
-		gs := new(GroupStatus)
-		gs.Gname = gname
-		gs.Gid = gid
-		gs.Count = count
-		gs.Enodes = make([]*Node, 0)
-		gs.Enodes = append(gs.Enodes, enode)
-		gs.EnodeStatus = make(map[string]string, count)
-		gs.EnodeStatus[enode.ID.String()] = status
-		groupStatusArray[gid] = gs
-	} else {
-		gsa.Enodes = append(gsa.Enodes, enode)
-		gsa.EnodeStatus[enode.ID.String()] = status
-	}
-	groupStatusChan <- gid
-}
-
-//call back
-var statuscallback func(gname string, gid NodeID, count uint64, enode *Node, status string)
-
-func RegisterGroupNodesStatusCallback(callbackfunc func(gname string, gid NodeID, count uint64, enode *Node, status string)) {
-	statuscallback = callbackfunc
-}
-
-func callStatusEvent(gname string, gid NodeID, count uint64, enode *Node, status string) {
-	if statuscallback != nil {
-		statuscallback(gname, gid, count, enode, status)
-	}
-}
-
-func SetCreateGroupStatus(gname, node, approval string) error {
-	fmt.Printf("==== SetGroupNodeStatus() ====, gname: %v, enode: %v, approval: %v\n", gname, node, approval)
-	for i, g := range groupStatusArray {
-		if g.Gname == gname {
-			n := MustParseNode(node)
-			updateGroupNodeStatus(gname, i, g.Enodes, n, approval, false)
-			return nil
-		}
-	}
-	return errors.New("group name not found")
-}
-
-func GetCreateGroupStatus(gname, node string) (string, error) {
-	fmt.Printf("==== GetCreateGroupStatus() ====, gname: %v, node: %v\n", gname, node)
-	//printGroupStatusArray()
-	for _, g := range groupStatusArray {
-		fmt.Printf("==== GetCreateGroupStatus() ====, g.gname: %v, gname: %v\n", g.Gname, gname)
-		if g.Gname == gname {
-			fmt.Printf("==== GetCreateGroupStatus() ====, =======\n")
-			n, err := ParseNode(node)
-			if err != nil {
-				fmt.Printf("==== GetCreateGroupStatus() ====, err: %v\n", err.Error())
-				return "", err
-			}
-			//gs := groupStatusArray[n.ID]
-			fmt.Printf("==== GetCreateGroupStatus() ====, gs.EnodeStatus[n.ID.String()]: %v\n", g.EnodeStatus[n.ID.String()])
-			return g.EnodeStatus[n.ID.String()], nil
-		}
-	}
-	return "", errors.New("group name not found")
-}
-
-func printGroupStatusArray() {
-	fmt.Printf("==== printGroupStatusArray() ====\n")
-	for i, g := range groupStatusArray {
-		fmt.Printf("i: %v, gname: %v, gid: %v, count: %v, enodes: %v, enodesstatus: %v\n", i, g.Gname, g.Gid, g.Count, g.Enodes, g.EnodeStatus)
-	}
-}

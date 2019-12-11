@@ -100,6 +100,13 @@ type (
 		Rest []rlp.RawValue `rlp:"tail"`
 	}
 
+	RpcNode struct {
+		IP  net.IP // len 4 for IPv4 or 16 for IPv6
+		UDP uint16 // for discovery protocol
+		TCP uint16 // for RLPx protocol
+		ID  NodeID
+	}
+
 	rpcNode struct {
 		IP  net.IP // len 4 for IPv4 or 16 for IPv6
 		UDP uint16 // for discovery protocol
@@ -588,15 +595,13 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 	case Xp_findGroupPacket:
 		req = new(findgroup)
 	case Dcrm_groupPacket:
-		req = new(group)
+		req = new(Group)
 	case Sdk_groupPacket:
-		req = new(group)
+		req = new(Group)
 	case Xp_groupPacket:
-		req = new(group)
+		req = new(Group)
 	case Dcrm_groupInfoPacket:
-		req = new(groupmessage)
-	case Sdk_groupStatusPacket:
-		req = new(groupStatusMsg)
+		req = new(Group)
 	case PeerMsgPacket:
 		req = new(message)
 	case getDcrmPacket:

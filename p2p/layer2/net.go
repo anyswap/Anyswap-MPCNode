@@ -117,24 +117,11 @@ type Emitter struct {
 	peers map[discover.NodeID]*peer
 	sync.Mutex
 }
-type group struct {
-	id    discover.NodeID
-	ip    net.IP
-	port  uint16
-	Enode string
-	Status string
-}
-type Group struct {
-	sync.Mutex
-	Gname string
-	Mode string
-	Status string
-	Type string
-	Got bool
-	Group map[string]*group
-}
+
+type Group discover.Group
 
 type Transaction struct {
 	Payload []byte
 	Hash    atomic.Value
 }
+

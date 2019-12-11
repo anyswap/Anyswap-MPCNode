@@ -265,6 +265,7 @@ func newUDP(c conn, cfg Config) (*Table, *udp, error) {
 	}
 	udp.Table = tab
 	Table4group = tab
+	SelfID = fmt.Sprintf("%v", GetLocalID())
 
 	go udp.loop()
 	go udp.readLoop(cfg.Unhandled)

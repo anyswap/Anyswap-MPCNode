@@ -62,7 +62,7 @@ func (this *Service) GetEnode() string {
 type GroupInfo struct {
 	Gid    string
 	Mode   string
-	Number int
+	Count int
 	Enodes []string
 }
 
@@ -85,11 +85,11 @@ func (this *Service) CreateSDKGroup(gname, mode string, enodes []string) string 
 			tip = "group exist"
 			status = REPEAT
 		}
-		ret := &GroupInfo{Gid: gid, Mode: mode, Number: count, Enodes: enodes}
+		ret := &GroupInfo{Gid: gid, Mode: mode, Count: count, Enodes: enodes}
 		return packageResult(status, tip, retErr, ret)
 	}
 	fmt.Printf("==== CreateSDKGroup() ====, gid: %v, count: %v\n", gid, count)
-	ret := &GroupInfo{Gid: gid, Mode: mode, Number: count, Enodes: enodes}
+	ret := &GroupInfo{Gid: gid, Mode: mode, Count: count, Enodes: enodes}
 	return packageResult(SUCCESS, "", "", ret)
 }
 
@@ -132,7 +132,7 @@ func getSDKGroup(enode, groupType string) string {
 			}
 		}
 		if addGroup {
-			ret := &GroupInfo{Gid: gid.String(), Mode: g.Mode, Number: len(g.Nodes), Enodes: enodes}
+			ret := &GroupInfo{Gid: gid.String(), Mode: g.Mode, Count: len(g.Nodes), Enodes: enodes}
 			group = append(group, *ret)
 		}
 	}

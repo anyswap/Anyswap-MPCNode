@@ -56,10 +56,10 @@ var (
 	Sdk_callback   func(interface{}, string)
 	Xp_callback   func(interface{})
 	emitter    *Emitter
-	dccpGroup  *Group
-	xpGroup    *Group
+	dccpGroup  *discover.Group
+	xpGroup    *discover.Group
 	selfid     discover.NodeID
-	SdkGroup   map[discover.NodeID]*Group = make(map[discover.NodeID]*Group)
+	SdkGroup   map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
 )
 
 type Dcrm struct {

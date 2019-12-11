@@ -39,7 +39,7 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	}
 	//log.Debug("BroadcastToGroup", "sendMsg", msg)
 	msgCode := peerMsgCode
-	broatcast := func(dccpGroup *Group, myself, fail bool) int {
+	broatcast := func(dccpGroup *discover.Group, myself, fail bool) int {
 		if dccpGroup == nil {
 			return 0
 		}
@@ -72,7 +72,7 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 		}
 		return ret
 	}
-	var xvcGroup *Group
+	var xvcGroup *discover.Group
 	switch p2pType {
 	case Sdkprotocol_type:
 		if SdkGroup != nil {
@@ -106,7 +106,7 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	return "BroadcastToGroup send Success", nil
 }
 
-func getGroupSDK(gid discover.NodeID) (discover.NodeID, *Group) {
+func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) {
 	for id, g := range SdkGroup {
 		if g.Type != "1+1+1" && g.Type != "1+2" {
 			continue
@@ -131,9 +131,6 @@ func init() {
 func NewEmitter() *Emitter {
 	//fmt.Println("========  NewEmitter()  ========")
 	return &Emitter{peers: make(map[discover.NodeID]*peer)}
-}
-func NewGroup() *Group {
-	return &Group{}
 }
 
 // update p2p
@@ -226,7 +223,7 @@ func GetEnode() string {
 }
 
 func getGroup(gid discover.NodeID, p2pType int) (int, string) {
-	var xvcGroup *Group
+	var xvcGroup *discover.Group
 	switch p2pType {
 	case Sdkprotocol_type:
 		if SdkGroup != nil {
@@ -270,16 +267,15 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType int, Type string) {
 	//log.Debug("==== recvGroupInfo() ====", "gid", gid, "req", req)
 	fmt.Printf("==== recvGroupInfo() ====, gid: %v, req: %v\n", gid, req)
-	//selfid = discover.GetLocalID()
 	//log.Debug("recvGroupInfo", "local ID: ", selfid)
-	var xvcGroup *Group
+	var xvcGroup *discover.Group
 	switch (p2pType) {
 	case Sdkprotocol_type:
 		id, groupTmp := getGroupSDK(gid)
 		if groupTmp != nil {
 			delete(SdkGroup, id)
 		}
-		groupTmp = NewGroup()
+		groupTmp = discover.NewGroup()
 		groupTmp.ID = gid
 		//groupTmp.Gname = gname
 		groupTmp.Mode = mode
@@ -290,11 +286,11 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 		fmt.Printf("==== recvGroupInfo() ====, SdkGroup[gid: %v] =  %v\n", gid, SdkGroup[gid])
 		break
 	case DcrmProtocol_type:
-		dccpGroup = NewGroup()
+		dccpGroup = discover.NewGroup()
 		xvcGroup = dccpGroup
 		break
 	case Xprotocol_type:
-		xpGroup = NewGroup()
+		xpGroup = discover.NewGroup()
 		xvcGroup = xpGroup
 		break
 	default:
@@ -309,6 +305,10 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
 	}
 	fmt.Printf("==== recvGroupInfo() ====, xvcGroup: %v\n", xvcGroup)
+	discover.StoreGroupToDb(xvcGroup)
+	//g, _ := discover.RecoverGroupByGID(gid)
+	//fmt.Printf("==== recvGroupInfo() ====, getGroupInfo g = %v\n", g)
+
 	//for i, g := range SdkGroup {
 	//	log.Info("\nGroupInfo", "i", i, "g", g)
 	//}
@@ -465,5 +465,9 @@ func updateGroupNodesNumber(number, p2pType int) {
 
 func InitServer(nodeserv interface{}) {
 	p2pServer = nodeserv.(p2p.Server)
+	discover.RecoverGroupAll(SdkGroup)
+	for i, g := range SdkGroup {
+		fmt.Printf("discover.GetGroupFromDb, gid: %v, g: %v\n", i, g)
+	}
 }
 

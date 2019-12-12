@@ -242,15 +242,8 @@ func getSDKGroupNodes(gid discover.NodeID) []*discover.Node {
 	if xvcGroup == nil {
 		return g
 	}
-	for _, e := range xvcGroup.Group {
-		enode := e.Enode
-		rn, _ := discover.ParseNode(enode)
+	for _, rn := range xvcGroup.Nodes {
 		n := discover.NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
-		//errv := n.validateComplete()
-		//if errv != nil {
-		//	fmt.Printf("Invalid neighbor node received, ip: %v, err: %v\n", rn.IP, errv)
-		//	return nil
-		//}
 		g = append(g, n)
 	}
 	return g
@@ -260,6 +253,7 @@ func SdkProtocol_SendToGroupAllNodes(gID, msg string) (string, error) {
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		e := fmt.Sprintf("SendGroupAllNodes, group gid: %v not exist", gid)
+		fmt.Println(e)
 		return "", errors.New(e)
 	}
 	g := getSDKGroupNodes(gid)
@@ -270,6 +264,7 @@ func SdkProtocol_broadcastInGroupOthers(gID, msg string) (string, error) { // wi
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		e := fmt.Sprintf("broadcastInGroupOthers, group gid: %v not exist", gid)
+		fmt.Println(e)
 		return "", errors.New(e)
 	}
 	return BroadcastToGroup(gid, msg, Sdkprotocol_type, false)
@@ -279,6 +274,7 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		e := fmt.Sprintf("broadcastInGroupAll, group gid: %v not exist", gid)
+		fmt.Println(e)
 		return "", errors.New(e)
 	}
 	return BroadcastToGroup(gid, msg, Sdkprotocol_type, true)
@@ -295,9 +291,7 @@ func SdkProtocol_getGroup(gID string) (int, string) {
 
 func checkExistGroup(gid discover.NodeID) bool {
 	if SdkGroup[gid] != nil {
-		if SdkGroup[gid].Type == "1+2" {
-			return true
-		} else if SdkGroup[gid].Status == "SUCCESS" {
+		if SdkGroup[gid].Type == "1+2" || SdkGroup[gid].Type == "1+1+1" {
 			return true
 		}
 	}
@@ -319,7 +313,7 @@ func SdkProtocol_registerSendToGroupReturnCallback(sdkcallback func(interface{},
 }
 
 // 1 + 1 + 1
-func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, string) {
+func CreateSDKGroup(gname, mode string, enodes []string) (string, int, string) {
 	count := len(enodes)
 	sort.Sort(sort.StringSlice(enodes))
 	enode := []*discover.Node{}
@@ -330,14 +324,14 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 		node, err := discover.ParseNode(un)
 		if err != nil {
 			fmt.Printf("CreateSDKGroup, parse err: %v\n", un)
-			return "", "", 0, "enode wrong format"
+			return "", 0, "enode wrong format"
 		}
 		fmt.Printf("for selfid: %v, node.ID: %v\n", selfid, node.ID)
 		if selfid != node.ID.String() {
 			p := emitter.peers[node.ID]
 			if p == nil {
 				fmt.Printf("CreateSDKGroup, peers err: %v\n", un)
-				return "", "", 0, "enode is not peer"
+				return "", 0, "enode is not peer"
 			}
 		}
 		n := fmt.Sprintf("%v", node.ID)
@@ -351,36 +345,17 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, string, int, s
 	}
 	gid, err := discover.BytesID(id)
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
-	for i, g := range SdkGroup {
-		if g.Gname == gname || i == gid{
-			return g.Gname, "", 0, "group is exist"
+	for i, _ := range SdkGroup {
+		if i == gid {
+			return "", 0, "group is exist"
 		}
 	}
-	name, retErr := discover.StartCreateSDKGroup(gname, gid, mode, enode)
-	fmt.Printf("CreateSDKGroup, name: %v\n", name)
-	return name, gid.String(), count, retErr
+	retErr := discover.StartCreateSDKGroup(gname, gid, mode, enode, "1+1+1")
+	return gid.String(), count, retErr
 }
 
 func GetEnodeStatus(enode string) (string, string) {
 	return discover.GetEnodeStatus(enode)
-}
-
-func SetCreateGroupStatus(gname, enode, approval string) error {
-	selfid := fmt.Sprintf("%v", discover.GetLocalID())
-	node, err := discover.ParseNode(enode)
-	if err != nil {
-		msg := fmt.Sprintf("parse enode err")
-		return errors.New(msg)
-	}
-	if selfid != node.ID.String() {
-		msg := fmt.Sprintf("not myself enode")
-		return errors.New(msg)
-	}
-	return discover.SetCreateGroupStatus(gname, enode, approval)
-}
-
-func GetCreateGroupStatus(gname, enode string) (string, error) {
-	return discover.GetCreateGroupStatus(gname, enode)
 }
 
 func CheckAddPeer(enodes []string) error {

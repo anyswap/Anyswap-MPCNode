@@ -56,10 +56,10 @@ var (
 	Sdk_callback   func(interface{}, string)
 	Xp_callback   func(interface{})
 	emitter    *Emitter
-	dccpGroup  *Group
-	xpGroup    *Group
+	dccpGroup  *discover.Group
+	xpGroup    *discover.Group
 	selfid     discover.NodeID
-	SdkGroup   map[discover.NodeID]*Group = make(map[discover.NodeID]*Group)
+	SdkGroup   map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
 )
 
 type Dcrm struct {
@@ -117,24 +117,11 @@ type Emitter struct {
 	peers map[discover.NodeID]*peer
 	sync.Mutex
 }
-type group struct {
-	id    discover.NodeID
-	ip    net.IP
-	port  uint16
-	Enode string
-	Status string
-}
-type Group struct {
-	sync.Mutex
-	Gname string
-	Mode string
-	Status string
-	Type string
-	Got bool
-	Group map[string]*group
-}
+
+type Group discover.Group
 
 type Transaction struct {
 	Payload []byte
 	Hash    atomic.Value
 }
+

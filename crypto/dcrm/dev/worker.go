@@ -923,9 +923,11 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
 	    }
 	    
 	    rr := r.(*SendMsg)
-	    msg := rr.Msg
-	    msgs := strings.Split(msg,":")
-	    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,true,"Error","",tip,cherr.Error()) 
+	    if rr.MsgType == "rpc_lockout" {
+		msg := rr.Msg
+		msgs := strings.Split(msg,":")
+		AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,true,"Error","",tip,cherr.Error()) 
+	    }
 	}
 	////
 

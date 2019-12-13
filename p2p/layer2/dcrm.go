@@ -346,9 +346,9 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	}
 	gid, err := discover.BytesID(id)
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
-	for i, _ := range SdkGroup {
+	for i, g := range SdkGroup {
 		if i == gid {
-			return "", 0, "group is exist"
+			return gid.String(), len(g.Nodes), "group is exist"
 		}
 	}
 	retErr := discover.StartCreateSDKGroup(gid, mode, enode, "1+1+1")

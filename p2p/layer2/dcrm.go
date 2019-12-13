@@ -281,6 +281,7 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 }
 
 func SdkProtocol_getGroup(gID string) (int, string) {
+	fmt.Printf("getGroup, gid: %v\n", gID)
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		fmt.Printf("broadcastInGroupAll, group gid: %v not exist\n", gid)
@@ -313,7 +314,7 @@ func SdkProtocol_registerSendToGroupReturnCallback(sdkcallback func(interface{},
 }
 
 // 1 + 1 + 1
-func CreateSDKGroup(gname, mode string, enodes []string) (string, int, string) {
+func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	count := len(enodes)
 	sort.Sort(sort.StringSlice(enodes))
 	enode := []*discover.Node{}
@@ -350,7 +351,7 @@ func CreateSDKGroup(gname, mode string, enodes []string) (string, int, string) {
 			return "", 0, "group is exist"
 		}
 	}
-	retErr := discover.StartCreateSDKGroup(gname, gid, mode, enode, "1+1+1")
+	retErr := discover.StartCreateSDKGroup(gid, mode, enode, "1+1+1")
 	return gid.String(), count, retErr
 }
 

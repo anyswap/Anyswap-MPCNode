@@ -271,9 +271,10 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	var xvcGroup *discover.Group
 	switch (p2pType) {
 	case Sdkprotocol_type:
-		id, groupTmp := getGroupSDK(gid)
+		_, groupTmp := getGroupSDK(gid)
 		if groupTmp != nil {
-			delete(SdkGroup, id)
+			return
+			//delete(SdkGroup, id)
 		}
 		groupTmp = discover.NewGroup()
 		groupTmp.ID = gid

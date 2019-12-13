@@ -683,7 +683,7 @@ func SetUpMsgList(msg string) {
     }
 }
 
-func GetAccount(gid,mode string) (interface{}, int, string, error) {
+func GetAccounts(gid,mode string) (interface{}, string, error) {
     return dev.GetPubAccount(gid, mode)
 }
 

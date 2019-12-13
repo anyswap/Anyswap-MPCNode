@@ -2700,7 +2700,7 @@ func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
 }
 */
 
-type pubAccounts struct {
+type PubAccounts struct {
        Group []AccountsList
 }
 type AccountsList struct {
@@ -2708,30 +2708,28 @@ type AccountsList struct {
        Accounts []string
 }
 
-func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
+func GetPubAccount(gid, mode string) (interface{}, string, error) {
     lock.Lock()
     dir := GetDbDir()
-    db, err := leveldb.OpenFile(dir, nil) 
-    if err != nil { 
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
 	lock.Unlock()
-        return nil, 0, "", err
+        return nil, "open leveldb fail", err
     }
    
     gp := make(map[string][]string)
-    var b bytes.Buffer 
-    b.WriteString("") 
-    b.WriteByte(0) 
-    b.WriteString("") 
     iter := db.NewIterator(nil, nil) 
     for iter.Next() { 
 	value := string(iter.Value())
 	ss,err := UnCompress(value)
 	if err != nil {
+	    fmt.Println("==============GetPubAccount,1111 err = %v===============",err)
 	    continue
 	}
 	
 	pubs,err := Decode2(ss,"PubKeyData")
 	if err != nil {
+	    fmt.Println("==============GetPubAccount,2222 err = %v===============",err)
 	    continue
 	}
 	
@@ -2739,6 +2737,7 @@ func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
 	pubkeyhex := hex.EncodeToString([]byte(pb))
 	gid := (pubs.(*PubKeyData)).GroupId
 	md := (pubs.(*PubKeyData)).Mode
+	fmt.Println("==============GetPubAccount,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
 	if mode == md {
 	    al,exsit := gp[gid]
 	    if exsit == true {
@@ -2759,17 +2758,19 @@ func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
 	if exsit == true {
 	    alNew := AccountsList{GroupID: gid, Accounts: al}
 	    als = append(als, alNew)
-	    pa := &pubAccounts{Group: als}
-	    return pa, len(als), "", nil
+	    pa := &PubAccounts{Group: als}
+	    return pa, "", nil
 	}
     }
 
+    fmt.Println("==============GetPubAccount,333333333===============")
     for k,v := range gp {
+	fmt.Println("==============GetPubAccount,44444,key =%s,value =%s ===============",k,v)
 	alNew := AccountsList{GroupID: k, Accounts: v}
 	als = append(als, alNew)
     }
     
-    pa := &pubAccounts{Group: als}
-    return pa, len(als), "", nil
+    pa := &PubAccounts{Group: als}
+    return pa, "", nil
 }
 

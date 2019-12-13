@@ -361,19 +361,27 @@ func startRpcServer() error {
 
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
-func (this *Service) GetAccounts(gid,mode string) string {
-	stat := NULLRET
-	e := ""
-	ret, count, tip, err := dcrm.GetAccount(gid,mode)
-	if err != nil {
-		stat = FAIL
-		e = err.Error()
+func (this *Service) GetAccounts(gid,mode string) map[string]interface{} {
+    fmt.Println("==========dcrm_getAccounts,gid = %s,mode = %s ===========",gid,mode)
+    data := make(map[string]interface{})
+    ret, tip, err := dcrm.GetAccounts(gid,mode)
+    if err != nil {
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
+		"Error": err.Error(),
+		"Data": data,
 	}
-	if count > 0 {
-		stat = SUCCESS
-	}
-	fmt.Printf("==== GetAccounts() ====, ret: %v\n", ret)
-	return packageResult(stat, tip, e, ret)
+    }
+
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
 }
 
 func (this *Service) GetAccountsBalance(pubkey string) string {

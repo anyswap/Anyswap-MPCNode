@@ -493,7 +493,6 @@ func InitGroup(groupsNum, nodesNum int) error {
 	RecoverGroupAll(SDK_groupList)
 	for i, g := range SDK_groupList {
 		fmt.Printf("discover.GetGroupFromDb, gid: %v, g: %v\n", i, g)
-		//sendGroupPrivKey(g, g.P2pType)
 		sendGroupInfo(g, int(g.P2pType))
 	}
 	return nil
@@ -538,12 +537,12 @@ func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node)
 	sent := make([]int, groupMemNum+1)
 	retMsg := ""
 	count := 0
-	pingErrorCount := 0
+	//pingErrorCount := 0
 	for i := 1; i <= groupMemNum; {
-		if pingErrorCount > groupMemNum * 5 {
-			fmt.Printf("ping timeout\n")
-			break
-		}
+		//if pingErrorCount > groupMemNum * 5 {
+		//	fmt.Printf("ping timeout\n")
+		//	break
+		//}
 		rand.Seed(time.Now().UnixNano())
 		r := rand.Intn(groupMemNum) % groupMemNum
 		j := 1
@@ -563,15 +562,15 @@ func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node)
 			go SendToMyselfAndReturn(n.ID.String(), msg, p2pType)
 		} else {
 			ipa := &net.UDPAddr{IP: n.IP, Port: int(n.UDP)}
-			err := Table4group.net.ping(n.ID, ipa)
-			pingErrorCount += 1
-			if err != nil {
-//				log.Debug("sendToDcrmGroup, err", "group[", r, "]", g[r])
-				fmt.Printf("SendToGroup, ping(n.ID: %v, ipa: %v) error\n", n.ID, ipa)
-				retMsg = fmt.Sprintf("%v; SendToGroup, ping(n.ID: %v, ipa: %v) error", retMsg, n.ID, ipa)
-				continue
-			}
-			_, err = Table4group.net.sendToGroupCC(n.ID, ipa, msg, p2pType)
+			//err := Table4group.net.ping(n.ID, ipa)
+			//pingErrorCount += 1
+			//if err != nil {
+//			//	log.Debug("sendToDcrmGroup, err", "group[", r, "]", g[r])
+			//	fmt.Printf("SendToGroup, ping(n.ID: %v, ipa: %v) error\n", n.ID, ipa)
+			//	retMsg = fmt.Sprintf("%v; SendToGroup, ping(n.ID: %v, ipa: %v) error", retMsg, n.ID, ipa)
+			//	continue
+			//}
+			_, err := Table4group.net.sendToGroupCC(n.ID, ipa, msg, p2pType)
 			if err != nil {
 				fmt.Printf("SendToGroup, sendToGroupCC(n.ID: %v, ipa: %v) error: %v\n", n.ID, ipa, err)
 				retMsg = fmt.Sprintf("%v; SendToGroup, sendToGroupCC(n.ID: %v, ipa: %v) error", retMsg, n.ID, ipa)
@@ -647,23 +646,6 @@ func sendSDKGroupInfo(groupList *Group, p2pType int) {
 //	log.Warn("send group to nodes", "group: ", enodes)
 }
 
-func sendSDKGroupPrivKey(groupList *Group, p2pType int) {
-	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
-		//go callPrivKeyEvent(enodes)
-		var tmp int = 0
-		for i := 0; i < groupList.count; i++ {
-			node := groupList.Nodes[i]
-			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
-			tmp++
-			//go SendToPeer(enode, cDPrivKey)
-			go func (node RpcNode, msg string) {
-				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
-				SendMsgToNode(node.ID, ipa, msg)
-			}(node, cDPrivKey)
-		}
-	}
-}
-
 func sendGroupInfo(groupList *Group, p2pType int) {
 	count := 0
 	enode := ""
@@ -684,34 +666,15 @@ func sendGroupInfo(groupList *Group, p2pType int) {
 //	log.Debug("send group to nodes", "group: ", enodes)
 //	log.Warn("send group to nodes", "group: ", enodes)
 	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
-		//go callPrivKeyEvent(enodes)
 		var tmp int = 0
 		for i := 0; i < groupList.count; i++ {
 			node := groupList.Nodes[i]
-			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
+			cDgid := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
 			tmp++
-			//go SendToPeer(enode, cDPrivKey)
 			go func (node RpcNode, msg string) {
 				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
 				SendMsgToNode(node.ID, ipa, msg)
-			}(node, cDPrivKey)
-		}
-	}
-}
-
-func sendGroupPrivKey(groupList *Group, p2pType int) {
-	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
-		//go callPrivKeyEvent(enodes)
-		var tmp int = 0
-		for i := 0; i < groupList.count; i++ {
-			node := groupList.Nodes[i]
-			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
-			tmp++
-			//go SendToPeer(enode, cDPrivKey)
-			go func (node RpcNode, msg string) {
-				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
-				SendMsgToNode(node.ID, ipa, msg)
-			}(node, cDPrivKey)
+			}(node, cDgid)
 		}
 	}
 }

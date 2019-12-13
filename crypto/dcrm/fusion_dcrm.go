@@ -506,7 +506,13 @@ func GetLockOutStatus(key string) (string,string,error) {
 
 func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
     //key := dev.Keccak256Hash([]byte(strings.ToLower(pubkey))).Hex()
-    key,_ := hex.DecodeString(pubkey)
+    fmt.Printf("GetPubAccountBalance,pubkey =%s",pubkey)
+    key,err2 := hex.DecodeString(pubkey)
+    if err2 != nil {
+	fmt.Printf("GetPubAccountBalance,decode string fail,err =%v",err2)
+	return nil,"decode pubkey fail",err2
+    }
+
     ret, tip, err := GetPubKeyData(key, pubkey, "ALL")
     fmt.Printf("GetPubAccountBalance, ret: %v, tip: %v, err: %v\n", ret, tip, err)
     var m interface{}

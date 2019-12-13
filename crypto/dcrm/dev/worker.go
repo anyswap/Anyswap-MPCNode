@@ -2714,6 +2714,7 @@ func GetPubAccount(gid, mode string) (interface{}, string, error) {
     db, err := leveldb.OpenFile(dir, nil)
     if err != nil {
 	lock.Unlock()
+	fmt.Println("==============GetPubAccount,err = %v===============",err)
         return nil, "open leveldb fail", err
     }
    
@@ -2759,6 +2760,7 @@ func GetPubAccount(gid, mode string) (interface{}, string, error) {
 	    alNew := AccountsList{GroupID: gid, Accounts: al}
 	    als = append(als, alNew)
 	    pa := &PubAccounts{Group: als}
+	    lock.Unlock()
 	    return pa, "", nil
 	}
     }
@@ -2770,6 +2772,7 @@ func GetPubAccount(gid, mode string) (interface{}, string, error) {
 	als = append(als, alNew)
     }
     
+    lock.Unlock()
     pa := &PubAccounts{Group: als}
     return pa, "", nil
 }

@@ -493,6 +493,8 @@ func InitGroup(groupsNum, nodesNum int) error {
 	RecoverGroupAll(SDK_groupList)
 	for i, g := range SDK_groupList {
 		fmt.Printf("discover.GetGroupFromDb, gid: %v, g: %v\n", i, g)
+		//sendGroupPrivKey(g, g.P2pType)
+		sendGroupInfo(g, int(g.P2pType))
 	}
 	return nil
 }
@@ -697,6 +699,23 @@ func sendGroupInfo(groupList *Group, p2pType int) {
 	}
 }
 
+func sendGroupPrivKey(groupList *Group, p2pType int) {
+	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
+		//go callPrivKeyEvent(enodes)
+		var tmp int = 0
+		for i := 0; i < groupList.count; i++ {
+			node := groupList.Nodes[i]
+			cDPrivKey := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
+			tmp++
+			//go SendToPeer(enode, cDPrivKey)
+			go func (node RpcNode, msg string) {
+				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+				SendMsgToNode(node.ID, ipa, msg)
+			}(node, cDPrivKey)
+		}
+	}
+}
+
 func addGroupSDK(n *Node, p2pType int) {
 	groupTmp := new(Group)
 	groupTmp.Nodes = make([]RpcNode, SDK_groupNum)
@@ -717,16 +736,15 @@ func addGroupSDK(n *Node, p2pType int) {
 	//fmt.Printf("==== addGroupSDK() ====, getGroupInfo g = %v\n", g)
 }
 
-func StartCreateSDKGroup(gname string, gid NodeID, mode string, enode []*Node, Type string) string {
+func StartCreateSDKGroup(gid NodeID, mode string, enode []*Node, Type string) string {
 	fmt.Printf("==== StartCreateSDKGroup() ====, gid: %v\n", gid)
-	buildSDKGroup(gname, gid, mode, enode, Type)
+	buildSDKGroup(gid, mode, enode, Type)
 	return ""
 }
 
-func buildSDKGroup(gname string, gid NodeID, mode string, enode []*Node, Type string) {
+func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string) {
 	fmt.Printf("==== buildSDKGroup() ====, gid: %v\n", gid)
 	groupTmp := new(Group)
-	//groupTmp.Gname = gname
 	groupTmp.Mode = mode
 	groupTmp.Type = Type
 	//groupTmp.status = "NEW"

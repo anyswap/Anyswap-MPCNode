@@ -70,7 +70,7 @@ func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
 	fmt.Printf("==== CreateSDKGroup() ====\n")
 	if len(enodes) == 0 {
 		ret := &GroupInfo{}
-		return packageResult(FAIL, "args 3rd is null", "enodes is null", ret)
+		return packageResult(FAIL, "args enodes is null", "enodes is null", ret)
 	}
 	err := layer2.CheckAddPeer(enodes)
 	if err != nil {

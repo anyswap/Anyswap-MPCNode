@@ -431,12 +431,12 @@ func AcceptLockOut(raw string) (string,string,error) {
 	return "",tip,err
     }
 
-    accept := false
+    accept := "false"
     if datas[10] == "AGREE" {
-	accept = true
+	accept = "true"
     }
 
-    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"","","","")
+    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"","","","","")
     if err != nil {
 	return "",tip,err
     }
@@ -505,8 +505,9 @@ func GetLockOutStatus(key string) (string,string,error) {
 }
 
 func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
-    key := dev.Keccak256Hash([]byte(strings.ToLower(pubkey))).Hex()
-    ret, tip, err := GetPubKeyData([]byte(key), pubkey, "ALL")
+    //key := dev.Keccak256Hash([]byte(strings.ToLower(pubkey))).Hex()
+    key,_ := hex.DecodeString(pubkey)
+    ret, tip, err := GetPubKeyData(key, pubkey, "ALL")
     fmt.Printf("GetPubAccountBalance, ret: %v, tip: %v, err: %v\n", ret, tip, err)
     var m interface{}
     if err == nil {

@@ -143,6 +143,9 @@ type RpcReqWorker struct {
     ch chan interface{}
     retres *list.List
     //
+    msg_acceptlockoutres *list.List
+    splitmsg_acceptlockoutres map[string]*list.List
+    
     msg_c1 *list.List
     splitmsg_c1 map[string]*list.List
     
@@ -189,6 +192,7 @@ type RpcReqWorker struct {
     pky *list.List
     save *list.List
     
+    bacceptlockoutres chan bool
     bc1 chan bool
     bmkg chan bool
     bmkw chan bool
@@ -333,11 +337,14 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     splitmsg_s1:make(map[string]*list.List),
     msg_ss1:list.New(),
     splitmsg_ss1:make(map[string]*list.List),
+    msg_acceptlockoutres:list.New(),
+    splitmsg_acceptlockoutres:make(map[string]*list.List),
     
     pkx:list.New(),
     pky:list.New(),
     save:list.New(),
     
+    bacceptlockoutres:make(chan bool,1),
     bc1:make(chan bool,1),
     bd1_1:make(chan bool,1),
     bc11:make(chan bool,1),
@@ -390,6 +397,11 @@ func (w *RpcReqWorker) Clear() {
     w.limitnum = ""
     
     var next *list.Element
+    
+    for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_acceptlockoutres.Remove(e)
+    }
     
     for e := w.msg_c1.Front(); e != nil; e = next {
         next = e.Next()
@@ -498,6 +510,9 @@ func (w *RpcReqWorker) Clear() {
     }
     if len(w.bmtazk1proof) == 1 {
 	<-w.bmtazk1proof
+    }
+    if len(w.bacceptlockoutres) == 1 {
+	<-w.bacceptlockoutres
     }
     if len(w.bc1) == 1 {
 	<-w.bc1
@@ -620,6 +635,7 @@ func (w *RpcReqWorker) Clear() {
     }
 
     //TODO
+    w.splitmsg_acceptlockoutres = make(map[string]*list.List)
     w.splitmsg_c1 = make(map[string]*list.List)
     w.splitmsg_kc = make(map[string]*list.List)
     w.splitmsg_mkg = make(map[string]*list.List)
@@ -639,6 +655,11 @@ func (w *RpcReqWorker) Clear() {
 func (w *RpcReqWorker) Clear2() {
     fmt.Println("===========RpcReqWorker.Clear2,w.id = %s ===================",w.id)
     var next *list.Element
+    
+    for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_acceptlockoutres.Remove(e)
+    }
     
     for e := w.msg_c1.Front(); e != nil; e = next {
         next = e.Next()
@@ -732,6 +753,9 @@ func (w *RpcReqWorker) Clear2() {
     }
     if len(w.bmtazk1proof) == 1 {
 	<-w.bmtazk1proof
+    }
+    if len(w.bacceptlockoutres) == 1 {
+	<-w.bacceptlockoutres
     }
     if len(w.bc1) == 1 {
 	<-w.bc1
@@ -844,6 +868,7 @@ func (w *RpcReqWorker) Clear2() {
     }
 
     //TODO
+    w.splitmsg_acceptlockoutres = make(map[string]*list.List)
     w.splitmsg_c1 = make(map[string]*list.List)
     w.splitmsg_kc = make(map[string]*list.List)
     w.splitmsg_mkg = make(map[string]*list.List)
@@ -926,7 +951,7 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
 	    if rr.MsgType == "rpc_lockout" {
 		msg := rr.Msg
 		msgs := strings.Split(msg,":")
-		AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,true,"Error","",tip,cherr.Error()) 
+		AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Error","",tip,cherr.Error(),"") 
 	    }
 	}
 	////
@@ -1150,6 +1175,14 @@ func GetLockOutStatus(key string) (string,string,error) {
     ret += "\""
     ret += ac.Error
     ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "AllReply"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.AllReply
+    ret += "\""
     ret += "}"
 
     db.Close()
@@ -1286,10 +1319,20 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
 
     db.Close()
     lock5.Unlock()
-    return "",ac.Accept 
+    
+    var rp bool 
+    if strings.EqualFold(ac.Accept,"false") {
+	rp = false
+    } else {
+	rp = true
+    }
+    
+    return "",rp
 }
 
-func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept bool,status string,outhash string,tip string,errinfo string) (string,error) {
+//if accept == "",don't set Accept
+//if allreply == "",don't set AllReply 
+func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept string,status string,outhash string,tip string,errinfo string,allreply string) (string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db, err := leveldb.OpenFile(dir, nil)
@@ -1322,12 +1365,18 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     }
 
     ac := dss.(*AcceptLockOutData)
-    ac.Accept = accept
+    if accept != "" {
+	ac.Accept = accept
+    }
     ac.Deal = deal
     ac.OutTxHash = outhash
     ac.Tip = tip
     ac.Error = errinfo
     ac.Status = status
+
+    if allreply != "" {
+	ac.AllReply = allreply
+    }
 
     e,err := Encode2(ac)
     if err != nil {
@@ -1397,7 +1446,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 	    if msgs[9] == "0" {// self-group
-		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:false,Status:"",OutTxHash:"",Tip:"",Error:""}
+		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"",OutTxHash:"",Tip:"",Error:"",AllReply:""}
 	        SaveAcceptData(ac)
 
 	        ////
@@ -1411,7 +1460,76 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                        select {
                        case account := <-acceptLockOutChan:
                            tip,reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7])
-                           fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, GetAcceptRes = %v\n", account, tip, reply)
+                           fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, Get Current Node Accept Res = %v\n", account, tip, reply)
+
+			   ///////
+			    mp := []string{w.sid,cur_enode}
+			    enode := strings.Join(mp,"-")
+			    s0 := "AcceptLockOutRes"
+			    var lo_res string
+			    if reply == false {
+				lo_res = "false"
+			    } else {
+				lo_res = "true"
+			    }
+			    s1 := lo_res
+			    ss := enode + Sep + s0 + Sep + s1
+			    logs.Debug("================RecvMsg.Run,send msg,code is AcceptLockOutRes==================")
+			    SendMsgToDcrmGroup(ss,w.groupid)
+			    _,tip,err = GetChannelValue(ch_t,w.bacceptlockoutres)
+			    if err != nil {
+				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","","","get other node accept lockout result timeout","get other node accept lockout result timeout","")
+				reply = false
+			       timeout <- true
+			       return
+			    }
+			    
+			    if w.msg_acceptlockoutres.Len() != (NodeCnt-1) {
+				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","","","get other node accept lockout result fail","get other node accept lockout result fail","")
+				tip = "dcrm back-end internal error:get accepte lockout result fail."
+				reply = false
+			       timeout <- true
+			       return
+			    }
+			   
+			    all := "{"
+			    all += "\""
+			    all += cur_enode
+			    all += "\""
+			    all += ":"
+			    all += "\""
+			    all += lo_res
+			    all += "\""
+			    all += ","
+			    iter := w.msg_acceptlockoutres.Front()
+			    for iter != nil {
+				mdss := iter.Value.(string)
+				ms := strings.Split(mdss,Sep)
+				prexs := strings.Split(ms[0],"-")
+				node := prexs[1]
+				if strings.EqualFold(ms[2],"false") {
+				    reply = false
+				}
+				all += "\""
+				all += node
+				all += "\""
+				all += ":"
+				all += "\""
+				all += ms[2] 
+				all += "\""
+				all += ","
+				iter = iter.Next()
+			    }
+			    all += "}"
+			    if reply == false {
+				tip = "don't accept lockout"
+				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","","","don't accept lockout","don't accept lockout",all) 
+			    } else {
+				tip = ""
+				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"true","","","","",all) 
+			    }
+
+			   ///////
                            timeout <- true
 	                   return
                        case <-agreeWaitTimeOut.C:
@@ -1754,7 +1872,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     <-acceptWaitLockOutChan
     var tip string
     time.Sleep(time.Duration(1) * time.Second)
-    AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,true,"","","","")
+    AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,"true","","","","","")
 
     w := workers[workid]
     chret,tip,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
@@ -1807,12 +1925,14 @@ type AcceptLockOutData struct {
     Mode string
 
     Deal bool
-    Accept bool
+    Accept string 
    
     Status string
     OutTxHash string
     Tip string
     Error string
+
+    AllReply string
 }
 
 func SaveAcceptData(ac *AcceptLockOutData) error {
@@ -2070,6 +2190,17 @@ func DisMsg(msg string) {
 
 	msgCode := mm[1]
 	switch msgCode {
+	case "AcceptLockOutRes":
+	    ///bug
+	    if w.msg_acceptlockoutres.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_acceptlockoutres.PushBack(msg)
+	    if w.msg_acceptlockoutres.Len() == (NodeCnt-1) {
+		fmt.Println("=========Get All AcceptLockOutRes===========","GroupId",w.groupid)
+		w.bacceptlockoutres <- true
+	    }
 	case "C1":
 	    ///bug
 	    if w.msg_c1.Len() >= (NodeCnt-1) {

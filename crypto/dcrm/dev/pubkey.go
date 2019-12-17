@@ -1327,6 +1327,8 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	}
     }
 
+    fmt.Println("========AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA KeyGenerate_ec2, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ============","GroupId",GroupId)
+
     // for all nodes, verify zk of u
     zku := make([]string,NodeCnt-1)
     if w.msg_zku.Len() != (NodeCnt-1) {

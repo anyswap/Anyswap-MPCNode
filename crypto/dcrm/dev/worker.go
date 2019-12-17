@@ -1098,6 +1098,7 @@ func GetGroupRes(wid int) RpcDcrmRes {
 //=========================================
 
 func Call(msg interface{},enode string) {
+    fmt.Println("==============Call,get msg =%s,sender =%s===============",msg.(string),enode)
     s := msg.(string)
     SetUpMsgList(s)
 }

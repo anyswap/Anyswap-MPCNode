@@ -65,6 +65,7 @@ func DcrmProtocol_registerPriKeyCallback(recvPrivkeyFunc func(interface{})) {
 }
 
 func Sdk_callEvent(msg string, fromID string) {
+	fmt.Printf("Sdk_callEvent\n")
 	Sdk_callback(msg, fromID)
 }
 
@@ -111,7 +112,6 @@ func (dcrm *Dcrm) Protocols() []p2p.Protocol {
 // p2p layer 2
 // New creates a Whisper client ready to communicate through the Ethereum P2P network.
 func DcrmNew(cfg *Config) *Dcrm {
-	fmt.Printf("====  dcrm New  ====\n")
 	dcrm := &Dcrm{
 		peers: make(map[discover.NodeID]*peer),
 		quit:  make(chan struct{}),
@@ -281,7 +281,7 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 }
 
 func SdkProtocol_getGroup(gID string) (int, string) {
-	fmt.Printf("getGroup, gid: %v\n", gID)
+	//fmt.Printf("getGroup, gid: %v\n", gID)
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		fmt.Printf("broadcastInGroupAll, group gid: %v not exist\n", gid)
@@ -318,7 +318,6 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	count := len(enodes)
 	sort.Sort(sort.StringSlice(enodes))
 	enode := []*discover.Node{}
-	selfid := fmt.Sprintf("%v", discover.GetLocalID())
 	id := []byte("")
 	for _, un := range enodes {
 		fmt.Printf("for un: %v\n", un)
@@ -328,7 +327,7 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 			return "", 0, "enode wrong format"
 		}
 		fmt.Printf("for selfid: %v, node.ID: %v\n", selfid, node.ID)
-		if selfid != node.ID.String() {
+		if selfid != node.ID {
 			p := emitter.peers[node.ID]
 			if p == nil {
 				fmt.Printf("CreateSDKGroup, peers err: %v\n", un)
@@ -361,7 +360,6 @@ func GetEnodeStatus(enode string) (string, string) {
 
 func CheckAddPeer(enodes []string) error {
 	addpeer := false
-	selfid := fmt.Sprintf("%v", discover.GetLocalID())
 	var nodes []*discover.Node
 	for _, enode := range enodes {
 		node, err := discover.ParseNode(enode)
@@ -369,7 +367,7 @@ func CheckAddPeer(enodes []string) error {
 			msg := fmt.Sprintf("CheckAddPeer, parse err enode: %v", enode)
 			return errors.New(msg)
 		}
-		if selfid == node.ID.String() {
+		if selfid == node.ID {
 			continue
 		}
 

@@ -211,6 +211,7 @@ func RegisterCallback(recvFunc func(interface{}, string)) {
 	callback = recvFunc
 }
 func callEvent(msg, fromID string) {
+	fmt.Printf("callEvent\n")
 	callback(msg, fromID)
 }
 
@@ -266,7 +267,7 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 
 func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType int, Type string) {
 	//log.Debug("==== recvGroupInfo() ====", "gid", gid, "req", req)
-	fmt.Printf("==== recvGroupInfo() ====, gid: %v, req: %v\n", gid, req)
+	//fmt.Printf("==== recvGroupInfo() ====, gid: %v, req: %v\n", gid, req)
 	//log.Debug("recvGroupInfo", "local ID: ", selfid)
 	var xvcGroup *discover.Group
 	switch (p2pType) {
@@ -284,7 +285,6 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 		groupTmp.Type = Type
 		SdkGroup[gid] = groupTmp
 		xvcGroup = groupTmp
-		fmt.Printf("==== recvGroupInfo() ====, SdkGroup[gid: %v] =  %v\n", gid, SdkGroup[gid])
 		break
 	case DcrmProtocol_type:
 		dccpGroup = discover.NewGroup()
@@ -303,6 +303,9 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	//	log.Debug("recvGroupInfo", "i: ", i, "e: ", enode)
 		node, _ := discover.ParseNode(enode.String())
 		xvcGroup.Nodes = append(xvcGroup.Nodes, discover.RpcNode{ID: node.ID, IP: node.IP, UDP: node.UDP, TCP: node.UDP})
+		if node.ID != selfid {
+			go p2pServer.AddPeer(node)
+		}
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
 	}
 	fmt.Printf("==== recvGroupInfo() ====, xvcGroup: %v\n", xvcGroup)
@@ -465,9 +468,16 @@ func updateGroupNodesNumber(number, p2pType int) {
 }
 
 func InitServer(nodeserv interface{}) {
+	selfid = discover.GetLocalID()
 	p2pServer = nodeserv.(p2p.Server)
 	discover.RecoverGroupAll(SdkGroup)
 	for i, g := range SdkGroup {
+		for _, node := range g.Nodes {
+			if node.ID != selfid {
+				en := discover.NewNode(node.ID, node.IP, node.UDP, node.TCP)
+				go p2pServer.AddPeer(en)
+			}
+		}
 		fmt.Printf("discover.GetGroupFromDb, gid: %v, g: %v\n", i, g)
 	}
 }

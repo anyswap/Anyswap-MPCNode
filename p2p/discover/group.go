@@ -945,7 +945,7 @@ func (t *udp) sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pT
 func (req *Group) name() string { return "GROUPMSG/v4" }
 func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
 //	log.Debug("====  (req *groupmessage) handle()  ====")
-	fmt.Printf("====  (req *groupmessage) handle()  ====, req: %v\n", req)
+	//fmt.Printf("====  (req *groupmessage) handle()  ====, req: %v\n", req)
 	if expired(req.Expiration) {
 		return errExpired
 	}
@@ -1368,7 +1368,6 @@ func UnCompress(s string) (string, error) {
 }
 
 func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
-	fmt.Printf("==== getGroupFromDb() ====\n")
 	groupDbLock.Lock()
 	defer groupDbLock.Unlock()
 
@@ -1376,23 +1375,22 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
 	fmt.Printf("==== getGroupFromDb() ====, dir = %v\n", dir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		fmt.Printf("==== getGroupFromDb() ====, db open %v\n", err)
+		fmt.Printf("==== getGroupFromDb() ====, db open err %v\n", err)
 		return err
 	}
 
 	iter := db.NewIterator(nil, nil)
 	for iter.Next() {
-		fmt.Printf("==== getGroupFromDb() ====, for\n")
 		value := string(iter.Value())
 		ss, err := UnCompress(value)
 		if err != nil {
-			fmt.Printf("==== getGroupFromDb() ====, UnCompress %v\n", err)
+			fmt.Printf("==== getGroupFromDb() ====, UnCompress err %v\n", err)
 			continue
 		}
 
 		g, err := Decode2(ss, "Group")
 		if err != nil {
-			fmt.Printf("==== getGroupFromDb() ====, Decode2 %v\n", err)
+			fmt.Printf("==== getGroupFromDb() ====, Decode2 err %v\n", err)
 			continue
 		}
 
@@ -1404,9 +1402,9 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
 		groupTmp.ID = gm.ID
 		SdkGroup[gm.ID] = groupTmp
 		groupTmp.Nodes = make([]RpcNode, 0)
-		fmt.Printf("==== getGroupFromDb() ====, for gm = %v\n", gm)
+		//fmt.Printf("==== getGroupFromDb() ====, for gm = %v\n", gm)
 		for _, node := range gm.Nodes {
-			fmt.Printf("==== getGroupFromDb() ====, for node = %v\n", node)
+			//fmt.Printf("==== getGroupFromDb() ====, for node = %v\n", node)
 			groupTmp.Nodes = append(groupTmp.Nodes, node)
 		}
 	}

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"time"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
@@ -34,81 +33,51 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	emitter.Lock()
 	defer emitter.Unlock()
 
-	xvcGroup, msgCode := getGroupAndCode(gid, p2pType)
-	if xvcGroup == nil {
-		e := fmt.Sprintf("BroadcastToGroup p2pType=%v is not exist", p2pType)
-		return "", errors.New(e)
+	//log.Debug("==== BroadcastToGroup() ====\n")
+	if msg == "" || emitter == nil {
+		return "", errors.New("BroadcastToGroup msg is nil")
 	}
-	failret := p2pBroatcast(xvcGroup, msg, msgCode, myself)
-	if failret != 0 {
-		e := fmt.Sprintf("BroadcastToGroup send failed nodecount=%v", failret)
-		return "", errors.New(e)
-	}
-	return "BroadcastToGroup send Success", nil
-}
-
-func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself bool) int {
-	fmt.Printf("==== p2pBroatcast() ====, group : %v\n", dccpGroup)
-	if dccpGroup == nil {
-		return 0
-	}
-	var ret int = 0
-	for _, node := range dccpGroup.Nodes {
-		fmt.Printf("==== p2pBroatcast() ====, send to node : %v\n", node)
-		if selfid == node.ID {
-			if myself == true {
-				go callEvent(msg, node.ID.String())
-			}
-			continue
-		}
-		go p2pSendMsg(node, uint64(msgCode), msg)
-	}
-	return ret
-}
-
-func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
-	if msg == "" {
-		return errors.New("p2pSendMsg msg is nil")
-	}
-	fmt.Printf("==== p2pSendMsg() ====, send to node: %v\n", node)
-	err := errors.New("p2pSendMsg err")
-	p := emitter.peers[node.ID]
-	if p == nil {
-		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, peer not exist\n", node)
-		return errors.New("peer not exist")
-	}
-	countSendFail := 0
-	for {
-		errp := discover.PingNode(node.ID, node.IP, int(node.UDP))
-		if errp == nil {
-			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
-			} else {
-				//tx := Transaction{Payload: []byte(msg)}
-				//p.knownTxs.Add(tx.hash())
-				fmt.Printf("==== p2pSendMsg() ====, send to node: %v SUCCESS, countSend : %v\n", node.ID, countSendFail)
-				return nil
-			}
-		}
-		countSendFail += 1
-		if countSendFail > 100 {
-			break
-		}
-		if countSendFail % 10 == 0 {
-			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
-		}
-		time.Sleep(time.Duration(300) * time.Millisecond)
-	}
-	fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail, countSendFail : %v timeout\n", node.ID, countSendFail)
-	return err
-}
-
-func getGroupAndCode(gid discover.NodeID, p2pType int) (*discover.Group, int) {
+	//log.Debug("BroadcastToGroup", "sendMsg", msg)
 	msgCode := peerMsgCode
-	var xvcGroup *discover.Group = nil
+	broatcast := func(dccpGroup *discover.Group, myself, fail bool) int {
+		if dccpGroup == nil {
+			return 0
+		}
+		var ret int = 0
+	//	log.Debug("emitter", "peer: ", emitter)
+		for _, node := range dccpGroup.Nodes {
+	//		log.Debug("group", "g: ", g)
+	//		log.Debug("group", "selfid", selfid, "g.id", g.id)
+			if selfid == node.ID {
+				if myself == true {
+	//				log.Debug("group", "selfid", selfid, "g.id", g.id, "myself", "true")
+					go callEvent(msg, node.ID.String())
+				}
+				continue
+			}
+			p := emitter.peers[node.ID]
+			if p == nil {
+	//			log.Debug("BroadastToGroup", "NodeID: ", g.id, "not in peers\n")
+				continue
+			}
+			if err := p2p.Send(p.ws, uint64(msgCode), msg); err != nil {
+	//			log.Debug("send to node(group) failed", "g = ", g, "p.peer = ", p.peer)
+	//			log.Error("BroadcastToGroup", "p2p.Send err", err, "peer id", p.peer.ID())
+				ret += 1
+			} else {
+				tx := Transaction{Payload: []byte(msg)}
+				p.knownTxs.Add(tx.hash())
+	//			log.Debug("send to node(group) success", "g = ", g, "p.peer = ", p.peer)
+			}
+		}
+		return ret
+	}
+	var xvcGroup *discover.Group
 	switch p2pType {
 	case Sdkprotocol_type:
 		if SdkGroup != nil {
 			_, xvcGroup = getGroupSDK(gid)
+	//		log.Debug("BroadcastToGroup", "gid", gid, "xvcGroup", gid, xvcGroup)
 			msgCode = Sdk_msgCode
 		}
 		break
@@ -125,9 +94,16 @@ func getGroupAndCode(gid discover.NodeID, p2pType int) (*discover.Group, int) {
 		}
 		break
 	default:
-		return nil, msgCode
+		e := fmt.Sprintf("BroadcastToGroup p2pType=%v is not exist", p2pType)
+		return "", errors.New(e)
 	}
-	return xvcGroup, msgCode
+	//log.Debug("BroadcastToGroup", "group: ", xvcGroup)
+	failret := broatcast(xvcGroup, myself, true)
+	if failret != 0 {
+		e := fmt.Sprintf("BroadcastToGroup send failed nodecount=%v", failret)
+		return "", errors.New(e)
+	}
+	return "BroadcastToGroup send Success", nil
 }
 
 func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) {

@@ -34,7 +34,7 @@ import (
 
 func main() {
 	var (
-		groupNum    = flag.Uint("groups", uint(0), "group Number")//0:sdk, 1:one group, 2:two groups dcrm xp
+		groupNum    = flag.Uint("group", uint(0), "group Number")//0:sdk, 1:one group, 2:two groups dcrm xp
 		groupNodesNum    = flag.Uint("nodes", uint(3), "nodes Number in some group, must > 0")
 		listenAddr  = flag.String("addr", ":4440", "listen address")
 		genKey      = flag.String("genkey", "", "generate a node key")

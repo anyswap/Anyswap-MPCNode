@@ -590,6 +590,11 @@ func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node)
 	return "", errors.New(retMsg)
 }
 
+func PingNode(id NodeID, ip net.IP, port int) error {
+	ipa := &net.UDPAddr{IP: ip, Port: port}
+	return Table4group.net.ping(id, ipa)
+}
+
 func GetGroup(gid, id NodeID, addr *net.UDPAddr, target NodeID, p2pType int) []*Node {
 //	log.Debug("GetGroup", "gid", gid, "id", id, "addr", addr, "target", target, "p2pType", p2pType)
 	if SDK_groupList != nil && SDK_groupList[gid] != nil {
@@ -1172,7 +1177,7 @@ func GetEnode() string {
 func updateRemoteIP(ip net.IP, port uint16) {
 	if RemoteUpdate == false && RemoteIP == "127.0.0.1" {
 		RemoteUpdate = true
-		fmt.Printf("updateRemoteIP, IP:port = %v%v\n", ip, port)
+		fmt.Printf("updateRemoteIP, IP:port = %v:%v\n", ip, port)
 		RemoteIP = fmt.Sprintf("%v", ip)
 		RemotePort = fmt.Sprintf("%v", port)
 	}

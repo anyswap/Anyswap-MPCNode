@@ -106,8 +106,8 @@ func InitDev(groupId string) {
 ////////////////////////dcrm///////////////////////////////
 var (
     //rpc-req //dcrm node
-    RpcMaxWorker = 10000 
-    RpcMaxQueue  = 10000
+    RpcMaxWorker = 2000 
+    RpcMaxQueue  = 2000
     RpcReqQueue chan RpcReq 
     workers []*RpcReqWorker
     //rpc-req

@@ -100,6 +100,19 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	pubkeyhex := hex.EncodeToString(sedpk)
 	fmt.Println("===============dcrm_genPubKey,pubkey = %s ==================",pubkeyhex)
 	////save to db
+	////add for req addr
+	reqnonce,_,err := GetReqAddrNonce(account)
+	if err != nil {
+	    reqnonce = "0"
+	}
+	SetReqAddrNonce(account,reqnonce)
+	tip,reply := AcceptReqAddr(account,cointype,wk.groupid,reqnonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
+	if reply != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update req addr status error.")}
+	    ch <- res
+	    return
+	}
+    
 	if !strings.EqualFold(cointype, "ALL") {
 	    lock.Lock()
 	    dir := GetDbDir()
@@ -129,6 +142,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 		return
 	    }
 
+	    //add for lockout
 	    db.Put(sedpk[:],[]byte(ss),nil)
 	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	    db.Put([]byte(key),[]byte(ss),nil)
@@ -147,6 +161,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 		return
 	    }
 
+	    //add for lockout
 	    db.Put(sedpk[:],[]byte(ss),nil)
 	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	    db.Put([]byte(key),[]byte(ss),nil)
@@ -228,6 +243,20 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     //tip, err := StorePubAccount(wk.groupid, pubkeyhex, mode)
     //fmt.Printf("==== dcrm_genPubKey() ====, StorePubAccount tip: %v, err: %v\n", tip, err)
     ////save to db
+    
+    ////add for req addr
+    reqnonce,_,err := GetReqAddrNonce(account)
+    if err != nil {
+	reqnonce = "0"
+    }
+    SetReqAddrNonce(account,reqnonce)
+    tip,reply := AcceptReqAddr(account,cointype,wk.groupid,reqnonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
+    if reply != nil {
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update req addr status error.")}
+	ch <- res
+	return
+    }
+
     if !strings.EqualFold(cointype, "ALL") {
 	lock.Lock()
 	dir := GetDbDir()
@@ -257,6 +286,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    return
 	}
 
+	//add for lockout
 	db.Put(ys,[]byte(ss),nil)
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	db.Put([]byte(key),[]byte(ss),nil)
@@ -275,6 +305,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    return
 	}
 
+	//add for lockout
 	db.Put(ys,[]byte(ss),nil)
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	db.Put([]byte(key),[]byte(ss),nil)

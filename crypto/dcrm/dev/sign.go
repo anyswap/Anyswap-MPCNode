@@ -41,6 +41,38 @@ import (
     "runtime/debug"
 )
 
+func GetReqAddrNonce(account string) (string,string,error) {
+
+     //db
+    lock5.Lock()
+    dir := GetDbDir()
+    ////////
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+	fmt.Println("=========GetReqAddrNonce,err = %v ============",err)
+	return "","dcrm back-end internal error:open level db fail in func GetReqAddrNonce",err
+    }
+    
+    key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+    da,err := db.Get([]byte(key2),nil)
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("leveldb not found, account = %s",account)
+    }
+
+    nonce,_ := new(big.Int).SetString(string(da),10)
+    one,_ := new(big.Int).SetString("1",10)
+    nonce = new(big.Int).Add(nonce,one)
+
+    fmt.Println("=========GetReqAddrNonce,nonce = %v ============",nonce)
+    db.Close()
+    lock5.Unlock()
+    return fmt.Sprintf("%v",nonce),"",nil
+}
+
 func GetNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
 
      //db
@@ -80,11 +112,34 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,string,err
     ////check account?? //TODO
     ////
 
-    nonce := (pubs.(*PubKeyData)).Nonce
+    nonce2 := (pubs.(*PubKeyData)).Nonce
+    nonce,_ := new(big.Int).SetString(string(nonce2),10)
+    one,_ := new(big.Int).SetString("1",10)
+    nonce = new(big.Int).Add(nonce,one)
     fmt.Println("=========GetNonce,nonce = %v ============",nonce)
     db.Close()
     lock5.Unlock()
-    return nonce,"",nil
+    return fmt.Sprintf("%v",nonce),"",nil
+}
+
+func SetReqAddrNonce(account string,nonce string) (string,error) {
+     //db
+    lock5.Lock()
+    dir := GetDbDir()
+    ////////
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+	fmt.Println("=========SetReqAddrNonce,err = %v ============",err)
+	return "dcrm back-end internal error:open level db fail",err
+    }
+    
+    key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+    ///////
+    db.Put([]byte(key2),[]byte(nonce),nil)
+    db.Close()
+    lock5.Unlock()
+    return "",nil
 }
 
 func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {

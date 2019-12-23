@@ -63,6 +63,9 @@ var (
 
     acceptLockOutChan chan string = make(chan string, 10)
     acceptWaitLockOutChan chan string = make(chan string, 10)
+    
+    acceptReqAddrChan chan string = make(chan string, 10)
+    acceptWaitReqAddrChan chan string = make(chan string, 10)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -144,6 +147,9 @@ type RpcReqWorker struct {
     ch chan interface{}
     retres *list.List
     //
+    msg_acceptreqaddrres *list.List
+    splitmsg_acceptreqaddrres map[string]*list.List
+    
     msg_acceptlockoutres *list.List
     splitmsg_acceptlockoutres map[string]*list.List
     
@@ -193,6 +199,7 @@ type RpcReqWorker struct {
     pky *list.List
     save *list.List
     
+    bacceptreqaddrres chan bool
     bacceptlockoutres chan bool
     bc1 chan bool
     bmkg chan bool
@@ -350,6 +357,8 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     splitmsg_s1:make(map[string]*list.List),
     msg_ss1:list.New(),
     splitmsg_ss1:make(map[string]*list.List),
+    msg_acceptreqaddrres:list.New(),
+    splitmsg_acceptreqaddrres:make(map[string]*list.List),
     msg_acceptlockoutres:list.New(),
     splitmsg_acceptlockoutres:make(map[string]*list.List),
     
@@ -357,6 +366,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     pky:list.New(),
     save:list.New(),
     
+    bacceptreqaddrres:make(chan bool,1),
     bacceptlockoutres:make(chan bool,1),
     bc1:make(chan bool,1),
     bd1_1:make(chan bool,1),
@@ -414,6 +424,11 @@ func (w *RpcReqWorker) Clear() {
     for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
         next = e.Next()
         w.msg_acceptlockoutres.Remove(e)
+    }
+    
+    for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_acceptreqaddrres.Remove(e)
     }
     
     for e := w.msg_c1.Front(); e != nil; e = next {
@@ -526,6 +541,9 @@ func (w *RpcReqWorker) Clear() {
     }
     if len(w.bacceptlockoutres) == 1 {
 	<-w.bacceptlockoutres
+    }
+    if len(w.bacceptreqaddrres) == 1 {
+	<-w.bacceptreqaddrres
     }
     if len(w.bc1) == 1 {
 	<-w.bc1
@@ -649,6 +667,7 @@ func (w *RpcReqWorker) Clear() {
 
     //TODO
     w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+    w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
     w.splitmsg_c1 = make(map[string]*list.List)
     w.splitmsg_kc = make(map[string]*list.List)
     w.splitmsg_mkg = make(map[string]*list.List)
@@ -668,6 +687,11 @@ func (w *RpcReqWorker) Clear() {
 func (w *RpcReqWorker) Clear2() {
     fmt.Println("===========RpcReqWorker.Clear2,w.id = %s ===================",w.id)
     var next *list.Element
+    
+    for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_acceptreqaddrres.Remove(e)
+    }
     
     for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
         next = e.Next()
@@ -769,6 +793,9 @@ func (w *RpcReqWorker) Clear2() {
     }
     if len(w.bacceptlockoutres) == 1 {
 	<-w.bacceptlockoutres
+    }
+    if len(w.bacceptreqaddrres) == 1 {
+	<-w.bacceptreqaddrres
     }
     if len(w.bc1) == 1 {
 	<-w.bc1
@@ -882,6 +909,7 @@ func (w *RpcReqWorker) Clear2() {
 
     //TODO
     w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+    w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
     w.splitmsg_c1 = make(map[string]*list.List)
     w.splitmsg_kc = make(map[string]*list.List)
     w.splitmsg_mkg = make(map[string]*list.List)
@@ -965,6 +993,11 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
 		msg := rr.Msg
 		msgs := strings.Split(msg,":")
 		AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Error","",tip,cherr.Error(),"") 
+	    }
+	    if rr.MsgType == "rpc_req_dcrmaddr" {
+		msg := rr.Msg
+		msgs := strings.Split(msg,":")
+		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Error","",tip,cherr.Error(),"")
 	    }
 	}
 	////
@@ -1123,6 +1156,85 @@ func SetUpMsgList(msg string) {
     RpcReqQueue <- req
 }
 
+func GetReqAddrStatus(key string) (string,string,error) {
+    lock5.Lock()
+    dir := GetAcceptReqAddrDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+	return "","dcrm back-end internal error:open level db fail",err
+    }
+    
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "","dcrm back-end internal error:get accept data fail from db",err
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "","dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := Decode2(ds,"AcceptReqAddrData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "","dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*AcceptReqAddrData)
+    ret := "{"
+    ret += "\""
+    ret += "Status"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Status
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "PubKey"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.PubKey
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Tip"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Tip
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Error"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Error
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "AllReply"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.AllReply
+    ret += "\""
+    ret += "}"
+
+    db.Close()
+    lock5.Unlock()
+    return ret,"",nil
+}
+
 func GetLockOutStatus(key string) (string,string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
@@ -1200,6 +1312,84 @@ func GetLockOutStatus(key string) (string,string,error) {
     db.Close()
     lock5.Unlock()
     return ret,"",nil
+}
+
+func GetReqAddrReply() (string,string,error) {
+    lock5.Lock()
+    dir := GetAcceptReqAddrDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+	return "","dcrm back-end internal error:open level db fail",err 
+    }
+   
+    var ret []string
+    var b bytes.Buffer 
+    b.WriteString("") 
+    b.WriteByte(0) 
+    b.WriteString("") 
+    iter := db.NewIterator(nil, nil) 
+    for iter.Next() { 
+	//key := string(iter.Key()) //TODO
+	value := string(iter.Value())
+	////
+	ds,err := UnCompress(value)
+	if err != nil {
+	    continue
+	}
+
+	dss,err := Decode2(ds,"AcceptReqAddrData")
+	if err != nil {
+	    continue
+	}
+
+	ac := dss.(*AcceptReqAddrData)
+	if ac.Deal == true {
+	    continue
+	}
+
+	tmp := "{"
+	tmp += "\"Account\":"
+	tmp += "\""
+	tmp += ac.Account
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Cointype\":"
+	tmp += "\""
+	tmp += ac.Cointype
+	tmp += "\""
+	tmp += ","
+	tmp += "\"GroupId\":"
+	tmp += "\""
+	tmp += ac.GroupId
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Nonce\":"
+	tmp += "\""
+	tmp += ac.Nonce
+	tmp += "\""
+	tmp += ","
+	tmp += "\"LimitNum\":"
+	tmp += "\""
+	tmp += ac.LimitNum
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Mode\":"
+	tmp += "\""
+	tmp += ac.Mode
+	tmp += "\""
+	tmp += "}"
+	ret = append(ret,tmp)
+	////
+    }
+    iter.Release()
+    
+    ///////
+    ss := strings.Join(ret,"|")
+    db.Close()
+    lock5.Unlock()
+
+    return ss,"",nil
 }
 
 func GetLockOutReply() (string,string,error) {
@@ -1295,6 +1485,53 @@ func GetLockOutReply() (string,string,error) {
     return ss,"",nil
 }
 
+func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
+    lock5.Lock()
+    dir := GetAcceptReqAddrDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+	return "dcrm back-end internal error:open level db fail",false
+    }
+    
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:get accept result from db fail",false
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:uncompress accept result fail",false
+    }
+
+    dss,err := Decode2(ds,"AcceptReqAddrData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:decode accept result fail",false
+    }
+
+    ac := dss.(*AcceptReqAddrData)
+
+    db.Close()
+    lock5.Unlock()
+    
+    var rp bool 
+    if strings.EqualFold(ac.Accept,"false") {
+	rp = false
+    } else {
+	rp = true
+    }
+    
+    return "",rp
+}
+
 func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
@@ -1340,6 +1577,75 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
     }
     
     return "",rp
+}
+
+//if accept == "",don't set Accept
+//if allreply == "",don't set AllReply 
+func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string) (string,error) {
+    lock5.Lock()
+    dir := GetAcceptReqAddrDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+	return "dcrm back-end internal error:open level db fail",err
+    }
+    
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
+    da,err := db.Get([]byte(key),nil)
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:get accept data fail from db",err
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := Decode2(ds,"AcceptReqAddrData")
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*AcceptReqAddrData)
+    ac.Deal = deal
+    if accept != "" {
+	ac.Accept = accept
+    }
+    ac.PubKey = pubkey
+    ac.Tip = tip
+    ac.Error = errinfo
+    ac.Status = status
+
+    if allreply != "" {
+	ac.AllReply = allreply
+    }
+
+    e,err := Encode2(ac)
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:encode accept data fail",err
+    }
+
+    es,err := Compress([]byte(e))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return "dcrm back-end internal error:compress accept data fail",err
+    }
+
+    db.Put([]byte(key),[]byte(es),nil)
+    db.Close()
+    lock5.Unlock()
+    acceptReqAddrChan <- account
+    return "",nil
 }
 
 //if accept == "",don't set Accept
@@ -1590,21 +1896,128 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
-	    //msg = account:cointype:groupid:threshold:mode
+	    //msg = account:cointype:groupid:nonce:threshold:mode
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
 	    w.sid = rr.Nonce
 
 	    msgs := strings.Split(rr.Msg,":")
-	    if len(msgs) < 4 {
+	    if len(msgs) < 6 {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:"dcrm back-end internal error:parameter error in req addr",Err:fmt.Errorf("get msg error.")}
 		ch <- res2
 		return false
 	    }
 	    
 	    w.groupid = msgs[2]
-	    w.limitnum = msgs[3]
-	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[4])
+	    w.limitnum = msgs[4]
+	    if msgs[5] == "0" {// self-group
+		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"",PubKey:"",Tip:"",Error:"",AllReply:""}
+	        SaveAcceptReqAddrData(ac)
+
+	        ////
+	        var reply bool
+	        var tip string
+	        timeout := make(chan bool, 1)
+	        go func() {
+                    agreeWaitTime := 3 * time.Minute
+                    agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+                    for {
+                       select {
+                       case account := <-acceptReqAddrChan:
+                           tip,reply = GetAcceptReqAddrRes(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
+                           fmt.Printf("==== (self *RecvMsg) Run() ====, address: %v, tip: %v, Get Current Node Accept Res = %v\n", account, tip, reply)
+
+			   ///////
+			    mp := []string{w.sid,cur_enode}
+			    enode := strings.Join(mp,"-")
+			    s0 := "AcceptReqAddrRes"
+			    var req_res string
+			    if reply == false {
+				req_res = "false"
+			    } else {
+				req_res = "true"
+			    }
+			    s1 := req_res
+			    ss := enode + Sep + s0 + Sep + s1
+			    logs.Debug("================RecvMsg.Run,send msg,code is AcceptReqAddrRes==================")
+			    SendMsgToDcrmGroup(ss,w.groupid)
+			    _,tip,err = GetChannelValue(ch_t,w.bacceptreqaddrres)
+			    if err != nil {
+				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","","","get other node accept req addr result timeout","get other node accept req addr result timeout","")
+				reply = false
+			       timeout <- true
+			       return
+			    }
+			    
+			    if w.msg_acceptreqaddrres.Len() != (NodeCnt-1) {
+				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","","","get other node accept req addr result fail","get other node accept req addr result fail","")
+				tip = "dcrm back-end internal error:get accepte req addr result fail."
+				reply = false
+			       timeout <- true
+			       return
+			    }
+			   
+			    all := "{"
+			    all += "\""
+			    all += cur_enode
+			    all += "\""
+			    all += ":"
+			    all += "\""
+			    all += req_res
+			    all += "\""
+			    all += ","
+			    iter := w.msg_acceptreqaddrres.Front()
+			    for iter != nil {
+				mdss := iter.Value.(string)
+				ms := strings.Split(mdss,Sep)
+				prexs := strings.Split(ms[0],"-")
+				node := prexs[1]
+				if strings.EqualFold(ms[2],"false") {
+				    reply = false
+				}
+				all += "\""
+				all += node
+				all += "\""
+				all += ":"
+				all += "\""
+				all += ms[2] 
+				all += "\""
+				all += ","
+				iter = iter.Next()
+			    }
+			    all += "}"
+			    if reply == false {
+				tip = "don't accept req addr"
+				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","","","don't accept req addr","don't accept req addr",all) 
+			    } else {
+				tip = ""
+				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"true","","","","",all) 
+			    }
+
+			   ///////
+                           timeout <- true
+	                   return
+                       case <-agreeWaitTimeOut.C:
+                           fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
+                           timeout <- true
+                           return
+                       }
+                   }
+	        }()
+	        acceptWaitReqAddrChan <- msgs[0]
+	        <-timeout
+
+	        fmt.Println("===============RecvMsg.Run,Get Accept req addr Result =%v, ================",reply,)
+	        if reply == false {
+	            res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:fmt.Errorf("don't accept req addr.")}
+	           ch <- res2
+	           return false
+	        }
+	    } else {
+	        acceptWaitReqAddrChan <- msgs[0]
+	    }
+
+	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[5])
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:cherr}
@@ -1672,6 +2085,13 @@ func Encode2(obj interface{}) (string,error) {
 	    return "",err
 	}
 	return string(ret),nil
+    case *AcceptReqAddrData:
+	ch := obj.(*AcceptReqAddrData)
+	ret,err := json.Marshal(ch)
+	if err != nil {
+	    return "",err
+	}
+	return string(ret),nil
     default:
 	return "",fmt.Errorf("encode obj fail.")
     }
@@ -1706,6 +2126,16 @@ func Decode2(s string,datatype string) (interface{},error) {
     
     if datatype == "AcceptLockOutData" {
 	var m AcceptLockOutData
+	err := json.Unmarshal([]byte(s), &m)
+	if err != nil {
+	    return nil,err
+	}
+
+	return &m,nil
+    }
+    
+    if datatype == "AcceptReqAddrData" {
+	var m AcceptReqAddrData
 	err := json.Unmarshal([]byte(s), &m)
 	if err != nil {
 	    return nil,err
@@ -1777,6 +2207,7 @@ type ReqAddrSendMsgToDcrm struct {
     Account string
     Cointype string
     GroupId string
+    Nonce string
     LimitNum string
     Mode string
 }
@@ -1793,7 +2224,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     tt := strconv.Itoa(int(timestamp))
     nonce := Keccak256Hash([]byte(self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
     
-    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum + ":" + self.Mode}
+    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode}
     res,err := Encode2(sm)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode SendMsg fail in req addr",Err:err}
@@ -1809,7 +2240,6 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     _,err = SendToGroupAllNodes(self.GroupId,res)
-    
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail in req addr",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
@@ -1817,6 +2247,10 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     fmt.Println("=============ReqAddrSendMsgToMsg.Run,Waiting For Result===========")
+    <-acceptWaitReqAddrChan
+    time.Sleep(time.Duration(1) * time.Second)
+    AcceptReqAddr(self.Account,self.Cointype,self.GroupId,self.Nonce,self.LimitNum,self.Mode,false,"true","","","","","")
+
     w := workers[workid]
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
     if cherr != nil {
@@ -1901,7 +2335,29 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     return true
 }
 
-//msg = fusionaccount:groupid:nonce:dcrmaddr:threshold
+type GetReqAddrReplySendMsgToDcrm struct {
+}
+
+func (self *GetReqAddrReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
+    if workid < 0 || workid >= RpcMaxWorker {
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
+	ch <- res
+	return false
+    }
+
+    ret,tip,err := GetReqAddrReply()
+    if err != nil {
+	res2 := RpcDcrmRes{Ret:"",Tip:tip,Err:err}
+	ch <- res2
+	return false
+    }
+
+    res2 := RpcDcrmRes{Ret:ret,Tip:"",Err:nil}
+    ch <- res2
+
+    return true
+}
+
 type GetLockOutReplySendMsgToDcrm struct {
 }
 
@@ -1923,6 +2379,60 @@ func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bo
     ch <- res2
 
     return true
+}
+
+type AcceptReqAddrData struct {
+    Account string
+    Cointype string
+    GroupId string
+    Nonce string
+    LimitNum string
+    Mode string
+
+    Deal bool
+    Accept string 
+   
+    Status string
+    PubKey string
+    Tip string
+    Error string
+
+    AllReply string
+}
+
+func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
+    if ac == nil {
+	return fmt.Errorf("no accept data.")
+    }
+
+    lock5.Lock()
+    dir := GetAcceptReqAddrDir()
+    db, err := leveldb.OpenFile(dir, nil)
+    if err != nil {
+        lock5.Unlock()
+        return err
+    }
+    
+    key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+    
+    alos,err := Encode2(ac)
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err
+    }
+    
+    ss,err := Compress([]byte(alos))
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return err 
+    }
+   
+    db.Put([]byte(key),[]byte(ss),nil)
+    db.Close()
+    lock5.Unlock()
+    return nil
 }
 
 type AcceptLockOutData struct {
@@ -2067,9 +2577,9 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     var req RpcReq
     switch rpctype {
 	case "rpc_req_dcrmaddr":
-	    //msg = account : cointype : groupid : threshold : mode
+	    //msg = account : cointype : groupid : nonce: threshold : mode
 	    msgs := strings.Split(msg,":")
-	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],LimitNum:msgs[3], Mode:msgs[4]}
+	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4], Mode:msgs[5]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
@@ -2082,6 +2592,11 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    break
 	case "rpc_get_lockout_reply":
 	    v := GetLockOutReplySendMsgToDcrm{}
+	    rch := make(chan interface{},1)
+	    req = RpcReq{rpcdata:&v,ch:rch}
+	    break
+	case "rpc_get_reqaddr_reply":
+	    v := GetReqAddrReplySendMsgToDcrm{}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
@@ -2230,6 +2745,17 @@ func DisMsg(msg string) {
 
 	msgCode := mm[1]
 	switch msgCode {
+	case "AcceptReqAddrRes":
+	    ///bug
+	    if w.msg_acceptreqaddrres.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_acceptreqaddrres.PushBack(msg)
+	    if w.msg_acceptreqaddrres.Len() == (NodeCnt-1) {
+		fmt.Println("=========Get All AcceptReqAddrRes===========","GroupId",w.groupid)
+		w.bacceptreqaddrres <- true
+	    }
 	case "AcceptLockOutRes":
 	    ///bug
 	    if w.msg_acceptlockoutres.Len() >= (NodeCnt-1) {
@@ -2663,7 +3189,13 @@ func GetDbDir() string {
 
 func GetAcceptLockOutDir() string {
     dir := DefaultDataDir()
-    dir += "/dcrmdata/dcrmdb/accept" + cur_enode
+    dir += "/dcrmdata/dcrmdb/acceptlockout" + cur_enode
+    return dir
+}
+
+func GetAcceptReqAddrDir() string {
+    dir := DefaultDataDir()
+    dir += "/dcrmdata/dcrmdb/acceptreqaddr" + cur_enode
     return dir
 }
 

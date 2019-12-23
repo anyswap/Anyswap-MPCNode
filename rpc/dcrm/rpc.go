@@ -78,6 +78,30 @@ func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{}
     }
 }
 
+func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
+    fmt.Println("==========dcrm_acceptReqAddr,raw =%s ===========",raw)
+
+    data := make(map[string]interface{})
+    ret,tip,err := dcrm.AcceptReqAddr(raw)
+    if err != nil {
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
+		"Error": err.Error(),
+		"Data": data,
+	}
+    }
+
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
+}
+
 func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
     fmt.Println("==========dcrm_acceptLockOut,raw =%s ===========",raw)
 
@@ -161,6 +185,41 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
     }
 }
 
+func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
+    fmt.Println("==============dcrm_getReqAddrNonce================")
+
+    data := make(map[string]interface{})
+    if account == "" {
+	data["result"] = "0"
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip": "parameter error,but return 0",
+		"Error": "parameter error",
+		"Data": data,
+	}
+    }
+
+    ret,tip,err := dcrm.GetReqAddrNonce(account)
+
+    if err != nil {
+	data["result"] = "0" 
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip": tip + ",but return 0",
+		"Error": err.Error(),
+		"Data": data,
+	}
+    }
+
+    data["result"] = ret
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
+}
+
 func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) map[string]interface{} {
     fmt.Println("==============dcrm_getNonce================")
 
@@ -196,6 +255,33 @@ func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) ma
     }
 }
 
+func (this *Service) GetCurNodeReqAddrInfo() map[string]interface{} {
+    fmt.Println("==============dcrm_getCurNodeReqAddrInfo================")
+
+    data := make(map[string]interface{})
+    s,tip,err := dcrm.GetReqAddrReply()
+    if err != nil {
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
+		"Error": err.Error(),
+		"Data": data,
+	}
+    }
+
+    for k,v := range s {
+	data[strconv.Itoa(k)] = v
+    }
+
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
+}
+
 func (this *Service) GetCurNodeLockOutInfo() map[string]interface{} {
     fmt.Println("==============dcrm_getCurNodeLockOutInfo================")
 
@@ -215,6 +301,30 @@ func (this *Service) GetCurNodeLockOutInfo() map[string]interface{} {
 	data[strconv.Itoa(k)] = v
     }
 
+    return map[string]interface{}{
+	    "Status": "Success",
+	    "Tip": "",
+	    "Error": "",
+	    "Data": data,
+    }
+}
+
+func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
+    fmt.Println("==========dcrm_getReqAddrStatus,key = %s ===========",key)
+
+    data := make(map[string]interface{})
+    ret,tip,err := dcrm.GetReqAddrStatus(key)
+    if err != nil {
+	data["result"] = ""
+	return map[string]interface{}{
+		"Status": "Error",
+		"Tip": tip,
+		"Error": err.Error(),
+		"Data": data,
+	}
+    }
+
+    data["result"] = ret
     return map[string]interface{}{
 	    "Status": "Success",
 	    "Tip": "",

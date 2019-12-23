@@ -247,8 +247,9 @@ func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string
 
 func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
+	//msg = account:cointype:groupid:nonce:threshold:mode
 	msgs := strings.Split(msg,":")
-	if len(msgs) < 5 {
+	if len(msgs) < 6 {
 	    return "","dcrm back-end internal parameter error in func SendReqToGroup",fmt.Errorf("param error.")
 	}
 
@@ -257,8 +258,8 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    coin = msgs[1]
 	}
 
-	//account:cointype:groupid:threshold:mode
-	str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4]
+	//account:cointype:groupid:nonce:threshold:mode
+	str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]
 	ret,tip,err := dev.SendReqToGroup(str,rpctype)
 	if err != nil || ret == "" {
 	    return "",tip,err
@@ -383,13 +384,61 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	return "","no threshold value",fmt.Errorf("get threshold fail.")
     }
 
-    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + threshold + ":" + mode
+    Nonce := tx.Nonce() 
+    
+    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
     addr,tip,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
     if addr == "" && err != nil {
 	return "",tip,err
     }
 
     return addr,"",nil
+}
+
+func AcceptReqAddr(raw string) (string,string,error) {
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	return "","raw data error",err
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+    _, err := types.Sender(signer, tx)
+    if err != nil {
+	signer = types.NewEIP155Signer(big.NewInt(4)) //
+	_, err = types.Sender(signer, tx)
+	if err != nil {
+	    return "","recover fusion account fail from raw data,maybe raw data error",err
+	}
+    }
+
+    data := string(tx.Data())
+    datas := strings.Split(data,":")
+
+    if len(datas) < 8 {
+	return "","transacion data format error",fmt.Errorf("tx.data error.")
+    }
+
+    //ACCEPTREQADDR:account:cointype:groupid:nonce:threshold:mode:accept
+    if datas[0] != "ACCEPTREQADDR" {
+	return "","transaction data format error,it is not ACCEPTREQADDR tx",fmt.Errorf("tx.data error,it is not ACCEPTREQADDR tx.")
+    }
+
+    if datas[7] != "AGREE" && datas[7] != "DISAGREE" {
+	return "","transaction data format error,the lastest segment is not AGREE or DISAGREE",fmt.Errorf("transaction data format error")
+    }
+
+    accept := "false"
+    if datas[7] == "AGREE" {
+	accept = "true"
+    }
+
+    tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,"","","","","")
+    if err != nil {
+	return "",tip,err
+    }
+
+    return "","",nil
 }
 
 func AcceptLockOut(raw string) (string,string,error) {
@@ -500,6 +549,10 @@ func LockOut(raw string) (string,string,error) {
     return key,"",nil
 }
 
+func GetReqAddrStatus(key string) (string,string,error) {
+    return dev.GetReqAddrStatus(key)
+}
+
 func GetLockOutStatus(key string) (string,string,error) {
     return dev.GetLockOutStatus(key)
 }
@@ -598,6 +651,15 @@ func GetBalance(account string, cointype string,dcrmaddr string) (string,string,
     return ret,"",nil
 }
 
+func GetReqAddrNonce(account string) (string,string,error) {
+    nonce,tip,err := dev.GetReqAddrNonce(account)
+    if err != nil {
+	return "",tip,err
+    }
+
+    return nonce,"",nil
+}
+
 func GetNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
     nonce,tip,err := dev.GetNonce(account,cointype,dcrmaddr)
     if err != nil {
@@ -605,6 +667,17 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,string,err
     }
 
     return nonce,"",nil
+}
+
+func GetReqAddrReply() ([]string,string,error) {
+    reply,tip,err := SendReqToGroup("","rpc_get_reqaddr_reply")
+    if reply == "" || err != nil {
+	fmt.Println("===========GetReqAddrReply,err =%s ============",err)
+	return nil,tip,err 
+    }
+
+    ss := strings.Split(reply,"|")
+    return ss,"",nil 
 }
 
 func GetLockOutReply() ([]string,string,error) {

@@ -1651,6 +1651,14 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
+	//bug
+	if sSum == nil || len(en) == 0 || en[0] == "" || len(ss1s) == 0 || ss1s[en[0]] == nil {
+	fmt.Println("=================================== !!!Sign_ec2,calc s error. !!! =======================================",)
+	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("calculate s error.")}
+	ch <- res
+	return ""
+	}
+	//
 	sSum = new(big.Int).Add(sSum,ss1s[en[0]])
     }
     sSum = new(big.Int).Mod(sSum, secp256k1.S256().N) 

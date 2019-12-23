@@ -25,12 +25,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fsn-dev/dcrm5-libcoins/node"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations/adapters"
-	"github.com/fsn-dev/dcrm5-libcoins/rpc"
+	"github.com/fsn-dev/dcrm-walletService/node"
+	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/simulations"
+	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/adapters"
+	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
 
 var adapterType = flag.String("adapter", "sim", `node adapter to use (one of "sim", "exec" or "docker")`)

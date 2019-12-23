@@ -25,9 +25,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/eos"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/eos"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
 	"github.com/btcsuite/btcd/btcec"
 	//"github.com/ellsol/evt/ecc"
 	//"github.com/ellsol/evt/evtapi/client"
@@ -38,13 +38,13 @@ import (
 	//"github.com/ellsol/evt/evttypes"
 
 
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/ecc"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/evt"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/chain"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/history"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtconfig"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evttypes"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/ecc"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/evt"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/chain"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/history"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtconfig"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evttypes"
 	"github.com/sirupsen/logrus"
 )
 

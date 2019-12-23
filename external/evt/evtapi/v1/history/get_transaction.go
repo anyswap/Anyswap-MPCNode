@@ -1,8 +1,8 @@
 package history
 
 import (
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/chain"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/chain"
 )
 
 type GetTransactionRequest struct {

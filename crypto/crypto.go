@@ -28,10 +28,10 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common/math"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/sha3"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/math"
+	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 )
 
 var (

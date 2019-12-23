@@ -26,13 +26,13 @@ import  (
 	"math/big"
 	"runtime/debug"
 	"strings"
-	"github.com/fsn-dev/dcrm5-libcoins/internal/params"
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
-	ethcrypto "github.com/fsn-dev/dcrm5-libcoins/crypto"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/eth/sha3"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/eth/ethclient"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
-	ctypes "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm-walletService/internal/params"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/eth/sha3"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/eth/ethclient"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
+	ctypes "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
 )
 
 func ETHInit() {

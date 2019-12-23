@@ -1,7 +1,7 @@
 package chain
 
 import (
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
 )
 
 type GetTransactionRequest struct {

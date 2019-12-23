@@ -1,9 +1,9 @@
 package evtapi
 
 import (
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtconfig"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtconfig"
 	"github.com/sirupsen/logrus"
 )
 

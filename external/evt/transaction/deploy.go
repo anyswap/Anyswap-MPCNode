@@ -3,11 +3,11 @@ package transaction
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/ecc"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evt"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/chain"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evttypes"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/utils"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/ecc"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evt"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/chain"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evttypes"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/utils"
 	"github.com/sirupsen/logrus"
 )
 

@@ -1,6 +1,6 @@
 package chain
 
-import "github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
+import "github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
 
 type GetBlockRequest struct {
 	BlockNumOrID string `json:"block_num_or_id"`

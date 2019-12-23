@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 )
 
 // Method represents a callable given a `Name` and whether the method is a constant.

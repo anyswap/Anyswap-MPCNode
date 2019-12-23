@@ -23,10 +23,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsn-dev/dcrm5-libcoins/p2p"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations/adapters"
-	p2ptest "github.com/fsn-dev/dcrm5-libcoins/p2p/testing"
+	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/adapters"
+	p2ptest "github.com/fsn-dev/dcrm-walletService/p2p/testing"
 )
 
 // handshake message type

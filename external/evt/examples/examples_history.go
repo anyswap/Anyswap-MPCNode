@@ -2,7 +2,7 @@ package examples
 
 import (
 	"fmt"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evt"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evt"
 	"log"
 )
 

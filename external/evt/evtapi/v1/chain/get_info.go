@@ -1,6 +1,6 @@
 package chain
 
-import "github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
+import "github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
 
 type GetInfoResult struct {
 	ServerVersion            string `json:"server_version"`

@@ -1,6 +1,6 @@
 package transaction
 
-import "github.com/fsn-dev/dcrm5-libcoins/external/evt/evttypes"
+import "github.com/fsn-dev/dcrm-walletService/external/evt/evttypes"
 
 type EvtActionParam interface {
 	Arguments() *evttypes.ActionArguments

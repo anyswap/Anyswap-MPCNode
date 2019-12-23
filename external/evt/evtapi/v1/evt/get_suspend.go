@@ -1,8 +1,8 @@
 package evt
 
 import (
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evttypes"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evttypes"
 )
 
 type GetSuspendRequest struct {

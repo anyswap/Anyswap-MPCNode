@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 )
 
 // SignerFn is a signer function callback when a contract requires a method to

@@ -20,8 +20,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
 )
 
 // senderFromServer is a types.Signer that remembers the sender address returned by the RPC

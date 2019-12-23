@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
-	"github.com/fsn-dev/dcrm5-libcoins/internal/params"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/params"
 )
 
 var (

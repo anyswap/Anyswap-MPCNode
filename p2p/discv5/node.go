@@ -30,8 +30,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 )
 
 // Node represents a host on the network.

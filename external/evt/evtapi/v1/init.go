@@ -1,12 +1,12 @@
 package v1
 
 import (
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/chain"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/evt"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/evt_link"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/v1/history"
-	"github.com/fsn-dev/dcrm5-libcoins/external/evt/evtconfig"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/chain"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/evt"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/evt_link"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/history"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtconfig"
 )
 
 type Instance struct {

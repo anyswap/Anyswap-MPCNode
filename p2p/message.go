@@ -25,9 +25,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
+	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 )
 
 // Msg defines the structure of a p2p message.

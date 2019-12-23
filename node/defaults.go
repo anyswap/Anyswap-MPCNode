@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/fsn-dev/dcrm5-libcoins/p2p"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/nat"
-	"github.com/fsn-dev/dcrm5-libcoins/rpc"
+	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
+	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
 
 const (

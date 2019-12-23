@@ -19,9 +19,9 @@ package node
 import (
 	"reflect"
 
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p"
-	"github.com/fsn-dev/dcrm5-libcoins/rpc"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
+	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
 
 // ServiceContext is a collection of service independent options inherited from

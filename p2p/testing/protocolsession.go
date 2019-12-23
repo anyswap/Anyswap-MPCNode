@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm5-libcoins/p2p"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/simulations/adapters"
+	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/adapters"
 )
 
 var errTimedOut = errors.New("timed out")

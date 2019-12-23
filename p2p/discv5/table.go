@@ -29,7 +29,7 @@ import (
 	"net"
 	"sort"
 
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 const (

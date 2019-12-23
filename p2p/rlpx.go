@@ -35,12 +35,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/ecies"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/sha3"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/discover"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto/ecies"
+	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 	"github.com/golang/snappy"
 )
 

@@ -17,8 +17,8 @@
 package ec2 
 
 import (
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common/math/random"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"math/big"
 )
 

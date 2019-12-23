@@ -30,7 +30,7 @@ import (
 	"github.com/binance-chain/go-sdk/types/tx"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 )

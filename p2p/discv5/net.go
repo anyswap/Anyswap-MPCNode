@@ -24,12 +24,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common"
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common/mclock"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/sha3"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/netutil"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/mclock"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
+	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 )
 
 var (

@@ -19,7 +19,7 @@ package dcrm
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/layer2"
+	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
 )
 
 const (

@@ -26,10 +26,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/event"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p"
-	//"github.com/fsn-dev/dcrm5-libcoins/p2p/dcrm"
-	"github.com/fsn-dev/dcrm5-libcoins/rpc"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
+	"github.com/fsn-dev/dcrm-walletService/p2p"
+	//"github.com/fsn-dev/dcrm-walletService/p2p/dcrm"
+	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
 
 // Node is a container on which services can be registered.

@@ -1,6 +1,6 @@
 package history
 
-import "github.com/fsn-dev/dcrm5-libcoins/external/evt/evtapi/client"
+import "github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
 
 type GetTransactionActionsRequest struct {
 	TransactionId string `json:"id"`

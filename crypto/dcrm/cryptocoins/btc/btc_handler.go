@@ -42,10 +42,10 @@ import (
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
 	"github.com/btcsuite/btcwallet/wallet/txrules"
 
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
-	rpcutils "github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/rpcutils"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/config"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm/cryptocoins/types"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
+	rpcutils "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/rpcutils"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
 )
 
 func BTCInit() {

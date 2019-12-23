@@ -11,7 +11,7 @@ if [ ! -f "build.sh" ]; then
 	export GOPROXY=https://goproxy.io
 
 	echo "RUN go mod init"
-	go mod init github.com/fsn-dev/dcrm5-libcoins 2>/dev/null || true
+	go mod init github.com/fsn-dev/dcrm-walletService 2>/dev/null || true
 
 	echo "Run go mod vendor"
 	go mod vendor -v

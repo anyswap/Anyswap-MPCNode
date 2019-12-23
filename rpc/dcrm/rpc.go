@@ -23,8 +23,8 @@ import (
 	"os/signal"
 	"net"
 	"strings"
-	"github.com/fsn-dev/dcrm5-libcoins/rpc"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/dcrm"
+	"github.com/fsn-dev/dcrm-walletService/rpc"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
 )
 
 func listenSignal(exit chan int) {

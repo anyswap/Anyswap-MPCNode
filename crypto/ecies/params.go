@@ -42,7 +42,7 @@ import (
 	"fmt"
 	"hash"
 
-	ethcrypto "github.com/fsn-dev/dcrm5-libcoins/crypto"
+	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
 )
 
 var (

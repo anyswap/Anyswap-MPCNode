@@ -17,9 +17,9 @@
 package ec2 
 
 import (
-	"github.com/fsn-dev/dcrm5-libcoins/internal/common/math/random"
-	s256 "github.com/fsn-dev/dcrm5-libcoins/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm5-libcoins/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"math/big"
 )
 

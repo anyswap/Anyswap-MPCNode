@@ -30,8 +30,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm5-libcoins/crypto"
-	"github.com/fsn-dev/dcrm5-libcoins/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 

@@ -1088,7 +1088,7 @@ func GetGroupRes(wid int) RpcDcrmRes {
     for iter != nil {
 	ll := iter.Value.(*RpcDcrmRes)
 	err = ll.Err
-	if err == nil {
+	if err != nil {
 	    return (*ll)
 	}
 	iter = iter.Next()
@@ -1097,9 +1097,7 @@ func GetGroupRes(wid int) RpcDcrmRes {
     iter = l.Front()
     for iter != nil {
 	ll := iter.Value.(*RpcDcrmRes)
-	err = ll.Err
-	res2 := RpcDcrmRes{Ret:"",Tip:ll.Tip,Err:err}
-	return res2
+	return (*ll)
 	
 	iter = iter.Next()
     }
@@ -2178,6 +2176,24 @@ func (e Err) Error() string {
 	return e.Info
 }
 
+func Find(l *list.List,msg string) bool {
+    if l == nil || msg == "" {
+	return false
+    }
+
+    var next *list.Element
+    for e := l.Front(); e != nil; e = next {
+	next = e.Next()
+
+	s := e.Value.(string)
+	if strings.EqualFold(s,msg) {
+	    return true
+	}
+    }
+
+    return false
+}
+
 //msg:  hash-enode:C1:X1:X2
 func DisMsg(msg string) {
 
@@ -2222,6 +2238,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_c1,msg) {
+		return
+	    }
+
 	    w.msg_c1.PushBack(msg)
 	    if w.msg_c1.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All C1===========","GroupId",w.groupid)
@@ -2233,6 +2253,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_d1_1,msg) {
+		return
+	    }
+
 	    w.msg_d1_1.PushBack(msg)
 	    if w.msg_d1_1.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All D1===========","GroupId",w.groupid)
@@ -2244,6 +2268,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_share1,msg) {
+		return
+	    }
+
 	    w.msg_share1.PushBack(msg)
 	    if w.msg_share1.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All SHARE1===========","GroupId",w.groupid)
@@ -2255,6 +2283,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_zkfact,msg) {
+		return
+	    }
+
 	    w.msg_zkfact.PushBack(msg)
 	    if w.msg_zkfact.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All ZKFACTPROOF===========","GroupId",w.groupid)
@@ -2266,6 +2298,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_zku,msg) {
+		return
+	    }
+
 	    w.msg_zku.PushBack(msg)
 	    if w.msg_zku.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All ZKUPROOF===========","GroupId",w.groupid)
@@ -2277,6 +2313,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_mtazk1proof,msg) {
+		return
+	    }
+
 	    w.msg_mtazk1proof.PushBack(msg)
 	    if w.msg_mtazk1proof.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All MTAZK1PROOF===========","GroupId",w.groupid)
@@ -2289,6 +2329,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_c11,msg) {
+		return
+	    }
+
 	    w.msg_c11.PushBack(msg)
 	    if w.msg_c11.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All C11===========","GroupId",w.groupid)
@@ -2300,6 +2344,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_kc,msg) {
+		return
+	    }
+
 	    w.msg_kc.PushBack(msg)
 	    if w.msg_kc.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All KC===========","GroupId",w.groupid)
@@ -2311,6 +2359,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_mkg,msg) {
+		return
+	    }
+
 	    w.msg_mkg.PushBack(msg)
 	    if w.msg_mkg.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All MKG===========","GroupId",w.groupid)
@@ -2322,6 +2374,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_mkw,msg) {
+		return
+	    }
+
 	    w.msg_mkw.PushBack(msg)
 	    if w.msg_mkw.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All MKW===========","GroupId",w.groupid)
@@ -2333,6 +2389,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_delta1,msg) {
+		return
+	    }
+
 	    w.msg_delta1.PushBack(msg)
 	    if w.msg_delta1.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All DELTA1===========","GroupId",w.groupid)
@@ -2344,6 +2404,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_d11_1,msg) {
+		return
+	    }
+
 	    w.msg_d11_1.PushBack(msg)
 	    if w.msg_d11_1.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All D11===========","GroupId",w.groupid)
@@ -2355,6 +2419,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_s1,msg) {
+		return
+	    }
+
 	    w.msg_s1.PushBack(msg)
 	    if w.msg_s1.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All S1===========","GroupId",w.groupid)
@@ -2366,6 +2434,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_ss1,msg) {
+		return
+	    }
+
 	    w.msg_ss1.PushBack(msg)
 	    if w.msg_ss1.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All SS1===========","GroupId",w.groupid)
@@ -2380,6 +2452,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edc11,msg) {
+		return
+	    }
+
 	    w.msg_edc11.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDC11 msg.=============","len c11",w.msg_edc11.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edc11.Len() == (NodeCnt-1) {
@@ -2393,6 +2469,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edzk,msg) {
+		return
+	    }
+
 	    w.msg_edzk.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDZK msg.=============","len zk",w.msg_edzk.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edzk.Len() == (NodeCnt-1) {
@@ -2406,6 +2486,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edd11,msg) {
+		return
+	    }
+
 	    w.msg_edd11.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDD11 msg.=============","len d11",w.msg_edd11.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edd11.Len() == (NodeCnt-1) {
@@ -2419,6 +2503,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edshare1,msg) {
+		return
+	    }
+
 	    w.msg_edshare1.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDSHARE1 msg.=============","len share1",w.msg_edshare1.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edshare1.Len() == (NodeCnt-1) {
@@ -2432,6 +2520,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edcfsb,msg) {
+		return
+	    }
+
 	    w.msg_edcfsb.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDCFSB msg.=============","len cfsb",w.msg_edcfsb.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edcfsb.Len() == (NodeCnt-1) {
@@ -2445,6 +2537,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edc21,msg) {
+		return
+	    }
+
 	    w.msg_edc21.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDC21 msg.=============","len c21",w.msg_edc21.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edc21.Len() == (NodeCnt-1) {
@@ -2458,6 +2554,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edzkr,msg) {
+		return
+	    }
+
 	    w.msg_edzkr.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDZKR msg.=============","len zkr",w.msg_edzkr.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edzkr.Len() == (NodeCnt-1) {
@@ -2471,6 +2571,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edd21,msg) {
+		return
+	    }
+
 	    w.msg_edd21.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDD21 msg.=============","len d21",w.msg_edd21.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edd21.Len() == (NodeCnt-1) {
@@ -2484,6 +2588,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edc31,msg) {
+		return
+	    }
+
 	    w.msg_edc31.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDC31 msg.=============","len c31",w.msg_edc31.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edc31.Len() == (NodeCnt-1) {
@@ -2497,6 +2605,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_edd31,msg) {
+		return
+	    }
+
 	    w.msg_edd31.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDD31 msg.=============","len d31",w.msg_edd31.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_edd31.Len() == (NodeCnt-1) {
@@ -2510,6 +2622,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_eds,msg) {
+		return
+	    }
+
 	    w.msg_eds.PushBack(msg)
 	    logs.Debug("=========DisMsg,EDS msg.=============","len s",w.msg_eds.Len(),"nodecnt-1",(NodeCnt-1))
 	    if w.msg_eds.Len() == (NodeCnt-1) {

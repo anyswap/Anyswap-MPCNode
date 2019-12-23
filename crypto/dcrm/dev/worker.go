@@ -98,6 +98,7 @@ func InitDev(groupId string) {
     fmt.Println("=========InitDev===========","groupId",groupId)
     peerscount, _ := GetGroup(groupId)
    NodeCnt = peerscount
+   ThresHold = peerscount
    Enode_cnts = peerscount //bug
     GetEnodesInfo(groupId)
 }
@@ -282,8 +283,16 @@ func (d *ReqDispatcher) dispatch() {
 }
 
 func FindWorker(sid string) (*RpcReqWorker,error) {
+    if sid == "" {
+	return nil,fmt.Errorf("input worker id error.")
+    }
+
     for i := 0; i < RpcMaxWorker; i++ {
 	w := workers[i]
+
+	if w.sid == "" {
+	    continue
+	}
 
 	if strings.EqualFold(w.sid,sid) {
 	    return w,nil
@@ -294,6 +303,10 @@ func FindWorker(sid string) (*RpcReqWorker,error) {
     
     for i := 0; i < RpcMaxWorker; i++ {
 	w := workers[i]
+	if w.sid == "" {
+	    continue
+	}
+
 	if strings.EqualFold(w.sid,sid) {
 	    return w,nil
 	}
@@ -2048,6 +2061,7 @@ func GetEnodesInfo(GroupId string) {
     
     Enode_cnts,_ = GetGroup(GroupId)
     NodeCnt = Enode_cnts
+    ThresHold = Enode_cnts
     cur_enode = GetSelfEnode()
 }
 

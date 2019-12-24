@@ -47,9 +47,9 @@ var (
     SepDel = "dcrmsepdel"
 
     PaillierKeyLength = 2048
-    sendtogroup_lilo_timeout = 180
-    sendtogroup_timeout = 180
-    ch_t = 100
+    sendtogroup_lilo_timeout =1200 
+    sendtogroup_timeout = 1200
+    ch_t = 700 
     lock5 sync.Mutex
     lock sync.Mutex
 
@@ -1176,7 +1176,7 @@ func GetReqAddrStatus(key string) (string,string,error) {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1267,7 +1267,7 @@ func GetLockOutStatus(key string) (string,string,error) {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1359,7 +1359,7 @@ func GetReqAddrReply() (string,string,error) {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1459,7 +1459,7 @@ func GetLockOutReply() (string,string,error) {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1570,7 +1570,7 @@ func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce str
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1629,7 +1629,7 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1694,7 +1694,7 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1786,7 +1786,7 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -1919,7 +1919,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 	    if msgs[9] == "0" {// self-group
-		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"",OutTxHash:"",Tip:"",Error:"",AllReply:""}
+		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:""}
 		fmt.Println("===================call SaveAcceptData,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,dcrmto =%s,value =%s,cointype =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[5],msgs[6],msgs[1],msgs[2],msgs[3],msgs[4],msgs[7],msgs[8])
 		err := SaveAcceptData(ac)
 		if err != nil {
@@ -1931,7 +1931,9 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        var tip string
 	        timeout := make(chan bool, 1)
 	        go func() {
-                    agreeWaitTime := 3 * time.Minute
+		    GetEnodesInfo(msgs[5]) //bug
+		    fmt.Println("==============RecvMsg.Run,lockout,111111,cur_enode =%s==================",cur_enode)
+                    agreeWaitTime := 10 * time.Minute
                     agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
                     for {
                        select {
@@ -1940,6 +1942,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                            fmt.Printf("============ (self *RecvMsg) Run() ===========, Current Node Accept lockout Res =%v,account =%s =========== %v\n", reply,account)
 
 			   ///////
+			    fmt.Println("==============RecvMsg.Run,lockout,22222,cur_enode =%s==================",cur_enode)
 			    mp := []string{w.sid,cur_enode}
 			    enode := strings.Join(mp,"-")
 			    s0 := "AcceptLockOutRes"
@@ -1986,6 +1989,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 				ms := strings.Split(mdss,Sep)
 				prexs := strings.Split(ms[0],"-")
 				node := prexs[1]
+				fmt.Println("==============RecvMsg.Run,lockout,333333,get enode =%s==================",node)
 				if strings.EqualFold(ms[2],"false") {
 				    reply = false
 				}
@@ -1996,7 +2000,9 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 				all += "\""
 				all += ms[2] 
 				all += "\""
-				all += ","
+				if iter.Next() != nil {
+				    all += ","
+				}
 				iter = iter.Next()
 			    }
 			    all += "}"
@@ -2074,7 +2080,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.groupid = msgs[2]
 	    w.limitnum = msgs[4]
 	    if msgs[5] == "0" {// self-group
-		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"",PubKey:"",Tip:"",Error:"",AllReply:""}
+		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:""}
 		fmt.Println("===================call SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
 		err := SaveAcceptReqAddrData(ac)
 		if err != nil {
@@ -2086,7 +2092,9 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        var tip string
 	        timeout := make(chan bool, 1)
 	        go func() {
-                    agreeWaitTime := 3 * time.Minute
+		    GetEnodesInfo(msgs[2]) //bug
+		    fmt.Println("==============RecvMsg.Run,req addr,111111,cur_enode =%s==================",cur_enode)
+                    agreeWaitTime := 10 * time.Minute
                     agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
                     for {
                        select {
@@ -2095,6 +2103,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                            fmt.Printf("============ (self *RecvMsg) Run() ===========, Current Node Accept req addr Res =%v,account =%s =========== %v\n", reply,account)
 
 			   ///////
+			    fmt.Println("==============RecvMsg.Run,req addr,22222,cur_enode =%s==================",cur_enode)
 			    mp := []string{w.sid,cur_enode}
 			    enode := strings.Join(mp,"-")
 			    s0 := "AcceptReqAddrRes"
@@ -2140,6 +2149,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 				ms := strings.Split(mdss,Sep)
 				prexs := strings.Split(ms[0],"-")
 				node := prexs[1]
+				fmt.Println("==============RecvMsg.Run,req addr,333333,get enode =%s==================",node)
 				if strings.EqualFold(ms[2],"false") {
 				    reply = false
 				}
@@ -2150,7 +2160,9 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 				all += "\""
 				all += ms[2] 
 				all += "\""
-				all += ","
+				if iter.Next() != nil {
+				    all += ","
+				}
 				iter = iter.Next()
 			    }
 			    all += "}"
@@ -2585,7 +2597,7 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -2655,7 +2667,7 @@ func SaveAcceptData(ac *AcceptLockOutData) error {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -3448,7 +3460,7 @@ func GetAccounts(gid, mode string) (interface{}, string, error) {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break

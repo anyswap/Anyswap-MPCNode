@@ -82,7 +82,7 @@ func GetPubKeyData(key []byte,account string,cointype string) (string,string,err
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -173,7 +173,7 @@ func ExsitPubKey(account string,cointype string) (string,bool) {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -232,7 +232,7 @@ func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break

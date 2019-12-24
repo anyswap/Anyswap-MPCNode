@@ -454,7 +454,7 @@ func SavePubKeyDataToDb() {
 		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 		//bug
 		if err != nil {
-		    for i:=0;i<20;i++ {
+		    for i:=0;i<1000;i++ {
 			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 			if err == nil {
 			    break

@@ -56,7 +56,7 @@ func GetReqAddrNonce(account string) (string,string,error) {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -100,7 +100,7 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,string,err
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -167,7 +167,7 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (stri
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -310,7 +310,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     db,_ := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<20;i++ {
+	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -533,7 +533,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 	//bug
 	if err != nil {
-	    for i:=0;i<20;i++ {
+	    for i:=0;i<1000;i++ {
 		db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 		if err == nil {
 		    break

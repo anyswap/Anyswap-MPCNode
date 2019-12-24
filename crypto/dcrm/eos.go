@@ -11,7 +11,8 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/eos"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/rpcutils"
-	"github.com/syndtr/goleveldb/leveldb"
+	//"github.com/syndtr/goleveldb/leveldb"
+	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"github.com/astaxie/beego/logs"
 	"fmt"
 	"bytes"
@@ -183,7 +184,7 @@ type Limit struct {
 func GetEosAccount() (acct, owner, active string) {
 	lock.Lock()
 	dir := dev.GetEosDbDir()
-	db, err := leveldb.OpenFile(dir, nil) 
+	db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 	if err != nil {
 		logs.Debug("==============open db fail.============")
 		lock.Unlock()
@@ -195,7 +196,7 @@ func GetEosAccount() (acct, owner, active string) {
 	b.WriteString("") 
 	b.WriteByte(0) 
 	b.WriteString("") 
-	iter := db.NewIterator(nil, nil) 
+	iter := db.NewIterator()
 	for iter.Next() { 
 	    key := string(iter.Key())
 	    value := string(iter.Value())
@@ -222,3 +223,4 @@ func GetEosAccount() (acct, owner, active string) {
 	lock.Unlock()
 	return "", "", ""
 }
+

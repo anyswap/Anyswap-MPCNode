@@ -31,7 +31,8 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
 	cryptocoinsconfig "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
 	"encoding/json"
-	"github.com/syndtr/goleveldb/leveldb"
+	//"github.com/syndtr/goleveldb/leveldb"
+	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"encoding/hex"
 )
 
@@ -77,13 +78,25 @@ func GetPubKeyData(key []byte,account string,cointype string) (string,string,err
     PubLock.Lock()
     dir := dev.GetDbDir()
     ////////
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         PubLock.Unlock()
 	return "","dcrm back-end internal error:open level db fail",err
     }
     
-    da,err := db.Get(key,nil)
+    da,err := db.Get(key)
     ///////
     if err != nil {
 	db.Close()
@@ -156,18 +169,30 @@ func ExsitPubKey(account string,cointype string) (string,bool) {
     PubLock.Lock()
     dir := dev.GetDbDir()
     ////////
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         PubLock.Unlock()
         return "",false
     }
     
     key := dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key))
     ///////
     if err != nil {
 	key = dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-	da,err = db.Get([]byte(key),nil)
+	da,err = db.Get([]byte(key))
 	///////
 	if err != nil {
 	    db.Close()
@@ -203,7 +228,19 @@ func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string
     PubLock.Lock()
     dir := dev.GetDbDir()
     ////////
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         PubLock.Unlock()
 	fmt.Println("============GetPubKeyByDcrmAddr,err 11111 =%v =============",err)
@@ -211,7 +248,7 @@ func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string
     }
     
     key2 := dev.Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-    da,err := db.Get([]byte(key2),nil)
+    da,err := db.Get([]byte(key2))
     ///////
     if err != nil {
 	db.Close()
@@ -386,13 +423,19 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 
     Nonce := tx.Nonce() 
     
-    msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
-    addr,tip,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
-    if addr == "" && err != nil {
-	return "",tip,err
-    }
+    fmt.Println("========================================dcrm_reqDcrmAddr,fusion account = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v ====================================",from.Hex(),groupid,threshold,mode,Nonce)
 
-    return addr,"",nil
+    go func() {
+	msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
+	addr,_,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
+	if addr != "" && err == nil {
+	    return
+	}
+    }()
+
+    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
+    fmt.Println("===============ReqDcrmAddr,return key =%s================",key)
+    return key,"",nil
 }
 
 func AcceptReqAddr(raw string) (string,string,error) {
@@ -670,9 +713,10 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,string,err
 }
 
 func GetReqAddrReply() ([]string,string,error) {
+    fmt.Println("=========== call dcrm.GetReqAddrReply ============")
     reply,tip,err := SendReqToGroup("","rpc_get_reqaddr_reply")
     if reply == "" || err != nil {
-	fmt.Println("===========GetReqAddrReply,err =%s ============",err)
+	fmt.Println("===========dcrm.GetReqAddrReply,err =%v ============",err)
 	return nil,tip,err 
     }
 
@@ -681,9 +725,10 @@ func GetReqAddrReply() ([]string,string,error) {
 }
 
 func GetLockOutReply() ([]string,string,error) {
+    fmt.Println("=========== call dcrm.GetLockOutReply ============")
     reply,tip,err := SendReqToGroup("","rpc_get_lockout_reply")
     if reply == "" || err != nil {
-	fmt.Println("===========GetLockOutReply,err =%s ============",err)
+	fmt.Println("===========call dcrm.GetLockOutReply,err =%v ============",err)
 	return nil,tip,err 
     }
 
@@ -763,6 +808,6 @@ func SetUpMsgList(msg string) {
 }
 
 func GetAccounts(gid,mode string) (interface{}, string, error) {
-    return dev.GetPubAccount(gid, mode)
+    return dev.GetAccounts(gid, mode)
 }
 

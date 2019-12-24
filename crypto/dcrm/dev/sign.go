@@ -31,7 +31,8 @@ import (
     "crypto/sha512"
     "fmt"
     "encoding/hex"
-    "github.com/syndtr/goleveldb/leveldb"
+    //"github.com/syndtr/goleveldb/leveldb"
+    "github.com/fsn-dev/dcrm-walletService/ethdb"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
@@ -44,22 +45,35 @@ import (
 func GetReqAddrNonce(account string) (string,string,error) {
 
      //db
-    lock5.Lock()
+    lock.Lock()
     dir := GetDbDir()
+    fmt.Println("=========GetReqAddrNonce,dir = %v ============",dir)
     ////////
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
     if err != nil {
-        lock5.Unlock()
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
+        lock.Unlock()
 	fmt.Println("=========GetReqAddrNonce,err = %v ============",err)
 	return "","dcrm back-end internal error:open level db fail in func GetReqAddrNonce",err
     }
     
     key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-    da,err := db.Get([]byte(key2),nil)
+    da,err := db.Get([]byte(key2))
     ///////
     if err != nil {
 	db.Close()
-	lock5.Unlock()
+	lock.Unlock()
 	return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("leveldb not found, account = %s",account)
     }
 
@@ -69,7 +83,7 @@ func GetReqAddrNonce(account string) (string,string,error) {
 
     fmt.Println("=========GetReqAddrNonce,nonce = %v ============",nonce)
     db.Close()
-    lock5.Unlock()
+    lock.Unlock()
     return fmt.Sprintf("%v",nonce),"",nil
 }
 
@@ -79,15 +93,27 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,string,err
     lock5.Lock()
     dir := GetDbDir()
     ////////
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
     if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
         lock5.Unlock()
 	fmt.Println("=========GetNonce,err = %v ============",err)
 	return "","dcrm back-end internal error:open level db fail in func GetNonce",err
     }
     
     key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-    da,err := db.Get([]byte(key2),nil)
+    da,err := db.Get([]byte(key2))
     ///////
     if err != nil {
 	db.Close()
@@ -123,22 +149,9 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,string,err
 }
 
 func SetReqAddrNonce(account string,nonce string) (string,error) {
-     //db
-    lock5.Lock()
-    dir := GetDbDir()
-    ////////
-    db, err := leveldb.OpenFile(dir, nil)
-    if err != nil {
-        lock5.Unlock()
-	fmt.Println("=========SetReqAddrNonce,err = %v ============",err)
-	return "dcrm back-end internal error:open level db fail",err
-    }
-    
-    key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-    ///////
-    db.Put([]byte(key2),[]byte(nonce),nil)
-    db.Close()
-    lock5.Unlock()
+    key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+    kd := KeyData{Key:[]byte(key),Data:nonce}
+    PubKeyDataChan <-kd
     return "",nil
 }
 
@@ -147,15 +160,27 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (stri
     lock5.Lock()
     dir := GetDbDir()
     ////////
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
     if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
         lock5.Unlock()
 	fmt.Println("=========SetNonce,err = %v ============",err)
 	return "dcrm back-end internal error:open level db fail",err
     }
     
     key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-    da,err := db.Get([]byte(key2),nil)
+    da,err := db.Get([]byte(key2))
     ///////
     if err != nil {
 	db.Close()
@@ -214,14 +239,14 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (stri
 	    return "dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,err
 	}
 
-	db.Put([]byte((pubs.(*PubKeyData)).Pub),[]byte(ss),nil)
+	db.Put([]byte((pubs.(*PubKeyData)).Pub),[]byte(ss))
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	db.Put([]byte(key),[]byte(ss),nil)
-	db.Put([]byte(ctaddr),[]byte(ss),nil)
+	db.Put([]byte(key),[]byte(ss))
+	db.Put([]byte(ctaddr),[]byte(ss))
     } else {
-	db.Put([]byte((pubs.(*PubKeyData)).Pub),[]byte(ss),nil)
+	db.Put([]byte((pubs.(*PubKeyData)).Pub),[]byte(ss))
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	db.Put([]byte(key),[]byte(ss),nil)
+	db.Put([]byte(key),[]byte(ss))
 	for _, ct := range cryptocoins.Cointypes {
 	    if strings.EqualFold(ct, "ALL") {
 		continue
@@ -236,7 +261,7 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (stri
 		continue
 	    }
 	    
-	    db.Put([]byte(ctaddr),[]byte(ss),nil)
+	    db.Put([]byte(ctaddr),[]byte(ss))
 	}
     }
     //
@@ -278,8 +303,20 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     //db
     dir := GetDbDir()
     ////////
-    db, err := leveldb.OpenFile(dir, nil) 
-    if err != nil { 
+    db,_ := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
         fmt.Println("===========validate_lockout,open db fail.=============")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:fmt.Errorf("open db fail.")}
         ch <- res
@@ -288,7 +325,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     } 
     
     key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-    da,err := db.Get([]byte(key2),nil)
+    da,err := db.Get([]byte(key2))
     ///////
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout data from db fail",Err:err}
@@ -489,8 +526,20 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	lock5.Lock()
 	//db
 	dir := GetEosDbDir()
-	db, err := leveldb.OpenFile(dir, nil) 
+	db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+	//bug
 	if err != nil {
+	    for i:=0;i<20;i++ {
+		db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+		if err == nil {
+		    break
+		}
+		
+		time.Sleep(time.Duration(1000000))
+	    }
+	}
+	//
+	if db == nil {
 	    fmt.Println("===========open db fail.=============")
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail in func dcrm_sign",Err:GetRetErr(ErrCreateDbFail)}
 	    ch <- res
@@ -503,7 +552,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	b.WriteString("") 
 	b.WriteByte(0) 
 	b.WriteString("") 
-	iter := db.NewIterator(nil, nil) 
+	iter := db.NewIterator() 
 	for iter.Next() { 
 	    key := string(iter.Key())
 	    value := string(iter.Value())

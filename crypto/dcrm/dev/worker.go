@@ -32,7 +32,8 @@ import (
     "strings"
     "fmt"
     "strconv"
-    "github.com/syndtr/goleveldb/leveldb"
+    //"github.com/syndtr/goleveldb/leveldb"
+    "github.com/fsn-dev/dcrm-walletService/ethdb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
@@ -66,6 +67,8 @@ var (
     
     acceptReqAddrChan chan string = make(chan string, 10)
     acceptWaitReqAddrChan chan string = make(chan string, 10)
+
+    PubKeyDataChan = make(chan KeyData, 1000)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -104,6 +107,7 @@ func InitDev(groupId string) {
    ThresHold = peerscount
    Enode_cnts = peerscount //bug
     GetEnodesInfo(groupId)
+    go SavePubKeyDataToDb()
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -964,7 +968,7 @@ type RecvMsg struct {
 func Dcrmcall(msg interface{},enode string) <-chan string {
     ch := make(chan string, 1)
     s := msg.(string)
-    fmt.Println("=============Dcrmcall, receiv = %s,len(receiv) = %v ==============",s,len(s))
+    //fmt.Println("=============Dcrmcall, receiv = %s,len(receiv) = %v ==============",s,len(s))
     v := RecvMsg{msg:s}
     rch := make(chan interface{},1)
     req := RpcReq{rpcdata:&v,ch:rch}
@@ -1159,13 +1163,25 @@ func SetUpMsgList(msg string) {
 func GetReqAddrStatus(key string) (string,string,error) {
     lock5.Lock()
     dir := GetAcceptReqAddrDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
 	return "","dcrm back-end internal error:open level db fail",err
     }
     
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key))
     ///////
     if err != nil {
 	db.Close()
@@ -1238,13 +1254,25 @@ func GetReqAddrStatus(key string) (string,string,error) {
 func GetLockOutStatus(key string) (string,string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
 	return "","dcrm back-end internal error:open level db fail",err
     }
     
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key))
     ///////
     if err != nil {
 	db.Close()
@@ -1315,11 +1343,25 @@ func GetLockOutStatus(key string) (string,string,error) {
 }
 
 func GetReqAddrReply() (string,string,error) {
-    lock5.Lock()
+    fmt.Println("================call dev.GetReqAddrReply===================")
+    lock.Lock()
     dir := GetAcceptReqAddrDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
     if err != nil {
-        lock5.Unlock()
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if err != nil {
+	fmt.Println("================GetReqAddrReply,open db err =%v ===================",err)
+        lock.Unlock()
 	return "","dcrm back-end internal error:open level db fail",err 
     }
    
@@ -1328,27 +1370,36 @@ func GetReqAddrReply() (string,string,error) {
     b.WriteString("") 
     b.WriteByte(0) 
     b.WriteString("") 
-    iter := db.NewIterator(nil, nil) 
+    iter := db.NewIterator() 
     for iter.Next() { 
 	//key := string(iter.Key()) //TODO
 	value := string(iter.Value())
 	////
 	ds,err := UnCompress(value)
 	if err != nil {
+	    fmt.Println("================GetReqAddrReply,uncompress err =%v ===================",err)
 	    continue
 	}
 
 	dss,err := Decode2(ds,"AcceptReqAddrData")
 	if err != nil {
+	    fmt.Println("================GetReqAddrReply,decode err =%v ===================",err)
 	    continue
 	}
 
 	ac := dss.(*AcceptReqAddrData)
 	if ac.Deal == true {
+	    fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
 	    continue
 	}
 
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
 	tmp := "{"
+	tmp += "\"Key\":"
+	tmp += "\""
+	tmp += key
+	tmp += "\""
+	tmp += ","
 	tmp += "\"Account\":"
 	tmp += "\""
 	tmp += ac.Account
@@ -1387,7 +1438,7 @@ func GetReqAddrReply() (string,string,error) {
     ///////
     ss := strings.Join(ret,"|")
     db.Close()
-    lock5.Unlock()
+    lock.Unlock()
 
     return ss,"",nil
 }
@@ -1395,7 +1446,19 @@ func GetReqAddrReply() (string,string,error) {
 func GetLockOutReply() (string,string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
 	return "","dcrm back-end internal error:open level db fail",err 
@@ -1406,7 +1469,7 @@ func GetLockOutReply() (string,string,error) {
     b.WriteString("") 
     b.WriteByte(0) 
     b.WriteString("") 
-    iter := db.NewIterator(nil, nil) 
+    iter := db.NewIterator() 
     for iter.Next() { 
 	//key := string(iter.Key()) //TODO
 	value := string(iter.Value())
@@ -1426,7 +1489,13 @@ func GetLockOutReply() (string,string,error) {
 	    continue
 	}
 
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
 	tmp := "{"
+	tmp += "\"Key\":"
+	tmp += "\""
+	tmp += key
+	tmp += "\""
+	tmp += ","
 	tmp += "\"Account\":"
 	tmp += "\""
 	tmp += ac.Account
@@ -1488,14 +1557,26 @@ func GetLockOutReply() (string,string,error) {
 func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
     lock5.Lock()
     dir := GetAcceptReqAddrDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
 	return "dcrm back-end internal error:open level db fail",false
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key))
     ///////
     if err != nil {
 	db.Close()
@@ -1535,14 +1616,26 @@ func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce str
 func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
 	return "dcrm back-end internal error:open level db fail",false
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key))
     ///////
     if err != nil {
 	db.Close()
@@ -1584,14 +1677,26 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
 func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string) (string,error) {
     lock5.Lock()
     dir := GetAcceptReqAddrDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
 	return "dcrm back-end internal error:open level db fail",err
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key))
     ///////
     if err != nil {
 	db.Close()
@@ -1641,7 +1746,7 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 	return "dcrm back-end internal error:compress accept data fail",err
     }
 
-    db.Put([]byte(key),[]byte(es),nil)
+    db.Put([]byte(key),[]byte(es))
     db.Close()
     lock5.Unlock()
     acceptReqAddrChan <- account
@@ -1653,14 +1758,26 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept string,status string,outhash string,tip string,errinfo string,allreply string) (string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
 	return "dcrm back-end internal error:open level db fail",err
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-    da,err := db.Get([]byte(key),nil)
+    da,err := db.Get([]byte(key))
     ///////
     if err != nil {
 	db.Close()
@@ -1710,7 +1827,7 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
 	return "dcrm back-end internal error:compress accept data fail",err
     }
 
-    db.Put([]byte(key),[]byte(es),nil)
+    db.Put([]byte(key),[]byte(es))
     db.Close()
     lock5.Unlock()
     acceptLockOutChan <- account
@@ -1912,7 +2029,11 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.limitnum = msgs[4]
 	    if msgs[5] == "0" {// self-group
 		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"",PubKey:"",Tip:"",Error:"",AllReply:""}
-	        SaveAcceptReqAddrData(ac)
+		fmt.Println("===================call SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
+		err := SaveAcceptReqAddrData(ac)
+		if err != nil {
+		    fmt.Println("===================call SaveAcceptReqAddrData,err =%v =====================",err)
+		}
 
 	        ////
 	        var reply bool
@@ -2017,7 +2138,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        acceptWaitReqAddrChan <- msgs[0]
 	    }
 
-	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[5])
+	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[5],msgs[3])
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:cherr}
@@ -2339,6 +2460,7 @@ type GetReqAddrReplySendMsgToDcrm struct {
 }
 
 func (self *GetReqAddrReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
+    fmt.Println("==============GetReqAddrReplySendMsgToDcrm.Run,workid =%v=================",workid)
     if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
@@ -2362,6 +2484,7 @@ type GetLockOutReplySendMsgToDcrm struct {
 }
 
 func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
+    fmt.Println("==============GetLockOutReplySendMsgToDcrm.Run,workid =%v=================",workid)
     if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
@@ -2407,13 +2530,26 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
 
     lock5.Lock()
     dir := GetAcceptReqAddrDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
         return err
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+    fmt.Println("==============SaveAcceptReqAddrData,key =%s=================",key)
     
     alos,err := Encode2(ac)
     if err != nil {
@@ -2429,7 +2565,7 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
 	return err 
     }
    
-    db.Put([]byte(key),[]byte(ss),nil)
+    db.Put([]byte(key),[]byte(ss))
     db.Close()
     lock5.Unlock()
     return nil
@@ -2464,7 +2600,19 @@ func SaveAcceptData(ac *AcceptLockOutData) error {
 
     lock5.Lock()
     dir := GetAcceptLockOutDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
         lock5.Unlock()
         return err
@@ -2486,7 +2634,7 @@ func SaveAcceptData(ac *AcceptLockOutData) error {
 	return err 
     }
    
-    db.Put([]byte(key),[]byte(ss),nil)
+    db.Put([]byte(key),[]byte(ss))
     db.Close()
     lock5.Unlock()
     return nil
@@ -2591,11 +2739,13 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
 	case "rpc_get_lockout_reply":
+	    fmt.Println("=============SendReqToGroup,type is rpc_get_lockout_reply==============")
 	    v := GetLockOutReplySendMsgToDcrm{}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
 	case "rpc_get_reqaddr_reply":
+	    fmt.Println("=============SendReqToGroup,type is rpc_get_reqaddr_reply==============")
 	    v := GetReqAddrReplySendMsgToDcrm{}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
@@ -3232,146 +3382,6 @@ func GetEosDbDir() string {
     return dir
 }
 
-/*func StorePubAccount(gid, pubkey, mode string) (string, error) {
-    fmt.Printf("==== storePubAccount() ====, gid: %v, pubkey: %v, mode: %v\n", gid, pubkey, mode)
-    if gid == "" || pubkey == "" {
-       return "", fmt.Errorf("no store data.")
-    }
-
-    lock5.Lock()
-    defer lock5.Unlock()
-
-    dir := GetGroupDir()
-    db, err := leveldb.OpenFile(dir, nil)
-    if err != nil {
-        return "", err
-    }
-    defer db.Close()
-
-    key := Keccak256Hash([]byte(strings.ToLower(cur_enode))).Hex()
-    da, err := db.Get([]byte(key),nil)
-    if err != nil {
-        a := make([]string, 0)
-       a = append(a, pubkey)
-       group := make([]AccountInfo, 0)
-       group = append(group, AccountInfo{GroupID: gid, Account: a, Mode: mode})
-        ac := &GroupAccount{group}
-       fmt.Printf("==== StorePubAccount() ==== new, ac: %v\n", ac)
-        alos, err := Encode2(ac)
-        if err != nil {
-            return "", err
-        }
-        ss, err := Compress([]byte(alos))
-        if err != nil {
-            return "", err
-        }
-
-        db.Put([]byte(key),[]byte(ss),nil)
-    } else {
-        ds,err := UnCompress(string(da))
-        if err != nil {
-            return "dcrm back-end internal error:uncompress group account data fail",err
-        }
-
-        dss,err := Decode2(ds,"GroupAccount")
-        if err != nil {
-            fmt.Printf("==== StorePubAccount() ====, dcrm back-end internal error:decode group account data fail\n")
-            return "dcrm back-end internal error:decode accept data fail",err
-        }
-
-        ac := dss.(*GroupAccount)
-       fmt.Printf("==== StorePubAccount() ====, ac: %v\n", ac)
-        a := make([]string, 0)
-       group := make([]AccountInfo, 0)
-       for _, g := range ac.Group {
-           if g.GroupID == gid {
-                   a = g.Account
-                   continue
-           }
-           group = append(group, g)
-       }
-       a = append(a, pubkey)
-       group = append(group, AccountInfo{GroupID: gid, Account: a, Mode: mode})
-        ac = &GroupAccount{group}
-       fmt.Printf("==== StorePubAccount() ==== after for, ac: %v\n", ac)
-        e, err := Encode2(ac)
-        if err != nil {
-            return "dcrm back-end internal error:encode accept data fail",err
-        }
-
-        fmt.Printf("==== StorePubAccount() ====, Compress\n")
-        es, err := Compress([]byte(e))
-        if err != nil {
-            return "dcrm back-end internal error:compress accept data fail",err
-        }
-
-        db.Put([]byte(key),[]byte(es),nil)
-    }
-    return "", nil
-}
-
-type pubAccounts struct {
-       Group []AccountsList
-}
-type AccountsList struct {
-       GroupID string
-       Accounts []string
-}
-
-func GetPubAccount(gid, mode string) (interface{}, int, string, error) {
-    fmt.Printf("==== dev.getPubAccount() ====, gid: %v, mode: %v\n", gid, mode)
-    lock5.Lock()
-    defer lock5.Unlock()
-
-    dir := GetGroupDir()
-    db, err := leveldb.OpenFile(dir, nil)
-    if err != nil {
-        return nil, 0, "", err
-    }
-    defer db.Close()
-
-    key := Keccak256Hash([]byte(strings.ToLower(cur_enode))).Hex()
-    da, err := db.Get([]byte(key),nil)
-    if err != nil {
-        return nil, 0, "", err
-    } else {
-        ds,err := UnCompress(string(da))
-        if err != nil {
-            return nil, 0, "dcrm back-end internal error:uncompress data fail", err
-        }
-
-        fmt.Printf("==== GetPubAccount() ====, decode2 ds: %v\n", ds)
-        dss,err := Decode2(ds,"GroupAccount")
-        if err != nil {
-            fmt.Printf("==== GetPubAccount() ====, dcrm back-end internal error:decode data fail\n")
-            return nil, 0, "dcrm back-end internal error:decode accept data fail", err
-        }
-
-        al := make([]AccountsList, 0)
-        ac := dss.(*GroupAccount)
-        for _, g := range ac.Group {
-            alNew := AccountsList{GroupID: g.GroupID, Accounts: g.Account}
-	    if g.Mode == mode {
-                if gid != "" {
-                    if g.GroupID == gid {
-                        al = append(al, alNew)
-                        pa := &pubAccounts{Group: al}
-                        fmt.Printf("==== GetPubAccount() ====, g.Account: %v\n", g.Account)
-                        return pa, len(al), "", nil
-                    }
-                    continue
-                }
-                al = append(al, alNew)
-	    }
-        }
-        pa := &pubAccounts{Group: al}
-        fmt.Printf("==== GetPubAccount() ====, PubAccounts: %v\n", pa)
-        return pa, len(al), "", nil
-    }
-    return nil, 0, "", nil
-}
-*/
-
 type PubAccounts struct {
        Group []AccountsList
 }
@@ -3380,29 +3390,41 @@ type AccountsList struct {
        Accounts []string
 }
 
-func GetPubAccount(gid, mode string) (interface{}, string, error) {
+func GetAccounts(gid, mode string) (interface{}, string, error) {
     lock.Lock()
     dir := GetDbDir()
-    db, err := leveldb.OpenFile(dir, nil)
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<20;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
     if err != nil {
 	lock.Unlock()
-	fmt.Println("==============GetPubAccount,err = %v===============",err)
+	fmt.Println("==============GetAccounts,err = %v===============",err)
         return nil, "open leveldb fail", err
     }
    
     gp := make(map[string][]string)
-    iter := db.NewIterator(nil, nil) 
+    iter := db.NewIterator() 
     for iter.Next() { 
 	value := string(iter.Value())
 	ss,err := UnCompress(value)
 	if err != nil {
-	    fmt.Println("==============GetPubAccount,1111 err = %v===============",err)
+	    fmt.Println("==============GetAccounts,1111 err = %v===============",err)
 	    continue
 	}
 	
 	pubs,err := Decode2(ss,"PubKeyData")
 	if err != nil {
-	    fmt.Println("==============GetPubAccount,2222 err = %v===============",err)
+	    fmt.Println("==============GetAccounts,2222 err = %v===============",err)
 	    continue
 	}
 	
@@ -3410,7 +3432,7 @@ func GetPubAccount(gid, mode string) (interface{}, string, error) {
 	pubkeyhex := hex.EncodeToString([]byte(pb))
 	gid := (pubs.(*PubKeyData)).GroupId
 	md := (pubs.(*PubKeyData)).Mode
-	fmt.Println("==============GetPubAccount,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
+	fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
 	if mode == md {
 	    al,exsit := gp[gid]
 	    if exsit == true {
@@ -3437,9 +3459,9 @@ func GetPubAccount(gid, mode string) (interface{}, string, error) {
 	}
     }
 
-    fmt.Println("==============GetPubAccount,333333333===============")
+    fmt.Println("==============GetAccounts,333333333===============")
     for k,v := range gp {
-	fmt.Println("==============GetPubAccount,44444,key =%s,value =%s ===============",k,v)
+	fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
 	alNew := AccountsList{GroupID: k, Accounts: v}
 	als = append(als, alNew)
     }

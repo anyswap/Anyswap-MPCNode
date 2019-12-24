@@ -1892,6 +1892,7 @@ func GetZkFactProof(save string,index int) *ec2.ZkFactProof {
 }
 
 func SendMsgToDcrmGroup(msg string,groupid string) {
+    fmt.Println("==============SendMsgToDcrmGroup,msg =%s,send to groupid =%s =================",msg,groupid)
     BroadcastInGroupOthers(groupid,msg)
 }
 
@@ -1941,7 +1942,7 @@ func DecryptMsg (cm string) (string, error) {
 ///
 
 func SendMsgToPeer(enodes string,msg string) {
-    //SendToPeer(enodes,msg)
+    fmt.Println("==============SendMsgToPeer,msg =%s,send to peer %s ===================",msg,enodes)
     en := strings.Split(string(enodes[8:]),"@")
     cm,err := EncryptMsg(msg,en[0])
     if err != nil {

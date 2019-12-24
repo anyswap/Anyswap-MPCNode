@@ -477,7 +477,7 @@ func AcceptReqAddr(raw string) (string,string,error) {
 	accept = "true"
     }
 
-    tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,"","","","","")
+    tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,"Pending","","","","")
     if err != nil {
 	return "",tip,err
     }
@@ -529,7 +529,7 @@ func AcceptLockOut(raw string) (string,string,error) {
 	accept = "true"
     }
 
-    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"","","","","")
+    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"Pending","","","","")
     if err != nil {
 	return "",tip,err
     }

@@ -69,6 +69,7 @@ var (
     acceptWaitReqAddrChan chan string = make(chan string, 10)
 
     PubKeyDataChan = make(chan KeyData, 1000)
+    KeyFile string
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -99,7 +100,7 @@ func RegDcrmGetEosAccountCallBack(f func() (string,string,string)) {
     GetEosAccount = f
 }
 
-func InitDev(groupId string) {
+func InitDev(keyfile string,groupId string) {
     cur_enode = GetSelfEnode()
     fmt.Println("=========InitDev===========","groupId",groupId)
     peerscount, _ := GetGroup(groupId)
@@ -107,6 +108,7 @@ func InitDev(groupId string) {
    ThresHold = peerscount
    Enode_cnts = peerscount //bug
     GetEnodesInfo(groupId)
+    KeyFile = keyfile
     go SavePubKeyDataToDb()
 }
 
@@ -1849,6 +1851,12 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	return false 
     }
 
+    ////
+    msgdata,errdec := DecryptMsg(res) //for SendMsgToPeer
+    if errdec == nil {
+	res = msgdata
+    }
+    ////
     mm := strings.Split(res,Sep)
     if len(mm) >= 2 {
 	//msg:  hash-enode:C1:X1:X2

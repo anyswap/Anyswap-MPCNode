@@ -40,6 +40,10 @@ import (
     "github.com/astaxie/beego/logs"
     "github.com/agl/ed25519"
     "runtime/debug"
+    "github.com/fsn-dev/dcrm-walletService/crypto/ecies"
+    "github.com/fsn-dev/dcrm-walletService/crypto"
+    crand "crypto/rand"
+    "crypto/ecdsa"
 )
 
 func GetReqAddrNonce(account string) (string,string,error) {
@@ -1891,8 +1895,61 @@ func SendMsgToDcrmGroup(msg string,groupid string) {
     BroadcastInGroupOthers(groupid,msg)
 }
 
+///
+func EncryptMsg (msg string,enodeID string) (string, error) {
+    fmt.Println("=============EncryptMsg,KeyFile = %s,enodeID = %s ================",KeyFile,enodeID)
+    hprv, err1 := hex.DecodeString(enodeID)
+    if err1 != nil {
+	return "",err1
+    }
+
+    fmt.Println("=============EncryptMsg,hprv len = %v ================",len(hprv))
+    p := &ecdsa.PublicKey{Curve: crypto.S256(), X: new(big.Int), Y: new(big.Int)}
+    half := len(hprv) / 2
+    p.X.SetBytes(hprv[:half])
+    p.Y.SetBytes(hprv[half:])
+    if !p.Curve.IsOnCurve(p.X, p.Y) {
+	return "", fmt.Errorf("id is invalid secp256k1 curve point")
+    }
+    
+    var cm []byte
+    pub := ecies.ImportECDSAPublic(p)
+    cm, err := ecies.Encrypt(crand.Reader, pub, []byte(msg), nil, nil)
+    if err != nil {
+	return "",err
+    }
+
+    return string(cm),nil
+}
+
+func DecryptMsg (cm string) (string, error) {
+    fmt.Println("=============DecryptMsg,KeyFile = %s ================",KeyFile)
+    nodeKey, errkey := crypto.LoadECDSA(KeyFile)
+    if errkey != nil {
+	return "",errkey
+    }
+
+    prv := ecies.ImportECDSA(nodeKey)
+    var m []byte
+    m, err := prv.Decrypt([]byte(cm), nil, nil)
+    if err != nil {
+	return "",err
+    }
+
+    return string(m),nil
+}
+///
+
 func SendMsgToPeer(enodes string,msg string) {
-    SendToPeer(enodes,msg)
+    //SendToPeer(enodes,msg)
+    en := strings.Split(string(enodes[8:]),"@")
+    cm,err := EncryptMsg(msg,en[0])
+    if err != nil {
+	fmt.Println("==============SendMsgToPeer,encrypt msg fail,err = %v ===================",err)
+	return
+    }
+
+    SendToPeer(enodes,cm)
 }
 
 type ECDSASignature struct {

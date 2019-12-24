@@ -91,6 +91,7 @@ func startP2pNode(c *cli.Context) error {
 			keyfile = fmt.Sprintf("node.key")
 		}
 		fmt.Printf("nodekey: %v\n", keyfile)
+		dcrm.KeyFile = keyfile
 		nodeKey, errkey := crypto.LoadECDSA(keyfile)
 		if errkey != nil {
 			nodeKey, _ = crypto.GenerateKey()

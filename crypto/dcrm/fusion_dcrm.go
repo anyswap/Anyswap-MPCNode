@@ -42,6 +42,7 @@ var (
     init_times = 0
     PubLock sync.Mutex
     SignLock sync.Mutex
+    KeyFile string
 )
 
 func Start() {
@@ -795,7 +796,7 @@ func receiveSplitKey(msg interface{}){
 func Init(groupId string) {
     out := "=============Init================" + " get group id = " + groupId
     fmt.Println(out)
-    dev.InitDev(groupId)
+    dev.InitDev(KeyFile,groupId)
 }
 
 func SetUpMsgList(msg string) {

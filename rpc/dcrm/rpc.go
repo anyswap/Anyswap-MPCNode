@@ -220,8 +220,8 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
     }
 }
 
-func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) map[string]interface{} {
-    fmt.Println("==============dcrm_getNonce================")
+func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr string) map[string]interface{} {
+    fmt.Println("==============dcrm_getLockOutNonce================")
 
     data := make(map[string]interface{})
     if account == "" || cointype == "" || dcrmaddr == "" {
@@ -234,7 +234,7 @@ func (this *Service) GetNonce(account string,cointype string,dcrmaddr string) ma
 	}
     }
 
-    ret,tip,err := dcrm.GetNonce(account,cointype,dcrmaddr)
+    ret,tip,err := dcrm.GetLockOutNonce(account,cointype,dcrmaddr)
 
     if err != nil {
 	data["result"] = "0" 
@@ -494,16 +494,37 @@ func (this *Service) GetAccounts(gid,mode string) map[string]interface{} {
     }
 }
 
-func (this *Service) GetAccountsBalance(pubkey string) string {
+func (this *Service) GetAccountsBalance(pubkey string) map[string]interface{} {
+	fmt.Println("==========dcrm_getAccountsBalance,pubkey = %s ===========",pubkey)
+	data := make(map[string]interface{})
 	if pubkey == "" {
-		return packageResult(FAIL, "args account is null", "", "")
+	    data["result"] = ""
+	    return map[string]interface{}{
+		    "Status": "Error",
+		    "Tip": "param is empty",
+		    "Error": "param is empty",
+		    "Data": data,
+	    }
 	}
-	stat := SUCCESS
-	ret, tip, err := dcrm.GetPubAccountBalance(pubkey)
+
+	ret, tip, err := dcrm.GetAccountsBalance(pubkey)
 	if err != nil {
-		stat = FAIL
+	    data["result"] = ""
+	    return map[string]interface{}{
+		    "Status": "Error",
+		    "Tip": tip,
+		    "Error": err.Error(),
+		    "Data": data,
+	    }
 	}
-	fmt.Printf("==== GetAccountsBalance() ====, ret: %v\n", ret)
-	return packageResult(stat, tip, "", ret)
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip": "",
+		"Error": "",
+		"Data": data,
+	}
 }
+
 

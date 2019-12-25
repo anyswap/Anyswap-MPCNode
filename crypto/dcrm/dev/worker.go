@@ -33,7 +33,7 @@ import (
     "fmt"
     "strconv"
     //"github.com/syndtr/goleveldb/leveldb"
-    "github.com/fsn-dev/dcrm-walletService/ethdb"
+    //"github.com/fsn-dev/dcrm-walletService/ethdb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
@@ -69,7 +69,12 @@ var (
     acceptWaitReqAddrChan chan string = make(chan string, 10)
 
     PubKeyDataChan = make(chan KeyData, 1000)
+    GetPubKeyDataChan = make(chan chan []*PubKeyData, 1000)
     KeyFile string
+    AllAccounts = make([]*PubKeyData,0)
+    LdbReqAddr = make(map[string][]byte)
+    LdbLockOut = make(map[string][]byte)
+    LdbPubKeyData = make(map[string][]byte)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -110,6 +115,7 @@ func InitDev(keyfile string,groupId string) {
     GetEnodesInfo(groupId)
     KeyFile = keyfile
     go SavePubKeyDataToDb()
+    go GetAllPubKeyDataFromDb()
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -1170,7 +1176,7 @@ func SetUpMsgList(msg string) {
     RpcReqQueue <- req
 }
 
-func GetReqAddrStatus(key string) (string,string,error) {
+/*func GetReqAddrStatus(key string) (string,string,error) {
     lock5.Lock()
     dir := GetAcceptReqAddrDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -1260,8 +1266,72 @@ func GetReqAddrStatus(key string) (string,string,error) {
     lock5.Unlock()
     return ret,"",nil
 }
+*/
 
-func GetLockOutStatus(key string) (string,string,error) {
+func GetReqAddrStatus(key string) (string,string,error) {
+    da,exsit := LdbReqAddr[key]
+    ///////
+    if exsit == false {
+	return "","dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	return "","dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := Decode2(ds,"AcceptReqAddrData")
+    if err != nil {
+	return "","dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*AcceptReqAddrData)
+    ret := "{"
+    ret += "\""
+    ret += "Status"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Status
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "PubKey"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.PubKey
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Tip"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Tip
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Error"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Error
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "AllReply"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.AllReply
+    ret += "\""
+    ret += "}"
+
+    return ret,"",nil
+}
+
+/*func GetLockOutStatus(key string) (string,string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -1351,8 +1421,72 @@ func GetLockOutStatus(key string) (string,string,error) {
     lock5.Unlock()
     return ret,"",nil
 }
+*/
 
-func GetReqAddrReply() (string,string,error) {
+func GetLockOutStatus(key string) (string,string,error) {
+    da,exsit := LdbLockOut[key]
+    ///////
+    if exsit == false {
+	return "","dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	return "","dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := Decode2(ds,"AcceptLockOutData")
+    if err != nil {
+	return "","dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*AcceptLockOutData)
+    ret := "{"
+    ret += "\""
+    ret += "Status"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Status
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "OutTxHash"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.OutTxHash
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Tip"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Tip
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "Error"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.Error
+    ret += "\""
+    ret += ","
+    ret += "\""
+    ret += "AllReply"
+    ret += "\""
+    ret += ":"
+    ret += "\""
+    ret += ac.AllReply
+    ret += "\""
+    ret += "}"
+
+    return ret,"",nil
+}
+
+/*func GetReqAddrReply() (string,string,error) {
     fmt.Println("================call dev.GetReqAddrReply===================")
     lock.Lock()
     dir := GetAcceptReqAddrDir()
@@ -1398,6 +1532,7 @@ func GetReqAddrReply() (string,string,error) {
 	}
 
 	ac := dss.(*AcceptReqAddrData)
+	fmt.Println("================GetReqAddrReply,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s ===================",ac.Account,ac.Cointype,ac.GroupId,ac.Nonce,ac.LimitNum,ac.Mode)
 	if ac.Deal == true {
 	    fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
 	    continue
@@ -1452,8 +1587,81 @@ func GetReqAddrReply() (string,string,error) {
 
     return ss,"",nil
 }
+*/
 
-func GetLockOutReply() (string,string,error) {
+func GetReqAddrReply() (string,string,error) {
+    fmt.Println("================call dev.GetReqAddrReply===================")
+    
+    var ret []string
+    for _,v := range LdbReqAddr {
+	value := string(v)
+	////
+	ds,err := UnCompress(value)
+	if err != nil {
+	    fmt.Println("================GetReqAddrReply,uncompress err =%v ===================",err)
+	    continue
+	}
+
+	dss,err := Decode2(ds,"AcceptReqAddrData")
+	if err != nil {
+	    fmt.Println("================GetReqAddrReply,decode err =%v ===================",err)
+	    continue
+	}
+
+	ac := dss.(*AcceptReqAddrData)
+	fmt.Println("================GetReqAddrReply,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s ===================",ac.Account,ac.Cointype,ac.GroupId,ac.Nonce,ac.LimitNum,ac.Mode)
+	if ac.Deal == true {
+	    fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
+	    continue
+	}
+
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+	tmp := "{"
+	tmp += "\"Key\":"
+	tmp += "\""
+	tmp += key
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Account\":"
+	tmp += "\""
+	tmp += ac.Account
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Cointype\":"
+	tmp += "\""
+	tmp += ac.Cointype
+	tmp += "\""
+	tmp += ","
+	tmp += "\"GroupId\":"
+	tmp += "\""
+	tmp += ac.GroupId
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Nonce\":"
+	tmp += "\""
+	tmp += ac.Nonce
+	tmp += "\""
+	tmp += ","
+	tmp += "\"LimitNum\":"
+	tmp += "\""
+	tmp += ac.LimitNum
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Mode\":"
+	tmp += "\""
+	tmp += ac.Mode
+	tmp += "\""
+	tmp += "}"
+	ret = append(ret,tmp)
+	////
+    }
+    
+    ///////
+    ss := strings.Join(ret,"|")
+    return ss,"",nil
+}
+
+/*func GetLockOutReply() (string,string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -1563,8 +1771,91 @@ func GetLockOutReply() (string,string,error) {
 
     return ss,"",nil
 }
+*/
 
-func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
+func GetLockOutReply() (string,string,error) {
+   
+    var ret []string
+    for _,v := range LdbLockOut {
+	value := string(v)
+	////
+	ds,err := UnCompress(value)
+	if err != nil {
+	    continue
+	}
+
+	dss,err := Decode2(ds,"AcceptLockOutData")
+	if err != nil {
+	    continue
+	}
+
+	ac := dss.(*AcceptLockOutData)
+	if ac.Deal == true {
+	    continue
+	}
+
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
+	tmp := "{"
+	tmp += "\"Key\":"
+	tmp += "\""
+	tmp += key
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Account\":"
+	tmp += "\""
+	tmp += ac.Account
+	tmp += "\""
+	tmp += ","
+	tmp += "\"GroupId\":"
+	tmp += "\""
+	tmp += ac.GroupId
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Nonce\":"
+	tmp += "\""
+	tmp += ac.Nonce
+	tmp += "\""
+	tmp += ","
+	tmp += "\"DcrmFrom\":"
+	tmp += "\""
+	tmp += ac.DcrmFrom
+	tmp += "\""
+	tmp += ","
+	tmp += "\"DcrmTo\":"
+	tmp += "\""
+	tmp += ac.DcrmTo
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Value\":"
+	tmp += "\""
+	tmp += ac.Value
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Cointype\":"
+	tmp += "\""
+	tmp += ac.Cointype
+	tmp += "\""
+	tmp += ","
+	tmp += "\"LimitNum\":"
+	tmp += "\""
+	tmp += ac.LimitNum
+	tmp += "\""
+	tmp += ","
+	tmp += "\"Mode\":"
+	tmp += "\""
+	tmp += ac.Mode
+	tmp += "\""
+	tmp += "}"
+	ret = append(ret,tmp)
+	////
+    }
+    
+    ///////
+    ss := strings.Join(ret,"|")
+    return ss,"",nil
+}
+
+/*func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
     lock5.Lock()
     dir := GetAcceptReqAddrDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -1622,8 +1913,39 @@ func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce str
     
     return "",rp
 }
+*/
 
-func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
+func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
+    da,exsit := LdbReqAddr[key]
+    ///////
+    if exsit == false {
+	return "dcrm back-end internal error:get accept result from db fail",false
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	return "dcrm back-end internal error:uncompress accept result fail",false
+    }
+
+    dss,err := Decode2(ds,"AcceptReqAddrData")
+    if err != nil {
+	return "dcrm back-end internal error:decode accept result fail",false
+    }
+
+    ac := dss.(*AcceptReqAddrData)
+
+    var rp bool 
+    if strings.EqualFold(ac.Accept,"false") {
+	rp = false
+    } else {
+	rp = true
+    }
+    
+    return "",rp
+}
+
+/*func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -1681,6 +2003,37 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
     
     return "",rp
 }
+*/
+
+func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
+    da,exsit := LdbLockOut[key]
+    ///////
+    if exsit == false {
+	return "dcrm back-end internal error:get accept result from db fail",false
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	return "dcrm back-end internal error:uncompress accept result fail",false
+    }
+
+    dss,err := Decode2(ds,"AcceptLockOutData")
+    if err != nil {
+	return "dcrm back-end internal error:decode accept result fail",false
+    }
+
+    ac := dss.(*AcceptLockOutData)
+
+    var rp bool 
+    if strings.EqualFold(ac.Accept,"false") {
+	rp = false
+    } else {
+	rp = true
+    }
+    
+    return "",rp
+}
 
 //if accept == "",don't set Accept
 //if status == "",don't set Status
@@ -1688,7 +2041,7 @@ func GetAcceptRes(account string,groupid string,nonce string,dcrmfrom string,thr
 //if tip == "",don't set Tip
 //if errinfo == "",don't set ErrInfo
 //if allreply == "",don't set AllReply 
-func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string) (string,error) {
+/*func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string) (string,error) {
     lock5.Lock()
     dir := GetAcceptReqAddrDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -1772,6 +2125,59 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     lock5.Unlock()
     acceptReqAddrChan <- account
     return "",nil
+}*/
+func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string) (string,error) {
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
+    da,exsit := LdbReqAddr[key]
+    ///////
+    if exsit == false {
+	return "dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	return "dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := Decode2(ds,"AcceptReqAddrData")
+    if err != nil {
+	return "dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*AcceptReqAddrData)
+    ac.Deal = deal
+    if accept != "" {
+	ac.Accept = accept
+    }
+    if pubkey != "" {
+	ac.PubKey = pubkey
+    }
+    if tip != "" {
+	ac.Tip = tip
+    }
+    if errinfo != "" {
+	ac.Error = errinfo
+    }
+    if status != "" {
+	ac.Status = status
+    }
+    if allreply != "" {
+	ac.AllReply = allreply
+    }
+
+    e,err := Encode2(ac)
+    if err != nil {
+	return "dcrm back-end internal error:encode accept data fail",err
+    }
+
+    es,err := Compress([]byte(e))
+    if err != nil {
+	return "dcrm back-end internal error:compress accept data fail",err
+    }
+
+    LdbReqAddr[key] = []byte(es)
+    acceptReqAddrChan <- account
+    return "",nil
 }
 
 //if accept == "",don't set Accept
@@ -1780,7 +2186,7 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 //if tip == "",don't set Tip
 //if errinfo == "",don't set ErrInfo
 //if allreply == "",don't set AllReply 
-func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept string,status string,outhash string,tip string,errinfo string,allreply string) (string,error) {
+/*func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept string,status string,outhash string,tip string,errinfo string,allreply string) (string,error) {
     lock5.Lock()
     dir := GetAcceptLockOutDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -1865,6 +2271,61 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     acceptLockOutChan <- account
     return "",nil
 }
+*/
+
+func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept string,status string,outhash string,tip string,errinfo string,allreply string) (string,error) {
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
+    da,exsit := LdbLockOut[key]
+    ///////
+    if exsit == false {
+	return "dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+    }
+
+    ds,err := UnCompress(string(da))
+    if err != nil {
+	return "dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := Decode2(ds,"AcceptLockOutData")
+    if err != nil {
+	return "dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*AcceptLockOutData)
+    ac.Deal = deal
+    if accept != "" {
+	ac.Accept = accept
+    }
+    if outhash != "" {
+	ac.OutTxHash = outhash
+    }
+    if tip != "" {
+	ac.Tip = tip
+    }
+    if errinfo != "" {
+	ac.Error = errinfo
+    }
+    if status != "" {
+	ac.Status = status
+    }
+    if allreply != "" {
+	ac.AllReply = allreply
+    }
+
+    e,err := Encode2(ac)
+    if err != nil {
+	return "dcrm back-end internal error:encode accept data fail",err
+    }
+
+    es,err := Compress([]byte(e))
+    if err != nil {
+	return "dcrm back-end internal error:compress accept data fail",err
+    }
+
+    LdbLockOut[key] = []byte(es)
+    acceptLockOutChan <- account
+    return "",nil
+}
 
 func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     if workid < 0 || workid >= RpcMaxWorker { //TODO
@@ -1882,10 +2343,10 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     }
 
     ////
-    msgdata,errdec := DecryptMsg(res) //for SendMsgToPeer
+    /*msgdata,errdec := DecryptMsg(res) //for SendMsgToPeer
     if errdec == nil {
 	res = msgdata
-    }
+    }*/
     ////
     mm := strings.Split(res,Sep)
     if len(mm) >= 2 {
@@ -1918,12 +2379,14 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
-	    if msgs[9] == "0" {// self-group
+	    w.groupid = msgs[5] 
+	    fmt.Println("==============RecvMsg.Run,lockout,groupid =%s,get mode =%s=================",msgs[5],msgs[8])
+	    if msgs[8] == "0" {// self-group
 		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:""}
-		fmt.Println("===================call SaveAcceptData,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,dcrmto =%s,value =%s,cointype =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[5],msgs[6],msgs[1],msgs[2],msgs[3],msgs[4],msgs[7],msgs[8])
-		err := SaveAcceptData(ac)
+		fmt.Println("===================call SaveAcceptLockOutData,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,dcrmto =%s,value =%s,cointype =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[5],msgs[6],msgs[1],msgs[2],msgs[3],msgs[4],msgs[7],msgs[8])
+		err := SaveAcceptLockOutData(ac)
 		if err != nil {
-		    fmt.Println("===================call SaveAcceptData,err =%v =====================",err)
+		    fmt.Println("===================call SaveAcceptLockOutData,err =%v =====================",err)
 		}
 
 	        ////
@@ -1938,7 +2401,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                     for {
                        select {
                        case account := <-acceptLockOutChan:
-                           tip,reply = GetAcceptRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7])
+                           tip,reply = GetAcceptLockOutRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7])
                            fmt.Printf("============ (self *RecvMsg) Run() ===========, Current Node Accept lockout Res =%v,account =%s =========== %v\n", reply,account)
 
 			   ///////
@@ -2039,8 +2502,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        acceptWaitLockOutChan <- msgs[0]
 	    }
 
-	    w.groupid = msgs[5] 
-
 	    rch := make(chan interface{},1)
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[4],msgs[3],msgs[2],msgs[6],rch)
@@ -2079,8 +2540,9 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    
 	    w.groupid = msgs[2]
 	    w.limitnum = msgs[4]
+	    fmt.Println("==============RecvMsg.Run,get mode =%s=================",msgs[5])
 	    if msgs[5] == "0" {// self-group
-		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:""}
+		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:""}
 		fmt.Println("===================call SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
 		err := SaveAcceptReqAddrData(ac)
 		if err != nil {
@@ -2587,19 +3049,19 @@ type AcceptReqAddrData struct {
     AllReply string
 }
 
-func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
+/*func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
     if ac == nil {
 	return fmt.Errorf("no accept data.")
     }
 
-    lock5.Lock()
+    lock.Lock()
     dir := GetAcceptReqAddrDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
-    if err != nil {
+    if err != nil || db == nil {
 	for i:=0;i<1000;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
+	    if err == nil && db != nil {
 		break
 	    }
 	    
@@ -2607,31 +3069,57 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
 	}
     }
     //
-    if err != nil {
-        lock5.Unlock()
+    if db == nil {
+	fmt.Println("=============SaveAcceptReqAddrData,ERROR!!!! db is nil===============")
+        lock.Unlock()
         return err
     }
     
     key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
     fmt.Println("==============SaveAcceptReqAddrData,key =%s=================",key)
+    fmt.Println("================SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s ===================",ac.Account,ac.Cointype,ac.GroupId,ac.Nonce,ac.LimitNum,ac.Mode)
     
     alos,err := Encode2(ac)
     if err != nil {
 	db.Close()
-	lock5.Unlock()
+	lock.Unlock()
 	return err
     }
     
     ss,err := Compress([]byte(alos))
     if err != nil {
 	db.Close()
-	lock5.Unlock()
+	lock.Unlock()
 	return err 
     }
    
     db.Put([]byte(key),[]byte(ss))
     db.Close()
-    lock5.Unlock()
+    lock.Unlock()
+    return nil
+}
+*/
+
+func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
+    if ac == nil {
+	return fmt.Errorf("no accept data.")
+    }
+
+    key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+    fmt.Println("================SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s ===================",ac.Account,ac.Cointype,ac.GroupId,ac.Nonce,ac.LimitNum,ac.Mode)
+    
+    alos,err := Encode2(ac)
+    if err != nil {
+	return err
+    }
+    
+    ss,err := Compress([]byte(alos))
+    if err != nil {
+	return err 
+    }
+   
+    fmt.Println("==============SaveAcceptReqAddrData,success write into map,key =%s=================",key)
+    LdbReqAddr[key] = []byte(ss)
     return nil
 }
 
@@ -2657,7 +3145,7 @@ type AcceptLockOutData struct {
     AllReply string
 }
 
-func SaveAcceptData(ac *AcceptLockOutData) error {
+/*func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
     if ac == nil {
 	return fmt.Errorf("no accept data.")
     }
@@ -2701,6 +3189,28 @@ func SaveAcceptData(ac *AcceptLockOutData) error {
     db.Put([]byte(key),[]byte(ss))
     db.Close()
     lock5.Unlock()
+    return nil
+}
+*/
+
+func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
+    if ac == nil {
+	return fmt.Errorf("no accept data.")
+    }
+
+    key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
+    
+    alos,err := Encode2(ac)
+    if err != nil {
+	return err
+    }
+    
+    ss,err := Compress([]byte(alos))
+    if err != nil {
+	return err 
+    }
+  
+    LdbLockOut[key] = []byte(ss)
     return nil
 }
 
@@ -3454,7 +3964,7 @@ type AccountsList struct {
        Accounts []string
 }
 
-func GetAccounts(gid, mode string) (interface{}, string, error) {
+/*func GetAccounts(gid, mode string) (interface{}, string, error) {
     lock.Lock()
     dir := GetDbDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -3533,5 +4043,119 @@ func GetAccounts(gid, mode string) (interface{}, string, error) {
     lock.Unlock()
     pa := &PubAccounts{Group: als}
     return pa, "", nil
+}
+*/
+
+func GetAccounts(gid, mode string) (interface{}, string, error) {
+    kd := make(chan []*PubKeyData)
+    GetPubKeyDataChan <- kd
+    WaitTime := 1 * time.Second
+    WaitTimeOut := time.NewTicker(WaitTime)
+    for {
+       select {
+       case pds := <-kd:
+	fmt.Println("================!!!GetAccounts,get pubkey data from db success!!!====================")
+	gp := make(map[string][]string)
+	for _,v := range pds {
+	    if v == nil {
+		continue
+	    }
+
+	    pb := v.Pub
+	    pubkeyhex := hex.EncodeToString([]byte(pb))
+	    gid := v.GroupId
+	    md := v.Mode
+	    fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
+	    if mode == md {
+		al,exsit := gp[gid]
+		if exsit == true {
+		    al = append(al,pubkeyhex)
+		    gp[gid] = al
+		} else {
+		    a := make([]string,0)
+		    a = append(a,pubkeyhex)
+		    gp[gid] = a
+		}
+	    }
+	}
+
+	als := make([]AccountsList, 0)
+	if gid != "" {
+	    al,exsit := gp[gid]
+	    if exsit == true {
+		alNew := AccountsList{GroupID: gid, Accounts: al}
+		als = append(als, alNew)
+		pa := &PubAccounts{Group: als}
+		return pa, "", nil
+	    }
+	}
+
+	fmt.Println("==============GetAccounts,333333333===============")
+	for k,v := range gp {
+	    fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
+	    alNew := AccountsList{GroupID: k, Accounts: v}
+	    als = append(als, alNew)
+	}
+	
+	pa := &PubAccounts{Group: als}
+	return pa, "", nil
+       case <-WaitTimeOut.C:
+	   if len(AllAccounts) != 0 {
+	    fmt.Println("================!!!GetAccounts,get pubkey data from AllAccounts success!!!====================")
+	    gp := make(map[string][]string)
+	    for _,v := range AllAccounts {
+		if v == nil {
+		    continue
+		}
+
+		if v.Pub == "" || v.GroupId == "" || v.Mode == "" {
+		    continue
+		}
+
+		pb := v.Pub
+		pubkeyhex := hex.EncodeToString([]byte(pb))
+		gid := v.GroupId
+		md := v.Mode
+		fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
+		if mode == md {
+		    al,exsit := gp[gid]
+		    if exsit == true {
+			al = append(al,pubkeyhex)
+			gp[gid] = al
+		    } else {
+			a := make([]string,0)
+			a = append(a,pubkeyhex)
+			gp[gid] = a
+		    }
+		}
+	    }
+
+	    als := make([]AccountsList, 0)
+	    if gid != "" {
+		al,exsit := gp[gid]
+		if exsit == true {
+		    alNew := AccountsList{GroupID: gid, Accounts: al}
+		    als = append(als, alNew)
+		    pa := &PubAccounts{Group: als}
+		    return pa, "", nil
+		}
+	    }
+
+	    fmt.Println("==============GetAccounts,333333333===============")
+	    for k,v := range gp {
+		fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
+		alNew := AccountsList{GroupID: k, Accounts: v}
+		als = append(als, alNew)
+	    }
+	    
+	    pa := &PubAccounts{Group: als}
+	    return pa, "", nil
+	   } else {
+	       return nil,"get accounts fail",fmt.Errorf("get accounts fail")
+	   }
+       }
+   }
+
+    return nil,"get accounts fail",fmt.Errorf("get accounts fail")
 }
 

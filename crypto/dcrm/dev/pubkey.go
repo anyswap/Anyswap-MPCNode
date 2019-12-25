@@ -99,8 +99,12 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    return
 	}
 
+	////TODO
+	AllAccounts = append(AllAccounts,pubs)
+	////////
+
 	pubkeyhex := hex.EncodeToString(sedpk)
-	fmt.Println("===============dcrm_genPubKey,pubkey = %s ==================",pubkeyhex)
+	fmt.Println("===============dcrm_genPubKey,pubkey = %s,nonce =%s ==================",pubkeyhex,nonce)
 	////save to db
 	////add for req addr
 	/*reqnonce,_,err := GetReqAddrNonce(account)
@@ -111,6 +115,10 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	kd := KeyData{Key:[]byte(key2),Data:nonce}
 	PubKeyDataChan <-kd
+
+	/////
+	LdbPubKeyData[key2] = []byte(nonce)
+	////
 
 	tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
 	if reply != nil {
@@ -137,12 +145,24 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    //add for lockout
 	    kd = KeyData{Key:sedpk[:],Data:ss}
 	    PubKeyDataChan <-kd
+	    /////
+	    LdbPubKeyData[string(sedpk[:])] = []byte(ss)
+	    ////
+
 	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
+	    /////
+	    LdbPubKeyData[key] = []byte(ss)
+	    ////
+
 	    key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
+	    /////
+	    LdbPubKeyData[key] = []byte(ss)
+	    ////
+
 	    /*lock.Lock()
 	    dir := GetDbDir()
 	    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -182,9 +202,17 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	} else {
 	    kd = KeyData{Key:sedpk[:],Data:ss}
 	    PubKeyDataChan <-kd
+	    /////
+	    LdbPubKeyData[string(sedpk[:])] = []byte(ss)
+	    ////
+
 	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
+	    /////
+	    LdbPubKeyData[key] = []byte(ss)
+	    ////
+
 	    for _, ct := range cryptocoins.Cointypes {
 		if strings.EqualFold(ct, "ALL") {
 		    continue
@@ -202,7 +230,11 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 		key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		kd = KeyData{Key:[]byte(key),Data:ss}
 		PubKeyDataChan <-kd
+		/////
+		LdbPubKeyData[key] = []byte(ss)
+		////
 	    }
+	    
 	    /*lock.Lock()
 	    dir := GetDbDir()
 	    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -291,8 +323,12 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	return
     }
     
+    ////TODO
+    AllAccounts = append(AllAccounts,pubs)
+    ////////
+
     pubkeyhex := hex.EncodeToString(ys)
-    fmt.Println("===============dcrm_genPubKey,pubkey = %s ==================",pubkeyhex)
+    fmt.Println("===============dcrm_genPubKey,pubkey = %s,nonce =%s ==================",pubkeyhex,nonce)
     //tip, err := StorePubAccount(wk.groupid, pubkeyhex, mode)
     //fmt.Printf("==== dcrm_genPubKey() ====, StorePubAccount tip: %v, err: %v\n", tip, err)
     ////save to db
@@ -306,6 +342,9 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
     kd := KeyData{Key:[]byte(key2),Data:nonce}
     PubKeyDataChan <-kd
+    /////
+    LdbPubKeyData[key2] = []byte(nonce)
+    ////
 
     tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
     if reply != nil {
@@ -331,12 +370,24 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	
 	kd = KeyData{Key:ys,Data:ss}
 	PubKeyDataChan <-kd
+	/////
+	LdbPubKeyData[string(ys)] = []byte(ss)
+	////
+
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	kd = KeyData{Key:[]byte(key),Data:ss}
 	PubKeyDataChan <-kd
+	/////
+	LdbPubKeyData[key] = []byte(ss)
+	////
+
 	key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 	kd = KeyData{Key:[]byte(key),Data:ss}
 	PubKeyDataChan <-kd
+	/////
+	LdbPubKeyData[key] = []byte(ss)
+	////
+
 	/*lock.Lock()
 	dir := GetDbDir()
 	db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -376,9 +427,17 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     } else {
 	kd = KeyData{Key:ys,Data:ss}
 	PubKeyDataChan <-kd
+	/////
+	LdbPubKeyData[string(ys)] = []byte(ss)
+	////
+
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	kd = KeyData{Key:[]byte(key),Data:ss}
 	PubKeyDataChan <-kd
+	/////
+	LdbPubKeyData[key] = []byte(ss)
+	////
+
 	for _, ct := range cryptocoins.Cointypes {
 	    if strings.EqualFold(ct, "ALL") {
 		continue
@@ -396,6 +455,9 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
+	    /////
+	    LdbPubKeyData[key] = []byte(ss)
+	    ////
 	}
 	/*lock.Lock()
 	dir := GetDbDir()
@@ -456,7 +518,7 @@ func SavePubKeyDataToDb() {
 		if err != nil {
 		    for i:=0;i<1000;i++ {
 			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil {
+			if err == nil && db != nil {
 			    break
 			}
 			
@@ -464,11 +526,64 @@ func SavePubKeyDataToDb() {
 		    }
 		}
 		//
-		if err == nil {
+		if db != nil {
 		    db.Put(kd.Key,[]byte(kd.Data))
 		    db.Close()
 		} else {
 		    PubKeyDataChan <-kd
+		}
+		
+		time.Sleep(time.Duration(10000))  //na, 1 s = 10e9 na
+	}
+    }
+}
+
+func GetAllPubKeyDataFromDb() {
+    for {
+	select {
+	    case kd := <-GetPubKeyDataChan:
+		fmt.Println("==============GetAllPubKeyDataFromDb,start read from db===============")
+		dir := GetDbDir()
+		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+		//bug
+		if err != nil {
+		    for i:=0;i<1000;i++ {
+			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+			if err == nil && db != nil {
+			    break
+			}
+			
+			time.Sleep(time.Duration(1000000))
+		    }
+		}
+		//
+		if db != nil {
+		    fmt.Println("==============GetAllPubKeyDataFromDb,open db success===============")
+		    pds := make([]*PubKeyData,0)
+		    iter := db.NewIterator() 
+		    for iter.Next() {
+			value := string(iter.Value())
+			ss,err := UnCompress(value)
+			if err != nil {
+			    fmt.Println("==============GetAllPubKeyDataFromDb,1111 err = %v===============",err)
+			    continue
+			}
+			
+			pubs,err := Decode2(ss,"PubKeyData")
+			if err != nil {
+			    fmt.Println("==============GetAllPubKeyDataFromDb,2222 err = %v===============",err)
+			    continue
+			}
+			
+			pd := pubs.(*PubKeyData)
+			pds = append(pds,pd)
+		    }
+		    iter.Release()
+		    db.Close()
+		    kd <-pds
+		} else {
+		    fmt.Println("==============GetAllPubKeyDataFromDb,open db fail===============")
+		    GetPubKeyDataChan <-kd
 		}
 		
 		time.Sleep(time.Duration(10000))  //na, 1 s = 10e9 na

@@ -32,7 +32,7 @@ import (
 	cryptocoinsconfig "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
 	"encoding/json"
 	//"github.com/syndtr/goleveldb/leveldb"
-	"github.com/fsn-dev/dcrm-walletService/ethdb"
+	//"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"encoding/hex"
 )
 
@@ -50,12 +50,9 @@ func Start() {
     cryptocoins.Init()
 }
 
-type DcrmPubkeyRes struct {
-    Account string
+type DcrmAccountsBalanceRes struct {
     PubKey string
-    Address string
     Balances []SubAddressBalance
-    DcrmAddress map[string]string
 }
 
 type SubAddressBalance struct {
@@ -71,7 +68,13 @@ type DcrmAddrRes struct {
     Cointype string
 }
 
-func GetPubKeyData(key []byte,account string,cointype string) (string,string,error) {
+type DcrmPubkeyRes struct {
+    Account string
+    PubKey string
+    DcrmAddress map[string]string
+}
+
+/*func GetPubKeyData(key []byte,account string,cointype string) (string,string,error) {
     if key == nil || cointype == "" {
 	return "","dcrm back-end internal error:parameter error in func GetPubKeyData",fmt.Errorf("get pubkey data param error.")
     }
@@ -222,65 +225,99 @@ func ExsitPubKey(account string,cointype string) (string,bool) {
     PubLock.Unlock()
     return pubkey,true
 }
+*/
 
-func GetPubKeyByDcrmAddr(account string,cointype string,dcrmaddr string) (string,error) {
-    fmt.Println("============GetPubKeyByDcrmAddr,account =%s,cointype =%s,dcrmaddr =%s =============",account,cointype,dcrmaddr)
-     //db
-    PubLock.Lock()
-    dir := dev.GetDbDir()
-    ////////
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil {
-	for i:=0;i<1000;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
+func GetPubKeyData(key string,account string,cointype string) (string,string,error) {
+    if key == "" || cointype == "" {
+	return "","dcrm back-end internal error:parameter error in func GetPubKeyData",fmt.Errorf("get pubkey data param error.")
     }
-    //
-    if err != nil {
-        PubLock.Unlock()
-	fmt.Println("============GetPubKeyByDcrmAddr,err 11111 =%v =============",err)
-        return "",err
-    }
-    
-    key2 := dev.Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-    da,err := db.Get([]byte(key2))
+
+    da,exsit := dev.LdbPubKeyData[key]
     ///////
-    if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	fmt.Println("============GetPubKeyByDcrmAddr,err 22222 =%v =============",err)
-	return "",err
+    if exsit == false {
+	return "","dcrm back-end internal error:get data from db fail in func GetPubKeyData",fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
     }
 
     ds,err := dev.UnCompress(string(da))
     if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	fmt.Println("============GetPubKeyByDcrmAddr,err 33333 =%v =============",err)
-	return "",err
+	return "","dcrm back-end internal error:uncompress data fail in func GetPubKeyData",err
     }
 
     dss,err := dev.Decode2(ds,"PubKeyData")
     if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	fmt.Println("============GetPubKeyByDcrmAddr,err 44444 =%v =============",err)
-	return "",err
+	return "","dcrm back-end internal error:decode PubKeyData fail",err
     }
 
     pubs := dss.(*dev.PubKeyData)
-    fmt.Println("================GetPubKeyByDcrmAddr,pubs =%v =================",pubs)
     pubkey := hex.EncodeToString([]byte(pubs.Pub))
-    fmt.Println("================GetPubKeyByDcrmAddr,pubkey =%s =================",pubkey)
-    db.Close()
-    PubLock.Unlock()
-    return pubkey,nil
+    ///////////
+    var m interface{}
+    if !strings.EqualFold(cointype, "ALL") {
+
+	h := cryptocoins.NewCryptocoinHandler(cointype)
+	if h == nil {
+	    return "","cointype is not supported",fmt.Errorf("req addr fail.cointype is not supported.")
+	}
+
+	ctaddr, err := h.PublicKeyToAddress(pubkey)
+	if err != nil {
+	    return "","dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkey,fmt.Errorf("req addr fail.")
+	}
+
+	m = &DcrmAddrRes{Account:account,PubKey:pubkey,DcrmAddr:ctaddr,Cointype:cointype}
+	b,_ := json.Marshal(m)
+	return string(b),"",nil
+    }
+    
+    addrmp := make(map[string]string)
+    for _, ct := range cryptocoins.Cointypes {
+	if strings.EqualFold(ct, "ALL") {
+	    continue
+	}
+
+	h := cryptocoins.NewCryptocoinHandler(ct)
+	if h == nil {
+	    continue
+	}
+	ctaddr, err := h.PublicKeyToAddress(pubkey)
+	if err != nil {
+	    continue
+	}
+	
+	addrmp[ct] = ctaddr
+    }
+
+    m = &DcrmPubkeyRes{Account:account, PubKey:pubkey, DcrmAddress:addrmp}
+    b,_ := json.Marshal(m)
+    return string(b),"",nil
+}
+
+func ExsitPubKey(account string,cointype string) (string,bool) {
+    key := dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
+    da,exsit := dev.LdbPubKeyData[key]
+    ///////
+    if exsit == false {
+	key = dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
+	da,exsit = dev.LdbPubKeyData[key]
+	///////
+	if exsit == false {
+	    return "",false
+	}
+    }
+
+    ds,err := dev.UnCompress(string(da))
+    if err != nil {
+	return "",false
+    }
+
+    dss,err := dev.Decode2(ds,"PubKeyData")
+    if err != nil {
+	return "",false
+    }
+
+    pubs := dss.(*dev.PubKeyData)
+    pubkey := hex.EncodeToString([]byte(pubs.Pub))
+    return pubkey,true
 }
 
 func SendReqToGroup(msg string,rpctype string) (string,string,error) {
@@ -519,7 +556,7 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
 
     key2 := dev.Keccak256Hash([]byte(strings.ToLower(datas[4]))).Hex()
-    pubdata,tip,err := GetPubKeyData([]byte(key2),datas[1],datas[7])
+    pubdata,tip,err := GetPubKeyData(key2,datas[1],datas[7])
     if err != nil {
 	return "",tip,err
     }
@@ -601,17 +638,15 @@ func GetLockOutStatus(key string) (string,string,error) {
     return dev.GetLockOutStatus(key)
 }
 
-func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
-    //key := dev.Keccak256Hash([]byte(strings.ToLower(pubkey))).Hex()
-    fmt.Printf("GetPubAccountBalance,pubkey =%s",pubkey)
+func GetAccountsBalance(pubkey string) (interface{}, string, error) {
     key,err2 := hex.DecodeString(pubkey)
     if err2 != nil {
-	fmt.Printf("GetPubAccountBalance,decode string fail,err =%v",err2)
+	fmt.Printf("==============GetAccountsBalance,decode string fail,err =%v=============",err2)
 	return nil,"decode pubkey fail",err2
     }
 
-    ret, tip, err := GetPubKeyData(key, pubkey, "ALL")
-    fmt.Printf("GetPubAccountBalance, ret: %v, tip: %v, err: %v\n", ret, tip, err)
+    ret, tip, err := GetPubKeyData(string(key), pubkey, "ALL")
+    fmt.Printf("================GetAccountsBalance, ret =%s, err =%v============\n", ret,err)
     var m interface{}
     if err == nil {
         dp := DcrmPubkeyRes{}
@@ -623,8 +658,8 @@ func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
             wg.Add(1)
             go func (cointype, subaddr string) {
                 defer wg.Done()
-                balance, _, err := GetBalance(pubkey, cointype, subaddr)
-                fmt.Printf("cointype: %v, subaddr: %v, balance: %v, err: %v\n", cointype, subaddr, balance, err)
+                balance, _, err := GetBalance(pubkey,cointype, subaddr)
+                fmt.Println("===============GetAccountsBalance,cointype =%s, dcrmaddr =%s, balance =%s, err =%v================", cointype, subaddr, balance, err)
                 if err != nil {
                     balance = "0"
                 }
@@ -633,28 +668,19 @@ func GetPubAccountBalance(pubkey string) (interface{}, string, error) {
         }
         wg.Wait()
 	for _, cointype := range cryptocoins.Cointypes {
-                 if ret[cointype] != nil {
-                     balances = append(balances, *(ret[cointype]))
-                     fmt.Printf("balances: %v\n", balances)
-                     delete(ret, cointype)
-                 }
-            }
-        h := cryptocoins.NewCryptocoinHandler("ETH")
-        if h == nil {
-        }
-        ctaddr, err := h.PublicKeyToAddress(pubkey)
-        if err != nil {
-        }
-        m = &DcrmPubkeyRes{PubKey:pubkey, Address: ctaddr, Balances:balances}
+	     if ret[cointype] != nil {
+		 balances = append(balances, *(ret[cointype]))
+		 fmt.Printf("balances: %v\n", balances)
+		 delete(ret, cointype)
+	     }
+	}
+        m = &DcrmAccountsBalanceRes{PubKey:pubkey,Balances:balances}
     }
+    
     return m, tip, err
 }
 
 func GetBalance(account string, cointype string,dcrmaddr string) (string,string,error) {
-    /*pubkey,err := GetPubKeyByDcrmAddr(account,cointype,dcrmaddr) 
-    if err != nil {
-	return err.Error()
-    }*/
 
     if strings.EqualFold(cointype, "BCH") {
 	return "0","",nil  //TODO
@@ -704,8 +730,8 @@ func GetReqAddrNonce(account string) (string,string,error) {
     return nonce,"",nil
 }
 
-func GetNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
-    nonce,tip,err := dev.GetNonce(account,cointype,dcrmaddr)
+func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
+    nonce,tip,err := dev.GetLockOutNonce(account,cointype,dcrmaddr)
     if err != nil {
 	return "",tip,err
     }

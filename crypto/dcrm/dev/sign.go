@@ -32,7 +32,7 @@ import (
     "fmt"
     "encoding/hex"
     //"github.com/syndtr/goleveldb/leveldb"
-    "github.com/fsn-dev/dcrm-walletService/ethdb"
+    //"github.com/fsn-dev/dcrm-walletService/ethdb"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
@@ -46,7 +46,7 @@ import (
     "crypto/ecdsa"
 )
 
-func GetReqAddrNonce(account string) (string,string,error) {
+/*func GetReqAddrNonce(account string) (string,string,error) {
 
      //db
     lock.Lock()
@@ -90,8 +90,25 @@ func GetReqAddrNonce(account string) (string,string,error) {
     lock.Unlock()
     return fmt.Sprintf("%v",nonce),"",nil
 }
+*/
 
-func GetNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
+func GetReqAddrNonce(account string) (string,string,error) {
+    key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+    da,exsit := LdbPubKeyData[key2]
+    ///////
+    if exsit == false {
+	return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("map not found, account = %s",account)
+    }
+
+    nonce,_ := new(big.Int).SetString(string(da),10)
+    one,_ := new(big.Int).SetString("1",10)
+    nonce = new(big.Int).Add(nonce,one)
+
+    fmt.Println("=========GetReqAddrNonce,get new nonce = %v ============",nonce)
+    return fmt.Sprintf("%v",nonce),"",nil
+}
+
+/*func GetNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
 
      //db
     lock5.Lock()
@@ -151,15 +168,48 @@ func GetNonce(account string,cointype string,dcrmaddr string) (string,string,err
     lock5.Unlock()
     return fmt.Sprintf("%v",nonce),"",nil
 }
+*/
+
+func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
+    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    da,exsit := LdbPubKeyData[key2]
+    ///////
+    if exsit == false {
+	return "","dcrm back-end internal error:get nonce from db fail",fmt.Errorf("map not found account = %s,cointype = %s",account,cointype)
+    }
+
+    ss,err := UnCompress(string(da))
+    if err != nil {
+	return "","dcrm back-end internal error:uncompress nonce data from db fail",err
+    }
+    
+    pubs,err := Decode2(ss,"PubKeyData")
+    if err != nil {
+	return "","dcrm back-end internal error:decode nonce data from db fail",err
+    }
+   
+    ////check account?? //TODO
+    ////
+
+    nonce2 := (pubs.(*PubKeyData)).Nonce
+    nonce,_ := new(big.Int).SetString(string(nonce2),10)
+    one,_ := new(big.Int).SetString("1",10)
+    nonce = new(big.Int).Add(nonce,one)
+    fmt.Println("=========GetLockOutNonce,get new nonce = %v ============",nonce)
+    return fmt.Sprintf("%v",nonce),"",nil
+}
 
 func SetReqAddrNonce(account string,nonce string) (string,error) {
     key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
     kd := KeyData{Key:[]byte(key),Data:nonce}
     PubKeyDataChan <-kd
+
+    LdbPubKeyData[key] = []byte(nonce)
+
     return "",nil
 }
 
-func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {
+/*func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {
      //db
     lock5.Lock()
     dir := GetDbDir()
@@ -273,8 +323,85 @@ func SetNonce(account string,cointype string,dcrmaddr string,nonce string) (stri
     lock5.Unlock()
     return "",nil
 }
+*/
 
-func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
+func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {
+    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    da,exsit := LdbPubKeyData[key2]
+    ///////
+    if exsit == false {
+	return "dcrm back-end internal error:get nonce data from db fail",fmt.Errorf("map not found account = %s,cointype = %s",account,cointype)
+    }
+
+    ss,err := UnCompress(string(da))
+    if err != nil {
+	return "dcrm back-end internal error:uncompress nonce data from db fail",err
+    }
+    
+    pubs,err := Decode2(ss,"PubKeyData")
+    if err != nil {
+	return "dcrm back-end internal error:decode nonce data from db fail",err
+    }
+   
+    ////check account?? //TODO
+    ////
+    (pubs.(*PubKeyData)).Nonce = nonce
+
+    epubs,err := Encode2(pubs.(*PubKeyData))
+    if err != nil {
+	return "dcrm back-end internal error:encode nonce data fail",err
+    }
+    
+    ss,err = Compress([]byte(epubs))
+    if err != nil {
+	return "dcrm back-end internal error:compress nonce data fail",err
+    }
+
+    ///update db
+    pubkeyhex := hex.EncodeToString([]byte((pubs.(*PubKeyData)).Pub))
+
+    if !strings.EqualFold(cointype, "ALL") {
+
+	h := cryptocoins.NewCryptocoinHandler(cointype)
+	if h == nil {
+	    return "cointype is not supported in lockout",fmt.Errorf("set nonce fail.cointype is not supported.")
+	}
+
+	ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+	if err != nil {
+	    return "dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,err
+	}
+
+	LdbPubKeyData[(pubs.(*PubKeyData)).Pub] = []byte(ss)
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
+	LdbPubKeyData[key] = []byte(ss)
+	LdbPubKeyData[ctaddr] = []byte(ss)
+    } else {
+	LdbPubKeyData[(pubs.(*PubKeyData)).Pub] = []byte(ss)
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
+	LdbPubKeyData[key] = []byte(ss)
+	for _, ct := range cryptocoins.Cointypes {
+	    if strings.EqualFold(ct, "ALL") {
+		continue
+	    }
+
+	    h := cryptocoins.NewCryptocoinHandler(ct)
+	    if h == nil {
+		continue
+	    }
+	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+	    if err != nil {
+		continue
+	    }
+	    
+	    LdbPubKeyData[ctaddr] = []byte(ss)
+	}
+    }
+    //
+    return "",nil
+}
+
+/*func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
     fmt.Println("========validate_lockout============")
     var ret2 Err
     chandler := cryptocoins.NewCryptocoinHandler(cointype)
@@ -287,7 +414,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     Nonce,_ := new(big.Int).SetString(nonce,10)
 
     //nonce check
-    cur_nonce_str,tip,err := GetNonce(account,cointype,dcrmaddr)
+    cur_nonce_str,tip,err := GetLockOutNonce(account,cointype,dcrmaddr)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:err}
 	ch <- res
@@ -491,7 +618,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    return
 	}
 
-	tip,err = SetNonce(account,cointype,dcrmaddr,nonce)
+	tip,err = SetLockOutNonce(account,cointype,dcrmaddr,nonce)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update nonce error.")}
 	    ch <- res
@@ -591,6 +718,386 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 	//dcrmaddr := pubhex
 	db.Close()
 	lock5.Unlock()
+	fmt.Println("======== dcrm_sign eos,pkx = %+v,pky = %+v,==========",dcrmpkx2,dcrmpky2)
+	txhashs := []rune(txhash)
+	if string(txhashs[0:2]) == "0x" {
+	    txhash = string(txhashs[2:])
+	}
+
+	w,err := FindWorker(msgprex)
+	if w == nil || err != nil {
+	    logs.Debug("===========get worker fail.=============")
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:GetRetErr(ErrNoFindWorker)}
+	    ch <- res
+	    return ""
+	}
+	id := w.id
+
+	var ch1 = make(chan interface{}, 1)
+	var flag = false
+	var ret string
+	var tip string
+	var bak_sig string
+	//25-->1
+	for i := 0; i < 1; i++ {
+		bak_sig = Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx2,dcrmpky2,ch1,id)
+		ret,tip,_ = GetChannelValue(ch_t,ch1)
+		//if ret != "" && eos.IsCanonical([]byte(ret)) == true 
+		if ret == "" {
+			w := workers[id]
+			w.Clear2()
+			continue
+		}
+		b, _ := hex.DecodeString(ret)
+		if eos.IsCanonical(b) == true {
+			flag = true
+			break
+		}
+		w := workers[id]
+		w.Clear2()
+	}
+	if flag == false {
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:eos dcrm sign fail",Err:GetRetErr(ErrDcrmSigFail)}
+		ch <- res
+		return ""
+	}
+
+	res := RpcDcrmRes{Ret:ret,Tip:tip,Err:nil}
+	ch <- res
+	return bak_sig
+    }
+    
+    /////////////
+    txhashs := []rune(txhash)
+    if string(txhashs[0:2]) == "0x" {
+	txhash = string(txhashs[2:])
+    }
+
+    w,err := FindWorker(msgprex)
+    if w == nil || err != nil {
+	fmt.Println("===========get worker fail.=============")
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:fmt.Errorf("no find worker.")}
+	ch <- res
+	return ""
+    }
+    id := w.id
+
+    GetEnodesInfo(w.groupid) 
+    
+    if int32(Enode_cnts) != int32(NodeCnt) {
+	fmt.Println("============the net group is not ready.please try again.================")
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:fmt.Errorf("group not ready.")}
+	ch <- res
+	return ""
+    }
+
+    fmt.Println("===================!!!Start!!!====================")
+
+    ///////
+     if strings.EqualFold(cointype,"EVT1") == true {
+	logs.Debug("======== dcrm_sign ready to call Sign_ec2","msgprex",msgprex,"save",save,"txhash",txhash,"cointype",cointype,"pkx",dcrmpkx,"pky",dcrmpky,"id",id)
+	logs.Debug("!!! token type is EVT1 !!!")
+	var ch1 = make(chan interface{}, 1)
+	var flag = false
+	var ret string
+	var tip string
+	var cherr error
+	var bak_sig string
+	//25-->1
+	for i := 0; i < 1; i++ {
+		bak_sig = Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx,dcrmpky,ch1,id)
+		ret, tip,cherr = GetChannelValue(ch_t,ch1)
+		if cherr != nil {
+			logs.Debug("======== dcrm_sign evt","cherr",cherr)
+			time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+			w := workers[id]
+			w.Clear2()
+			continue
+		}
+		logs.Debug("======== dcrm_sign evt","signature",ret,"","========")
+		//if ret != "" && eos.IsCanonical([]byte(ret)) == true 
+		if ret == "" {
+			w := workers[id]
+			w.Clear2()
+			continue
+		}
+		b, _ := hex.DecodeString(ret)
+		if eos.IsCanonical(b) == true {
+			fmt.Printf("\nret is a canonical signature\n")
+			flag = true
+			break
+		}
+		w := workers[id]
+		w.Clear2()
+	}
+	logs.Debug("======== dcrm_sign evt","got rsv flag",flag,"ret",ret,"","========")
+	if flag == false {
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:dcrm sign fail",Err:GetRetErr(ErrDcrmSigFail)}
+		ch <- res
+		return ""
+	}
+	//ch <- ret
+	res := RpcDcrmRes{Ret:ret,Tip:tip,Err:cherr}
+	ch <- res
+	return bak_sig
+    } else {
+	bak_sig := Sign_ec2(msgprex,save,txhash,cointype,dcrmpkx,dcrmpky,ch,id)
+	return bak_sig
+    }
+
+    return ""
+}
+*/
+
+func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
+    fmt.Println("========validate_lockout,nonce =%s============",nonce)
+    var ret2 Err
+    chandler := cryptocoins.NewCryptocoinHandler(cointype)
+    if chandler == nil {
+	    res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:GetRetErr(ErrCoinTypeNotSupported)}
+	    ch <- res
+	    return
+    }
+
+    Nonce,_ := new(big.Int).SetString(nonce,10)
+
+    //nonce check
+    cur_nonce_str,tip,err := GetLockOutNonce(account,cointype,dcrmaddr)
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Tip:tip,Err:err}
+	ch <- res
+	return
+    }
+
+    cur_nonce,_ := new(big.Int).SetString(cur_nonce_str,10)
+    if Nonce.Cmp(cur_nonce) != 0 {
+	res := RpcDcrmRes{Ret:"",Tip:"lockout tx nonce error",Err:fmt.Errorf("nonce error.")}
+	ch <- res
+	return
+    }
+    //
+    
+    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    da,exsit := LdbPubKeyData[key2]
+    ///////
+    if exsit == false {
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout data from db fail",Err:fmt.Errorf("get lockout data from db fail")}
+        ch <- res
+	return 
+    }
+
+    ss,err := UnCompress(string(da))
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:uncompress lockout data from db fail",Err:err}
+        ch <- res
+	return
+    }
+    
+    pubs,err := Decode2(ss,"PubKeyData")
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:decode lockout data from db fail",Err:err}
+        ch <- res
+	return
+    }
+   
+    save := (pubs.(*PubKeyData)).Save
+    dcrmpub := (pubs.(*PubKeyData)).Pub
+
+    var dcrmpkx *big.Int
+    var dcrmpky *big.Int
+    if !types.IsDefaultED25519(cointype) {
+	dcrmpks := []byte(dcrmpub)
+	dcrmpkx,dcrmpky = secp256k1.S256().Unmarshal(dcrmpks[:])
+    }
+
+    pubkey := hex.EncodeToString([]byte(dcrmpub))
+    realdcrmfrom, err := chandler.PublicKeyToAddress(pubkey)
+    if err != nil {
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get dcrm addr error from pubkey:"+pubkey,Err:fmt.Errorf("get dcrm addr fail")}
+        ch <- res
+        return
+    }
+    
+    if !strings.EqualFold(dcrmaddr,realdcrmfrom) {
+	res := RpcDcrmRes{Ret:"",Tip:"verify lockout dcrm addr fail,maybe input parameter error",Err:fmt.Errorf("check dcrm addr fail.")}
+        ch <- res
+        return
+    }
+    
+    amount, _ := new(big.Int).SetString(value,10)
+    jsonstring := "" // TODO erc20
+    // For EOS, realdcrmpubkey is needed to calculate userkey,
+    // but is not used as real transaction maker.
+    // The real transaction maker is eospubkey.
+    var eosaccount string
+    if strings.EqualFold(cointype,"EOS") {
+	eosaccount, _, _ = GetEosAccount()
+	if eosaccount == "" {
+	    res := RpcDcrmRes{Ret:"",Tip:"get real eos user fail",Err:GetRetErr(ErrGetRealEosUserFail)}
+	    ch <- res
+	    return
+	}
+    }
+    
+    var lockouttx interface{}
+    var digests []string
+    var buildTxErr error
+    if strings.EqualFold(cointype,"EOS") {
+    	lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(eosaccount,pubkey,to,amount,jsonstring)
+    } else {
+	lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(realdcrmfrom,pubkey,to,amount,jsonstring)
+    }
+    
+    if buildTxErr != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:build unsign transaction fail",Err:buildTxErr}
+	    ch <- res
+	    return
+    }
+    
+    rch := make(chan interface{}, 1)
+    var sigs []string
+    var bak_sigs []string
+    for k, digest := range digests {
+	    fmt.Printf("============validate_lockout,call dcrm_sign times = %+v,cointype = %+v ==============\n",k,cointype)
+
+	    if types.IsDefaultED25519(cointype) {
+		bak_sig := dcrm_sign_ed(wsid,digest,save,dcrmpub,cointype,rch)
+		ret,tip,cherr := GetChannelValue(ch_t,rch)
+		if cherr != nil {
+		    res := RpcDcrmRes{Ret:"",Tip:tip,Err:cherr}
+			ch <- res
+			return
+		}
+		
+		sigs = append(sigs, ret)
+		if bak_sig != "" {
+		    bak_sigs = append(bak_sigs, bak_sig)
+		}
+
+		continue
+	    }
+
+	    bak_sig := dcrm_sign(wsid,digest,save,dcrmpkx,dcrmpky,cointype,rch)
+	    ret,tip,cherr := GetChannelValue(ch_t,rch)
+	    if cherr != nil {
+		    res := RpcDcrmRes{Ret:"",Tip:tip,Err:cherr}
+		    ch <- res
+		    return
+	    }
+	    
+	    //bug
+	    rets := []rune(ret)
+	    if len(rets) != 130 {
+		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:wrong rsv size",Err:GetRetErr(ErrDcrmSigWrongSize)}
+		ch <- res
+		return
+	    }
+	    sigs = append(sigs, string(ret))
+	    if bak_sig != "" {
+		bak_sigs = append(bak_sigs, bak_sig)
+	    }
+    }
+
+    signedTx, err := chandler.MakeSignedTransaction(sigs, lockouttx)
+    if err != nil {
+	    ret2.Info = err.Error()
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:new sign transaction fail",Err:ret2}
+	    ch <- res
+	    return
+    }
+
+    lockout_tx_hash, err := chandler.SubmitTransaction(signedTx)
+    fmt.Println("==========validate_lockout,send to outside net,err = %+v================",err)
+    /////////add for bak sig
+    if err != nil && len(bak_sigs) != 0 {
+
+	signedTx, err = chandler.MakeSignedTransaction(bak_sigs, lockouttx)
+	if err != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:new sign transaction fail",Err:err}
+		ch <- res
+		return
+	}
+	
+	lockout_tx_hash, err = chandler.SubmitTransaction(signedTx)
+	fmt.Println("==========validate_lockout,send to outside net,err = %+v================",err)
+    }
+    /////////
+    
+    if lockout_tx_hash != "" {
+	w,err := FindWorker(wsid)
+	if w == nil || err != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:fmt.Errorf("get worker error.")}
+	    ch <- res
+	    return
+	}
+
+	tip,err = SetLockOutNonce(account,cointype,dcrmaddr,nonce)
+	if err != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update nonce error.")}
+	    ch <- res
+	    return
+	}
+	
+	tip,reply := AcceptLockOut(account,w.groupid,nonce,dcrmaddr,w.limitnum,true,"true","Success",lockout_tx_hash,"","","") 
+	if reply != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update lockout status error.")}
+	    ch <- res
+	    return
+	}
+
+	res := RpcDcrmRes{Ret:lockout_tx_hash,Tip:tip,Err:err}
+	ch <- res
+	return
+    }
+
+    if err != nil {
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send lockout tx to network fail",Err:err}
+	    ch <- res
+	    return
+    }
+    
+    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:lockout fail",Err:GetRetErr(ErrSendTxToNetFail)}
+    ch <- res
+    return
+}
+
+//ec2
+//msgprex = hash 
+//return value is the backup for dcrm sig.
+func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky *big.Int,cointype string,ch chan interface{}) string {
+
+    if strings.EqualFold(cointype,"EOS") == true {
+	
+	var eosstr string
+	for k,v := range LdbPubKeyData {
+	    key := string(k)
+	    value := string(v)
+	    if strings.EqualFold(key,string([]byte("eossettings"))) {
+		eosstr = value
+		break
+	    }
+	}
+	///////
+	if eosstr == "" {
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get eos setting data from db fail",Err:fmt.Errorf("get save date fail.")}
+	    ch <- res
+	    return ""
+	}
+
+	// Retrieve eospubkey
+	eosstrs := strings.Split(string(eosstr),":")
+	fmt.Println("======== get eos settings,eosstr = %s ========",eosstr)
+	if len(eosstrs) != 5 {
+	    var ret2 Err
+	    ret2.Info = "get eos settings error: "+string(eosstr)
+	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:eos setting data error",Err:ret2}
+	    ch <- res
+	    return ""
+	}
+	pubhex := eosstrs[3]
+	dcrmpks, _ := hex.DecodeString(pubhex)
+	dcrmpkx2,dcrmpky2 := secp256k1.S256().Unmarshal(dcrmpks[:])
+	//dcrmaddr := pubhex
 	fmt.Println("======== dcrm_sign eos,pkx = %+v,pky = %+v,==========",dcrmpkx2,dcrmpky2)
 	txhashs := []rune(txhash)
 	if string(txhashs[0:2]) == "0x" {
@@ -1942,7 +2449,7 @@ func DecryptMsg (cm string) (string, error) {
 ///
 
 func SendMsgToPeer(enodes string,msg string) {
-    fmt.Println("==============SendMsgToPeer,msg =%s,send to peer %s ===================",msg,enodes)
+    /*fmt.Println("==============SendMsgToPeer,msg =%s,send to peer %s ===================",msg,enodes)
     en := strings.Split(string(enodes[8:]),"@")
     cm,err := EncryptMsg(msg,en[0])
     if err != nil {
@@ -1950,7 +2457,8 @@ func SendMsgToPeer(enodes string,msg string) {
 	return
     }
 
-    SendToPeer(enodes,cm)
+    SendToPeer(enodes,cm)*/
+    SendToPeer(enodes,msg)
 }
 
 type ECDSASignature struct {

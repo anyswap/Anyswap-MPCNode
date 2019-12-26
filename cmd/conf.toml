@@ -1,0 +1,22 @@
+# bootnode config
+[bootnode]
+# nodekey
+Nodekey="bootnode.key"
+# port
+Addr=4444
+# group mode
+Group=0
+# nodes number in group
+Nodes=3
+
+# gdcrm config
+[gdcrm]
+# nodekey
+Nodekey="node.key"
+# bootnodes
+Bootnodes=""
+# port
+Port=5555
+# rpcport
+Rpcport=6666
+

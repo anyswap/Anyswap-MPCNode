@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
@@ -59,6 +60,17 @@ var (
 	app = cli.NewApp()
 )
 
+type conf struct {
+	Gdcrm *gdcrmConf
+}
+
+type gdcrmConf struct {
+	Nodekey string
+	Bootnodes string
+	Port int
+	Rpcport int
+}
+
 var count int = 0
 
 func init() {
@@ -75,8 +87,36 @@ func init() {
 	}
 }
 
+func getConfig() error {
+	var cf conf
+	var path string = "./conf.toml"
+	if _, err := toml.DecodeFile(path, &cf); err != nil {
+		//fmt.Printf("%v\n", err)
+		return err
+	}
+	nkey := cf.Gdcrm.Nodekey
+	bnodes := cf.Gdcrm.Bootnodes
+	pt := cf.Gdcrm.Port
+	rport := cf.Gdcrm.Rpcport
+	if nkey != "" {
+		keyfile = nkey
+	}
+	if bnodes != "" {
+		bootnodes = bnodes
+	}
+	if pt != 0 {
+		port = pt
+	}
+	if rport != 0 {
+		rpcport = rport
+	}
+	fmt.Printf("keyfile: %v, bootnodes: %v, port: %v, rpcport: %v\n", keyfile, bootnodes, port, rpcport)
+	return nil
+}
+
 func startP2pNode(c *cli.Context) error {
 	go func() error {
+		getConfig()
 		if genKey != "" {
 			nodeKey, err := crypto.GenerateKey()
 			if err != nil {

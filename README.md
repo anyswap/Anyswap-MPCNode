@@ -11,6 +11,10 @@ cd dcrm-walletService
 
 make
 
+## config file
+
+cmd/conf.toml (bin/cmd/conf.toml)
+
 ## Run
 
 ./bin/cmd/gdcrm

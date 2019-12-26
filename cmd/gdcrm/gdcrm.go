@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
@@ -59,6 +60,17 @@ var (
 	app = cli.NewApp()
 )
 
+type conf struct {
+	Gdcrm *gdcrmConf
+}
+
+type gdcrmConf struct {
+	Nodekey string
+	Bootnodes string
+	Port int
+	Rpcport int
+}
+
 var count int = 0
 
 func init() {
@@ -67,16 +79,53 @@ func init() {
 	app.Version = "5.0"
 	app.Action = StartDcrm
 	app.Flags = []cli.Flag{
-		cli.IntFlag{Name: "rpcport", Value: 4449, Usage: "listen port", Destination: &rpcport},
-		cli.IntFlag{Name: "port", Value: 4441, Usage: "listen port", Destination: &port},
-		cli.StringFlag{Name: "bootnodes", Value: "enode://aad98f8284b99d2438516c37d3d2d5d9b29a259d8ce8fe38eff303c8cac9eb002699d23d276951e77e123f47522b978ad419c0e418a7109aa40cf600bd07d6ac@47.107.50.83:4440", Usage: "boot node", Destination: &bootnodes},
+		cli.IntFlag{Name: "rpcport", Value: 0, Usage: "listen port", Destination: &rpcport},
+		cli.IntFlag{Name: "port", Value: 0, Usage: "listen port", Destination: &port},
+		cli.StringFlag{Name: "bootnodes", Value: "", Usage: "boot node", Destination: &bootnodes},
 		cli.StringFlag{Name: "nodekey", Value: "", Usage: "private key filename", Destination: &keyfile},
 		cli.StringFlag{Name: "genkey", Value: "", Usage: "generate a node key", Destination: &genKey},
 	}
 }
 
+func getConfig() error {
+	var cf conf
+	var path string = "./conf.toml"
+	if _, err := toml.DecodeFile(path, &cf); err != nil {
+		//fmt.Printf("%v\n", err)
+		return err
+	}
+	nkey := cf.Gdcrm.Nodekey
+	bnodes := cf.Gdcrm.Bootnodes
+	pt := cf.Gdcrm.Port
+	rport := cf.Gdcrm.Rpcport
+	if nkey != "" && keyfile == "" {
+		keyfile = nkey
+	}
+	if bnodes != "" && bootnodes == "" {
+		bootnodes = bnodes
+	}
+	if pt != 0 && port == 0 {
+		port = pt
+	}
+	if rport != 0 && rpcport == 0 {
+		rpcport = rport
+	}
+	return nil
+}
+
 func startP2pNode(c *cli.Context) error {
 	go func() error {
+		getConfig()
+		if port == 0 {
+			port = 4441
+		}
+		if rpcport == 0 {
+			rpcport = 4449
+		}
+		if bootnodes == "" {
+			bootnodes = "enode://aad98f8284b99d2438516c37d3d2d5d9b29a259d8ce8fe38eff303c8cac9eb002699d23d276951e77e123f47522b978ad419c0e418a7109aa40cf600bd07d6ac@47.107.50.83:4440"
+		}
+		fmt.Printf("keyfile: %v, bootnodes: %v, port: %v, rpcport: %v\n", keyfile, bootnodes, port, rpcport)
 		if genKey != "" {
 			nodeKey, err := crypto.GenerateKey()
 			if err != nil {

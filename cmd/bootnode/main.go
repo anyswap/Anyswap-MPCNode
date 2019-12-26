@@ -24,6 +24,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/BurntSushi/toml"
 	//"github.com/fusion/go-fusion/cmd/utils"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -35,8 +36,8 @@ import (
 func main() {
 	var (
 		groupNum    = flag.Uint("group", uint(0), "group Number")//0:sdk, 1:one group, 2:two groups dcrm xp
-		groupNodesNum    = flag.Uint("nodes", uint(3), "nodes Number in some group, must > 0")
-		listenAddr  = flag.String("addr", ":4440", "listen address")
+		groupNodesNum    = flag.Uint("nodes", uint(0), "nodes Number in some group, must > 0")
+		listenAddr  = flag.String("addr", "", "listen address")
 		genKey      = flag.String("genkey", "", "generate a node key")
 		writeAddr   = flag.Bool("writeaddress", false, "write out the node's pubkey hash and quit")
 		nodeKeyFile = flag.String("nodekey", "", "private key filename")
@@ -49,7 +50,15 @@ func main() {
 		err     error
 	)
 	flag.Parse()
+	getConfig(groupNum, groupNodesNum, listenAddr, nodeKeyFile)
 
+	if *groupNodesNum == 0 {
+		*groupNodesNum = 3
+	}
+	if *listenAddr == "" {
+		*listenAddr = ":4440"
+	}
+	fmt.Printf("nodeKeyFile: %v, listenAddr: %v, group: %v, nodes: %v\n", *nodeKeyFile, *listenAddr, *groupNum, *groupNodesNum)
 	natm, err := nat.Parse(*natdesc)
 	if err != nil {
 		fmt.Errorf("-nat: %v", err)
@@ -140,3 +149,41 @@ func main() {
 
 	select {}
 }
+
+type conf struct {
+	Bootnode *bootnodeConf
+}
+
+type bootnodeConf struct {
+	Nodekey string
+	Addr uint
+	Group uint
+	Nodes uint
+}
+
+func getConfig(groupNum, groupNodesNum *uint, listenAddr, nodeKeyFile *string) error {
+	var cf conf
+	var path string = "./conf.toml"
+	if _, err := toml.DecodeFile(path, &cf); err != nil {
+		//fmt.Printf("%v\n", err)
+		return err
+	}
+	nkey := cf.Bootnode.Nodekey
+	pt := cf.Bootnode.Addr
+	gp := cf.Bootnode.Group
+	ns := cf.Bootnode.Nodes
+	if nkey != "" && *nodeKeyFile == "" {
+		*nodeKeyFile = nkey
+	}
+	if pt != 0 && *listenAddr == "" {
+		*listenAddr = fmt.Sprintf(":%v", pt)
+	}
+	if gp != 0 && *groupNum == 0 {
+		*groupNum = gp
+	}
+	if ns != 0 && *groupNodesNum == 0 {
+		*groupNodesNum = ns
+	}
+	return nil
+}
+

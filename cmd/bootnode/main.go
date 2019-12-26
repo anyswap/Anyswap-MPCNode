@@ -36,8 +36,8 @@ import (
 func main() {
 	var (
 		groupNum    = flag.Uint("group", uint(0), "group Number")//0:sdk, 1:one group, 2:two groups dcrm xp
-		groupNodesNum    = flag.Uint("nodes", uint(3), "nodes Number in some group, must > 0")
-		listenAddr  = flag.String("addr", ":4440", "listen address")
+		groupNodesNum    = flag.Uint("nodes", uint(0), "nodes Number in some group, must > 0")
+		listenAddr  = flag.String("addr", "", "listen address")
 		genKey      = flag.String("genkey", "", "generate a node key")
 		writeAddr   = flag.Bool("writeaddress", false, "write out the node's pubkey hash and quit")
 		nodeKeyFile = flag.String("nodekey", "", "private key filename")
@@ -52,6 +52,13 @@ func main() {
 	flag.Parse()
 	getConfig(groupNum, groupNodesNum, listenAddr, nodeKeyFile)
 
+	if *groupNodesNum == 0 {
+		*groupNodesNum = 3
+	}
+	if *listenAddr == "" {
+		*listenAddr = ":4440"
+	}
+	fmt.Printf("nodeKeyFile: %v, listenAddr: %v, group: %v, nodes: %v\n", *nodeKeyFile, *listenAddr, *groupNum, *groupNodesNum)
 	natm, err := nat.Parse(*natdesc)
 	if err != nil {
 		fmt.Errorf("-nat: %v", err)
@@ -165,19 +172,18 @@ func getConfig(groupNum, groupNodesNum *uint, listenAddr, nodeKeyFile *string) e
 	pt := cf.Bootnode.Addr
 	gp := cf.Bootnode.Group
 	ns := cf.Bootnode.Nodes
-	if nkey != "" {
+	if nkey != "" && *nodeKeyFile == "" {
 		*nodeKeyFile = nkey
 	}
-	if pt != 0 {
+	if pt != 0 && *listenAddr == "" {
 		*listenAddr = fmt.Sprintf(":%v", pt)
 	}
-	if gp != 0 {
+	if gp != 0 && *groupNum == 0 {
 		*groupNum = gp
 	}
-	if ns != 0 {
+	if ns != 0 && *groupNodesNum == 0 {
 		*groupNodesNum = ns
 	}
-	fmt.Printf("nodeKeyFile: %v, listenAddr: %v, group: %v, nodes: %v\n", *nodeKeyFile, *listenAddr, *groupNum, *groupNodesNum)
 	return nil
 }
 

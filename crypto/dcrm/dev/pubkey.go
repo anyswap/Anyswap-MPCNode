@@ -118,6 +118,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 
 	/////
 	LdbPubKeyData[key2] = []byte(nonce)
+	//key2 = Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
+	//LdbPubKeyData[key2] = []byte("0")
 	////
 
 	tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
@@ -344,6 +346,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     PubKeyDataChan <-kd
     /////
     LdbPubKeyData[key2] = []byte(nonce)
+    //key2 = Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
+    //LdbPubKeyData[key2] = []byte("0")
     ////
 
     tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")

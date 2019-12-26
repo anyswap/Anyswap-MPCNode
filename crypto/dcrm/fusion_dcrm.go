@@ -766,8 +766,8 @@ func GetLockOutReply() ([]string,string,error) {
 func init(){
 	p2pdcrm.RegisterRecvCallback(Call)
 	p2pdcrm.SdkProtocol_registerBroadcastInGroupCallback(dev.Call)
-	p2pdcrm.SdkProtocol_registerSendToGroupCallback(dev.Dcrmcall)
-	p2pdcrm.SdkProtocol_registerSendToGroupReturnCallback(dev.Dcrmcallret)
+	p2pdcrm.SdkProtocol_registerSendToGroupCallback(dev.DcrmCall)
+	p2pdcrm.SdkProtocol_registerSendToGroupReturnCallback(dev.DcrmCallRet)
 	p2pdcrm.RegisterCallback(dev.Call)
 
 	dev.RegP2pGetGroupCallBack(p2pdcrm.SdkProtocol_getGroup)

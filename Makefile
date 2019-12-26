@@ -2,7 +2,7 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-.PHONY: gdcrm bootnode clean
+.PHONY: gdcrm bootnode cfaucet clean
 
 gdcrm:
 	./build.sh

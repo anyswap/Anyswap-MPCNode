@@ -16,6 +16,7 @@ if [ ! -f "build.sh" ]; then
 	echo "Run go mod vendor"
 	go mod vendor -v
 
+	#go build -v -mod=vendor -o bin/cmd/cfaucet ./cmd/cfaucet/*.go
 	go build -v -mod=vendor -o bin/cmd/bootnode ./cmd/bootnode/*.go
 	go build -v -mod=vendor -o bin/cmd/gdcrm ./cmd/gdcrm/*.go
 	

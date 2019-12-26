@@ -165,6 +165,9 @@ type RpcReqWorker struct {
     msg_acceptlockoutres *list.List
     splitmsg_acceptlockoutres map[string]*list.List
     
+    msg_sendlockoutres *list.List
+    splitmsg_sendlockoutres map[string]*list.List
+    
     msg_c1 *list.List
     splitmsg_c1 map[string]*list.List
     
@@ -213,6 +216,7 @@ type RpcReqWorker struct {
     
     bacceptreqaddrres chan bool
     bacceptlockoutres chan bool
+    bsendlockoutres chan bool
     bc1 chan bool
     bmkg chan bool
     bmkw chan bool
@@ -373,6 +377,8 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     splitmsg_acceptreqaddrres:make(map[string]*list.List),
     msg_acceptlockoutres:list.New(),
     splitmsg_acceptlockoutres:make(map[string]*list.List),
+    msg_sendlockoutres:list.New(),
+    splitmsg_sendlockoutres:make(map[string]*list.List),
     
     pkx:list.New(),
     pky:list.New(),
@@ -380,6 +386,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     
     bacceptreqaddrres:make(chan bool,1),
     bacceptlockoutres:make(chan bool,1),
+    bsendlockoutres:make(chan bool,1),
     bc1:make(chan bool,1),
     bd1_1:make(chan bool,1),
     bc11:make(chan bool,1),
@@ -436,6 +443,11 @@ func (w *RpcReqWorker) Clear() {
     for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
         next = e.Next()
         w.msg_acceptlockoutres.Remove(e)
+    }
+    
+    for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_sendlockoutres.Remove(e)
     }
     
     for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
@@ -553,6 +565,9 @@ func (w *RpcReqWorker) Clear() {
     }
     if len(w.bacceptlockoutres) == 1 {
 	<-w.bacceptlockoutres
+    }
+    if len(w.bsendlockoutres) == 1 {
+	<-w.bsendlockoutres
     }
     if len(w.bacceptreqaddrres) == 1 {
 	<-w.bacceptreqaddrres
@@ -679,6 +694,7 @@ func (w *RpcReqWorker) Clear() {
 
     //TODO
     w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+    w.splitmsg_sendlockoutres = make(map[string]*list.List)
     w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
     w.splitmsg_c1 = make(map[string]*list.List)
     w.splitmsg_kc = make(map[string]*list.List)
@@ -708,6 +724,11 @@ func (w *RpcReqWorker) Clear2() {
     for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
         next = e.Next()
         w.msg_acceptlockoutres.Remove(e)
+    }
+    
+    for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_sendlockoutres.Remove(e)
     }
     
     for e := w.msg_c1.Front(); e != nil; e = next {
@@ -805,6 +826,9 @@ func (w *RpcReqWorker) Clear2() {
     }
     if len(w.bacceptlockoutres) == 1 {
 	<-w.bacceptlockoutres
+    }
+    if len(w.bsendlockoutres) == 1 {
+	<-w.bsendlockoutres
     }
     if len(w.bacceptreqaddrres) == 1 {
 	<-w.bacceptreqaddrres
@@ -921,6 +945,7 @@ func (w *RpcReqWorker) Clear2() {
 
     //TODO
     w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+    w.splitmsg_sendlockoutres = make(map[string]*list.List)
     w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
     w.splitmsg_c1 = make(map[string]*list.List)
     w.splitmsg_kc = make(map[string]*list.List)
@@ -964,6 +989,13 @@ func (w *RpcReqWorker) Stop() {
 }
 //rpc-req
 
+func ClearChan(ch chan string) {
+    l := len(ch)
+    for i:=0;i<l;i++ {
+	<-ch
+    }
+}
+
 type WorkReq interface {
     Run(workid int,ch chan interface{}) bool
 }
@@ -973,10 +1005,47 @@ type RecvMsg struct {
     msg string
 }
 
-func Dcrmcall(msg interface{},enode string) <-chan string {
+func DcrmCall(msg interface{},enode string) <-chan string {
     ch := make(chan string, 1)
     s := msg.(string)
-    fmt.Println("=============Dcrmcall,len(receiv) = %v,enode =%s ==============",len(s),enode)
+    fmt.Println("=============DcrmCall,len(receiv) = %v,enode =%s ==============",len(s),enode)
+
+    ////////
+    if s == "" {
+	//fail:chret:tip:error
+	ret := ("fail"+Sep+"no-data"+Sep+"dcrm back-end internal error:get msg fail"+Sep+"get msg fail") //TODO "no-data"
+	ch <- ret 
+	return ch
+    }
+
+    res,err := UnCompress(s)
+    if err != nil {
+	//fail:chret:tip:error
+	ret := ("fail"+Sep+"no-data"+Sep+"dcrm back-end internal error:uncompress data fail in RecvMsg.Run"+Sep+"uncompress data fail in recvmsg.run") //TODO "no-data"
+	ch <- ret 
+	return ch
+    }
+    r,err := Decode2(res,"SendMsg")
+    if err != nil {
+	//fail:chret:tip:error
+	ret := ("fail"+Sep+"no-data"+Sep+"dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run"+Sep+"decode data to SendMsg fail in recvmsg.run") //TODO "no-data"
+	ch <- ret 
+	return ch
+    }
+    
+    rr := r.(*SendMsg)
+    if rr.MsgType == "rpc_lockout" {
+	fmt.Println("=============DcrmCall,clear lockout chan==============")
+	ClearChan(acceptWaitLockOutChan)
+	ClearChan(acceptLockOutChan)
+    }
+    if rr.MsgType == "rpc_req_dcrmaddr" {
+	fmt.Println("=============DcrmCall,clear req addr chan==============")
+	ClearChan(acceptWaitReqAddrChan)
+	ClearChan(acceptReqAddrChan)
+    }
+    ////////
+
     v := RecvMsg{msg:s}
     rch := make(chan interface{},1)
     req := RpcReq{rpcdata:&v,ch:rch}
@@ -984,40 +1053,69 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,rch)
     if cherr != nil {
 	////
-	if s != "" {
-	    res,err := UnCompress(s)
-	    if err != nil {
-		//fail:chret:tip:error
-		ret := ("fail"+Sep+"no-data"+Sep+"dcrm back-end internal error:uncompress data fail in RecvMsg.Run"+Sep+"uncompress data fail in recvmsg.run") //TODO "no-data"
-		ch <- ret 
-		return ch
-	    }
-	    r,err := Decode2(res,"SendMsg")
-	    if err != nil {
-		//fail:chret:tip:error
-		ret := ("fail"+Sep+"no-data"+Sep+"dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run"+Sep+"decode data to SendMsg fail in recvmsg.run") //TODO "no-data"
-		ch <- ret 
-		return ch
-	    }
-	    
-	    rr := r.(*SendMsg)
-	    if rr.MsgType == "rpc_lockout" {
-		msg := rr.Msg
-		msgs := strings.Split(msg,":")
-		if tip == "get other node accept lockout result timeout" {
+	if rr.MsgType == "rpc_lockout" {
+	    /*fmt.Println("==============!!!DcrmCall,rpc lockout error return!!!=====================")
+	    msg := rr.Msg
+	    msgs := strings.Split(msg,":")
+	    if tip == "get other node accept lockout result timeout" {
+		AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tip,cherr.Error(),"") 
+	    } else {
+		/////////////TODO tmp
+		//sid-enode:SendLockOutRes:Success:lockout_tx_hash
+		//sid-enode:SendLockOutRes:Fail:err
+		mp := []string{rr.Nonce,cur_enode}
+		enode := strings.Join(mp,"-")
+		s0 := "SendLockOutRes"
+		s1 := "Fail"
+		s2 := cherr.Error()
+		ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+		logs.Debug("================DcrmCall,send msg,code is SendLockOutRes==================")
+		SendMsgToDcrmGroup(ss,msgs[5])
+		_,tiptmp,err := GetChannelValue(ch_t,w.bsendlockoutres)
+		if err != nil {
+		    fmt.Println("================DcrmCall,send lockout result err =%v ==================",err)
 		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tip,cherr.Error(),"") 
+		} else if w.msg_sendlockoutres.Len() != (NodeCnt-1) {
+		    fmt.Println("================DcrmCall,send lockout result fail ==================")
+		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","","get other node lockout result fail","get other node lockout result fail","")
 		} else {
-		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","",tip,cherr.Error(),"") 
+		    reply := "false"
+		    lohash := ""
+		    iter := w.msg_sendlockoutres.Front()
+		    for iter != nil {
+			mdss := iter.Value.(string)
+			ms := strings.Split(mdss,Sep)
+			//prexs := strings.Split(ms[0],"-")
+			//node := prexs[1]
+			if strings.EqualFold(ms[2],"Success") {
+			    reply = "true"
+			    lohash = ms[3]
+			    break
+			}
+
+			lohash = ms[3]
+			iter = iter.Next()
+		    }
+
+		    if reply == "true" {
+			fmt.Println("================DcrmCall,the terminal lockout res is success. nonce =%s ==================",msgs[6])
+			AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],true,"true","Success",lohash,"","","")
+		    } else {
+			fmt.Println("================DcrmCall,the terminal lockout res is fail. nonce =%s ==================",msgs[6])
+			AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","",lohash,lohash,"")
+		    }
 		}
-	    }
-	    if rr.MsgType == "rpc_req_dcrmaddr" {
-		msg := rr.Msg
-		msgs := strings.Split(msg,":")
-		if tip == "get other node accept lockout result timeout" {
-		    AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Timeout","",tip,cherr.Error(),"")
-		} else {
-		    AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Failure","",tip,cherr.Error(),"")
-		}
+		/////////////////////
+	    }*/
+	}
+	if rr.MsgType == "rpc_req_dcrmaddr" {
+	    fmt.Println("==============!!!DcrmCall,rpc req addr error return!!!=====================")
+	    msg := rr.Msg
+	    msgs := strings.Split(msg,":")
+	    if tip == "get other node accept lockout result timeout" {
+		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Timeout","",tip,cherr.Error(),"")
+	    } else {
+		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Failure","",tip,cherr.Error(),"")
 	    }
 	}
 	////
@@ -1034,7 +1132,7 @@ func Dcrmcall(msg interface{},enode string) <-chan string {
     return ch
 }
 
-func Dcrmcallret(msg interface{},enode string) {
+func DcrmCallRet(msg interface{},enode string) {
 
     //msg = success:workid:msgtype:ret  or fail:workid:msgtype:tip:error
     res := msg.(string)
@@ -1055,7 +1153,7 @@ func Dcrmcallret(msg interface{},enode string) {
     }
 
     //msgtype := ss[2]
-    fmt.Println("=========Dcrmcallret, ret = %s,len(ret) = %v ==============",ss[3],len(ss[3]))
+    fmt.Println("=========DcrmCallRet, ret = %s,len(ret) = %v ==============",ss[3],len(ss[3]))
     workid,err := strconv.Atoi(ss[1])
     if err != nil || workid < 0 || workid >= RpcMaxWorker {
 	return
@@ -1423,6 +1521,14 @@ func GetReqAddrStatus(key string) (string,string,error) {
 }
 */
 
+type LockOutStatus struct {
+    Status string
+    OutTxHash string
+    Tip string
+    Error string
+    AllReply string
+}
+
 func GetLockOutStatus(key string) (string,string,error) {
     da,exsit := LdbLockOut[key]
     ///////
@@ -1441,7 +1547,7 @@ func GetLockOutStatus(key string) (string,string,error) {
     }
 
     ac := dss.(*AcceptLockOutData)
-    ret := "{"
+    /*ret := "{"
     ret += "\""
     ret += "Status"
     ret += "\""
@@ -1482,8 +1588,12 @@ func GetLockOutStatus(key string) (string,string,error) {
     ret += ac.AllReply
     ret += "\""
     ret += "}"
+    */
+    los := &LockOutStatus{Status:ac.Status,OutTxHash:ac.OutTxHash,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
+    ret,err := json.Marshal(los)
+    fmt.Println("================GetLockOutStatus,ret =%s,err =%v=================",string(ret),err)
 
-    return ret,"",nil
+    return string(ret),"",err
 }
 
 /*func GetReqAddrReply() (string,string,error) {
@@ -1790,7 +1900,9 @@ func GetLockOutReply() (string,string,error) {
 	}
 
 	ac := dss.(*AcceptLockOutData)
+	fmt.Println("===============GetLockOutReply,ac.Deal =%v,nonce =%s===============",ac.Deal,ac.Nonce)
 	if ac.Deal == true {
+	    fmt.Println("===============GetLockOutReply,ac.Deal is true,nonce =%s===============",ac.Nonce)
 	    continue
 	}
 
@@ -1852,6 +1964,7 @@ func GetLockOutReply() (string,string,error) {
     
     ///////
     ss := strings.Join(ret,"|")
+    fmt.Println("===============GetLockOutReply,ret=%s===============",ss)
     return ss,"",nil
 }
 
@@ -1917,23 +2030,28 @@ func GetLockOutReply() (string,string,error) {
 
 func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
+    fmt.Println("===================!!!!GetAcceptReqAddrRes,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s!!!!============================",account,cointype,groupid,nonce,threshold,mode,key)
     da,exsit := LdbReqAddr[key]
     ///////
     if exsit == false {
+	fmt.Println("===================!!!!GetAcceptReqAddrRes,no exsit key =%s!!!!============================",key)
 	return "dcrm back-end internal error:get accept result from db fail",false
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("===================!!!!GetAcceptReqAddrRes,uncompress fail, key =%s!!!!============================",key)
 	return "dcrm back-end internal error:uncompress accept result fail",false
     }
 
     dss,err := Decode2(ds,"AcceptReqAddrData")
     if err != nil {
+	fmt.Println("===================!!!!GetAcceptReqAddrRes,decode fail, key =%s!!!!============================",key)
 	return "dcrm back-end internal error:decode accept result fail",false
     }
 
     ac := dss.(*AcceptReqAddrData)
+    fmt.Println("===================!!!!GetAcceptReqAddrRes,ac.Accept =%s,key =%s!!!!============================",ac.Accept,key)
 
     var rp bool 
     if strings.EqualFold(ac.Accept,"false") {
@@ -2007,23 +2125,28 @@ func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce str
 
 func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
+    fmt.Println("===================!!!!GetAcceptLockOutRes,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,threshold =%s,key =%s!!!!============================",account,groupid,nonce,dcrmfrom,threshold,key)
     da,exsit := LdbLockOut[key]
     ///////
     if exsit == false {
+	fmt.Println("===================!!!!GetAcceptLockOutRes,no exsit key =%s!!!!============================",key)
 	return "dcrm back-end internal error:get accept result from db fail",false
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("===================!!!!GetAcceptLockOutRes,uncompress fail, key =%s!!!!============================",key)
 	return "dcrm back-end internal error:uncompress accept result fail",false
     }
 
     dss,err := Decode2(ds,"AcceptLockOutData")
     if err != nil {
+	fmt.Println("===================!!!!GetAcceptLockOutRes,decode fail, key =%s!!!!============================",key)
 	return "dcrm back-end internal error:decode accept result fail",false
     }
 
     ac := dss.(*AcceptLockOutData)
+    fmt.Println("===================!!!!GetAcceptLockOutRes,ac.Accept =%s, key =%s!!!!============================",ac.Accept,key)
 
     var rp bool 
     if strings.EqualFold(ac.Accept,"false") {
@@ -2128,24 +2251,31 @@ func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom str
 }*/
 func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string) (string,error) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
+    fmt.Println("=====================AcceptReqAddr,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s======================",account,cointype,groupid,nonce,threshold,mode,key)
+    fmt.Println("=====================AcceptReqAddr,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
     da,exsit := LdbReqAddr[key]
     ///////
     if exsit == false {
+	fmt.Println("=====================AcceptReqAddr,no exsit key =%s======================",key)
 	return "dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("=====================AcceptReqAddr,uncompress fail, key =%s======================",key)
 	return "dcrm back-end internal error:uncompress accept data fail",err
     }
 
     dss,err := Decode2(ds,"AcceptReqAddrData")
     if err != nil {
+	fmt.Println("=====================AcceptReqAddr,decode fail, key =%s======================",key)
 	return "dcrm back-end internal error:decode accept data fail",err
     }
 
     ac := dss.(*AcceptReqAddrData)
-    ac.Deal = deal
+    fmt.Println("=====================AcceptReqAddr,ac.Deal = %v,ac.Accept =%s,ac.Status =%s, key =%s======================",ac.Deal,ac.Accept,ac.Status,key)
+    
+    /*ac.Deal = deal
     if accept != "" {
 	ac.Accept = accept
     }
@@ -2163,9 +2293,41 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     }
     if allreply != "" {
 	ac.AllReply = allreply
+    }*/
+    
+    acp := ac.Accept
+    if accept != "" {
+	acp = accept
     }
 
-    e,err := Encode2(ac)
+    pk := ac.PubKey
+    if pubkey != "" {
+	pk = pubkey
+    }
+
+    ttip := ac.Tip
+    if tip != "" {
+	ttip = tip
+    }
+
+    eif := ac.Error
+    if errinfo != "" {
+	eif = errinfo
+    }
+
+    sts := ac.Status
+    if status != "" {
+	sts = status
+    }
+
+    arl := ac.AllReply
+    if allreply != "" {
+	arl = allreply
+    }
+
+    ac2:= &AcceptReqAddrData{Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,PubKey:pk,Tip:ttip,Error:eif,AllReply:arl}
+    
+    e,err := Encode2(ac2)
     if err != nil {
 	return "dcrm back-end internal error:encode accept data fail",err
     }
@@ -2275,24 +2437,31 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 
 func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept string,status string,outhash string,tip string,errinfo string,allreply string) (string,error) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
+    fmt.Println("=====================AcceptLockOut,account =%s,groupid =%s,nonce =%s,dcrmfrom =%s,threshold =%s,key =%s======================",account,groupid,nonce,dcrmfrom,threshold,key)
+    fmt.Println("=====================AcceptLockOut,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
     da,exsit := LdbLockOut[key]
     ///////
     if exsit == false {
+	fmt.Println("=====================AcceptLockOut,no exsit key =%s======================",key)
 	return "dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("=====================AcceptLockOut,uncompress fail, key =%s======================",key)
 	return "dcrm back-end internal error:uncompress accept data fail",err
     }
 
     dss,err := Decode2(ds,"AcceptLockOutData")
     if err != nil {
+	fmt.Println("=====================AcceptLockOut,decode fail, key =%s======================",key)
 	return "dcrm back-end internal error:decode accept data fail",err
     }
 
     ac := dss.(*AcceptLockOutData)
-    ac.Deal = deal
+    fmt.Println("=====================AcceptLockOut,ac.Deal = %v,ac.Accept =%s,ac.Status =%s, key =%s======================",ac.Deal,ac.Accept,ac.Status,key)
+
+    /*ac.Deal = deal
     if accept != "" {
 	ac.Accept = accept
     }
@@ -2310,9 +2479,41 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     }
     if allreply != "" {
 	ac.AllReply = allreply
+    }*/
+    
+    acp := ac.Accept
+    if accept != "" {
+	acp = accept
     }
 
-    e,err := Encode2(ac)
+    ah := ac.OutTxHash
+    if outhash != "" {
+	ah = outhash
+    }
+
+    ttip := ac.Tip
+    if tip != "" {
+	ttip = tip
+    }
+
+    eif := ac.Error
+    if errinfo != "" {
+	eif = errinfo
+    }
+
+    sts := ac.Status
+    if status != "" {
+	sts = status
+    }
+
+    arl := ac.AllReply
+    if allreply != "" {
+	arl = allreply
+    }
+
+    ac2 := &AcceptLockOutData{Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,OutTxHash:ah,Tip:ttip,Error:eif,AllReply:arl}
+
+    e,err := Encode2(ac2)
     if err != nil {
 	return "dcrm back-end internal error:encode accept data fail",err
     }
@@ -2325,6 +2526,15 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     LdbLockOut[key] = []byte(es)
     acceptLockOutChan <- account
     return "",nil
+}
+
+type LockOutReply struct {
+    Enode string
+    Reply string
+}
+
+type LockOutReplys struct {
+    Replys []LockOutReply
 }
 
 func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
@@ -2374,12 +2584,17 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	//rpc_lockout
 	if rr.MsgType == "rpc_lockout" {
+	    ClearChan(acceptWaitLockOutChan)
+	    ClearChan(acceptLockOutChan)
+	    
 	    w := workers[workid]
 	    w.sid = rr.Nonce
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
 	    w.groupid = msgs[5] 
+	    w.limitnum = msgs[7]
+	    
 	    fmt.Println("==============RecvMsg.Run,lockout,groupid =%s,get mode =%s=================",msgs[5],msgs[8])
 	    if msgs[8] == "0" {// self-group
 		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:""}
@@ -2437,7 +2652,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			       return
 			    }
 			   
-			    all := "{"
+			    /*all := "{"
 			    all += "\""
 			    all += cur_enode
 			    all += "\""
@@ -2469,14 +2684,35 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 				iter = iter.Next()
 			    }
 			    all += "}"
-			    
-			    fmt.Println("===============RecvMsg.Run,all accept lockout result =%s, ================",all)
+			    */
+
+			    rs := make([]LockOutReply,0)
+			    cur := LockOutReply{Enode:cur_enode,Reply:lo_res}
+			    rs = append(rs,cur)
+			    iter := w.msg_acceptlockoutres.Front()
+			    for iter != nil {
+				mdss := iter.Value.(string)
+				ms := strings.Split(mdss,Sep)
+				prexs := strings.Split(ms[0],"-")
+				node := prexs[1]
+				fmt.Println("==============RecvMsg.Run,lockout,333333,get enode =%s==================",node)
+				if strings.EqualFold(ms[2],"false") {
+				    reply = false
+				}
+				cur2 := LockOutReply{Enode:node,Reply:ms[2]}
+				rs = append(rs,cur2)
+				iter = iter.Next()
+			    }
+
+			    lors := &LockOutReplys{Replys:rs}
+			    all,err := json.Marshal(lors)
+			    fmt.Println("===============RecvMsg.Run,all accept lockout result =%s,err =%v ================",string(all),err)
 			    if reply == false {
 				tip = "don't accept lockout"
-				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","Failure","","don't accept lockout","don't accept lockout",all) 
+				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","Failure","","don't accept lockout","don't accept lockout",string(all)) 
 			    } else {
 				tip = ""
-				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"true","Pending","","","",all) 
+				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"true","Pending","","","",string(all)) 
 			    }
 
 			   ///////
@@ -2513,6 +2749,60 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		return true
 	    }
 
+	    ///////////////////////////////////////////////
+	    fmt.Println("==============!!!rpc lockout error return!!!=====================")
+	    if tip == "get other node accept lockout result timeout" {
+		AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tip,cherr.Error(),"") 
+	    } else {
+		/////////////TODO tmp
+		//sid-enode:SendLockOutRes:Success:lockout_tx_hash
+		//sid-enode:SendLockOutRes:Fail:err
+		mp := []string{w.sid,cur_enode}
+		enode := strings.Join(mp,"-")
+		s0 := "SendLockOutRes"
+		s1 := "Fail"
+		s2 := cherr.Error()
+		ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+		logs.Debug("================RecvMsg.Run,send msg,code is SendLockOutRes==================")
+		SendMsgToDcrmGroup(ss,w.groupid)
+		_,tiptmp,err := GetChannelValue(ch_t,w.bsendlockoutres)
+		if err != nil {
+		    fmt.Println("================RecvMsg,send lockout result err =%v ==================",err)
+		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tiptmp,cherr.Error(),"") 
+		} else if w.msg_sendlockoutres.Len() != (NodeCnt-1) {
+		    fmt.Println("================RecvMsg,send lockout result fail ==================")
+		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","","get other node lockout result fail","get other node lockout result fail","")
+		} else {
+		    reply := "false"
+		    lohash := ""
+		    iter := w.msg_sendlockoutres.Front()
+		    for iter != nil {
+			mdss := iter.Value.(string)
+			ms := strings.Split(mdss,Sep)
+			//prexs := strings.Split(ms[0],"-")
+			//node := prexs[1]
+			if strings.EqualFold(ms[2],"Success") {
+			    reply = "true"
+			    lohash = ms[3]
+			    break
+			}
+
+			lohash = ms[3]
+			iter = iter.Next()
+		    }
+
+		    if reply == "true" {
+			fmt.Println("================RecvMsg,the terminal lockout res is success. nonce =%s ==================",msgs[6])
+			AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],true,"true","Success",lohash,"","","")
+		    } else {
+			fmt.Println("================RecvMsg,the terminal lockout res is fail. nonce =%s ==================",msgs[6])
+			AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","",lohash,lohash,"")
+		    }
+		}
+		/////////////////////
+	    }
+	    ///////////////////////////////////////////////
+
 	    if cherr != nil {
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:cherr}
 		ch <- res2
@@ -2526,6 +2816,9 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
+	    ClearChan(acceptWaitReqAddrChan)
+	    ClearChan(acceptReqAddrChan)
+	    
 	    //msg = account:cointype:groupid:nonce:threshold:mode
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
@@ -2724,11 +3017,15 @@ func Encode2(obj interface{}) (string,error) {
 	return buff.String(),nil
     case *AcceptLockOutData:
 	ch := obj.(*AcceptLockOutData)
-	ret,err := json.Marshal(ch)
-	if err != nil {
-	    return "",err
+
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+
+	err1 := enc.Encode(ch)
+	if err1 != nil {
+	    return "",err1
 	}
-	return string(ret),nil
+	return buff.String(),nil
     case *AcceptReqAddrData:
 	ch := obj.(*AcceptReqAddrData)
 	ret,err := json.Marshal(ch)
@@ -2769,13 +3066,18 @@ func Decode2(s string,datatype string) (interface{},error) {
     }
     
     if datatype == "AcceptLockOutData" {
-	var m AcceptLockOutData
-	err := json.Unmarshal([]byte(s), &m)
+	var data bytes.Buffer
+	data.Write([]byte(s))
+	
+	dec := gob.NewDecoder(&data)
+
+	var res  AcceptLockOutData 
+	err := dec.Decode(&res)
 	if err != nil {
 	    return nil,err
 	}
 
-	return &m,nil
+	return &res,nil
     }
     
     if datatype == "AcceptReqAddrData" {
@@ -2883,6 +3185,9 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
+    ClearChan(acceptWaitReqAddrChan)
+    ClearChan(acceptReqAddrChan)
+
     _,err = SendToGroupAllNodes(self.GroupId,res)
     if err != nil {
 	fmt.Println("=============ReqAddrSendMsgToMsg.Run,send to group all nodes,err =%v ===========",err)
@@ -2898,13 +3203,13 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
     w := workers[workid]
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
+    fmt.Println("========ReqAddrSendMsgToDcrm.Run,Get Result = %s, err = %v ============",chret,cherr)
     if cherr != nil {
 	res2 := RpcDcrmRes{Ret:chret,Tip:tip,Err:cherr}
 	ch <- res2
 	return false
     }
 
-    fmt.Println("=========ReqAddrSendMsgToMsg.Run,Get Result = ===========",chret)
     res2 := RpcDcrmRes{Ret:chret,Tip:tip,Err:cherr}
     ch <- res2
 
@@ -2951,6 +3256,9 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	ch <- res
 	return false
     }
+
+    ClearChan(acceptWaitLockOutChan)
+    ClearChan(acceptLockOutChan)
 
     _,err = SendToGroupAllNodes(self.GroupId,res)
     if err != nil {
@@ -3490,6 +3798,17 @@ func DisMsg(msg string) {
 	    if w.msg_acceptlockoutres.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All AcceptLockOutRes===========","GroupId",w.groupid)
 		w.bacceptlockoutres <- true
+	    }
+	case "SendLockOutRes":
+	    ///bug
+	    if w.msg_sendlockoutres.Len() >= (NodeCnt-1) {
+		return
+	    }
+	    ///
+	    w.msg_sendlockoutres.PushBack(msg)
+	    if w.msg_sendlockoutres.Len() == (NodeCnt-1) {
+		fmt.Println("=========Get All SendLockOutRes===========","GroupId",w.groupid)
+		w.bsendlockoutres <- true
 	    }
 	case "C1":
 	    ///bug

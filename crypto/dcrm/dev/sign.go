@@ -94,9 +94,11 @@ import (
 
 func GetReqAddrNonce(account string) (string,string,error) {
     key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+    fmt.Println("==============GetReqAddrNonce,acc =%s,key =%s=================",account,key2)
     da,exsit := LdbPubKeyData[key2]
     ///////
     if exsit == false {
+	fmt.Println("==============GetReqAddrNonce,no exsit,key =%s=================",key2)
 	return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("map not found, account = %s",account)
     }
 
@@ -104,7 +106,7 @@ func GetReqAddrNonce(account string) (string,string,error) {
     one,_ := new(big.Int).SetString("1",10)
     nonce = new(big.Int).Add(nonce,one)
 
-    fmt.Println("=========GetReqAddrNonce,get new nonce = %v ============",nonce)
+    fmt.Println("=========GetReqAddrNonce,get new nonce = %v,key =%s ============",nonce,key2)
     return fmt.Sprintf("%v",nonce),"",nil
 }
 
@@ -171,32 +173,56 @@ func GetReqAddrNonce(account string) (string,string,error) {
 */
 
 func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
-    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    key2 := Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
+    fmt.Println("===============GetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,key =%s===================",account,cointype,dcrmaddr,key2)
     da,exsit := LdbPubKeyData[key2]
     ///////
     if exsit == false {
+	fmt.Println("===============GetLockOutNonce,no exsit,so return 0,key =%s===================",key2)
+	return "0","",nil
+    }
+
+    nonce,_ := new(big.Int).SetString(string(da),10)
+    fmt.Println("=========GetLockOutNonce,get old nonce =%s,key =%s ============",nonce,key2)
+    one,_ := new(big.Int).SetString("1",10)
+    nonce = new(big.Int).Add(nonce,one)
+
+    fmt.Println("=========GetLockOutNonce,get new nonce = %s,key =%s ============",nonce,key2)
+    return fmt.Sprintf("%v",nonce),"",nil
+    
+    /*
+    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    fmt.Println("===============GetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,key =%s===================",account,cointype,dcrmaddr,key2)
+    da,exsit := LdbPubKeyData[key2]
+    ///////
+    if exsit == false {
+	fmt.Println("===============GetLockOutNonce,no exsit,key =%s===================",key2)
 	return "","dcrm back-end internal error:get nonce from db fail",fmt.Errorf("map not found account = %s,cointype = %s",account,cointype)
     }
 
     ss,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("===============GetLockOutNonce,uncompress fail,key =%s===================",key2)
 	return "","dcrm back-end internal error:uncompress nonce data from db fail",err
     }
     
     pubs,err := Decode2(ss,"PubKeyData")
     if err != nil {
+	fmt.Println("===============GetLockOutNonce,decode fail,key =%s===================",key2)
 	return "","dcrm back-end internal error:decode nonce data from db fail",err
     }
    
     ////check account?? //TODO
     ////
 
-    nonce2 := (pubs.(*PubKeyData)).Nonce
+    pud := pubs.(*PubKeyData)
+    nonce2 := pud.Nonce
+    fmt.Println("=========GetLockOutNonce,get old nonce = %v,key =%s ============",nonce2,key2)
     nonce,_ := new(big.Int).SetString(string(nonce2),10)
     one,_ := new(big.Int).SetString("1",10)
     nonce = new(big.Int).Add(nonce,one)
-    fmt.Println("=========GetLockOutNonce,get new nonce = %v ============",nonce)
-    return fmt.Sprintf("%v",nonce),"",nil
+    fmt.Println("=========GetLockOutNonce,get new nonce = %v,key =%s ============",nonce,key2)
+    return fmt.Sprintf("%v",nonce),"",nil*/
 }
 
 func SetReqAddrNonce(account string,nonce string) (string,error) {
@@ -204,6 +230,7 @@ func SetReqAddrNonce(account string,nonce string) (string,error) {
     kd := KeyData{Key:[]byte(key),Data:nonce}
     PubKeyDataChan <-kd
 
+    fmt.Println("================SetReqAddrNonce,acc =%s,nonce =%s,key =%s===============",account,nonce,key)
     LdbPubKeyData[key] = []byte(nonce)
 
     return "",nil
@@ -326,39 +353,50 @@ func SetReqAddrNonce(account string,nonce string) (string,error) {
 */
 
 func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {
-    key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    key2 := Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
+    fmt.Println("================SetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,nonce =%s,nonce key =%s==================",account,cointype,dcrmaddr,nonce,key2)
+    LdbPubKeyData[key2] = []byte(nonce)
+    return "",nil
+    
+    /*key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+    fmt.Println("================SetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,nonce =%s,nonce key =%s==================",account,cointype,dcrmaddr,nonce,key2)
     da,exsit := LdbPubKeyData[key2]
     ///////
     if exsit == false {
+	fmt.Println("================SetLockOutNonce,no exsit,nonce key =%s==================",key2)
 	return "dcrm back-end internal error:get nonce data from db fail",fmt.Errorf("map not found account = %s,cointype = %s",account,cointype)
     }
 
     ss,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("================SetLockOutNonce,uncompress fail,nonce key =%s==================",key2)
 	return "dcrm back-end internal error:uncompress nonce data from db fail",err
     }
     
     pubs,err := Decode2(ss,"PubKeyData")
     if err != nil {
+	fmt.Println("================SetLockOutNonce,decode fail,nonce key =%s==================",key2)
 	return "dcrm back-end internal error:decode nonce data from db fail",err
     }
    
     ////check account?? //TODO
     ////
-    (pubs.(*PubKeyData)).Nonce = nonce
+    pud := pubs.(*PubKeyData)
+    fmt.Println("================SetLockOutNonce,old nonce =%s,new nonce =%s,nonce key =%s==================",pud.Nonce,nonce,key2)
+    pubs2 := &PubKeyData{Pub:pud.Pub,Save:pud.Save,Nonce:nonce,GroupId:pud.GroupId,LimitNum:pud.LimitNum,Mode:pud.Mode}
 
-    epubs,err := Encode2(pubs.(*PubKeyData))
+    epubs,err := Encode2(pubs2)
     if err != nil {
 	return "dcrm back-end internal error:encode nonce data fail",err
     }
     
-    ss,err = Compress([]byte(epubs))
+    ss2,err := Compress([]byte(epubs))
     if err != nil {
 	return "dcrm back-end internal error:compress nonce data fail",err
     }
 
     ///update db
-    pubkeyhex := hex.EncodeToString([]byte((pubs.(*PubKeyData)).Pub))
+    pubkeyhex := hex.EncodeToString([]byte(pud.Pub))
 
     if !strings.EqualFold(cointype, "ALL") {
 
@@ -372,14 +410,14 @@ func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string
 	    return "dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,err
 	}
 
-	LdbPubKeyData[(pubs.(*PubKeyData)).Pub] = []byte(ss)
+	LdbPubKeyData[pud.Pub] = []byte(ss2)
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	LdbPubKeyData[key] = []byte(ss)
-	LdbPubKeyData[ctaddr] = []byte(ss)
+	LdbPubKeyData[key] = []byte(ss2)
+	LdbPubKeyData[ctaddr] = []byte(ss2)
     } else {
-	LdbPubKeyData[(pubs.(*PubKeyData)).Pub] = []byte(ss)
+	LdbPubKeyData[pud.Pub] = []byte(ss2)
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	LdbPubKeyData[key] = []byte(ss)
+	LdbPubKeyData[key] = []byte(ss2)
 	for _, ct := range cryptocoins.Cointypes {
 	    if strings.EqualFold(ct, "ALL") {
 		continue
@@ -394,11 +432,12 @@ func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string
 		continue
 	    }
 	    
-	    LdbPubKeyData[ctaddr] = []byte(ss)
+	    LdbPubKeyData[ctaddr] = []byte(ss2)
 	}
     }
     //
     return "",nil
+    */
 }
 
 /*func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
@@ -1007,7 +1046,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     }
 
     lockout_tx_hash, err := chandler.SubmitTransaction(signedTx)
-    fmt.Println("==========validate_lockout,send to outside net,err = %+v================",err)
+    fmt.Println("==========validate_lockout,send to outside net,nonce =%s,lockout txhash =%s,err = %+v================",nonce,lockout_tx_hash,err)
     /////////add for bak sig
     if err != nil && len(bak_sigs) != 0 {
 
@@ -1019,7 +1058,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	}
 	
 	lockout_tx_hash, err = chandler.SubmitTransaction(signedTx)
-	fmt.Println("==========validate_lockout,send to outside net,err = %+v================",err)
+	fmt.Println("==========validate_lockout,send to outside net,nonce =%s,lockout txhash =%s,err = %+v================",nonce,lockout_tx_hash,err)
     }
     /////////
     
@@ -1037,7 +1076,20 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    ch <- res
 	    return
 	}
-	
+
+	///////TODO tmp
+	//sid-enode:SendLockOutRes:Success:lockout_tx_hash
+	//sid-enode:SendLockOutRes:Fail:err
+	mp := []string{w.sid,cur_enode}
+	enode := strings.Join(mp,"-")
+	s0 := "SendLockOutRes"
+	s1 := "Success"
+	s2 := lockout_tx_hash
+	ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+	logs.Debug("================validate_lockout,send msg,code is SendLockOutRes==================")
+	SendMsgToDcrmGroup(ss,w.groupid)
+	///////////////
+
 	tip,reply := AcceptLockOut(account,w.groupid,nonce,dcrmaddr,w.limitnum,true,"true","Success",lockout_tx_hash,"","","") 
 	if reply != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update lockout status error.")}
@@ -1045,6 +1097,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    return
 	}
 
+	fmt.Println("================validate_lockout,the terminal lockout res is success. nonce =%s ==================",nonce)
 	res := RpcDcrmRes{Ret:lockout_tx_hash,Tip:tip,Err:err}
 	ch <- res
 	return

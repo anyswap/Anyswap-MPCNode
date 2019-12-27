@@ -110,6 +110,10 @@ func (h *ETHHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 		}
 	}
 	transaction, hash, err := eth_newUnsignedTransaction(client, fromAddress, toAddress, amount, gasPrice, gasLimit)
+	if err != nil || transaction == nil || hash == nil {
+	    return
+	}
+
 	hashStr := hash.Hex()
 	if hashStr[:2] == "0x" {
 		hashStr = hashStr[2:]

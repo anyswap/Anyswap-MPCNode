@@ -987,7 +987,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(realdcrmfrom,pubkey,to,amount,jsonstring)
     }
     
-    if buildTxErr != nil {
+    if buildTxErr != nil || lockouttx == nil || len(digests) == 0 {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:build unsign transaction fail",Err:buildTxErr}
 	    ch <- res
 	    return

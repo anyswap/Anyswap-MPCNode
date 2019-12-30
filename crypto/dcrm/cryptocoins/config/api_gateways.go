@@ -59,6 +59,7 @@ type ApiGatewayConfigs struct {
 	EosGateway *EosConfig
 	EvtGateway *SimpleApiConfig
 	RippleGateway *SimpleApiConfig
+	FusionGateway *SimpleApiConfig
 }
 
 var ApiGateways *ApiGatewayConfigs

@@ -367,10 +367,12 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    }
 
 	    h := cryptocoins.NewCryptocoinHandler(ct)
+	    fmt.Println("================dcrm.SendReqToGroup,get cointpe handler = %v,cointype =%s,================",h,ct)
 	    if h == nil {
 		continue
 	    }
 	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+	    fmt.Println("================dcrm.SendReqToGroup,get dcrm addr = %s,cointype =%s,err =%v================",ctaddr,ct,err)
 	    if err != nil {
 		continue
 	    }
@@ -380,6 +382,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 
 	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddress:addrmp}
 	b,_ := json.Marshal(m)
+	fmt.Println("================dcrm.SendReqToGroup,get all dcrm addr = %s================",string(b))
 	return string(b),"",nil
     }
     
@@ -617,6 +620,7 @@ func LockOut(raw string) (string,string,error) {
     go func() {
 	for i:=0;i<1;i++ {
 	    msg := from.Hex() + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
+	    fmt.Println("========================================dcrm_lockOut,value = %s,cointype = %s,nonce = %v ====================================",value,cointype,Nonce)
 	    txhash,_,err2 := SendReqToGroup(msg,"rpc_lockout")
 	    if err2 == nil && txhash != "" {
 		return

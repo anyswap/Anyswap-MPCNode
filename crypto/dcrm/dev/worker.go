@@ -2794,6 +2794,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	    rch := make(chan interface{},1)
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
+	    fmt.Println("===============RecvMsg.Run,value =%s,cointype =%s================",msgs[3],msgs[4])
 	    validate_lockout(w.sid,msgs[0],msgs[1],msgs[4],msgs[3],msgs[2],msgs[6],rch)
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if chret != "" {
@@ -3290,6 +3291,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
+    fmt.Println("==================LockOutSendMsgToDcrm.Run,self.Value = %s,self.Cointype =%s===================",self.Value,self.Cointype)
     GetEnodesInfo(self.GroupId)
     msg := self.Account + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode
     timestamp := time.Now().Unix()
@@ -3316,14 +3318,14 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
     _,err = SendToGroupAllNodes(self.GroupId,res)
     if err != nil {
-	fmt.Println("=============LockOutSendMsgToMsg.Run,send to group all nodes,err =%v ===========",err)
+	fmt.Println("=============LockOutSendMsgToDcrm.Run,send to group all nodes,err =%v ===========",err)
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false
     }
 
     ////
-    fmt.Println("=============LockOutSendMsgToMsg.Run,Waiting For Result===========")
+    fmt.Println("=============LockOutSendMsgToDcrm.Run,Waiting For Result===========")
     <-acceptWaitLockOutChan
     var tip string
     time.Sleep(time.Duration(1) * time.Second)
@@ -3670,6 +3672,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	case "rpc_lockout":
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
 	    m := strings.Split(msg,":")
+	    fmt.Println("=============SendReqToGroup,type is rpc_lockout,value =%s,cointype =%s==============",m[3],m[4])
 	    v := LockOutSendMsgToDcrm{Account:m[0],DcrmFrom:m[1],DcrmTo:m[2],Value:m[3],Cointype:m[4],GroupId:m[5],Nonce:m[6],LimitNum:m[7],Mode:m[8]}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}

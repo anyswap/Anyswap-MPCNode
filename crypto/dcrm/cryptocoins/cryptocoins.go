@@ -33,6 +33,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/atom"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/evt"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/bnb"
+	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/fsn"
 
 	config "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
 )
@@ -45,6 +46,7 @@ func Init() {
 	}
 	btc.BTCInit()
 	eth.ETHInit()
+	fsn.FSNInit()
 	xrp.XRPInit()
 	eos.EOSInit()
 	erc20.ERC20Init()
@@ -78,7 +80,7 @@ func Init() {
 // only main net coins
 //var Cointypes []string = []string{"ALL","BTC","ETH","XRP","EOS","USDT","ATOM","BCH","TRX","BNB","EVT1","ERC20BNB","ERC20GUSD","ERC20MKR","ERC20HT","ERC20RMBT","EVT1001","BEP2GZX_754"}
 //var Cointypes []string = []string{"ALL","BTC","ETH","ATOM","BCH","TRX","BNB","ERC20BNB","ERC20GUSD","ERC20MKR","ERC20HT","ERC20RMBT","BEP2GZX_754"}  //tmp delete EOS XRP EVT1 EVT1001 USDT
-var Cointypes []string = []string{"ALL","ETH"}  //tmp only left ETH 
+var Cointypes []string = []string{"ALL","FSN","ETH"}  //tmp only left FSN ETH 
 //BEP2--->BEP2GZX_754
 
 func IsCoinSupported (cointype string) bool {
@@ -151,6 +153,8 @@ func NewCryptocoinHandler(coinType string) (txHandler CryptocoinHandler) {
 		return btc.NewBTCHandler()
 	case "ETH":
 		return eth.NewETHHandler()
+	case "FSN":
+		return fsn.NewFSNHandler()
 	case "XRP":
 		return xrp.NewXRPHandler()
 	case "EOS":

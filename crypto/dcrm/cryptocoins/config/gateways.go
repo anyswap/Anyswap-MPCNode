@@ -54,6 +54,9 @@ User = "xxmm"
 Passwd = "123456"
 Usessl = false
 
+# fsn testnet
+[FusionGateway]
+ApiAddress = "https://testnet.fsn.dev/api"
 
 # geth rinkeby testnet
 [EthereumGateway]

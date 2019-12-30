@@ -889,7 +889,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 */
 
 func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
-    fmt.Println("========validate_lockout,nonce =%s============",nonce)
+    fmt.Println("========validate_lockout,acc =%s,dcrmaddr =%s,cointype =%s,value =%s,to =%s,nonce =%s============",account,dcrmaddr,cointype,value,to,nonce)
     var ret2 Err
     chandler := cryptocoins.NewCryptocoinHandler(cointype)
     if chandler == nil {
@@ -963,7 +963,9 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
         return
     }
     
-    amount, _ := new(big.Int).SetString(value,10)
+    amount,has := new(big.Int).SetString(value,10)
+    fmt.Println("=============validate_lockout,get amount has =%v===============",has)
+
     jsonstring := "" // TODO erc20
     // For EOS, realdcrmpubkey is needed to calculate userkey,
     // but is not used as real transaction maker.

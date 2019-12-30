@@ -36,11 +36,13 @@ User = "xxmm"
 Passwd = "123456"
 Usessl = false
 
+# fsn testnet
+[FusionGateway]
+ApiAddress = "http://testnet.fsn.dev/api"
 
 # geth rinkeby testnet
 [EthereumGateway]
 ApiAddress = "http://54.183.185.30:8018"
-
 
 # eos kylincrypto testnet api
 [EosGateway]

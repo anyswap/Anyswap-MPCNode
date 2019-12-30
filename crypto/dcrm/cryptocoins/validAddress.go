@@ -30,6 +30,7 @@ var RegExpmap map[string]string = map[string]string {
 	"XRP":"^r[1-9a-km-zA-HJ-NP-Z]{32,33}$",
 	"EOSDCRM":"^d[1-5a-z]{32,33}$",
 	//"EOS":"^(d[1-5a-z]{32,33})|([1-5a-z]{12})$",
+	"FSN":"^(0x)?[0-9a-fA-F]{40}$",
 	"EOS":"^([a-z\\d\\.]+)$",
 	"EOS_NORMAL":"^([1-5a-z]{12})$",
 	"ATOM":"^cosmos1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{38}$",

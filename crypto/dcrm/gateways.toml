@@ -38,7 +38,7 @@ Usessl = false
 
 # fsn testnet
 [FusionGateway]
-ApiAddress = "http://testnet.fsn.dev/api"
+ApiAddress = "https://testnet.fsn.dev/api"
 
 # geth rinkeby testnet
 [EthereumGateway]

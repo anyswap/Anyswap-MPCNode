@@ -269,12 +269,14 @@ func fsn_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, t
 	fmt.Printf("================ gasLimit = %v ================\n", gasLimit)
 	chainID, err := client.NetworkID(context.Background())
 	if err != nil {
+		fmt.Printf("================fsn_newUnsignedTransaction,111, err = %v ================\n", err)
 		return nil, nil, err
 	}
 
 	if gasPrice == nil {
 		gasPrice, err = client.SuggestGasPrice(context.Background())
 		if err != nil {
+			fmt.Printf("================fsn_newUnsignedTransaction,222, err = %v ================\n", err)
 			return nil, nil, err
 		}
 	}
@@ -282,6 +284,7 @@ func fsn_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, t
 	fromAddress := common.HexToAddress(dcrmAddress)
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
+		fmt.Printf("================fsn_newUnsignedTransaction,333, err = %v ================\n", err)
 		return nil, nil, err
 	}
 
@@ -299,6 +302,7 @@ func fsn_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, t
 		})
 		gasLimit = gasLimit * 4
 		if err != nil {
+			fmt.Printf("================fsn_newUnsignedTransaction,444, err = %v ================\n", err)
 			return nil, nil, err
 		}
 	}
@@ -313,10 +317,11 @@ func fsn_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, t
 }
 
 func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv string) (*ctypes.Transaction, error) {
-	chainID, err := client.NetworkID(context.Background())
-	if err != nil {
-		return nil, err
-	}
+	//chainID, err := client.NetworkID(context.Background())
+	//if err != nil {
+	//	return nil, err
+	//}
+	chainID := chainConfig.ChainID 
 	fmt.Println("=============== makeSignedTransaction,chain id = %v ===============",chainID)
 
 	message, err := hex.DecodeString(rsv)

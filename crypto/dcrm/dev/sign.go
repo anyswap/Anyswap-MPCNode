@@ -964,7 +964,13 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     }
     
     amount,has := new(big.Int).SetString(value,10)
-    fmt.Println("=============validate_lockout,get amount has =%v===============",has)
+    fmt.Println("=============validate_lockout,11111,get amount has =%v===============",has)
+    if has == false {
+	fmt.Println("=============validate_lockout,222222,get amount has =%v===============",has)
+	res := RpcDcrmRes{Ret:"",Tip:"lockout value error",Err:fmt.Errorf("lockout value error")}
+	ch <- res
+	return
+    }
 
     jsonstring := "" // TODO erc20
     // For EOS, realdcrmpubkey is needed to calculate userkey,

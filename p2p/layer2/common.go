@@ -296,12 +296,12 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	var xvcGroup *discover.Group
 	switch (p2pType) {
 	case Sdkprotocol_type:
-		_, groupTmp := getGroupSDK(gid)
-		if groupTmp != nil {
-			return
-			//delete(SdkGroup, id)
-		}
-		groupTmp = discover.NewGroup()
+		//_, groupTmp := getGroupSDK(gid)
+		//if groupTmp != nil {
+		//	return
+		//	//delete(SdkGroup, id)
+		//}
+		groupTmp := discover.NewGroup()
 		groupTmp.ID = gid
 		//groupTmp.Gname = gname
 		groupTmp.Mode = mode
@@ -332,8 +332,8 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 		}
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
 	}
-	fmt.Printf("==== recvGroupInfo() ====, xvcGroup: %v\n", xvcGroup)
-	discover.StoreGroupToDb(xvcGroup)
+	fmt.Printf("==== recvGroupInfo() ====, Group: %v\n", xvcGroup)
+	discover.StoreGroupToDb(xvcGroup, true)
 	//g, _ := discover.RecoverGroupByGID(gid)
 	//fmt.Printf("==== recvGroupInfo() ====, getGroupInfo g = %v\n", g)
 

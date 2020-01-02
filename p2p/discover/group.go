@@ -699,7 +699,7 @@ func addGroupSDK(n *Node, p2pType int) {
 	groupTmp.Type = "1+2"
 	//fmt.Printf("addGroupSDK, gid: %v\n", groupTmp.ID)
 	SDK_groupList[groupTmp.ID] = groupTmp
-	StoreGroupToDb(groupTmp)
+	StoreGroupToDb(groupTmp, false)
 	//g, _ := RecoverGroupByGID(n.ID)
 	//fmt.Printf("==== addGroupSDK() ====, getGroupInfo g = %v\n", g)
 }
@@ -726,13 +726,16 @@ func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string) {
 	go sendSDKGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type) //TODO
 }
 
-func updateGroupSDK(n *Node) {
-	groupTmp := SDK_groupList[n.ID]
-	for i, node := range groupTmp.Nodes {
-		if node.ID == n.ID {
-			groupTmp.Nodes = append(groupTmp.Nodes[:i], groupTmp.Nodes[i+1:]...)
-			groupTmp.Nodes = append(groupTmp.Nodes, RpcNode(nodeToRPC(n)))
-			return
+func updateGroup(n *Node, p2pType int) {
+	for _, g := range SDK_groupList {
+		for i, node := range g.Nodes {
+			if node.ID == n.ID {
+				g.Nodes = append(g.Nodes[:i], g.Nodes[i+1:]...)
+				g.Nodes = append(g.Nodes, RpcNode(nodeToRPC(n)))
+				go sendGroupInfo(g, p2pType)
+				go StoreGroupToDb(g, true)
+				break
+			}
 		}
 	}
 }
@@ -741,39 +744,46 @@ func checkNodeIDExist(n *Node) bool {
 	groupTmp := SDK_groupList[n.ID]
 	for _, node := range groupTmp.Nodes {
 		if node.ID == n.ID {
-			ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
-			err := Table4group.net.ping(node.ID, ipa)
-			if err == nil {
-				return true
+			if string(node.IP) != string(n.IP) || node.UDP != n.UDP {
+				return false
 			}
-			break
-		}
-	}
-	return false
-}
-
-func checkSDKNodeExist(n *Node) bool {
-	for i, node := range groupSDKList {
-		nrpc := nodeToRPC(node)
-		if nrpc.ID == n.ID {
-			fmt.Printf("==== checkSDKNodeExist() ====, enode %v -> %v(new connect)\n", groupSDKList[i], n)
-			//groupSDKList[i] = n
 			return true
 		}
 	}
 	return false
 }
 
-func setGroupSDK(n *Node, replace string, p2pType int) {
-	if setgroup == 0 {
-		return
+func checkSDKNodeExist(n *Node) (bool, bool) { //return: exist, update
+	for i, node := range groupSDKList {
+		//nrpc := nodeToRPC(node)
+		if node.ID == n.ID {
+			fmt.Printf("==== checkSDKNodeExist() ====, enode %v -> %v(new connect)\n", groupSDKList[i], n)
+			if string(node.IP) != string(n.IP) || node.UDP != n.UDP {
+				groupSDKList[i] = n
+				return true, true
+			}
+			return true, false
+		}
 	}
+	return false, true
+}
+
+func setGroupSDK(n *Node, replace string, p2pType int) {
 //	log.Debug("==== setGroupSDK() ====", "node", n, "add/replace", replace)
 	fmt.Printf("==== setGroupSDK() ====, node: %v, add/replace: %v\n", n, replace)
 	groupSDK.Lock()
 	defer groupSDK.Unlock()
 	if replace == "add" {
-		if checkSDKNodeExist(n) {
+		//TODO check 1+1+1 group
+
+		if setgroup == 0 {
+			return
+		}
+		et, ut := checkSDKNodeExist(n)
+		if et == true {
+			if ut == true {
+				go updateGroup(n, p2pType)
+			}
 			return
 		}
 		fmt.Printf("==== setGroupSDK() ====, len(groupSDKList) = %v, SDK_groupNum = %v\n", len(groupSDKList), SDK_groupNum)
@@ -791,7 +801,7 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 				}
 			}
 			fmt.Printf("==== setGroupSDK() ====, nodeID: %v, group: %v\n", n.ID, SDK_groupList[n.ID])
-			sendGroupInfo(SDK_groupList[n.ID], p2pType)
+			go sendGroupInfo(SDK_groupList[n.ID], p2pType)
 		} else { // add self node
 			if len(groupSDKList) < SDK_groupNum {
 				//e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
@@ -1230,7 +1240,7 @@ func GetEnodeStatus(enode string) (string, string) {
 	return "OffLine", ""
 }
 
-func StoreGroupToDb(groupInfo *Group) error {
+func StoreGroupToDb(groupInfo *Group, update bool) error {
 	groupDbLock.Lock()
 	defer groupDbLock.Unlock()
 
@@ -1242,7 +1252,7 @@ func StoreGroupToDb(groupInfo *Group) error {
 
 	key := crypto.Keccak256Hash([]byte(strings.ToLower(fmt.Sprintf("%v", groupInfo.ID)))).Hex()
 	_, err = db.Get([]byte(key), nil)
-	if err != nil {
+	if update == true || err != nil {
 		ac := new(Group)
 		ac.ID = groupInfo.ID
 		ac.Mode = groupInfo.Mode

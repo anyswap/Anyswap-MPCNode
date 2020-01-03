@@ -333,13 +333,13 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
 	}
 	fmt.Printf("==== recvGroupInfo() ====, Group: %v\n", xvcGroup)
-	discover.StoreGroupToDb(xvcGroup, true)
-	//g, _ := discover.RecoverGroupByGID(gid)
+	discover.StoreGroupToDb(xvcGroup)
+	discover.RecoverGroupAll(SdkGroup)
+	for i, g := range SdkGroup {
+		fmt.Printf("SdkGroup, i: %v, g: %v\n", i, g)
+	}
 	//fmt.Printf("==== recvGroupInfo() ====, getGroupInfo g = %v\n", g)
 
-	//for i, g := range SdkGroup {
-	//	log.Info("\nGroupInfo", "i", i, "g", g)
-	//}
 //	log.Debug("recvGroupInfo", "xvcGroup", xvcGroup)
 //	log.Debug("recvGroupInfo", "Group", p2pType, "enodes", xvcGroup)
 }

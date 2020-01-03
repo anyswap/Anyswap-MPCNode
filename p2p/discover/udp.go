@@ -640,6 +640,7 @@ func (req *ping) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) er
 	// Add the node to the table. Before doing so, ensure that we have a recent enough pong
 	// recorded in the database so their findnode requests will be accepted later.
 	n := NewNode(fromID, from.IP, uint16(from.Port), req.From.TCP)
+	go checkFrom(n)
 	if time.Since(t.db.lastPongReceived(fromID)) > nodeDBNodeExpiration {
 		t.sendPing(fromID, from, func() { t.addThroughPing(n) })
 	} else {

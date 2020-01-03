@@ -44,8 +44,8 @@ var (
 	tmpdcrmmsg     = &getdcrmmessage{Number: [3]byte{0, 0, 0}, Msg: ""}
 	setlocaliptrue = false
 	localIP        = "127.0.0.1"
-	RemoteIP       = "127.0.0.1"
-	RemotePort     = "0"
+	RemoteIP       = net.IP{}
+	RemotePort     = uint16(0)
 	RemoteUpdate   = false
 	changed        = 0
 	Xp_changed     = 0
@@ -495,11 +495,10 @@ func InitGroup(groupsNum, nodesNum int) error {
 	Xp_groupMemNum   = nodesNum
 	Dcrm_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
 	Xp_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
-	err := RecoverGroupSDKList()// List
-	fmt.Printf("InitGroup, RecoverGroupSDKList err: %v\n", err)
+	RecoverGroupSDKList()// List
 	RecoverGroupAll(SDK_groupList)// Group
 	for i, g := range SDK_groupList {
-		fmt.Printf("InitGroup, gid: %v, g: %v\n", i, g)
+		fmt.Printf("InitGroup, SDK_groupList gid: %v, g: %v\n", i, g)
 		sendGroupInfo(g, int(g.P2pType))
 	}
 	return nil
@@ -622,6 +621,10 @@ func GetGroup(gid, id NodeID, addr *net.UDPAddr, target NodeID, p2pType int) []*
 	return g
 }
 
+func SetGroup(n *Node, replace string) {
+	setGroup(n, replace)
+}
+
 func setGroup(n *Node, replace string) {
 	if setgroupNumber == 0 {
 		setGroupSDK(n, replace, Sdkprotocol_type)
@@ -661,7 +664,7 @@ func sendSDKGroupInfo(groupList *Group, p2pType int) {
 func sendGroupInfo(groupList *Group, p2pType int) {
 	count := 0
 	enode := ""
-	for i := 0; i < groupList.count; i++ {
+	for i := 0; i < len(groupList.Nodes); i++ {
 		count++
 		node := groupList.Nodes[i]
 		if enode != "" {
@@ -738,35 +741,41 @@ func updateGroup(n *Node, p2pType int) {
 			if node.ID == n.ID {
 				g.Nodes = append(g.Nodes[:i], g.Nodes[i+1:]...)
 				g.Nodes = append(g.Nodes, RpcNode(nodeToRPC(n)))
-				go sendGroupInfo(g, p2pType)
-				go StoreGroupToDb(g)
+				sendGroupInfo(g, p2pType)
+				StoreGroupToDb(g)
 				break
 			}
 		}
 	}
 }
 
-func checkNodeIDExist(n *Node) bool {
+func checkNodeIDExist(n *Node) (bool, bool) {//exist, update
 	groupTmp := SDK_groupList[n.ID]
 	for _, node := range groupTmp.Nodes {
 		if node.ID == n.ID {
 			if string(node.IP) != string(n.IP) || node.UDP != n.UDP {
-				return false
+				return true, true
 			}
-			return true
+			return true, false
 		}
 	}
-	return false
+	return false, true
 }
 
-func updateGroupSDKNode(n *Node, p2pType int) {
+func updateGroupSDKNode(nd *Node, p2pType int) {
+	n := RpcNode(nodeToRPC(nd))
 	for gid, g := range SDK_groupList {
-		for _, node := range g.Nodes {
+		for i, node := range g.Nodes {
 			if node.ID == n.ID {
-				if string(node.IP) != string(n.IP) || node.UDP != n.UDP {
+				ip1 := fmt.Sprintf("%v", node.IP)
+				ip2 := fmt.Sprintf("%v", n.IP)
+				if ip1 != ip2 || node.UDP != n.UDP {
+					fmt.Printf("==== updateGroupSDKNode() ====, node.IP:%v, n.IP:%v, node.UDP:%v, n.UDP:%v\n", ip1, ip2, node.UDP, n.UDP)
+					g.Nodes[i] = n
+					fmt.Printf("==== updateGroupSDKNode() ====, update group(gid=%v) enode %v -> %v\n", gid, node, n)
 					go sendGroupInfo(g, p2pType)
 					go StoreGroupToDb(g)
-					fmt.Printf("==== updateGroupSDKNode() ====, update group(gid=%v) enode %v -> %v\n", gid, node, n)
+					break
 				}
 			}
 		}
@@ -777,8 +786,10 @@ func checkGroupSDKListExist(n *Node) (bool, bool) { //return: exist, update
 	for i, node := range groupSDKList {
 		//nrpc := nodeToRPC(node)
 		if node.ID == n.ID {
-			if string(node.IP) != string(n.IP) || node.UDP != n.UDP {
-				fmt.Printf("==== checkGroupSDKListExist() ====, string(node.IP)=%v, string(n.IP)=%v, node.UDP=%v, n.UDP=%v\n", string(node.IP), string(n.IP), node.UDP, n.UDP)
+			ip1 := fmt.Sprintf("%v", node.IP)
+			ip2 := fmt.Sprintf("%v", n.IP)
+			if ip1 != ip2 || node.UDP != n.UDP {
+				fmt.Printf("==== checkGroupSDKListExist() ====, string(node.IP)=%v, string(n.IP)=%v, node.UDP=%v, n.UDP=%v\n", ip1, ip2, node.UDP, n.UDP)
 				fmt.Printf("==== checkGroupSDKListExist() ====, enode %v -> %v(new connect)\n", groupSDKList[i], n)
 				groupSDKList[i] = n
 				return true, true
@@ -795,7 +806,7 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 	defer groupSDK.Unlock()
 	if replace == "add" {
 		if setgroup == 0 {
-			//TODO check 1+1+1 group
+			//check 1+1+1 group
 			updateGroupSDKNode(n, p2pType)
 			return
 		}
@@ -812,7 +823,8 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 			if SDK_groupList[n.ID] == nil { // not exist group
 				addGroupSDK(n, p2pType)
 			} else {
-				if checkNodeIDExist(n) {
+				et, up := checkNodeIDExist(n)
+				if et == true && up == false {
 					return
 				} else {
 					if SDK_groupList[n.ID] != nil { // exist group
@@ -830,8 +842,7 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 				groupSDKList = append(groupSDKList, n)
 				fmt.Printf("==== setGroupSDK() ====, len(groupSDKList) = %v\n", len(groupSDKList))
 				if len(groupSDKList) == (SDK_groupNum - 1) {
-					err := StoreGroupSDKListToDb()
-					fmt.Printf("==== setGroupSDK() ====, StoreGroupSDKListToDb err: %v\n", err)
+					StoreGroupSDKListToDb()
 				}
 			}
 		}
@@ -1191,13 +1202,13 @@ func GetLocalIP() string {
 	return localIP
 }
 
-func GetRemoteIP() string {
+func GetRemoteIP() net.IP {
 	return RemoteIP
 }
 
-func GetRemotePort() string {
-	if RemotePort == "0" {
-		RemotePort = fmt.Sprintf("%v", Table4group.self.UDP)
+func GetRemotePort() uint16 {
+	if RemotePort == 0 {
+		RemotePort = Table4group.self.UDP
 	}
 	return RemotePort
 }
@@ -1211,11 +1222,11 @@ func GetEnode() string {
 }
 
 func updateRemoteIP(ip net.IP, port uint16) {
-	if RemoteUpdate == false && RemoteIP == "127.0.0.1" {
+	if RemoteUpdate == false && RemoteIP == nil {
 		RemoteUpdate = true
 		fmt.Printf("updateRemoteIP, IP:port = %v:%v\n", ip, port)
-		RemoteIP = fmt.Sprintf("%v", ip)
-		RemotePort = fmt.Sprintf("%v", port)
+		RemoteIP = ip
+		RemotePort = port
 	}
 }
 
@@ -1264,6 +1275,15 @@ func GetEnodeStatus(enode string) (string, string) {
 		}
 	}
 	return "OffLine", ""
+}
+
+func Ping(id NodeID, ip net.IP, port uint16) {
+	fmt.Printf("ping id: %v, ip: %v, port: %v\n", id, ip, port)
+	ipa := &net.UDPAddr{IP: ip, Port: int(port)}
+	errp := Table4group.net.ping(id, ipa)
+	if errp != nil {
+		fmt.Printf("ping err: %v\n", errp)
+	}
 }
 
 func StoreGroupToDb(groupInfo *Group) error {
@@ -1548,5 +1568,12 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
 
 func NewGroup() *Group {
 	return &Group{}
+}
+
+func checkFrom(n *Node) {
+	//TODO check id
+	if setgroup == 0 {
+		setGroup(n, "add")
+	}
 }
 

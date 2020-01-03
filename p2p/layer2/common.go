@@ -338,6 +338,7 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	for i, g := range SdkGroup {
 		fmt.Printf("SdkGroup, i: %v, g: %v\n", i, g)
 	}
+	discover.RecoverGroupAll(discover.SDK_groupList)// Group
 	//fmt.Printf("==== recvGroupInfo() ====, getGroupInfo g = %v\n", g)
 
 //	log.Debug("recvGroupInfo", "xvcGroup", xvcGroup)
@@ -498,11 +499,13 @@ func InitServer(nodeserv interface{}) {
 	for i, g := range SdkGroup {
 		for _, node := range g.Nodes {
 			if node.ID != selfid {
+				discover.Ping(node.ID, node.IP, node.UDP)
 				en := discover.NewNode(node.ID, node.IP, node.UDP, node.TCP)
 				go p2pServer.AddPeer(en)
 			}
 		}
 		fmt.Printf("discover.GetGroupFromDb, gid: %v, g: %v\n", i, g)
 	}
+	discover.RecoverGroupAll(discover.SDK_groupList)// Group
 }
 

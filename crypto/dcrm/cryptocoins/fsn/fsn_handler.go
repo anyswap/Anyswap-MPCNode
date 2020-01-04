@@ -351,10 +351,13 @@ func fsn_sendTx (client *ethclient.Client, signedTx *ctypes.Transaction) (string
 	//data, _:= rlp.EncodeToBytes(signedTx)
 
 	signer:= ctypes.NewEIP155Signer(signedTx.ChainId())
-	_, err2 := ctypes.Sender(signer, signedTx)
+	fmt.Println("===================!!! fsn_sendTx,chain id =%v !!!================================",signedTx.ChainId())
+	from, err2 := ctypes.Sender(signer, signedTx)
 	if err2 != nil {
+	    fmt.Println("===================!!! fsn_sendTx,get sender err =%v !!!================================",err2)
 	    return "",err2
 	}
+	fmt.Println("===================!!! fsn_sendTx,from =%s !!!================================",from.Hex())
 
 	err := client.SendTransaction(context.Background(), signedTx)
 	if err != nil {

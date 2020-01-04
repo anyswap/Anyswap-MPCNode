@@ -1066,7 +1066,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	}
 	
 	lockout_tx_hash, err = chandler.SubmitTransaction(signedTx)
-	fmt.Println("==========validate_lockout,send to outside net,nonce =%s,lockout txhash =%s,err = %+v================",nonce,lockout_tx_hash,err)
+	fmt.Println("==========validate_lockout,use bak_sigs,send to outside net,nonce =%s,lockout txhash =%s,err = %+v================",nonce,lockout_tx_hash,err)
     }
     /////////
     
@@ -1307,12 +1307,12 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	return ""
     }
     
-    hashBytes, err2 := hex.DecodeString(message)
+    /*hashBytes, err2 := hex.DecodeString(message)
     if err2 != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:decode message fail",Err:err2}
 	ch <- res
 	return ""
-    }
+    }*/
 
     // [Notes]
     // 1. assume the nodes who take part in the signature generation as follows
@@ -1331,7 +1331,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     }
 
     if self == nil {
-	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get self uid fail in dcrm ec2 sign",Err:err2}
+	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get self uid fail in dcrm ec2 sign",Err:fmt.Errorf("get self uid fail in dcrm ec2 sign")}
 	ch <- res
 	return ""
     }
@@ -2362,6 +2362,11 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     //v
     recid := secp256k1.Get_ecdsa_sign_v(deltaGammaGx, deltaGammaGy)
+    fmt.Println("==============!!! Sign_ec2,11111,get recid =%v !!!======================",recid)
+    if cointype == "FSN" && bb {
+	fmt.Println("==============!!! Sign_ec2,22222,get recid =%v !!!======================",recid)
+	recid ^=1
+    }
     if cointype == "ETH" && bb {
 	recid ^=1
     }
@@ -2370,7 +2375,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     }
 
     ////check v
-    ys := secp256k1.S256().Marshal(pkx,pky)
+    /*ys := secp256k1.S256().Marshal(pkx,pky)
     pubkeyhex := hex.EncodeToString(ys)
     pbhs := []rune(pubkeyhex)
     if string(pbhs[0:2]) == "0x" {
@@ -2384,13 +2389,14 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	pkr2 := hex.EncodeToString(pkr)
 	pbhs2 := []rune(pkr2)
 	if string(pbhs2[0:2]) == "0x" {
-		    pkr2 = string(pbhs2[2:])
+	    pkr2 = string(pbhs2[2:])
 	}
 	if e == nil && strings.EqualFold(pkr2,pubkeyhex) {
-		recid = j
-		break
+	    fmt.Println("==============!!! Sign_ec2,33333333,get recid =%v !!!======================",recid)
+	    recid = j
+	    break
 	}
-    }
+    }*/
     ///// 
     signature.SetRecoveryParam(int32(recid))
 

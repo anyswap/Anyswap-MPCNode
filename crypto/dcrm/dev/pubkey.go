@@ -547,7 +547,7 @@ func SavePubKeyDataToDb() {
 		    PubKeyDataChan <-kd
 		}
 		
-		time.Sleep(time.Duration(10000))  //na, 1 s = 10e9 na
+		time.Sleep(time.Duration(1000000))  //na, 1 s = 10e9 na
 	}
     }
 }

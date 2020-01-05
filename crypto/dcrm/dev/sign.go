@@ -32,7 +32,7 @@ import (
     "fmt"
     "encoding/hex"
     //"github.com/syndtr/goleveldb/leveldb"
-    //"github.com/fsn-dev/dcrm-walletService/ethdb"
+    "github.com/fsn-dev/dcrm-walletService/ethdb"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
@@ -96,6 +96,14 @@ func GetReqAddrNonce(account string) (string,string,error) {
     key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
     fmt.Println("==============GetReqAddrNonce,acc =%s,key =%s=================",account,key2)
     da,exsit := LdbPubKeyData[key2]
+    if exsit == false {
+	da = GetPubKeyDataValueFromDb(key2)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	fmt.Println("==============GetReqAddrNonce,no exsit,key =%s=================",key2)
@@ -108,6 +116,39 @@ func GetReqAddrNonce(account string) (string,string,error) {
 
     fmt.Println("=========GetReqAddrNonce,get new nonce = %v,key =%s ============",nonce,key2)
     return fmt.Sprintf("%v",nonce),"",nil
+}
+
+func GetPubKeyDataValueFromDb(key string) []byte {
+    lock.Lock()
+    dir := GetDbDir()
+    ////////
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<1000;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
+        lock.Unlock()
+	return nil 
+    }
+    
+    da,err := db.Get([]byte(key))
+    ///////
+    if err != nil {
+	db.Close()
+	lock.Unlock()
+	return nil
+    }
+
+    return da
 }
 
 /*func GetNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
@@ -176,6 +217,14 @@ func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,str
     key2 := Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
     fmt.Println("===============GetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,key =%s===================",account,cointype,dcrmaddr,key2)
     da,exsit := LdbPubKeyData[key2]
+    if exsit == false {
+	da = GetPubKeyDataValueFromDb(key2)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	fmt.Println("===============GetLockOutNonce,no exsit,so return 0,key =%s===================",key2)
@@ -354,8 +403,12 @@ func SetReqAddrNonce(account string,nonce string) (string,error) {
 
 func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {
     key2 := Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
+    kd := KeyData{Key:[]byte(key2),Data:nonce}
+    PubKeyDataChan <-kd
+
     fmt.Println("================SetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,nonce =%s,nonce key =%s==================",account,cointype,dcrmaddr,nonce,key2)
     LdbPubKeyData[key2] = []byte(nonce)
+
     return "",nil
     
     /*key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
@@ -918,6 +971,14 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     
     key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
     da,exsit := LdbPubKeyData[key2]
+    if exsit == false {
+	da = GetPubKeyDataValueFromDb(key2)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout data from db fail",Err:fmt.Errorf("get lockout data from db fail")}
@@ -1130,7 +1191,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
     if strings.EqualFold(cointype,"EOS") == true {
 	
 	var eosstr string
-	for k,v := range LdbPubKeyData {
+	for k,v := range LdbPubKeyData {  //TODO must write GetAllPubKeyDataFromDb()
 	    key := string(k)
 	    value := string(v)
 	    if strings.EqualFold(key,string([]byte("eossettings"))) {

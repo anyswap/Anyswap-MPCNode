@@ -68,13 +68,16 @@ var (
     acceptReqAddrChan chan string = make(chan string, 10)
     acceptWaitReqAddrChan chan string = make(chan string, 10)
 
-    PubKeyDataChan = make(chan KeyData, 1000)
-    AllAccountsChan = make(chan KeyData, 1000)
     KeyFile string
+    
     AllAccounts = make([]*PubKeyData,0)
+    AllAccountsChan = make(chan KeyData, 1000)
+    
+    LdbPubKeyData = make(map[string][]byte)
+    PubKeyDataChan = make(chan KeyData, 1000)
+    
     LdbReqAddr = make(map[string][]byte)
     LdbLockOut = make(map[string][]byte)
-    LdbPubKeyData = make(map[string][]byte)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {

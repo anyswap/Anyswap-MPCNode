@@ -233,6 +233,14 @@ func GetPubKeyData(key string,account string,cointype string) (string,string,err
     }
 
     da,exsit := dev.LdbPubKeyData[key]
+    if exsit == false {
+	da = dev.GetPubKeyDataValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	return "","dcrm back-end internal error:get data from db fail in func GetPubKeyData",fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
@@ -295,10 +303,26 @@ func GetPubKeyData(key string,account string,cointype string) (string,string,err
 func ExsitPubKey(account string,cointype string) (string,bool) {
     key := dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
     da,exsit := dev.LdbPubKeyData[key]
+    if exsit == false {
+	da = dev.GetPubKeyDataValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	key = dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
 	da,exsit = dev.LdbPubKeyData[key]
+	if exsit == false {
+	    da = dev.GetPubKeyDataValueFromDb(key)
+	    if da == nil {
+		exsit = false
+	    } else {
+		exsit = true
+	    }
+	}
 	///////
 	if exsit == false {
 	    return "",false

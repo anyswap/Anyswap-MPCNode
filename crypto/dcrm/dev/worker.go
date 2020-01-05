@@ -1725,6 +1725,11 @@ func GetReqAddrReply() (string,string,error) {
 	    continue
 	}
 
+	if ac.Status != "Pending" {
+	    fmt.Println("================GetReqAddrReply,this is not pending,nonce =%s===================",ac.Nonce)
+	    continue
+	}
+
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
 	tmp := "{"
 	tmp += "\"Key\":"
@@ -1903,6 +1908,11 @@ func GetLockOutReply() (string,string,error) {
 	fmt.Println("===============GetLockOutReply,ac.Deal =%v,nonce =%s===============",ac.Deal,ac.Nonce)
 	if ac.Deal == true || ac.Status == "Success" {
 	    fmt.Println("===============GetLockOutReply,ac.Deal is true,nonce =%s===============",ac.Nonce)
+	    continue
+	}
+
+	if ac.Status != "Pending" {
+	    fmt.Println("===============GetLockOutReply,this is not pending,nonce =%s===============",ac.Nonce)
 	    continue
 	}
 

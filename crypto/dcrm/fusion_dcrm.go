@@ -423,6 +423,18 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	return "","transaction data format error,it is not REQDCRMADDR tx",fmt.Errorf("tx type error.")
     }
 
+    groupid := datas[1]
+    if groupid == "" {
+	return "","group id error",fmt.Errorf("get group id fail.")
+    }
+    
+    threshold := datas[2]
+    if threshold == "" {
+	return "","no threshold value",fmt.Errorf("get threshold fail.")
+    }
+
+    Nonce := tx.Nonce() 
+    
     if mode == "1" { //non self-group
 	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
 	    ///
@@ -450,20 +462,26 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    return string(bb),"",nil
 	    ///
 	}
+    } else {
+	////////bug
+	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
+	da,exsit := dev.LdbReqAddr[key]
+	if exsit == true {
+	    ds,err := dev.UnCompress(string(da))
+	    if err == nil {
+		dss,err := dev.Decode2(ds,"AcceptReqAddrData")
+		if err == nil {
+		    ac := dss.(*dev.AcceptReqAddrData)
+		    if ac != nil && strings.EqualFold(ac.Status, "Pending") {
+			fmt.Println("===================!!!!dcrm_reqDcrmAddr,this req addr has already handle,acc =%s,cointype =ALL,groupid =%s,nonce =%v,threshold =%s,mode =%s,key =%s!!!!============================",from.Hex(),groupid,Nonce,threshold,mode,key)
+			return "","the req dcrm addr has already handle,status is pending",fmt.Errorf("the req dcrm addr has already handle,status is pending.")
+		    }
+		}
+	    }
+	}
+	////////bug
     }
 
-    groupid := datas[1]
-    if groupid == "" {
-	return "","group id error",fmt.Errorf("get group id fail.")
-    }
-    
-    threshold := datas[2]
-    if threshold == "" {
-	return "","no threshold value",fmt.Errorf("get threshold fail.")
-    }
-
-    Nonce := tx.Nonce() 
-    
     fmt.Println("========================================dcrm_reqDcrmAddr,fusion account = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v ====================================",from.Hex(),groupid,threshold,mode,Nonce)
 
     go func() {
@@ -616,6 +634,24 @@ func LockOut(raw string) (string,string,error) {
     if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" {
 	return "","parameter error from raw data,maybe raw data error",fmt.Errorf("param error.")
     }
+
+    ///////bug
+    key2 := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
+    da,exsit := dev.LdbLockOut[key2]
+    if exsit == true {
+	ds,err := dev.UnCompress(string(da))
+	if err == nil {
+	    dss,err := dev.Decode2(ds,"AcceptLockOutData")
+	    if err == nil {
+		ac := dss.(*dev.AcceptLockOutData)
+		if ac != nil && strings.EqualFold(ac.Status, "Pending") {
+		    fmt.Println("===================!!!!dcrm_lockOut,this lockout has already handle,acc =%s,groupid =%s,nonce =%v,dcrmfrom =%s,threshold =%s,key =%s!!!!============================",from.Hex(),groupid,Nonce,dcrmaddr,threshold,key2)
+		    return "","the lockout has already handle,status is pending",fmt.Errorf("the lockout has already handle,status is pending.")
+		}
+	    }
+	}
+    }
+    //////////
    
     go func() {
 	for i:=0;i<1;i++ {

@@ -1112,7 +1112,7 @@ func DcrmCall(msg interface{},enode string) <-chan string {
 	    fmt.Println("==============!!!DcrmCall,rpc req addr error return!!!=====================")
 	    msg := rr.Msg
 	    msgs := strings.Split(msg,":")
-	    if tip == "get other node accept lockout result timeout" {
+	    if tip == "get other node accept req addr result timeout" {
 		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Timeout","",tip,cherr.Error(),"")
 	    } else {
 		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Failure","",tip,cherr.Error(),"")
@@ -2648,6 +2648,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			    if err != nil {
 				fmt.Println("================RecvMsg.Run,get accept lockout result err =%v ==================",err)
 				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","Timeout","","get other node accept lockout result timeout","get other node accept lockout result timeout","")
+				tip = "get other node accept lockout result timeout"
 				reply = false
 			       timeout <- true
 			       return
@@ -2756,10 +2757,13 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			ss := enode + Sep + s0 + Sep + s1 + Sep + s2
 			logs.Debug("================RecvMsg.Run,send msg,code is SendLockOutRes==================")
 			SendMsgToDcrmGroup(ss,w.groupid)
-			_,tiptmp,err := GetChannelValue(ch_t,w.bsendlockoutres)
+			_,_,err := GetChannelValue(ch_t,w.bsendlockoutres)
 			if err != nil {
 			    fmt.Println("================RecvMsg,send lockout result err =%v ==================",err)
-			    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tiptmp,err.Error(),"") 
+			    
+			    tip = "get other node terminal accept lockout result timeout" ////bug
+
+			    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tip,tip,"") 
 			} else if w.msg_sendlockoutres.Len() != (NodeCnt-1) {
 			    fmt.Println("================RecvMsg,send lockout result fail ==================")
 			    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","","get other node lockout result fail","get other node lockout result fail","")
@@ -2784,7 +2788,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 			    if reply2 == "true" {
 				fmt.Println("================RecvMsg,the terminal lockout res is success. nonce =%s ==================",msgs[6])
-				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],true,"true","Success",lohash,"","","")
+				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],true,"true","Success",lohash," "," ","")
 			    } else {
 				fmt.Println("================RecvMsg,the terminal lockout res is fail. nonce =%s ==================",msgs[6])
 				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","",lohash,lohash,"")
@@ -2830,10 +2834,13 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		ss := enode + Sep + s0 + Sep + s1 + Sep + s2
 		logs.Debug("================RecvMsg.Run,send msg,code is SendLockOutRes==================")
 		SendMsgToDcrmGroup(ss,w.groupid)
-		_,tiptmp,err := GetChannelValue(ch_t,w.bsendlockoutres)
+		_,_,err := GetChannelValue(ch_t,w.bsendlockoutres)
 		if err != nil {
 		    fmt.Println("================RecvMsg,send lockout result err =%v ==================",err)
-		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tiptmp,cherr.Error(),"") 
+		    
+		    tip = "get other node terminal accept lockout result timeout" ////bug
+
+		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Timeout","",tip,tip,"") 
 		} else if w.msg_sendlockoutres.Len() != (NodeCnt-1) {
 		    fmt.Println("================RecvMsg,send lockout result fail ==================")
 		    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","","get other node lockout result fail","get other node lockout result fail","")
@@ -2858,7 +2865,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 		    if reply2 == "true" {
 			fmt.Println("================RecvMsg,the terminal lockout res is success. nonce =%s ==================",msgs[6])
-			AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],true,"true","Success",lohash,"","","")
+			AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],true,"true","Success",lohash," "," ","")
 		    } else {
 			fmt.Println("================RecvMsg,the terminal lockout res is fail. nonce =%s ==================",msgs[6])
 			AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"","Failure","",lohash,lohash,"")
@@ -2940,6 +2947,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			    if err != nil {
 				fmt.Println("================RecvMsg.Run,get accept req addr result err =%v ==================",err)
 				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Timeout","","get other node accept req addr result timeout","get other node accept req addr result timeout","")
+				tip = "get other node accept req addr result timeout"
 				reply = false
 			       timeout <- true
 			       return

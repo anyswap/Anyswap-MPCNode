@@ -69,7 +69,7 @@ var (
     acceptWaitReqAddrChan chan string = make(chan string, 10)
 
     PubKeyDataChan = make(chan KeyData, 1000)
-    GetPubKeyDataChan = make(chan chan []*PubKeyData, 1000)
+    AllAccountsChan = make(chan KeyData, 1000)
     KeyFile string
     AllAccounts = make([]*PubKeyData,0)
     LdbReqAddr = make(map[string][]byte)
@@ -114,8 +114,9 @@ func InitDev(keyfile string,groupId string) {
    Enode_cnts = peerscount //bug
     GetEnodesInfo(groupId)
     KeyFile = keyfile
+    AllAccounts = GetAllPubKeyDataFromDb()
     go SavePubKeyDataToDb()
-    go GetAllPubKeyDataFromDb()
+    go SaveAllAccountsToDb()
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -4305,6 +4306,12 @@ func GetDbDir() string {
     return dir
 }
 
+func GetAllAccountsDir() string {
+    dir := DefaultDataDir()
+    dir += "/dcrmdata/allaccounts" + cur_enode
+    return dir
+}
+
 func GetAcceptLockOutDir() string {
     dir := DefaultDataDir()
     dir += "/dcrmdata/dcrmdb/acceptlockout" + cur_enode
@@ -4441,113 +4448,56 @@ type AccountsList struct {
 */
 
 func GetAccounts(gid, mode string) (interface{}, string, error) {
-    kd := make(chan []*PubKeyData)
-    GetPubKeyDataChan <- kd
-    WaitTime := 1 * time.Second
-    WaitTimeOut := time.NewTicker(WaitTime)
-    for {
-       select {
-       case pds := <-kd:
-	fmt.Println("================!!!GetAccounts,get pubkey data from db success!!!====================")
-	gp := make(map[string][]string)
-	for _,v := range pds {
-	    if v == nil {
-		continue
-	    }
-
-	    pb := v.Pub
-	    pubkeyhex := hex.EncodeToString([]byte(pb))
-	    gid := v.GroupId
-	    md := v.Mode
-	    fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
-	    if mode == md {
-		al,exsit := gp[gid]
-		if exsit == true {
-		    al = append(al,pubkeyhex)
-		    gp[gid] = al
-		} else {
-		    a := make([]string,0)
-		    a = append(a,pubkeyhex)
-		    gp[gid] = a
-		}
-	    }
+   if len(AllAccounts) != 0 {
+    fmt.Println("================!!!GetAccounts,get pubkey data from AllAccounts success!!!====================")
+    gp := make(map[string][]string)
+    for _,v := range AllAccounts {
+	if v == nil {
+	    continue
 	}
 
-	als := make([]AccountsList, 0)
-	if gid != "" {
+	if v.Pub == "" || v.GroupId == "" || v.Mode == "" {
+	    continue
+	}
+
+	pb := v.Pub
+	pubkeyhex := hex.EncodeToString([]byte(pb))
+	gid := v.GroupId
+	md := v.Mode
+	fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
+	if mode == md {
 	    al,exsit := gp[gid]
 	    if exsit == true {
-		alNew := AccountsList{GroupID: gid, Accounts: al}
-		als = append(als, alNew)
-		pa := &PubAccounts{Group: als}
-		return pa, "", nil
+		al = append(al,pubkeyhex)
+		gp[gid] = al
+	    } else {
+		a := make([]string,0)
+		a = append(a,pubkeyhex)
+		gp[gid] = a
 	    }
 	}
+    }
 
-	fmt.Println("==============GetAccounts,333333333===============")
-	for k,v := range gp {
-	    fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
-	    alNew := AccountsList{GroupID: k, Accounts: v}
+    als := make([]AccountsList, 0)
+    if gid != "" {
+	al,exsit := gp[gid]
+	if exsit == true {
+	    alNew := AccountsList{GroupID: gid, Accounts: al}
 	    als = append(als, alNew)
-	}
-	
-	pa := &PubAccounts{Group: als}
-	return pa, "", nil
-       case <-WaitTimeOut.C:
-	   if len(AllAccounts) != 0 {
-	    fmt.Println("================!!!GetAccounts,get pubkey data from AllAccounts success!!!====================")
-	    gp := make(map[string][]string)
-	    for _,v := range AllAccounts {
-		if v == nil {
-		    continue
-		}
-
-		if v.Pub == "" || v.GroupId == "" || v.Mode == "" {
-		    continue
-		}
-
-		pb := v.Pub
-		pubkeyhex := hex.EncodeToString([]byte(pb))
-		gid := v.GroupId
-		md := v.Mode
-		fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
-		if mode == md {
-		    al,exsit := gp[gid]
-		    if exsit == true {
-			al = append(al,pubkeyhex)
-			gp[gid] = al
-		    } else {
-			a := make([]string,0)
-			a = append(a,pubkeyhex)
-			gp[gid] = a
-		    }
-		}
-	    }
-
-	    als := make([]AccountsList, 0)
-	    if gid != "" {
-		al,exsit := gp[gid]
-		if exsit == true {
-		    alNew := AccountsList{GroupID: gid, Accounts: al}
-		    als = append(als, alNew)
-		    pa := &PubAccounts{Group: als}
-		    return pa, "", nil
-		}
-	    }
-
-	    fmt.Println("==============GetAccounts,333333333===============")
-	    for k,v := range gp {
-		fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
-		alNew := AccountsList{GroupID: k, Accounts: v}
-		als = append(als, alNew)
-	    }
-	    
 	    pa := &PubAccounts{Group: als}
 	    return pa, "", nil
-	   } else {
-	       return nil,"get accounts fail",fmt.Errorf("get accounts fail")
-	   }
-       }
+	}
+    }
+
+    fmt.Println("==============GetAccounts,333333333===============")
+    for k,v := range gp {
+	fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
+	alNew := AccountsList{GroupID: k, Accounts: v}
+	als = append(als, alNew)
+    }
+    
+    pa := &PubAccounts{Group: als}
+    return pa, "", nil
    }
 
     return nil,"get accounts fail",fmt.Errorf("get accounts fail")

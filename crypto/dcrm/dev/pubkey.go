@@ -99,6 +99,11 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    return
 	}
 
+	count := len(AllAccounts)
+	index := strconv.Itoa(count)
+	keytmp := Keccak256Hash([]byte(strings.ToLower(index))).Hex()
+	kdtmp := KeyData{Key:[]byte(keytmp),Data:ss}
+	AllAccountsChan <-kdtmp
 	////TODO
 	AllAccounts = append(AllAccounts,pubs)
 	////////
@@ -324,7 +329,12 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	ch <- res
 	return
     }
-    
+   
+    count := len(AllAccounts)
+    index := strconv.Itoa(count)
+    keytmp := Keccak256Hash([]byte(strings.ToLower(index))).Hex()
+    kdtmp := KeyData{Key:[]byte(keytmp),Data:ss}
+    AllAccountsChan <-kdtmp
     ////TODO
     AllAccounts = append(AllAccounts,pubs)
     ////////
@@ -542,12 +552,11 @@ func SavePubKeyDataToDb() {
     }
 }
 
-func GetAllPubKeyDataFromDb() {
+func SaveAllAccountsToDb() {
     for {
 	select {
-	    case kd := <-GetPubKeyDataChan:
-		fmt.Println("==============GetAllPubKeyDataFromDb,start read from db===============")
-		dir := GetDbDir()
+	    case kd := <-AllAccountsChan:
+		dir := GetAllAccountsDir()
 		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 		//bug
 		if err != nil {
@@ -562,37 +571,63 @@ func GetAllPubKeyDataFromDb() {
 		}
 		//
 		if db != nil {
-		    fmt.Println("==============GetAllPubKeyDataFromDb,open db success===============")
-		    pds := make([]*PubKeyData,0)
-		    iter := db.NewIterator() 
-		    for iter.Next() {
-			value := string(iter.Value())
-			ss,err := UnCompress(value)
-			if err != nil {
-			    fmt.Println("==============GetAllPubKeyDataFromDb,1111 err = %v===============",err)
-			    continue
-			}
-			
-			pubs,err := Decode2(ss,"PubKeyData")
-			if err != nil {
-			    fmt.Println("==============GetAllPubKeyDataFromDb,2222 err = %v===============",err)
-			    continue
-			}
-			
-			pd := pubs.(*PubKeyData)
-			pds = append(pds,pd)
-		    }
-		    iter.Release()
+		    db.Put(kd.Key,[]byte(kd.Data))
 		    db.Close()
-		    kd <-pds
 		} else {
-		    fmt.Println("==============GetAllPubKeyDataFromDb,open db fail===============")
-		    GetPubKeyDataChan <-kd
+		    AllAccountsChan <-kd
 		}
 		
-		time.Sleep(time.Duration(10000))  //na, 1 s = 10e9 na
+		time.Sleep(time.Duration(1000000))  //na, 1 s = 10e9 na
 	}
     }
+}
+
+func GetAllPubKeyDataFromDb() []*PubKeyData {
+    kd := make([]*PubKeyData,0)
+    fmt.Println("==============GetAllPubKeyDataFromDb,start read from db===============")
+    dir := GetAllAccountsDir()
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<1000;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil && db != nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db != nil {
+	fmt.Println("==============GetAllPubKeyDataFromDb,open db success===============")
+	iter := db.NewIterator() 
+	for iter.Next() {
+	    value := string(iter.Value())
+	    ss,err := UnCompress(value)
+	    if err != nil {
+		fmt.Println("==============GetAllPubKeyDataFromDb,1111 err = %v===============",err)
+		continue
+	    }
+	    
+	    pubs,err := Decode2(ss,"PubKeyData")
+	    if err != nil {
+		fmt.Println("==============GetAllPubKeyDataFromDb,2222 err = %v===============",err)
+		continue
+	    }
+	    
+	    pd := pubs.(*PubKeyData)
+	    if pd == nil {
+		continue
+	    }
+
+	    kd = append(kd,pd)
+	}
+	iter.Release()
+	db.Close()
+    }
+
+    return kd
 }
 
 //ed

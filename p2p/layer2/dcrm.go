@@ -22,6 +22,8 @@ import (
 	//"math"
 	"net"
 	"sort"
+	"strings"
+	"strconv"
 	"time"
 	"fmt"
 
@@ -358,15 +360,36 @@ func GetEnodeStatus(enode string) (string, error) {
 	return discover.GetEnodeStatus(enode)
 }
 
-func CheckAddPeer(enodes []string) error {
+func CheckAddPeer(mode string, enodes []string) error {
+	es := strings.Split(mode, "/")
+	if len(es) != 2 {
+		msg := fmt.Sprintf("args mode format is wrong")
+		return errors.New(msg)
+	}
+	nodeNum, _ := strconv.Atoi(es[1])
+	if len(enodes) != nodeNum {
+		msg := fmt.Sprintf("args mode and enodes not match")
+		return errors.New(msg)
+	}
 	addpeer := false
 	var nodes []*discover.Node
+	var nodeid map[discover.NodeID]int = make(map[discover.NodeID]int, nodeNum)
+	defer func() {
+		for k := range nodeid {
+			delete(nodeid, k)
+		}
+	}()
 	for _, enode := range enodes {
 		node, err := discover.ParseNode(enode)
 		if err != nil {
 			msg := fmt.Sprintf("CheckAddPeer, parse err enode: %v", enode)
 			return errors.New(msg)
 		}
+		if nodeid[node.ID] == 1 {
+			msg := fmt.Sprintf("CheckAddPeer, enode: %v, err: repeated", enode)
+			return errors.New(msg)
+		}
+		nodeid[node.ID] = 1
 		if selfid == node.ID {
 			continue
 		}
@@ -384,10 +407,14 @@ func CheckAddPeer(enodes []string) error {
 		if p == nil {
 			addpeer = true
 			nodes = append(nodes, node)
-			go p2pServer.AddPeer(node)
 		}
 	}
 	if addpeer {
+		for _, node := range nodes {
+			go func(node *discover.Node) {
+				p2pServer.AddPeer(node)
+			}(node)
+		}
 		fmt.Printf("CheckAddPeer, waitting add peer ...\n")
 		count := 0
 		for _, node := range nodes {

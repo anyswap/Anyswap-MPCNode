@@ -68,11 +68,7 @@ type GroupInfo struct {
 
 func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
 	fmt.Printf("==== CreateSDKGroup() ====\n")
-	if len(enodes) == 0 {
-		ret := &GroupInfo{}
-		return packageResult(FAIL, "args enodes is null", "enodes is null", ret)
-	}
-	err := layer2.CheckAddPeer(enodes)
+	err := layer2.CheckAddPeer(mode, enodes)
 	if err != nil {
 		ret := &GroupInfo{Mode: mode}
 		return packageResult(FAIL, "add peer failed", err.Error(), ret)

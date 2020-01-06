@@ -582,6 +582,69 @@ func SaveAllAccountsToDb() {
     }
 }
 
+func SaveReqAddrToDb() {
+    for {
+	select {
+	    case kd := <-ReqAddrChan:
+		dir := GetAcceptReqAddrDir()
+		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+		//bug
+		if err != nil {
+		    for i:=0;i<1000;i++ {
+			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+			if err == nil && db != nil {
+			    break
+			}
+			
+			time.Sleep(time.Duration(1000000))
+		    }
+		}
+		//
+		if db != nil {
+		    db.Put(kd.Key,[]byte(kd.Data))
+		    db.Close()
+		} else {
+		    ReqAddrChan <-kd
+		}
+		
+		time.Sleep(time.Duration(1000000))  //na, 1 s = 10e9 na
+	}
+    }
+}
+
+func GetReqAddrValueFromDb(key string) []byte {
+    lock.Lock()
+    dir := GetAcceptReqAddrDir()
+    ////////
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<1000;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
+        lock.Unlock()
+	return nil 
+    }
+    
+    da,err := db.Get([]byte(key))
+    ///////
+    if err != nil {
+	db.Close()
+	lock.Unlock()
+	return nil
+    }
+
+    return da
+}
+
 func GetAllPubKeyDataFromDb() []*PubKeyData {
     kd := make([]*PubKeyData,0)
     fmt.Println("==============GetAllPubKeyDataFromDb,start read from db===============")
@@ -622,6 +685,63 @@ func GetAllPubKeyDataFromDb() []*PubKeyData {
 	    }
 
 	    kd = append(kd,pd)
+	}
+	iter.Release()
+	db.Close()
+    }
+
+    return kd
+}
+
+func GetAllPendingReqAddrFromDb() map[string][]byte {
+    kd := make(map[string][]byte)
+    fmt.Println("==============GetAllPendingReqAddrFromDb,start read from db===============")
+    dir := GetAcceptReqAddrDir()
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<1000;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil && db != nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db != nil {
+	fmt.Println("==============GetAllPendingReqAddrFromDb,open db success===============")
+	iter := db.NewIterator() 
+	for iter.Next() {
+	    key := string(iter.Key())
+	    value := string(iter.Value())
+	    ss,err := UnCompress(value)
+	    if err != nil {
+		fmt.Println("==============GetAllPendingReqAddrFromDb,1111 err = %v===============",err)
+		continue
+	    }
+	    
+	    pubs,err := Decode2(ss,"AcceptReqAddrData")
+	    if err != nil {
+		fmt.Println("==============GetAllPendingReqAddrFromDb,2222 err = %v===============",err)
+		continue
+	    }
+	    
+	    pd := pubs.(*AcceptReqAddrData)
+	    if pd == nil {
+		continue
+	    }
+
+	    if pd.Deal == true || pd.Status == "Success" {
+		continue
+	    }
+
+	    if pd.Status != "Pending" {
+		continue
+	    }
+
+	    kd[key] = iter.Value()
 	}
 	iter.Release()
 	db.Close()

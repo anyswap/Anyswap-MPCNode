@@ -77,7 +77,10 @@ var (
     PubKeyDataChan = make(chan KeyData, 1000)
     
     LdbReqAddr = make(map[string][]byte)
+    ReqAddrChan = make(chan KeyData, 1000)
+    
     LdbLockOut = make(map[string][]byte)
+    LockOutChan = make(chan KeyData, 1000)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -118,8 +121,10 @@ func InitDev(keyfile string,groupId string) {
     GetEnodesInfo(groupId)
     KeyFile = keyfile
     AllAccounts = GetAllPubKeyDataFromDb()
+    LdbReqAddr = GetAllPendingReqAddrFromDb()
     go SavePubKeyDataToDb()
     go SaveAllAccountsToDb()
+    go SaveReqAddrToDb()
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -1372,6 +1377,14 @@ func SetUpMsgList(msg string) {
 
 func GetReqAddrStatus(key string) (string,string,error) {
     da,exsit := LdbReqAddr[key]
+    if exsit == false {
+	da = GetReqAddrValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	return "","dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
@@ -2046,6 +2059,14 @@ func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce str
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
     fmt.Println("===================!!!!GetAcceptReqAddrRes,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s!!!!============================",account,cointype,groupid,nonce,threshold,mode,key)
     da,exsit := LdbReqAddr[key]
+    if exsit == false {
+	da = GetReqAddrValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	fmt.Println("===================!!!!GetAcceptReqAddrRes,no exsit key =%s!!!!============================",key)
@@ -2268,6 +2289,14 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     fmt.Println("=====================AcceptReqAddr,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s======================",account,cointype,groupid,nonce,threshold,mode,key)
     fmt.Println("=====================AcceptReqAddr,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
     da,exsit := LdbReqAddr[key]
+    if exsit == false {
+	da = GetReqAddrValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	fmt.Println("=====================AcceptReqAddr,no exsit key =%s======================",key)
@@ -2350,6 +2379,9 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     if err != nil {
 	return "dcrm back-end internal error:compress accept data fail",err
     }
+
+    kdtmp := KeyData{Key:[]byte(key),Data:es}
+    ReqAddrChan <-kdtmp
 
     LdbReqAddr[key] = []byte(es)
     acceptReqAddrChan <- account
@@ -3505,6 +3537,9 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
     }
    
     fmt.Println("==============SaveAcceptReqAddrData,success write into map,key =%s=================",key)
+    kdtmp := KeyData{Key:[]byte(key),Data:ss}
+    ReqAddrChan <-kdtmp
+
     LdbReqAddr[key] = []byte(ss)
     return nil
 }

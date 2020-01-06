@@ -490,6 +490,15 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	////////bug
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
 	da,exsit := dev.LdbReqAddr[key]
+	if exsit == false {
+	    da = dev.GetReqAddrValueFromDb(key)
+	    if da == nil {
+		exsit = false
+	    } else {
+		exsit = true
+	    }
+	}
+
 	if exsit == true {
 	    ds,err := dev.UnCompress(string(da))
 	    if err == nil {

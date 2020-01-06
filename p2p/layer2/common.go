@@ -499,7 +499,7 @@ func InitServer(nodeserv interface{}) {
 	for i, g := range SdkGroup {
 		for _, node := range g.Nodes {
 			if node.ID != selfid {
-				discover.Ping(node.ID, node.IP, node.UDP)
+				discover.PingNode(node.ID, node.IP, int(node.UDP))
 				en := discover.NewNode(node.ID, node.IP, node.UDP, node.TCP)
 				go p2pServer.AddPeer(en)
 			}

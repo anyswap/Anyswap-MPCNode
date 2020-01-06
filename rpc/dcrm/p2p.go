@@ -152,7 +152,12 @@ func (this *Service) GetEnodeStatus(enode string) string {
 		status = FAIL
 	}
 	es.Status = stat
-	return packageResult(status, err, err, es)
+
+	errString := ""
+	if err != nil {
+		errString = fmt.Sprintf("%v", err.Error())
+	}
+	return packageResult(status, errString, errString, es)
 }
 
 func (this *Service) GetSDKGids() []string {

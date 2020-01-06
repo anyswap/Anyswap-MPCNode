@@ -44,7 +44,7 @@ var (
 	tmpdcrmmsg     = &getdcrmmessage{Number: [3]byte{0, 0, 0}, Msg: ""}
 	setlocaliptrue = false
 	localIP        = "127.0.0.1"
-	RemoteIP       = net.IP{}
+	RemoteIP       net.IP
 	RemotePort     = uint16(0)
 	RemoteUpdate   = false
 	changed        = 0
@@ -597,6 +597,11 @@ func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node)
 }
 
 func PingNode(id NodeID, ip net.IP, port int) error {
+	n := NewNode(id, ip, uint16(port), uint16(port))
+	err := n.validateComplete()
+	if err != nil {
+		return err
+	}
 	ipa := &net.UDPAddr{IP: ip, Port: port}
 	return Table4group.net.ping(id, ipa)
 }
@@ -1257,33 +1262,24 @@ func UpdateGroupNodesNumber(number, p2pType int) {
 	}
 }
 
-func GetEnodeStatus(enode string) (string, string) {
+func GetEnodeStatus(enode string) (string, error) {
 	n, err := ParseNode(enode)
-	if err != nil {
+	if err != nil || n.validateComplete() != nil {
 		fmt.Printf("GetEnodeStatus ParseNode err: %v\n", enode)
-		return "", "enode wrong format"
+		return "", errors.New("enode wrong format")
 	}
 	selfid := fmt.Sprintf("%v", GetLocalID())
 	fmt.Printf("GetEnodeStatus selfid: %v, node.ID: %v\n", selfid, n.ID)
 	if n.ID.String() == selfid {
-		return "OnLine", ""
+		return "OnLine", nil
 	} else {
 		ipa := &net.UDPAddr{IP: n.IP, Port: int(n.UDP)}
 		errp := Table4group.net.ping(n.ID, ipa)
 		if errp == nil {
-			return "OnLine", ""
+			return "OnLine", nil
 		}
 	}
-	return "OffLine", ""
-}
-
-func Ping(id NodeID, ip net.IP, port uint16) {
-	fmt.Printf("ping id: %v, ip: %v, port: %v\n", id, ip, port)
-	ipa := &net.UDPAddr{IP: ip, Port: int(port)}
-	errp := Table4group.net.ping(id, ipa)
-	if errp != nil {
-		fmt.Printf("ping err: %v\n", errp)
-	}
+	return "OffLine", nil
 }
 
 func StoreGroupToDb(groupInfo *Group) error {

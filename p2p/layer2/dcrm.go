@@ -354,7 +354,7 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	return gid.String(), count, retErr
 }
 
-func GetEnodeStatus(enode string) (string, string) {
+func GetEnodeStatus(enode string) (string, error) {
 	return discover.GetEnodeStatus(enode)
 }
 
@@ -371,7 +371,11 @@ func CheckAddPeer(enodes []string) error {
 			continue
 		}
 
-		status, _ := GetEnodeStatus(enode)
+		status, err := GetEnodeStatus(enode)
+		if err != nil {
+			msg := fmt.Sprintf("CheckAddPeer, enode: %v, err: %v", enode, err)
+			return errors.New(msg)
+		}
 		if status == "OffLine" {
 			msg := fmt.Sprintf("CheckAddPeer, enode: %v offline", enode)
 			return errors.New(msg)

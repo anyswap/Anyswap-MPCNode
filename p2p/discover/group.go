@@ -626,10 +626,6 @@ func GetGroup(gid, id NodeID, addr *net.UDPAddr, target NodeID, p2pType int) []*
 	return g
 }
 
-func SetGroup(n *Node, replace string) {
-	setGroup(n, replace)
-}
-
 func setGroup(n *Node, replace string) {
 	if setgroupNumber == 0 {
 		setGroupSDK(n, replace, Sdkprotocol_type)
@@ -643,27 +639,6 @@ func setGroup(n *Node, replace string) {
 		}
 	}
 	setGroupCC(n, replace, Dcrmprotocol_type)
-}
-
-func sendSDKGroupInfo(groupList *Group, p2pType int) {
-	count := 0
-	enode := ""
-	for i := 0; i < groupList.count; i++ {
-		count++
-		node := groupList.Nodes[i]
-		if enode != "" {
-			enode += Dcrmdelimiter
-		}
-		e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
-		enode += e
-		//if bytes.Equal(n.IP, node.IP) == true && n.UDP == node.UDP {
-			ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
-			go SendToPeer(groupList.ID, node.ID, ipa, "", p2pType)
-		//}
-	}
-	//enodes := fmt.Sprintf("%v,%v,%v", groupList.ID, count, enode)
-//	log.Debug("send group to nodes", "group: ", enodes)
-//	log.Warn("send group to nodes", "group: ", enodes)
 }
 
 func sendGroupInfo(groupList *Group, p2pType int) {
@@ -737,7 +712,7 @@ func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string) {
 	}
 	groupTmp.ID = gid
 	SDK_groupList[groupTmp.ID] = groupTmp
-	go sendSDKGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type) //TODO
+	go sendGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type)
 }
 
 func updateGroup(n *Node, p2pType int) {
@@ -1229,7 +1204,7 @@ func GetEnode() string {
 func updateRemoteIP(ip net.IP, port uint16) {
 	if RemoteUpdate == false && RemoteIP == nil {
 		RemoteUpdate = true
-		fmt.Printf("updateRemoteIP, IP:port = %v:%v\n", ip, port)
+		fmt.Printf("updateRemoteIP, IP:port = %v:%v\n\n", ip, port)
 		RemoteIP = ip
 		RemotePort = port
 	}

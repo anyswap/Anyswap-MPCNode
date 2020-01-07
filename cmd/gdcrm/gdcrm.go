@@ -125,7 +125,6 @@ func startP2pNode(c *cli.Context) error {
 		if bootnodes == "" {
 			bootnodes = "enode://aad98f8284b99d2438516c37d3d2d5d9b29a259d8ce8fe38eff303c8cac9eb002699d23d276951e77e123f47522b978ad419c0e418a7109aa40cf600bd07d6ac@47.107.50.83:4440"
 		}
-		fmt.Printf("keyfile: %v, bootnodes: %v, port: %v, rpcport: %v\n", keyfile, bootnodes, port, rpcport)
 		if genKey != "" {
 			nodeKey, err := crypto.GenerateKey()
 			if err != nil {
@@ -139,7 +138,7 @@ func startP2pNode(c *cli.Context) error {
 		if keyfile == "" {
 			keyfile = fmt.Sprintf("node.key")
 		}
-		fmt.Printf("nodekey: %v\n", keyfile)
+		fmt.Printf("keyfile: %v, bootnodes: %v, port: %v, rpcport: %v\n", keyfile, bootnodes, port, rpcport)
 		dcrm.KeyFile = keyfile
 		nodeKey, errkey := crypto.LoadECDSA(keyfile)
 		if errkey != nil {

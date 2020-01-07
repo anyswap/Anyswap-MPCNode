@@ -71,6 +71,7 @@ func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
 	err := layer2.CheckAddPeer(mode, enodes)
 	if err != nil {
 		ret := &GroupInfo{Mode: mode}
+		fmt.Printf("==== CreateSDKGroup() ====, CheckAddPeer err: %v\n", err)
 		return packageResult(FAIL, "add peer failed", err.Error(), ret)
 	}
 	gid, count, retErr := layer2.CreateSDKGroup(mode, enodes)
@@ -81,6 +82,7 @@ func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
 			tip = "group exist"
 			status = REPEAT
 		}
+		fmt.Printf("==== CreateSDKGroup() ====, CreateSDKGroup tip: %v, err: %v\n", tip, retErr)
 		ret := &GroupInfo{Gid: gid, Mode: mode, Count: count, Enodes: enodes}
 		return packageResult(status, tip, retErr, ret)
 	}

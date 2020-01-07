@@ -1368,12 +1368,12 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	return ""
     }
     
-    /*hashBytes, err2 := hex.DecodeString(message)
+    hashBytes, err2 := hex.DecodeString(message)
     if err2 != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:decode message fail",Err:err2}
 	ch <- res
 	return ""
-    }*/
+    }
 
     // [Notes]
     // 1. assume the nodes who take part in the signature generation as follows
@@ -2436,7 +2436,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     }
 
     ////check v
-    /*ys := secp256k1.S256().Marshal(pkx,pky)
+    ys := secp256k1.S256().Marshal(pkx,pky)
     pubkeyhex := hex.EncodeToString(ys)
     pbhs := []rune(pubkeyhex)
     if string(pbhs[0:2]) == "0x" {
@@ -2457,7 +2457,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	    recid = j
 	    break
 	}
-    }*/
+    }
     ///// 
     signature.SetRecoveryParam(int32(recid))
 

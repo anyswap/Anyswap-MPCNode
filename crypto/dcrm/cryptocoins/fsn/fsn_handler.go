@@ -38,7 +38,11 @@ import  (
 func FSNInit() {
 	gasPrice = big.NewInt(2000000000)
 	gasLimit = 40000
-	url = config.ApiGateways.FusionGateway.ApiAddress
+
+	if config.ApiGateways != nil && config.ApiGateways.FusionGateway != nil {
+	    url = config.ApiGateways.FusionGateway.ApiAddress
+	}
+	
 	//chainConfig = params.FsnChainConfig
 	chainConfig = params.TestnetChainConfig
 }
@@ -267,11 +271,12 @@ func fsn_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, t
         fmt.Printf("================ amount = %v ================\n", amount)
 	fmt.Printf("================ gasPrice = %v ================\n", gasPrice)
 	fmt.Printf("================ gasLimit = %v ================\n", gasLimit)
-	chainID, err := client.NetworkID(context.Background())
-	if err != nil {
-		fmt.Printf("================fsn_newUnsignedTransaction,111, err = %v ================\n", err)
-		return nil, nil, err
-	}
+	chainID := chainConfig.ChainID
+	//chainID, err := client.NetworkID(context.Background())
+	//if err != nil {
+	//	fmt.Printf("================fsn_newUnsignedTransaction,111, err = %v ================\n", err)
+	//	return nil, nil, err
+	//}
 
 	if gasPrice == nil {
 		gasPrice, err = client.SuggestGasPrice(context.Background())

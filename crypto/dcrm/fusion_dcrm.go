@@ -671,6 +671,14 @@ func LockOut(raw string) (string,string,error) {
     ///////bug
     key2 := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
     da,exsit := dev.LdbLockOut[key2]
+    if exsit == false {
+	da = dev.GetLockOutValueFromDb(key2)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     if exsit == true {
 	ds,err := dev.UnCompress(string(da))
 	if err == nil {

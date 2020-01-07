@@ -530,7 +530,7 @@ func SavePubKeyDataToDb() {
 		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 		//bug
 		if err != nil {
-		    for i:=0;i<1000;i++ {
+		    for i:=0;i<100;i++ {
 			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 			if err == nil && db != nil {
 			    break
@@ -560,7 +560,7 @@ func SaveAllAccountsToDb() {
 		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 		//bug
 		if err != nil {
-		    for i:=0;i<1000;i++ {
+		    for i:=0;i<100;i++ {
 			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 			if err == nil && db != nil {
 			    break
@@ -590,7 +590,7 @@ func SaveReqAddrToDb() {
 		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 		//bug
 		if err != nil {
-		    for i:=0;i<1000;i++ {
+		    for i:=0;i<100;i++ {
 			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 			if err == nil && db != nil {
 			    break
@@ -612,6 +612,36 @@ func SaveReqAddrToDb() {
     }
 }
 
+func SaveLockOutToDb() {
+    for {
+	select {
+	    case kd := <-LockOutChan:
+		dir := GetAcceptLockOutDir()
+		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+		//bug
+		if err != nil {
+		    for i:=0;i<100;i++ {
+			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+			if err == nil && db != nil {
+			    break
+			}
+			
+			time.Sleep(time.Duration(1000000))
+		    }
+		}
+		//
+		if db != nil {
+		    db.Put(kd.Key,[]byte(kd.Data))
+		    db.Close()
+		} else {
+		    LockOutChan <-kd
+		}
+		
+		time.Sleep(time.Duration(1000000))  //na, 1 s = 10e9 na
+	}
+    }
+}
+
 func GetReqAddrValueFromDb(key string) []byte {
     lock.Lock()
     dir := GetAcceptReqAddrDir()
@@ -619,7 +649,7 @@ func GetReqAddrValueFromDb(key string) []byte {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<1000;i++ {
+	for i:=0;i<100;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -642,6 +672,43 @@ func GetReqAddrValueFromDb(key string) []byte {
 	return nil
     }
 
+    db.Close()
+    lock.Unlock()
+    return da
+}
+
+func GetLockOutValueFromDb(key string) []byte {
+    lock5.Lock()
+    dir := GetAcceptLockOutDir()
+    ////////
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<100;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
+        lock5.Unlock()
+	return nil 
+    }
+    
+    da,err := db.Get([]byte(key))
+    ///////
+    if err != nil {
+	db.Close()
+	lock5.Unlock()
+	return nil
+    }
+
+    db.Close()
+    lock5.Unlock()
     return da
 }
 
@@ -652,7 +719,7 @@ func GetAllPubKeyDataFromDb() []*PubKeyData {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<1000;i++ {
+	for i:=0;i<100;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil && db != nil {
 		break
@@ -700,7 +767,7 @@ func GetAllPendingReqAddrFromDb() map[string][]byte {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<1000;i++ {
+	for i:=0;i<100;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil && db != nil {
 		break
@@ -729,6 +796,63 @@ func GetAllPendingReqAddrFromDb() map[string][]byte {
 	    }
 	    
 	    pd := pubs.(*AcceptReqAddrData)
+	    if pd == nil {
+		continue
+	    }
+
+	    if pd.Deal == true || pd.Status == "Success" {
+		continue
+	    }
+
+	    if pd.Status != "Pending" {
+		continue
+	    }
+
+	    kd[key] = iter.Value()
+	}
+	iter.Release()
+	db.Close()
+    }
+
+    return kd
+}
+
+func GetAllPendingLockOutFromDb() map[string][]byte {
+    kd := make(map[string][]byte)
+    fmt.Println("==============GetAllPendingLockOutFromDb,start read from db===============")
+    dir := GetAcceptLockOutDir()
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<100;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil && db != nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db != nil {
+	fmt.Println("==============GetAllPendingLockOutFromDb,open db success===============")
+	iter := db.NewIterator() 
+	for iter.Next() {
+	    key := string(iter.Key())
+	    value := string(iter.Value())
+	    ss,err := UnCompress(value)
+	    if err != nil {
+		fmt.Println("==============GetAllPendingLockOutFromDb,1111 err = %v===============",err)
+		continue
+	    }
+	    
+	    pubs,err := Decode2(ss,"AcceptLockOutData")
+	    if err != nil {
+		fmt.Println("==============GetAllPendingLockOutFromDb,2222 err = %v===============",err)
+		continue
+	    }
+	    
+	    pd := pubs.(*AcceptLockOutData)
 	    if pd == nil {
 		continue
 	    }

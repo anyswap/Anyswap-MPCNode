@@ -125,7 +125,7 @@ func GetPubKeyDataValueFromDb(key string) []byte {
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
-	for i:=0;i<1000;i++ {
+	for i:=0;i<100;i++ {
 	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
 	    if err == nil {
 		break
@@ -148,6 +148,8 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 	return nil
     }
 
+    db.Close()
+    lock.Unlock()
     return da
 }
 
@@ -1191,13 +1193,26 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
     if strings.EqualFold(cointype,"EOS") == true {
 	
 	var eosstr string
-	for k,v := range LdbPubKeyData {  //TODO must write GetAllPubKeyDataFromDb()
+	/*for k,v := range LdbPubKeyData {  //TODO must write GetAllPubKeyDataFromDb()
 	    key := string(k)
 	    value := string(v)
 	    if strings.EqualFold(key,string([]byte("eossettings"))) {
 		eosstr = value
 		break
 	    }
+	}*/
+	key := string([]byte("eossettings"))
+	da,exsit := LdbPubKeyData[key]
+	if exsit == false {
+	    da = GetPubKeyDataValueFromDb(key)
+	    if da == nil {
+		exsit = false
+	    } else {
+		exsit = true
+	    }
+	}
+	if exsit == true {
+	    eosstr = string(da)
 	}
 	///////
 	if eosstr == "" {

@@ -122,9 +122,11 @@ func InitDev(keyfile string,groupId string) {
     KeyFile = keyfile
     AllAccounts = GetAllPubKeyDataFromDb()
     LdbReqAddr = GetAllPendingReqAddrFromDb()
+    LdbLockOut = GetAllPendingLockOutFromDb()
     go SavePubKeyDataToDb()
     go SaveAllAccountsToDb()
     go SaveReqAddrToDb()
+    go SaveLockOutToDb()
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -1548,6 +1550,14 @@ type LockOutStatus struct {
 
 func GetLockOutStatus(key string) (string,string,error) {
     da,exsit := LdbLockOut[key]
+    if exsit == false {
+	da = GetLockOutValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	return "","dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
@@ -2162,6 +2172,14 @@ func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom str
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
     fmt.Println("===================!!!!GetAcceptLockOutRes,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,threshold =%s,key =%s!!!!============================",account,groupid,nonce,dcrmfrom,threshold,key)
     da,exsit := LdbLockOut[key]
+    if exsit == false {
+	da = GetLockOutValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	fmt.Println("===================!!!!GetAcceptLockOutRes,no exsit key =%s!!!!============================",key)
@@ -2486,6 +2504,14 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     fmt.Println("=====================AcceptLockOut,account =%s,groupid =%s,nonce =%s,dcrmfrom =%s,threshold =%s,key =%s======================",account,groupid,nonce,dcrmfrom,threshold,key)
     fmt.Println("=====================AcceptLockOut,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
     da,exsit := LdbLockOut[key]
+    if exsit == false {
+	da = GetLockOutValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
     ///////
     if exsit == false {
 	fmt.Println("=====================AcceptLockOut,no exsit key =%s======================",key)
@@ -2568,6 +2594,9 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     if err != nil {
 	return "dcrm back-end internal error:compress accept data fail",err
     }
+
+    kdtmp := KeyData{Key:[]byte(key),Data:es}
+    LockOutChan <-kdtmp
 
     LdbLockOut[key] = []byte(es)
     acceptLockOutChan <- account
@@ -3631,6 +3660,9 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 	return err 
     }
   
+    kdtmp := KeyData{Key:[]byte(key),Data:ss}
+    LockOutChan <-kdtmp
+
     LdbLockOut[key] = []byte(ss)
     return nil
 }

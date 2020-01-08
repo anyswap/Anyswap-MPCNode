@@ -863,10 +863,65 @@ func GetLockOutStatus(key string) (string,string,error) {
     return dev.GetLockOutStatus(key)
 }
 
-func GetAccountsBalance(pubkey string) (interface{}, string, error) {
+func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, error) {
+    ////bug,check valid accepter
+    check := false
+    for _,v := range dev.LdbReqAddr {
+	value := string(v)
+	////
+	ds,err := dev.UnCompress(value)
+	if err != nil {
+	    continue
+	}
+
+	dss,err := dev.Decode2(ds,"AcceptReqAddrData")
+	if err != nil {
+	    continue
+	}
+
+	ac := dss.(*dev.AcceptReqAddrData)
+	if ac == nil {
+	    continue
+	}
+	
+	for _,v := range ac.NodeSigs {
+	    tx2 := new(types.Transaction)
+	    vs := common.FromHex(v)
+	    if err = rlp.DecodeBytes(vs, tx2); err != nil {
+		continue
+	    }
+
+	    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+	    from2, err := types.Sender(signer, tx2)
+	    if err != nil {
+		signer = types.NewEIP155Signer(big.NewInt(4)) //
+		from2, err = types.Sender(signer, tx2)
+		if err != nil {
+		    continue
+		}
+	    }
+	    
+	    eid := string(tx2.Data())
+	    fmt.Println("============GetAccountsBalance,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
+	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
+		check = true
+		break
+	    }
+	}
+
+	if check == true {
+	    break
+	}
+    }
+
+    if check == false {
+	fmt.Println("============GetAccountsBalance,check accepter fail,geter_acc =%s===============",geter_acc)
+	return nil,"check accepter fail",nil
+    }
+
     key,err2 := hex.DecodeString(pubkey)
     if err2 != nil {
-	fmt.Printf("==============GetAccountsBalance,decode string fail,err =%v=============",err2)
+	fmt.Printf("==============GetAccountsBalance,decode pubkey string fail,err =%v=============",err2)
 	return nil,"decode pubkey fail",err2
     }
 
@@ -964,9 +1019,9 @@ func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,str
     return nonce,"",nil
 }
 
-func GetReqAddrReply() ([]string,string,error) {
+func GetReqAddrReply(geter_acc string) ([]string,string,error) {
     fmt.Println("=========== call dcrm.GetReqAddrReply ============")
-    reply,tip,err := SendReqToGroup("","rpc_get_reqaddr_reply")
+    reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_reqaddr_reply")
     if reply == "" || err != nil {
 	fmt.Println("===========dcrm.GetReqAddrReply,err =%v ============",err)
 	return nil,tip,err 
@@ -976,9 +1031,9 @@ func GetReqAddrReply() ([]string,string,error) {
     return ss,"",nil 
 }
 
-func GetLockOutReply() ([]string,string,error) {
+func GetLockOutReply(geter_acc string) ([]string,string,error) {
     fmt.Println("=========== call dcrm.GetLockOutReply ============")
-    reply,tip,err := SendReqToGroup("","rpc_get_lockout_reply")
+    reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_lockout_reply")
     if reply == "" || err != nil {
 	fmt.Println("===========call dcrm.GetLockOutReply,err =%v ============",err)
 	return nil,tip,err 

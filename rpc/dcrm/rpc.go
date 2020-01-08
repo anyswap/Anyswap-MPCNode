@@ -255,11 +255,11 @@ func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr str
     }
 }
 
-func (this *Service) GetCurNodeReqAddrInfo() map[string]interface{} {
+func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interface{} {
     fmt.Println("==============dcrm_getCurNodeReqAddrInfo================")
 
     data := make(map[string]interface{})
-    s,tip,err := dcrm.GetReqAddrReply()
+    s,tip,err := dcrm.GetReqAddrReply(geter_acc)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -282,11 +282,11 @@ func (this *Service) GetCurNodeReqAddrInfo() map[string]interface{} {
     }
 }
 
-func (this *Service) GetCurNodeLockOutInfo() map[string]interface{} {
-    fmt.Println("==============dcrm_getCurNodeLockOutInfo================")
+func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interface{} {
+    fmt.Println("==============dcrm_getCurNodeLockOutInfo,geter =%s================",geter_acc)
 
     data := make(map[string]interface{})
-    s,tip,err := dcrm.GetLockOutReply()
+    s,tip,err := dcrm.GetLockOutReply(geter_acc)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -494,8 +494,8 @@ func (this *Service) GetAccounts(gid,mode string) map[string]interface{} {
     }
 }
 
-func (this *Service) GetAccountsBalance(pubkey string) map[string]interface{} {
-	fmt.Println("==========dcrm_getAccountsBalance,pubkey = %s ===========",pubkey)
+func (this *Service) GetAccountsBalance(pubkey string,geter_acc string) map[string]interface{} {
+	fmt.Println("==========dcrm_getAccountsBalance,pubkey = %s,geter_acc =%s ===========",pubkey,geter_acc)
 	data := make(map[string]interface{})
 	if pubkey == "" {
 	    data["result"] = ""
@@ -507,7 +507,7 @@ func (this *Service) GetAccountsBalance(pubkey string) map[string]interface{} {
 	    }
 	}
 
-	ret, tip, err := dcrm.GetAccountsBalance(pubkey)
+	ret, tip, err := dcrm.GetAccountsBalance(pubkey,geter_acc)
 	if err != nil {
 	    data["result"] = ""
 	    return map[string]interface{}{

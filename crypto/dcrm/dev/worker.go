@@ -1023,7 +1023,7 @@ type RecvMsg struct {
 func DcrmCall(msg interface{},enode string) <-chan string {
     ch := make(chan string, 1)
     s := msg.(string)
-    fmt.Println("=============DcrmCall,len(receiv) = %v,enode =%s ==============",len(s),enode)
+    fmt.Println("=============DcrmCall,len(receiv) = %v,enode =%s,cur enode=%s ==============",len(s),enode,cur_enode)
 
     ////////
     if s == "" {
@@ -2305,7 +2305,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.groupid = msgs[5] 
 	    w.limitnum = msgs[7]
 	    
-	    fmt.Println("==============RecvMsg.Run,lockout,groupid =%s,get mode =%s=================",msgs[5],msgs[8])
+	    fmt.Println("==============RecvMsg.Run,lockout,nonce =%s,acc =%s,groupid =%s,get mode =%s=================",msgs[6],msgs[0],msgs[5],msgs[8])
 	    if msgs[8] == "0" {// self-group
 		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:""}
 		fmt.Println("===================call SaveAcceptLockOutData,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,dcrmto =%s,value =%s,cointype =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[5],msgs[6],msgs[1],msgs[2],msgs[3],msgs[4],msgs[7],msgs[8])
@@ -2605,7 +2605,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    
 	    w.groupid = msgs[2]
 	    w.limitnum = msgs[4]
-	    fmt.Println("==============RecvMsg.Run,get mode =%s=================",msgs[5])
+	    fmt.Println("==============RecvMsg.Run,get mode =%s,nonce =%s,acc =%s=================",msgs[5],msgs[3],msgs[0])
 	    if msgs[5] == "0" {// self-group
 		nodesigs := make([]string,0)
 		nums := strings.Split(msgs[4],"/")

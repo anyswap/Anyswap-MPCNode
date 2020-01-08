@@ -2386,7 +2386,7 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 	arl = allreply
     }
 
-    ac2:= &AcceptReqAddrData{Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,PubKey:pk,Tip:ttip,Error:eif,AllReply:arl}
+    ac2:= &AcceptReqAddrData{Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,NodeSigs:ac.NodeSigs,Deal:deal,Accept:acp,Status:sts,PubKey:pk,Tip:ttip,Error:eif,AllReply:arl}
     
     e,err := Encode2(ac2)
     if err != nil {
@@ -2956,7 +2956,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    ClearChan(acceptWaitReqAddrChan)
 	    ClearChan(acceptReqAddrChan)
 	    
-	    //msg = account:cointype:groupid:nonce:threshold:mode
+	    //msg = account:cointype:groupid:nonce:threshold:mode:tx1:tx2:tx3...txn
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
 	    w.sid = rr.Nonce
@@ -2972,7 +2972,13 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    w.limitnum = msgs[4]
 	    fmt.Println("==============RecvMsg.Run,get mode =%s=================",msgs[5])
 	    if msgs[5] == "0" {// self-group
-		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:""}
+		nodesigs := make([]string,0)
+		nums := strings.Split(msgs[4],"/")
+		nodecnt,_ := strconv.Atoi(nums[1])
+		for j:=0;j<nodecnt;j++ {
+		    nodesigs = append(nodesigs,msgs[6+j])
+		}
+		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],NodeSigs:nodesigs,Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:""}
 		fmt.Println("===================call SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
 		err := SaveAcceptReqAddrData(ac)
 		if err != nil {
@@ -3131,6 +3137,7 @@ type PubKeyData struct {
     GroupId string
     LimitNum string
     Mode string
+    NodeSigs []string
 }
 
 func Encode2(obj interface{}) (string,error) {
@@ -3294,6 +3301,7 @@ type ReqAddrSendMsgToDcrm struct {
     Nonce string
     LimitNum string
     Mode string
+    NodeSigs []string
 }
 
 func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
@@ -3304,11 +3312,17 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     }
 
     GetEnodesInfo(self.GroupId)
+    msg := self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode
+    for _,v := range self.NodeSigs {
+	msg += ":"
+	msg += v
+    }
+
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
-    nonce := Keccak256Hash([]byte(self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.LimitNum + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
+    nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
     
-    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode}
+    sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:nonce,WorkId:workid,Msg:msg}
     res,err := Encode2(sm)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode SendMsg fail in req addr",Err:err}
@@ -3484,6 +3498,7 @@ type AcceptReqAddrData struct {
     Nonce string
     LimitNum string
     Mode string
+    NodeSigs []string
 
     Deal bool
     Accept string 
@@ -3752,9 +3767,16 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     var req RpcReq
     switch rpctype {
 	case "rpc_req_dcrmaddr":
-	    //msg = account : cointype : groupid : nonce: threshold : mode
+	    //msg = account : cointype : groupid : nonce: threshold : mode : tx1 : tx2 ... : txn
 	    msgs := strings.Split(msg,":")
-	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4], Mode:msgs[5]}
+	    sigs := make([]string,0)
+	    nums := strings.Split(msgs[4],"/")
+	    nodecnt,_ := strconv.Atoi(nums[1])
+	    for j:=0;j<nodecnt;j++ {
+		sigs = append(sigs,msgs[6+j])
+	    }
+
+	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4], Mode:msgs[5],NodeSigs:sigs}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break

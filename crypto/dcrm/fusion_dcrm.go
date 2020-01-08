@@ -346,19 +346,22 @@ func ExsitPubKey(account string,cointype string) (string,bool) {
 
 func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     if strings.EqualFold(rpctype,"rpc_req_dcrmaddr") {
-	//msg = account:cointype:groupid:nonce:threshold:mode
+	//msg = account:cointype:groupid:nonce:threshold:mode:tx1:tx2:tx3...:txn
 	msgs := strings.Split(msg,":")
 	if len(msgs) < 6 {
 	    return "","dcrm back-end internal parameter error in func SendReqToGroup",fmt.Errorf("param error.")
 	}
 
-	coin := "ALL"
-	if types.IsDefaultED25519(msgs[1]) {
-	    coin = msgs[1]
+	//coin := "ALL"
+	if !types.IsDefaultED25519(msgs[1]) {
+	    //coin = msgs[1]
+	    msgs[1] = "ALL"
 	}
 
-	//account:cointype:groupid:nonce:threshold:mode
-	str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]
+	str := strings.Join(msgs,":")
+
+	//account:cointype:groupid:nonce:threshold:mode:tx1:tx2:tx3....:txn
+	//str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]
 	ret,tip,err := dev.SendReqToGroup(str,rpctype)
 	if err != nil || ret == "" {
 	    return "",tip,err
@@ -437,7 +440,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 
     fmt.Println("===============ReqDcrmAddr,fusion account = %s================",from.Hex())
 
-    data := string(tx.Data())
+    data := string(tx.Data()) //REQDCRMADDR:gid:threshold:tx1:tx2:tx3...
     datas := strings.Split(data,":")
     if len(datas) < 3 {
 	return "","transacion data format error",fmt.Errorf("tx.data error.")
@@ -457,7 +460,17 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	return "","no threshold value",fmt.Errorf("get threshold fail.")
     }
 
-    Nonce := tx.Nonce() 
+    nums := strings.Split(threshold,"/")
+    if len(nums) != 2 {
+	return "","transacion data format error,threshold is not right",fmt.Errorf("tx.data error.")
+    }
+
+    nodecnt,_ := strconv.Atoi(nums[1])
+    if len(datas) < (3+nodecnt) {
+	return "","transacion data format error",fmt.Errorf("tx.data error.")
+    }
+
+    Nonce := tx.Nonce()
     
     if mode == "1" { //non self-group
 	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
@@ -519,6 +532,11 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 
     go func() {
 	msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
+	for j:=0;j<nodecnt;j++ {
+	    msg += ":"
+	    msg += datas[3+j]
+	}
+
 	addr,_,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
 	if addr != "" && err == nil {
 	    return
@@ -538,10 +556,10 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
-    _, err := types.Sender(signer, tx)
+    from, err := types.Sender(signer, tx)
     if err != nil {
 	signer = types.NewEIP155Signer(big.NewInt(4)) //
-	_, err = types.Sender(signer, tx)
+	from, err = types.Sender(signer, tx)
 	if err != nil {
 	    return "","recover fusion account fail from raw data,maybe raw data error",err
 	}
@@ -568,6 +586,70 @@ func AcceptReqAddr(raw string) (string,string,error) {
 	accept = "true"
     }
 
+    ////bug,check valid accepter
+    key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[5] + ":" + datas[6]))).Hex()
+    da,exsit := dev.LdbReqAddr[key]
+    if exsit == false {
+	da = dev.GetReqAddrValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
+
+    if exsit == false {
+	return "","dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+    }
+
+    ds,err := dev.UnCompress(string(da))
+    if err != nil {
+	return "","dcrm back-end internal error:uncompress accept data fail",err
+    }
+
+    dss,err := dev.Decode2(ds,"AcceptReqAddrData")
+    if err != nil {
+	return "","dcrm back-end internal error:decode accept data fail",err
+    }
+
+    ac := dss.(*dev.AcceptReqAddrData)
+    if ac == nil || len(ac.NodeSigs) == 0 {
+	return "","dcrm back-end internal error:decode accept data fail",fmt.Errorf("decode accept data fail")
+    }
+
+    check := false
+    for _,v := range ac.NodeSigs {
+	tx2 := new(types.Transaction)
+	vs := common.FromHex(v)
+	if err = rlp.DecodeBytes(vs, tx2); err != nil {
+	    //return "","check accepter fail",err
+	    continue
+	}
+
+	signer = types.NewEIP155Signer(big.NewInt(30400)) //
+	from2, err := types.Sender(signer, tx2)
+	if err != nil {
+	    signer = types.NewEIP155Signer(big.NewInt(4)) //
+	    from2, err = types.Sender(signer, tx2)
+	    if err != nil {
+		//return "","check accepter fail",err
+		continue
+	    }
+	}
+	
+	eid := string(tx2.Data())
+	fmt.Println("============AcceptReqAddr,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,from.Hex(),from2.Hex())
+	if strings.EqualFold(eid,cur_enode) && strings.EqualFold(from.Hex(),from2.Hex()) {
+	    check = true
+	    break
+	}
+    }
+
+    if check == false {
+	return "","invalid accepter",fmt.Errorf("invalid accepter")
+    }
+    ////////////////////////////
+
     tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,"Pending","","","","")
     if err != nil {
 	return "",tip,err
@@ -584,10 +666,10 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
-    _, err := types.Sender(signer, tx)
+    from, err := types.Sender(signer, tx)
     if err != nil {
 	signer = types.NewEIP155Signer(big.NewInt(4)) //
-	_, err = types.Sender(signer, tx)
+	from, err = types.Sender(signer, tx)
 	if err != nil {
 	    return "","recover fusion account fail from raw data,maybe raw data error",err
 	}
@@ -619,6 +701,68 @@ func AcceptLockOut(raw string) (string,string,error) {
     if datas[10] == "AGREE" {
 	accept = "true"
     }
+
+    ////bug,check valid accepter
+    da,exsit := dev.LdbPubKeyData[key2]
+    if exsit == false {
+	da = dev.GetPubKeyDataValueFromDb(key2)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
+    if exsit == false {
+	return "","dcrm back-end internal error:get lockout data from db fail",fmt.Errorf("get lockout data from db fail")
+    }
+
+    ss,err := dev.UnCompress(string(da))
+    if err != nil {
+	return "","dcrm back-end internal error:uncompress lockout data from db fail",fmt.Errorf("uncompress lockout data from db fail")
+    }
+    
+    pubs,err := dev.Decode2(ss,"PubKeyData")
+    if err != nil {
+	return "","dcrm back-end internal error:decode lockout data from db fail",fmt.Errorf("decode lockout data from db fail")
+    }
+    
+    pd := pubs.(*dev.PubKeyData)
+    if pd == nil {
+	return "","dcrm back-end internal error:decode lockout data from db fail",fmt.Errorf("decode lockout data from db fail")
+    }
+
+    check := false
+    for _,v := range pd.NodeSigs {
+	tx2 := new(types.Transaction)
+	vs := common.FromHex(v)
+	if err = rlp.DecodeBytes(vs, tx2); err != nil {
+	    //return "","check accepter fail",err
+	    continue
+	}
+
+	signer = types.NewEIP155Signer(big.NewInt(30400)) //
+	from2, err := types.Sender(signer, tx2)
+	if err != nil {
+	    signer = types.NewEIP155Signer(big.NewInt(4)) //
+	    from2, err = types.Sender(signer, tx2)
+	    if err != nil {
+		//return "","check accepter fail",err
+		continue
+	    }
+	}
+	
+	eid := string(tx2.Data())
+	fmt.Println("============AcceptLockOut,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,from.Hex(),from2.Hex())
+	if strings.EqualFold(eid,cur_enode) && strings.EqualFold(from.Hex(),from2.Hex()) {
+	    check = true
+	    break
+	}
+    }
+
+    if check == false {
+	return "","invalid accepter",fmt.Errorf("invalid accepter")
+    }
+    ////////////////////////////
 
     tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"Pending","","","","")
     if err != nil {

@@ -84,7 +84,33 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	}
 	
 	sedsave := itertmp.Value.(string)
-	pubs := &PubKeyData{Pub:string(sedpk),Save:sedsave,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode}
+	////////
+	nodesigs := make([]string,0)
+	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
+	da,exsit := LdbReqAddr[rk]
+	if exsit == false {
+	    da = GetReqAddrValueFromDb(rk)
+	    if da == nil {
+		exsit = false
+	    } else {
+		exsit = true
+	    }
+	}
+
+	if exsit == true {
+	    ds,err := UnCompress(string(da))
+	    if err == nil {
+		dss,err := Decode2(ds,"AcceptReqAddrData")
+		if err == nil {
+		    ac := dss.(*AcceptReqAddrData)
+		    if ac != nil {
+			nodesigs = ac.NodeSigs
+		    }
+		}
+	    }
+	}
+	////////
+	pubs := &PubKeyData{Pub:string(sedpk),Save:sedsave,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
 	epubs,err := Encode2(pubs)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ed pubkey",Err:err}
@@ -315,7 +341,33 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	return
     }
     save := iter.Value.(string)
-    pubs := &PubKeyData{Pub:string(ys),Save:save,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode}
+    ////////
+    nodesigs := make([]string,0)
+    rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
+    da,exsit := LdbReqAddr[rk]
+    if exsit == false {
+	da = GetReqAddrValueFromDb(rk)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
+
+    if exsit == true {
+	ds,err := UnCompress(string(da))
+	if err == nil {
+	    dss,err := Decode2(ds,"AcceptReqAddrData")
+	    if err == nil {
+		ac := dss.(*AcceptReqAddrData)
+		if ac != nil {
+		    nodesigs = ac.NodeSigs
+		}
+	    }
+	}
+    }
+    ////////
+    pubs := &PubKeyData{Pub:string(ys),Save:save,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
     epubs,err := Encode2(pubs)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey",Err:err}

@@ -1273,97 +1273,13 @@ func SetUpMsgList(msg string,enode string) {
     RpcReqQueue <- req
 }
 
-/*func GetReqAddrStatus(key string) (string,string,error) {
-    lock5.Lock()
-    dir := GetAcceptReqAddrDir()
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil {
-	for i:=0;i<1000;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
-    }
-    //
-    if err != nil {
-        lock5.Unlock()
-	return "","dcrm back-end internal error:open level db fail",err
-    }
-    
-    da,err := db.Get([]byte(key))
-    ///////
-    if err != nil {
-	db.Close()
-	lock5.Unlock()
-	return "","dcrm back-end internal error:get accept data fail from db",err
-    }
-
-    ds,err := UnCompress(string(da))
-    if err != nil {
-	db.Close()
-	lock5.Unlock()
-	return "","dcrm back-end internal error:uncompress accept data fail",err
-    }
-
-    dss,err := Decode2(ds,"AcceptReqAddrData")
-    if err != nil {
-	db.Close()
-	lock5.Unlock()
-	return "","dcrm back-end internal error:decode accept data fail",err
-    }
-
-    ac := dss.(*AcceptReqAddrData)
-    ret := "{"
-    ret += "\""
-    ret += "Status"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Status
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "PubKey"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.PubKey
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Tip"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Tip
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Error"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Error
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "AllReply"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.AllReply
-    ret += "\""
-    ret += "}"
-
-    db.Close()
-    lock5.Unlock()
-    return ret,"",nil
+type ReqAddrStatus struct {
+    Status string
+    PubKey string
+    Tip string
+    Error string
+    AllReply string
 }
-*/
 
 func GetReqAddrStatus(key string) (string,string,error) {
     var da []byte
@@ -1395,142 +1311,10 @@ func GetReqAddrStatus(key string) (string,string,error) {
     }
 
     ac := dss.(*AcceptReqAddrData)
-    ret := "{"
-    ret += "\""
-    ret += "Status"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Status
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "PubKey"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.PubKey
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Tip"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Tip
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Error"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Error
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "AllReply"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.AllReply
-    ret += "\""
-    ret += "}"
-
-    return ret,"",nil
+    los := &ReqAddrStatus{Status:ac.Status,PubKey:ac.PubKey,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
+    ret,err := json.Marshal(los)
+    return string(ret),"",nil
 }
-
-/*func GetLockOutStatus(key string) (string,string,error) {
-    lock5.Lock()
-    dir := GetAcceptLockOutDir()
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil {
-	for i:=0;i<1000;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
-    }
-    //
-    if err != nil {
-        lock5.Unlock()
-	return "","dcrm back-end internal error:open level db fail",err
-    }
-    
-    da,err := db.Get([]byte(key))
-    ///////
-    if err != nil {
-	db.Close()
-	lock5.Unlock()
-	return "","dcrm back-end internal error:get accept data fail from db",err
-    }
-
-    ds,err := UnCompress(string(da))
-    if err != nil {
-	db.Close()
-	lock5.Unlock()
-	return "","dcrm back-end internal error:uncompress accept data fail",err
-    }
-
-    dss,err := Decode2(ds,"AcceptLockOutData")
-    if err != nil {
-	db.Close()
-	lock5.Unlock()
-	return "","dcrm back-end internal error:decode accept data fail",err
-    }
-
-    ac := dss.(*AcceptLockOutData)
-    ret := "{"
-    ret += "\""
-    ret += "Status"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Status
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "OutTxHash"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.OutTxHash
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Tip"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Tip
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Error"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Error
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "AllReply"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.AllReply
-    ret += "\""
-    ret += "}"
-
-    db.Close()
-    lock5.Unlock()
-    return ret,"",nil
-}
-*/
 
 type LockOutStatus struct {
     Status string
@@ -1570,48 +1354,6 @@ func GetLockOutStatus(key string) (string,string,error) {
     }
 
     ac := dss.(*AcceptLockOutData)
-    /*ret := "{"
-    ret += "\""
-    ret += "Status"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Status
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "OutTxHash"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.OutTxHash
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Tip"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Tip
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "Error"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.Error
-    ret += "\""
-    ret += ","
-    ret += "\""
-    ret += "AllReply"
-    ret += "\""
-    ret += ":"
-    ret += "\""
-    ret += ac.AllReply
-    ret += "\""
-    ret += "}"
-    */
     los := &LockOutStatus{Status:ac.Status,OutTxHash:ac.OutTxHash,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
     ret,err := json.Marshal(los)
     fmt.Println("================GetLockOutStatus,ret =%s,err =%v=================",string(ret),err)
@@ -1626,6 +1368,17 @@ type EnAcc struct {
 
 type EnAccs struct {
     EnodeAccounts []EnAcc
+}
+
+type ReqAddrReply struct {
+    Key string
+    Account string
+    Cointype string
+    GroupId string
+    Nonce string
+    LimitNum string
+    Mode string
+    GroupAccounts []EnAcc
 }
 
 func GetReqAddrReply(geter_acc string) (string,string,error) {
@@ -1706,57 +1459,35 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	    continue
 	}
 
-	enodeaccs := &EnAccs{EnodeAccounts:eaccs}
-	allnodeaccs,_ := json.Marshal(enodeaccs)
+	//enodeaccs := &EnAccs{EnodeAccounts:eaccs}
+	//allnodeaccs,_ := json.Marshal(enodeaccs)
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
-	tmp := "{"
-	tmp += "\"Key\":"
-	tmp += "\""
-	tmp += key
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Account\":"
-	tmp += "\""
-	tmp += ac.Account
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Cointype\":"
-	tmp += "\""
-	tmp += ac.Cointype
-	tmp += "\""
-	tmp += ","
-	tmp += "\"GroupId\":"
-	tmp += "\""
-	tmp += ac.GroupId
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Nonce\":"
-	tmp += "\""
-	tmp += ac.Nonce
-	tmp += "\""
-	tmp += ","
-	tmp += "\"LimitNum\":"
-	tmp += "\""
-	tmp += ac.LimitNum
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Mode\":"
-	tmp += "\""
-	tmp += ac.Mode
-	tmp += "\""
-	tmp += ","
-	tmp += "\"GroupAccounts\":"
-	tmp += "\""
-	tmp += string(allnodeaccs)
-	tmp += "\""
-	tmp += "}"
-	ret = append(ret,tmp)
+	
+	los := &ReqAddrReply{Key:key,Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
+	ret2,err := json.Marshal(los)
+	fmt.Println("================GetReqAddrReply,ret =%s,err =%v=================",string(ret2),err)
+	
+	ret = append(ret,string(ret2))
 	////
     }
 
     ///////
     ss := strings.Join(ret,"|")
     return ss,"",nil
+}
+
+type LockOutCurNodeInfo struct {
+    Key string
+    Account string
+    GroupId string
+    Nonce string
+    DcrmFrom string
+    DcrmTo string
+    Value string
+    Cointype string
+    LimitNum string
+    Mode string
+    GroupAccounts []EnAcc
 }
 
 func GetLockOutReply(geter_acc string) (string,string,error) {
@@ -1873,66 +1604,15 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	    continue
 	}
 
-	enodeaccs := &EnAccs{EnodeAccounts:eaccs}
-	allnodeaccs,_ := json.Marshal(enodeaccs)
+	//enodeaccs := &EnAccs{EnodeAccounts:eaccs}
+	//allnodeaccs,_ := json.Marshal(enodeaccs)
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
-	tmp := "{"
-	tmp += "\"Key\":"
-	tmp += "\""
-	tmp += key
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Account\":"
-	tmp += "\""
-	tmp += ac.Account
-	tmp += "\""
-	tmp += ","
-	tmp += "\"GroupId\":"
-	tmp += "\""
-	tmp += ac.GroupId
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Nonce\":"
-	tmp += "\""
-	tmp += ac.Nonce
-	tmp += "\""
-	tmp += ","
-	tmp += "\"DcrmFrom\":"
-	tmp += "\""
-	tmp += ac.DcrmFrom
-	tmp += "\""
-	tmp += ","
-	tmp += "\"DcrmTo\":"
-	tmp += "\""
-	tmp += ac.DcrmTo
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Value\":"
-	tmp += "\""
-	tmp += ac.Value
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Cointype\":"
-	tmp += "\""
-	tmp += ac.Cointype
-	tmp += "\""
-	tmp += ","
-	tmp += "\"LimitNum\":"
-	tmp += "\""
-	tmp += ac.LimitNum
-	tmp += "\""
-	tmp += ","
-	tmp += "\"Mode\":"
-	tmp += "\""
-	tmp += ac.Mode
-	tmp += "\""
-	tmp += ","
-	tmp += "\"GroupAccounts\":"
-	tmp += "\""
-	tmp += string(allnodeaccs)
-	tmp += "\""
-	tmp += "}"
-	ret = append(ret,tmp)
+	
+	los := &LockOutCurNodeInfo{Key:key,Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
+	ret2,err := json.Marshal(los)
+	fmt.Println("================GetLockOutReply,ret =%s,err =%v=================",string(ret2),err)
+
+	ret = append(ret,string(ret2))
 	////
     }
 

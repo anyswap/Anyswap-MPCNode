@@ -1611,11 +1611,19 @@ func GetLockOutStatus(key string) (string,string,error) {
     return string(ret),"",err
 }
 
+type EnAcc struct {
+    Enode string
+    Accounts []string
+}
+
+type EnAccs struct {
+    EnodeAccounts []EnAcc
+}
+
 func GetReqAddrReply(geter_acc string) (string,string,error) {
     fmt.Println("================call dev.GetReqAddrReply, geter acc =%s===================",geter_acc)
     
-    ////bug,check valid accepter
-    check := false
+    var ret []string
     for _,v := range LdbReqAddr {
 	value := string(v)
 	////
@@ -1636,7 +1644,10 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetReqAddrReply,decode err ===================")
 	    continue
 	}
-	
+
+	check := false
+	eaccs := make([]EnAcc,0)
+	////bug,check valid accepter
 	for _,v := range ac.NodeSigs {
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
@@ -1653,43 +1664,24 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 		    continue
 		}
 	    }
-	    
+
 	    eid := string(tx2.Data())
+	    accs := make([]string,0)
+	    accs = append(accs,from2.Hex())
+	    ea := EnAcc{Enode:eid,Accounts:accs}
+	    eaccs = append(eaccs,ea)
+	    
 	    fmt.Println("============GetReqAddrReply,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
 	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
 		check = true
-		break
+		//break
 	    }
 	}
 
-	if check == true {
-	    break
-	}
-    }
-
-    if check == false {
-	fmt.Println("============GetReqAddrReply,check accepter fail,geter_acc =%s===============",geter_acc)
-	return "","check accepter fail",nil
-    }
-
-    var ret []string
-    for _,v := range LdbReqAddr {
-	value := string(v)
-	////
-	ds,err := UnCompress(value)
-	if err != nil {
-	    fmt.Println("================GetReqAddrReply,uncompress err =%v ===================",err)
-	    continue
+	if check == false {
+	   continue 
 	}
 
-	dss,err := Decode2(ds,"AcceptReqAddrData")
-	if err != nil {
-	    fmt.Println("================GetReqAddrReply,decode err =%v ===================",err)
-	    continue
-	}
-
-	ac := dss.(*AcceptReqAddrData)
-	fmt.Println("================GetReqAddrReply,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s ===================",ac.Account,ac.Cointype,ac.GroupId,ac.Nonce,ac.LimitNum,ac.Mode)
 	if ac.Deal == true || ac.Status == "Success" {
 	    fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
 	    continue
@@ -1700,6 +1692,8 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	    continue
 	}
 
+	enodeaccs := &EnAccs{EnodeAccounts:eaccs}
+	allnodeaccs,_ := json.Marshal(enodeaccs)
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
 	tmp := "{"
 	tmp += "\"Key\":"
@@ -1736,11 +1730,16 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	tmp += "\""
 	tmp += ac.Mode
 	tmp += "\""
+	tmp += ","
+	tmp += "\"GroupAccounts\":"
+	tmp += "\""
+	tmp += string(allnodeaccs)
+	tmp += "\""
 	tmp += "}"
 	ret = append(ret,tmp)
 	////
     }
-    
+
     ///////
     ss := strings.Join(ret,"|")
     return ss,"",nil
@@ -1750,8 +1749,7 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
    
     fmt.Println("================call dev.GetLockOutReply, geter acc =%s===================",geter_acc)
     
-    ////bug,check valid accepter
-    check := false
+    var ret []string
     for _,v := range LdbLockOut {
 	value := string(v)
 	////
@@ -1797,6 +1795,13 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	    }
 	}
 
+	if len(nodesigs) == 0 {
+	    continue
+	}
+
+	check := false
+	eaccs := make([]EnAcc,0)
+	////bug,check valid accepter
 	for _,v := range nodesigs {
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
@@ -1816,38 +1821,22 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	    
 	    eid := string(tx2.Data())
 	    fmt.Println("============GetLockOutReply,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
+	    
+	    accs := make([]string,0)
+	    accs = append(accs,from2.Hex())
+	    ea := EnAcc{Enode:eid,Accounts:accs}
+	    eaccs = append(eaccs,ea)
+	    
 	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
 		check = true
-		break
+		//break
 	    }
 	}
-
-	if check == true {
-	    break
-	}
-    }
-
-    if check == false {
-	fmt.Println("============GetLockOutReply,check accepter fail,geter_acc =%s===============",geter_acc)
-	return "","check accepter fail",nil
-    }
-
-    var ret []string
-    for _,v := range LdbLockOut {
-	value := string(v)
-	////
-	ds,err := UnCompress(value)
-	if err != nil {
-	    continue
+	
+	if check == false {
+	   continue 
 	}
 
-	dss,err := Decode2(ds,"AcceptLockOutData")
-	if err != nil {
-	    continue
-	}
-
-	ac := dss.(*AcceptLockOutData)
-	fmt.Println("===============GetLockOutReply,ac.Deal =%v,nonce =%s===============",ac.Deal,ac.Nonce)
 	if ac.Deal == true || ac.Status == "Success" {
 	    fmt.Println("===============GetLockOutReply,ac.Deal is true,nonce =%s===============",ac.Nonce)
 	    continue
@@ -1858,6 +1847,8 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	    continue
 	}
 
+	enodeaccs := &EnAccs{EnodeAccounts:eaccs}
+	allnodeaccs,_ := json.Marshal(enodeaccs)
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
 	tmp := "{"
 	tmp += "\"Key\":"
@@ -1909,11 +1900,16 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	tmp += "\""
 	tmp += ac.Mode
 	tmp += "\""
+	tmp += ","
+	tmp += "\"GroupAccounts\":"
+	tmp += "\""
+	tmp += string(allnodeaccs)
+	tmp += "\""
 	tmp += "}"
 	ret = append(ret,tmp)
 	////
     }
-    
+
     ///////
     ss := strings.Join(ret,"|")
     fmt.Println("===============GetLockOutReply,ret=%s===============",ss)

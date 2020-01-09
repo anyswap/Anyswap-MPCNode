@@ -256,7 +256,7 @@ func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr str
 }
 
 func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interface{} {
-    fmt.Println("==============dcrm_getCurNodeReqAddrInfo================")
+    fmt.Println("==============dcrm_getCurNodeReqAddrInfo,geter acc =%s================",geter_acc)
 
     data := make(map[string]interface{})
     s,tip,err := dcrm.GetReqAddrReply(geter_acc)

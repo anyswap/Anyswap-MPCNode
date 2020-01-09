@@ -64,12 +64,6 @@ var (
     ParseNode func(string) string
     GetEosAccount func() (string,string,string)
 
-    //acceptLockOutChan chan string = make(chan string, 10)
-    //acceptWaitLockOutChan chan string = make(chan string, 10)
-    
-    //acceptReqAddrChan chan string = make(chan string, 10)
-    //acceptWaitReqAddrChan chan string = make(chan string, 10)
-
     KeyFile string
     
     AllAccounts = common.NewSafeMap(10)//make([]*PubKeyData,0)
@@ -115,7 +109,7 @@ func RegDcrmGetEosAccountCallBack(f func() (string,string,string)) {
 
 func InitDev(keyfile string,groupId string) {
     cur_enode = GetSelfEnode()
-    fmt.Println("=========InitDev===========","groupId",groupId)
+    fmt.Println("=========InitDev===========","groupId=",groupId,"cur_enode=",cur_enode)
     peerscount, _ := GetGroup(groupId)
    NodeCnt = peerscount
    ThresHold = peerscount
@@ -448,11 +442,11 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
     sid:"",
 
-    acceptReqAddrChan:make(chan string),
-    acceptWaitReqAddrChan:make(chan string),
+    acceptReqAddrChan:make(chan string,1),
+    acceptWaitReqAddrChan:make(chan string,1),
     
-    acceptLockOutChan:make(chan string),
-    acceptWaitLockOutChan:make(chan string),
+    acceptLockOutChan:make(chan string,1),
+    acceptWaitLockOutChan:make(chan string,1),
     }
 }
 
@@ -1087,14 +1081,8 @@ func DcrmCall(msg interface{},enode string) <-chan string {
     
     rr := r.(*SendMsg)
     if rr.MsgType == "rpc_lockout" {
-	//fmt.Println("=============DcrmCall,clear lockout chan==============")
-	//ClearChan(acceptWaitLockOutChan)
-	//ClearChan(acceptLockOutChan)
     }
     if rr.MsgType == "rpc_req_dcrmaddr" {
-	//fmt.Println("=============DcrmCall,clear req addr chan==============")
-	//ClearChan(acceptWaitReqAddrChan)
-	//ClearChan(acceptReqAddrChan)
     }
     ////////
 
@@ -1108,14 +1096,6 @@ func DcrmCall(msg interface{},enode string) <-chan string {
 	if rr.MsgType == "rpc_lockout" {
 	}
 	if rr.MsgType == "rpc_req_dcrmaddr" {
-	    /*fmt.Println("==============!!!DcrmCall,rpc req addr error return!!!=====================")
-	    msg := rr.Msg
-	    msgs := strings.Split(msg,":")
-	    if tip == "get other node accept req addr result timeout" {
-		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Timeout","",tip,cherr.Error(),"")
-	    } else {
-		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Failure","",tip,cherr.Error(),"")
-	    }*/
 	}
 	////
 
@@ -1382,7 +1362,7 @@ type ReqAddrReply struct {
 }
 
 func GetReqAddrReply(geter_acc string) (string,string,error) {
-    fmt.Println("================call dev.GetReqAddrReply, geter acc =%s===================",geter_acc)
+    //fmt.Println("================call dev.GetReqAddrReply, geter acc =%s===================",geter_acc)
     
     var ret []string
     _,lmvalue := LdbReqAddr.ListMap()
@@ -1450,22 +1430,20 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	}
 
 	if ac.Deal == true || ac.Status == "Success" {
-	    fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
+	    //fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
 	    continue
 	}
 
 	if ac.Status != "Pending" {
-	    fmt.Println("================GetReqAddrReply,this is not pending,nonce =%s===================",ac.Nonce)
+	    //fmt.Println("================GetReqAddrReply,this is not pending,nonce =%s===================",ac.Nonce)
 	    continue
 	}
 
-	//enodeaccs := &EnAccs{EnodeAccounts:eaccs}
-	//allnodeaccs,_ := json.Marshal(enodeaccs)
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
 	
 	los := &ReqAddrReply{Key:key,Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
 	ret2,err := json.Marshal(los)
-	fmt.Println("================GetReqAddrReply,ret =%s,err =%v=================",string(ret2),err)
+	fmt.Println("=====================GetReqAddrReply,success get ret =%s,err =%v====================",string(ret2),err)
 	
 	ret = append(ret,string(ret2))
 	////
@@ -1492,7 +1470,7 @@ type LockOutCurNodeInfo struct {
 
 func GetLockOutReply(geter_acc string) (string,string,error) {
    
-    fmt.Println("================call dev.GetLockOutReply, geter acc =%s===================",geter_acc)
+    //fmt.Println("================call dev.GetLockOutReply, geter acc =%s===================",geter_acc)
     
     var ret []string
     _,lmvalue := LdbLockOut.ListMap()
@@ -1577,7 +1555,7 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	    }
 	    
 	    eid := string(tx2.Data())
-	    fmt.Println("============GetLockOutReply,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
+	    fmt.Println("===================GetLockOutReply,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
 	    
 	    accs := make([]string,0)
 	    accs = append(accs,from2.Hex())
@@ -1595,22 +1573,20 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	}
 
 	if ac.Deal == true || ac.Status == "Success" {
-	    fmt.Println("===============GetLockOutReply,ac.Deal is true,nonce =%s===============",ac.Nonce)
+	    //fmt.Println("===============GetLockOutReply,ac.Deal is true,nonce =%s===============",ac.Nonce)
 	    continue
 	}
 
 	if ac.Status != "Pending" {
-	    fmt.Println("===============GetLockOutReply,this is not pending,nonce =%s===============",ac.Nonce)
+	    //fmt.Println("===============GetLockOutReply,this is not pending,nonce =%s===============",ac.Nonce)
 	    continue
 	}
 
-	//enodeaccs := &EnAccs{EnodeAccounts:eaccs}
-	//allnodeaccs,_ := json.Marshal(enodeaccs)
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
 	
 	los := &LockOutCurNodeInfo{Key:key,Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
 	ret2,err := json.Marshal(los)
-	fmt.Println("================GetLockOutReply,ret =%s,err =%v=================",string(ret2),err)
+	fmt.Println("======================GetLockOutReply,succss get ret =%s,err =%v=================",string(ret2),err)
 
 	ret = append(ret,string(ret2))
 	////
@@ -1618,7 +1594,7 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 
     ///////
     ss := strings.Join(ret,"|")
-    fmt.Println("===============GetLockOutReply,ret=%s===============",ss)
+    //fmt.Println("===============GetLockOutReply,ret=%s===============",ss)
     return ss,"",nil
 }
 
@@ -1718,8 +1694,8 @@ func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom str
 
 func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string,workid int) (string,error) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-    fmt.Println("=====================AcceptReqAddr,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s======================",account,cointype,groupid,nonce,threshold,mode,key)
-    fmt.Println("=====================AcceptReqAddr,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
+    fmt.Println("=====================AcceptReqAddr,accept =%s,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s======================",accept,account,cointype,groupid,nonce,threshold,mode,key)
+    //fmt.Println("=====================AcceptReqAddr,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
     var da []byte
     datmp,exsit := LdbReqAddr.ReadMap(key)
     if exsit == false {
@@ -1752,7 +1728,7 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     }
 
     ac := dss.(*AcceptReqAddrData)
-    fmt.Println("=====================AcceptReqAddr,ac.Deal = %v,ac.Accept =%s,ac.Status =%s, key =%s======================",ac.Deal,ac.Accept,ac.Status,key)
+    //fmt.Println("=====================AcceptReqAddr,ac.Deal = %v,ac.Accept =%s,ac.Status =%s, key =%s======================",ac.Deal,ac.Accept,ac.Status,key)
     
     acp := ac.Accept
     if accept != "" {
@@ -1799,6 +1775,8 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     kdtmp := KeyData{Key:[]byte(key),Data:es}
     ReqAddrChan <-kdtmp
 
+    fmt.Println("===============AcceptReqAddr,send key date to ReqAddrChan================")
+
     //LdbReqAddr[key] = []byte(es)
     LdbReqAddr.WriteMap(key,[]byte(es))
     
@@ -1806,11 +1784,13 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 	wtmp := workers[workid]
 	if wtmp != nil {
 	    if len(wtmp.acceptReqAddrChan) == 0 {
-		wtmp.acceptReqAddrChan <- account
+		fmt.Println("===============AcceptReqAddr,reset wtmp.acceptReqAddrChan================")
+		wtmp.acceptReqAddrChan <- "go on" 
 	    }
 	}
     }
 
+    fmt.Println("===============AcceptReqAddr,end================")
     return "",nil
 }
 
@@ -1908,7 +1888,7 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     if workid >= 0 && workid < len(workers) {
 	wtmp := workers[workid]
 	if wtmp != nil && len(wtmp.acceptLockOutChan) == 0 {
-	    wtmp.acceptLockOutChan <- account
+	    wtmp.acceptLockOutChan <- "go on" 
 	}
     }
 
@@ -1978,9 +1958,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	//rpc_lockout
 	if rr.MsgType == "rpc_lockout" {
-	    //ClearChan(acceptWaitLockOutChan)
-	    //ClearChan(acceptLockOutChan)
-	    
 	    w := workers[workid]
 	    w.sid = rr.Nonce
 	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode
@@ -1992,7 +1969,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    fmt.Println("==============RecvMsg.Run,lockout,groupid =%s,get mode =%s=================",msgs[5],msgs[8])
 	    if msgs[8] == "0" {// self-group
 		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
-		fmt.Println("===================call SaveAcceptLockOutData,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,dcrmto =%s,value =%s,cointype =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[5],msgs[6],msgs[1],msgs[2],msgs[3],msgs[4],msgs[7],msgs[8])
+		fmt.Println("===================call SaveAcceptLockOutData,workid =%s,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,dcrmto =%s,value =%s,cointype =%s,threshold =%s,mode =%s =====================",wid,msgs[0],msgs[5],msgs[6],msgs[1],msgs[2],msgs[3],msgs[4],msgs[7],msgs[8])
 		err := SaveAcceptLockOutData(ac)
 		if err != nil {
 		    fmt.Println("===================call SaveAcceptLockOutData,err =%v =====================",err)
@@ -2091,7 +2068,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        }(wid)
 	       
 		if len(workers[wid].acceptWaitLockOutChan) == 0 {
-		    workers[wid].acceptWaitLockOutChan <- msgs[0]
+		    workers[wid].acceptWaitLockOutChan <- "go on" 
 		}
 
 	        <-timeout
@@ -2161,7 +2138,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        }
 	    } else {
 		if len(workers[wid].acceptWaitLockOutChan) == 0 {
-		    workers[wid].acceptWaitLockOutChan <- msgs[0]
+		    workers[wid].acceptWaitLockOutChan <- "go on" 
 		}
 	    }
 
@@ -2247,9 +2224,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
-	    //ClearChan(acceptWaitReqAddrChan)
-	    //ClearChan(acceptReqAddrChan)
-	    
 	    //msg = account:cointype:groupid:nonce:threshold:mode:tx1:tx2:tx3...txn
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
@@ -2265,7 +2239,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    
 	    w.groupid = msgs[2]
 	    w.limitnum = msgs[4]
-	    fmt.Println("==============RecvMsg.Run,get mode =%s=================",msgs[5])
 	    
 	    if msgs[5] == "0" {// self-group
 		nodesigs := make([]string,0)
@@ -2275,7 +2248,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    nodesigs = append(nodesigs,msgs[6+j])
 		}
 		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],NodeSigs:nodesigs,Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
-		fmt.Println("===================call SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
+		fmt.Println("===================call SaveAcceptReqAddrData,workid =%s,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",wid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
 		err := SaveAcceptReqAddrData(ac)
 		if err != nil {
 		    fmt.Println("===================call SaveAcceptReqAddrData,err =%v =====================",err)
@@ -2287,7 +2260,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        timeout := make(chan bool, 1)
 	        go func(wid int) {
 		    GetEnodesInfo(msgs[2]) //bug
-		    fmt.Println("==============RecvMsg.Run,req addr,111111,cur_enode =%s==================",cur_enode)
+		    //fmt.Println("==============RecvMsg.Run,req addr,111111,cur_enode =%s==================",cur_enode)
                     agreeWaitTime := 10 * time.Minute
                     agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 		    if wid < 0 || wid >= len(workers) || workers[wid] == nil {
@@ -2307,7 +2280,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                            fmt.Printf("============ (self *RecvMsg) Run() ===========, Current Node Accept req addr Res =%v,account =%s =========== %v\n", reply,account)
 
 			   ///////
-			    fmt.Println("==============RecvMsg.Run,req addr,22222,cur_enode =%s==================",cur_enode)
+			    //fmt.Println("==============RecvMsg.Run,req addr,22222,cur_enode =%s==================",cur_enode)
 			    mp := []string{w.sid,cur_enode}
 			    enode := strings.Join(mp,"-")
 			    s0 := "AcceptReqAddrRes"
@@ -2317,6 +2290,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			    } else {
 				req_res = "true"
 			    }
+
 			    s1 := req_res
 			    ss := enode + Sep + s0 + Sep + s1
 			    SendMsgToDcrmGroup(ss,w.groupid)
@@ -2354,7 +2328,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 				ms := strings.Split(mdss,Sep)
 				prexs := strings.Split(ms[0],"-")
 				node := prexs[1]
-				fmt.Println("==============RecvMsg.Run,req addr,333333,get enode =%s==================",node)
+				//fmt.Println("==============RecvMsg.Run,req addr,333333,get enode =%s==================",node)
 				if strings.EqualFold(ms[2],"false") {
 				    reply = false
 				}
@@ -2383,6 +2357,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 			   ///////
                            timeout <- true
+			   fmt.Println("=========================!!!!!!get all accept result,it is true,so set timeout!!!!!!=================")
 	                   return
                        case <-agreeWaitTimeOut.C:
                            fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
@@ -2393,8 +2368,10 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        }(wid)
 
 		if len(workers[wid].acceptWaitReqAddrChan) == 0 {
-		    workers[wid].acceptWaitReqAddrChan <- msgs[0]
+		    workers[wid].acceptWaitReqAddrChan <- "go on"
 		}
+
+	        fmt.Println("===============RecvMsg.Run,reset w.acceptWaitReqAddrChan========================")
 	        <-timeout
 
 	        fmt.Println("===============RecvMsg.Run,the terminal accept req addr result =%v, ================",reply)
@@ -2411,7 +2388,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        }
 	    } else {
 		if len(workers[wid].acceptWaitReqAddrChan) == 0 {
-		    workers[wid].acceptWaitReqAddrChan <- msgs[0]
+		    workers[wid].acceptWaitReqAddrChan <- "go on"
 		}
 	    }
 
@@ -2655,8 +2632,6 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    //ClearChan(acceptWaitReqAddrChan)
-    //ClearChan(acceptReqAddrChan)
     w := workers[workid]
 
     _,err = SendToGroupAllNodes(self.GroupId,res)
@@ -2728,9 +2703,6 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    //ClearChan(acceptWaitLockOutChan)
-    //ClearChan(acceptLockOutChan)
-
     _,err = SendToGroupAllNodes(self.GroupId,res)
     if err != nil {
 	fmt.Println("=============LockOutSendMsgToDcrm.Run,send to group all nodes,err =%v ===========",err)
@@ -2766,7 +2738,7 @@ type GetReqAddrReplySendMsgToDcrm struct {
 }
 
 func (self *GetReqAddrReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    fmt.Println("==============GetReqAddrReplySendMsgToDcrm.Run,workid =%v=================",workid)
+    //fmt.Println("==============GetReqAddrReplySendMsgToDcrm.Run,workid =%v=================",workid)
     if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
@@ -2791,7 +2763,7 @@ type GetLockOutReplySendMsgToDcrm struct {
 }
 
 func (self *GetLockOutReplySendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    fmt.Println("==============GetLockOutReplySendMsgToDcrm.Run,workid =%v=================",workid)
+    //fmt.Println("==============GetLockOutReplySendMsgToDcrm.Run,workid =%v=================",workid)
     if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
@@ -2965,13 +2937,13 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
 	case "rpc_get_lockout_reply":
-	    fmt.Println("=============SendReqToGroup,type is rpc_get_lockout_reply==============")
+	    //fmt.Println("=============SendReqToGroup,type is rpc_get_lockout_reply==============")
 	    v := GetLockOutReplySendMsgToDcrm{Account:msg}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
 	case "rpc_get_reqaddr_reply":
-	    fmt.Println("=============SendReqToGroup,type is rpc_get_reqaddr_reply==============")
+	    //fmt.Println("=============SendReqToGroup,type is rpc_get_reqaddr_reply==============")
 	    v := GetReqAddrReplySendMsgToDcrm{Account:msg}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}

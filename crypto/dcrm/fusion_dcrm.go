@@ -232,15 +232,21 @@ func GetPubKeyData(key string,account string,cointype string) (string,string,err
 	return "","dcrm back-end internal error:parameter error in func GetPubKeyData",fmt.Errorf("get pubkey data param error.")
     }
 
-    da,exsit := dev.LdbPubKeyData[key]
+    //da,exsit := dev.LdbPubKeyData[key]
+    var da []byte
+    datmp,exsit := dev.LdbPubKeyData.ReadMap(key)
     if exsit == false {
-	da = dev.GetPubKeyDataValueFromDb(key)
-	if da == nil {
+	da2 := dev.GetPubKeyDataValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
+
     ///////
     if exsit == false {
 	return "","dcrm back-end internal error:get data from db fail in func GetPubKeyData",fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
@@ -302,26 +308,33 @@ func GetPubKeyData(key string,account string,cointype string) (string,string,err
 
 func ExsitPubKey(account string,cointype string) (string,bool) {
     key := dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    da,exsit := dev.LdbPubKeyData[key]
+    var da []byte
+    datmp,exsit := dev.LdbPubKeyData.ReadMap(key)
     if exsit == false {
-	da = dev.GetPubKeyDataValueFromDb(key)
-	if da == nil {
+	da2 := dev.GetPubKeyDataValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
 	key = dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-	da,exsit = dev.LdbPubKeyData[key]
+	datmp,exsit = dev.LdbPubKeyData.ReadMap(key)
 	if exsit == false {
-	    da = dev.GetPubKeyDataValueFromDb(key)
-	    if da == nil {
+	    da2 := dev.GetPubKeyDataValueFromDb(key)
+	    if da2 == nil {
 		exsit = false
 	    } else {
 		exsit = true
+		da = da2
 	    }
+	} else {
+	    da = datmp.([]byte)
 	}
 	///////
 	if exsit == false {
@@ -502,14 +515,18 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
     } else {
 	////////bug
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
-	da,exsit := dev.LdbReqAddr[key]
+	var da []byte
+	datmp,exsit := dev.LdbReqAddr.ReadMap(key)
 	if exsit == false {
-	    da = dev.GetReqAddrValueFromDb(key)
-	    if da == nil {
+	    da2 := dev.GetReqAddrValueFromDb(key)
+	    if da2 == nil {
 		exsit = false
 	    } else {
 		exsit = true
+		da = da2
 	    }
+	} else {
+	    da = datmp.([]byte)
 	}
 
 	if exsit == true {
@@ -588,14 +605,18 @@ func AcceptReqAddr(raw string) (string,string,error) {
 
     ////bug,check valid accepter
     key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[5] + ":" + datas[6]))).Hex()
-    da,exsit := dev.LdbReqAddr[key]
+    var da []byte
+    datmp,exsit := dev.LdbReqAddr.ReadMap(key)
     if exsit == false {
-	da = dev.GetReqAddrValueFromDb(key)
-	if da == nil {
+	da2 := dev.GetReqAddrValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
 
     if exsit == false {
@@ -703,15 +724,21 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
 
     ////bug,check valid accepter
-    da,exsit := dev.LdbPubKeyData[key2]
+    //da,exsit := dev.LdbPubKeyData[key2]
+    var da []byte
+    datmp,exsit := dev.LdbPubKeyData.ReadMap(key2)
     if exsit == false {
-	da = dev.GetPubKeyDataValueFromDb(key2)
-	if da == nil {
+	da2 := dev.GetPubKeyDataValueFromDb(key2)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
+
     if exsit == false {
 	return "","dcrm back-end internal error:get lockout data from db fail",fmt.Errorf("get lockout data from db fail")
     }
@@ -766,14 +793,17 @@ func AcceptLockOut(raw string) (string,string,error) {
 
     //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept
     key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[8]))).Hex()
-    da,exsit = dev.LdbLockOut[key]
+    datmp,exsit = dev.LdbLockOut.ReadMap(key)
     if exsit == false {
-	da = dev.GetLockOutValueFromDb(key)
-	if da == nil {
+	da2 := dev.GetLockOutValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
@@ -845,15 +875,20 @@ func LockOut(raw string) (string,string,error) {
 
     ///////bug
     key2 := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
-    da,exsit := dev.LdbLockOut[key2]
+    var da []byte
+    datmp,exsit := dev.LdbLockOut.ReadMap(key2)
     if exsit == false {
-	da = dev.GetLockOutValueFromDb(key2)
-	if da == nil {
+	da2 := dev.GetLockOutValueFromDb(key2)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
+
     if exsit == true {
 	ds,err := dev.UnCompress(string(da))
 	if err == nil {
@@ -897,8 +932,14 @@ func GetLockOutStatus(key string) (string,string,error) {
 func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, error) {
     ////bug,check valid accepter
     check := false
-    for _,v := range dev.LdbReqAddr {
-	value := string(v)
+    _,lmvalue := dev.LdbReqAddr.ListMap()
+    for _,v := range lmvalue {
+	if v == nil {
+	    continue
+	}
+
+	vv := v.([]byte)
+	value := string(vv)
 	////
 	ds,err := dev.UnCompress(value)
 	if err != nil {

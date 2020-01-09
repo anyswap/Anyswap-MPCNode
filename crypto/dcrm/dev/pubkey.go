@@ -86,14 +86,18 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	////////
 	nodesigs := make([]string,0)
 	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-	da,exsit := LdbReqAddr[rk]
+	var da []byte
+	datmp,exsit := LdbReqAddr.ReadMap(rk)
 	if exsit == false {
-	    da = GetReqAddrValueFromDb(rk)
-	    if da == nil {
+	    da2 := GetReqAddrValueFromDb(rk)
+	    if da2 == nil {
 		exsit = false
 	    } else {
 		exsit = true
+		da = da2
 	    }
+	} else {
+	    da = datmp.([]byte)
 	}
 
 	if exsit == true {
@@ -142,9 +146,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	PubKeyDataChan <-kd
 
 	/////
-	LdbPubKeyData[key2] = []byte(nonce)
-	//key2 = Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
-	//LdbPubKeyData[key2] = []byte("0")
+	//LdbPubKeyData[key2] = []byte(nonce)
+	LdbPubKeyData.WriteMap(key2,[]byte(nonce))
 	////
 
 	tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","",id)
@@ -173,34 +176,39 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    kd = KeyData{Key:sedpk[:],Data:ss}
 	    PubKeyDataChan <-kd
 	    /////
-	    LdbPubKeyData[string(sedpk[:])] = []byte(ss)
+	    //LdbPubKeyData[string(sedpk[:])] = []byte(ss)
+	    LdbPubKeyData.WriteMap(string(sedpk[:]),[]byte(ss))
 	    ////
 
 	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
 	    /////
-	    LdbPubKeyData[key] = []byte(ss)
+	    //LdbPubKeyData[key] = []byte(ss)
+	    LdbPubKeyData.WriteMap(key,[]byte(ss))
 	    ////
 
 	    key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
 	    /////
-	    LdbPubKeyData[key] = []byte(ss)
+	    //LdbPubKeyData[key] = []byte(ss)
+	    LdbPubKeyData.WriteMap(key,[]byte(ss))
 	    ////
 	} else {
 	    kd = KeyData{Key:sedpk[:],Data:ss}
 	    PubKeyDataChan <-kd
 	    /////
-	    LdbPubKeyData[string(sedpk[:])] = []byte(ss)
+	    //LdbPubKeyData[string(sedpk[:])] = []byte(ss)
+	    LdbPubKeyData.WriteMap(string(sedpk[:]),[]byte(ss))
 	    ////
 
 	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
 	    /////
-	    LdbPubKeyData[key] = []byte(ss)
+	    //LdbPubKeyData[key] = []byte(ss)
+	    LdbPubKeyData.WriteMap(key,[]byte(ss))
 	    ////
 
 	    for _, ct := range cryptocoins.Cointypes {
@@ -221,7 +229,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 		kd = KeyData{Key:[]byte(key),Data:ss}
 		PubKeyDataChan <-kd
 		/////
-		LdbPubKeyData[key] = []byte(ss)
+		//LdbPubKeyData[key] = []byte(ss)
+		LdbPubKeyData.WriteMap(key,[]byte(ss))
 		////
 	    }
 	}
@@ -264,14 +273,18 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     ////////
     nodesigs := make([]string,0)
     rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-    da,exsit := LdbReqAddr[rk]
+    var da []byte
+    datmp,exsit := LdbReqAddr.ReadMap(rk)
     if exsit == false {
-	da = GetReqAddrValueFromDb(rk)
-	if da == nil {
+	da2 := GetReqAddrValueFromDb(rk)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
 
     if exsit == true {
@@ -318,7 +331,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     kd := KeyData{Key:[]byte(key2),Data:nonce}
     PubKeyDataChan <-kd
     /////
-    LdbPubKeyData[key2] = []byte(nonce)
+    //LdbPubKeyData[key2] = []byte(nonce)
+    LdbPubKeyData.WriteMap(key2,[]byte(nonce))
     ////
 
     tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","",id)
@@ -346,34 +360,39 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	kd = KeyData{Key:ys,Data:ss}
 	PubKeyDataChan <-kd
 	/////
-	LdbPubKeyData[string(ys)] = []byte(ss)
+	//LdbPubKeyData[string(ys)] = []byte(ss)
+	LdbPubKeyData.WriteMap(string(ys),[]byte(ss))
 	////
 
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	kd = KeyData{Key:[]byte(key),Data:ss}
 	PubKeyDataChan <-kd
 	/////
-	LdbPubKeyData[key] = []byte(ss)
+	//LdbPubKeyData[key] = []byte(ss)
+	LdbPubKeyData.WriteMap(key,[]byte(ss))
 	////
 
 	key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 	kd = KeyData{Key:[]byte(key),Data:ss}
 	PubKeyDataChan <-kd
 	/////
-	LdbPubKeyData[key] = []byte(ss)
+	//LdbPubKeyData[key] = []byte(ss)
+	LdbPubKeyData.WriteMap(key,[]byte(ss))
 	////
     } else {
 	kd = KeyData{Key:ys,Data:ss}
 	PubKeyDataChan <-kd
 	/////
-	LdbPubKeyData[string(ys)] = []byte(ss)
+	//LdbPubKeyData[string(ys)] = []byte(ss)
+	LdbPubKeyData.WriteMap(string(ys),[]byte(ss))
 	////
 
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	kd = KeyData{Key:[]byte(key),Data:ss}
 	PubKeyDataChan <-kd
 	/////
-	LdbPubKeyData[key] = []byte(ss)
+	//LdbPubKeyData[key] = []byte(ss)
+	LdbPubKeyData.WriteMap(key,[]byte(ss))
 	////
 
 	for _, ct := range cryptocoins.Cointypes {
@@ -394,7 +413,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    kd = KeyData{Key:[]byte(key),Data:ss}
 	    PubKeyDataChan <-kd
 	    /////
-	    LdbPubKeyData[key] = []byte(ss)
+	    //LdbPubKeyData[key] = []byte(ss)
+	    LdbPubKeyData.WriteMap(key,[]byte(ss))
 	    ////
 	}
     }
@@ -646,8 +666,8 @@ func GetAllPubKeyDataFromDb() []*PubKeyData {
     return kd
 }
 
-func GetAllPendingReqAddrFromDb() map[string][]byte {
-    kd := make(map[string][]byte)
+func GetAllPendingReqAddrFromDb() *common.SafeMap {
+    kd := common.NewSafeMap(10) 
     fmt.Println("==============GetAllPendingReqAddrFromDb,start read from db===============")
     dir := GetAcceptReqAddrDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -694,7 +714,8 @@ func GetAllPendingReqAddrFromDb() map[string][]byte {
 		continue
 	    }
 
-	    kd[key] = iter.Value()
+	    //kd[key] = iter.Value()
+	    kd.WriteMap(key,iter.Value())
 	}
 	iter.Release()
 	db.Close()
@@ -703,8 +724,8 @@ func GetAllPendingReqAddrFromDb() map[string][]byte {
     return kd
 }
 
-func GetAllPendingLockOutFromDb() map[string][]byte {
-    kd := make(map[string][]byte)
+func GetAllPendingLockOutFromDb() *common.SafeMap {
+    kd := common.NewSafeMap(10)
     fmt.Println("==============GetAllPendingLockOutFromDb,start read from db===============")
     dir := GetAcceptLockOutDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -751,7 +772,8 @@ func GetAllPendingLockOutFromDb() map[string][]byte {
 		continue
 	    }
 
-	    kd[key] = iter.Value()
+	    //kd[key] = iter.Value()
+	    kd.WriteMap(key,iter.Value())
 	}
 	iter.Release()
 	db.Close()

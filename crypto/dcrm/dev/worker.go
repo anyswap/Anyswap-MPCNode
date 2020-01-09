@@ -75,13 +75,13 @@ var (
     AllAccounts = make([]*PubKeyData,0)
     AllAccountsChan = make(chan KeyData, 1000)
     
-    LdbPubKeyData = make(map[string][]byte)
+    LdbPubKeyData = common.NewSafeMap(10)//make(map[string][]byte)
     PubKeyDataChan = make(chan KeyData, 1000)
     
-    LdbReqAddr = make(map[string][]byte)
+    LdbReqAddr = common.NewSafeMap(10)//make(map[string][]byte)
     ReqAddrChan = make(chan KeyData, 1000)
     
-    LdbLockOut = make(map[string][]byte)
+    LdbLockOut = common.NewSafeMap(10)//make(map[string][]byte)
     LockOutChan = make(chan KeyData, 1000)
 )
 
@@ -1366,14 +1366,18 @@ func SetUpMsgList(msg string,enode string) {
 */
 
 func GetReqAddrStatus(key string) (string,string,error) {
-    da,exsit := LdbReqAddr[key]
+    var da []byte
+    datmp,exsit := LdbReqAddr.ReadMap(key)
     if exsit == false {
-	da = GetReqAddrValueFromDb(key)
-	if da == nil {
+	da2 := GetReqAddrValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
@@ -1537,14 +1541,18 @@ type LockOutStatus struct {
 }
 
 func GetLockOutStatus(key string) (string,string,error) {
-    da,exsit := LdbLockOut[key]
+    var da []byte
+    datmp,exsit := LdbLockOut.ReadMap(key)
     if exsit == false {
-	da = GetLockOutValueFromDb(key)
-	if da == nil {
+	da2 := GetLockOutValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
@@ -1624,8 +1632,14 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
     fmt.Println("================call dev.GetReqAddrReply, geter acc =%s===================",geter_acc)
     
     var ret []string
-    for _,v := range LdbReqAddr {
-	value := string(v)
+    _,lmvalue := LdbReqAddr.ListMap()
+    for _,v := range lmvalue {
+	if v == nil {
+	    continue
+	}
+
+	vv := v.([]byte)
+	value := string(vv)
 	////
 	ds,err := UnCompress(value)
 	if err != nil {
@@ -1750,8 +1764,14 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
     fmt.Println("================call dev.GetLockOutReply, geter acc =%s===================",geter_acc)
     
     var ret []string
-    for _,v := range LdbLockOut {
-	value := string(v)
+    _,lmvalue := LdbLockOut.ListMap()
+    for _,v := range lmvalue {
+	if v == nil {
+	    continue
+	}
+
+	vv := v.([]byte)
+	value := string(vv)
 	////
 	ds,err := UnCompress(value)
 	if err != nil {
@@ -1773,15 +1793,21 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 
 	nodesigs := make([]string,0)
 	rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()
-	da,exsit := LdbPubKeyData[rk]
+	//da,exsit := LdbPubKeyData[rk]
+	var da []byte
+	datmp,exsit := LdbPubKeyData.ReadMap(rk)
 	if exsit == false {
-	    da = GetPubKeyDataValueFromDb(rk)
-	    if da == nil {
+	    da2 := GetPubKeyDataValueFromDb(rk)
+	    if da2 == nil {
 		exsit = false
 	    } else {
 		exsit = true
+		da = da2
 	    }
+	} else {
+	    da = datmp.([]byte)
 	}
+	
 	if exsit == true {
 	    ss,err := UnCompress(string(da))
 	    if err == nil {
@@ -1919,14 +1945,18 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
     fmt.Println("===================!!!!GetAcceptReqAddrRes,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s!!!!============================",account,cointype,groupid,nonce,threshold,mode,key)
-    da,exsit := LdbReqAddr[key]
+    var da []byte
+    datmp,exsit := LdbReqAddr.ReadMap(key)
     if exsit == false {
-	da = GetReqAddrValueFromDb(key)
-	if da == nil {
+	da2 := GetReqAddrValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
@@ -1962,14 +1992,18 @@ func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce str
 func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom string,threshold string) (string,bool) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
     fmt.Println("===================!!!!GetAcceptLockOutRes,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,threshold =%s,key =%s!!!!============================",account,groupid,nonce,dcrmfrom,threshold,key)
-    da,exsit := LdbLockOut[key]
+    var da []byte
+    datmp,exsit := LdbLockOut.ReadMap(key)
     if exsit == false {
-	da = GetLockOutValueFromDb(key)
-	if da == nil {
+	da2 := GetLockOutValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
@@ -2006,14 +2040,18 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
     fmt.Println("=====================AcceptReqAddr,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s======================",account,cointype,groupid,nonce,threshold,mode,key)
     fmt.Println("=====================AcceptReqAddr,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
-    da,exsit := LdbReqAddr[key]
+    var da []byte
+    datmp,exsit := LdbReqAddr.ReadMap(key)
     if exsit == false {
-	da = GetReqAddrValueFromDb(key)
-	if da == nil {
+	da2 := GetReqAddrValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
@@ -2081,7 +2119,8 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     kdtmp := KeyData{Key:[]byte(key),Data:es}
     ReqAddrChan <-kdtmp
 
-    LdbReqAddr[key] = []byte(es)
+    //LdbReqAddr[key] = []byte(es)
+    LdbReqAddr.WriteMap(key,[]byte(es))
     
     if workid >= 0 && workid < len(workers) {
 	wtmp := workers[workid]
@@ -2105,14 +2144,18 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
     fmt.Println("=====================AcceptLockOut,account =%s,groupid =%s,nonce =%s,dcrmfrom =%s,threshold =%s,key =%s======================",account,groupid,nonce,dcrmfrom,threshold,key)
     fmt.Println("=====================AcceptLockOut,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
-    da,exsit := LdbLockOut[key]
+    var da []byte
+    datmp,exsit := LdbLockOut.ReadMap(key)
     if exsit == false {
-	da = GetLockOutValueFromDb(key)
-	if da == nil {
+	da2 := GetLockOutValueFromDb(key)
+	if da2 == nil {
 	    exsit = false
 	} else {
 	    exsit = true
+	    da = da2
 	}
+    } else {
+	da = datmp.([]byte)
     }
     ///////
     if exsit == false {
@@ -2180,7 +2223,7 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     kdtmp := KeyData{Key:[]byte(key),Data:es}
     LockOutChan <-kdtmp
 
-    LdbLockOut[key] = []byte(es)
+    LdbLockOut.WriteMap(key,[]byte(es))
     
     if workid >= 0 && workid < len(workers) {
 	wtmp := workers[workid]
@@ -3132,7 +3175,8 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
     kdtmp := KeyData{Key:[]byte(key),Data:ss}
     ReqAddrChan <-kdtmp
 
-    LdbReqAddr[key] = []byte(ss)
+    //LdbReqAddr[key] = []byte(ss)
+    LdbReqAddr.WriteMap(key,[]byte(ss))
     return nil
 }
 
@@ -3179,7 +3223,7 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
     kdtmp := KeyData{Key:[]byte(key),Data:ss}
     LockOutChan <-kdtmp
 
-    LdbLockOut[key] = []byte(ss)
+    LdbLockOut.WriteMap(key,[]byte(ss))
     return nil
 }
 

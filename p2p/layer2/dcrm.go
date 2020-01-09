@@ -27,7 +27,6 @@ import (
 	"time"
 	"fmt"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
@@ -320,9 +319,8 @@ func SdkProtocol_registerSendToGroupReturnCallback(sdkcallback func(interface{},
 // 1 + 1 + 1
 func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	count := len(enodes)
-	sort.Sort(sort.StringSlice(enodes))
 	enode := []*discover.Node{}
-	id := []byte("")
+	sort.Sort(sort.StringSlice(enodes))
 	for _, un := range enodes {
 		fmt.Printf("for un: %v\n", un)
 		node, err := discover.ParseNode(un)
@@ -340,13 +338,9 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 		}
 		n := fmt.Sprintf("%v", node.ID)
 		fmt.Printf("CreateSDKGroup, n: %v\n", n)
-		if len(id) == 0 {
-			id = crypto.Keccak512([]byte(node.ID.String()))
-		} else {
-			id = crypto.Keccak512(id, []byte(node.ID.String()))
-		}
 		enode = append(enode, node)
 	}
+	id := discover.GetIDHash(enode)
 	gid, err := discover.BytesID(id)
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
 	sdkGroupLock.Lock()

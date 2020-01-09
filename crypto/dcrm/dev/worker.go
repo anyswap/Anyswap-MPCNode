@@ -3967,6 +3967,6 @@ func GetAccounts(gid, mode string) (interface{}, string, error) {
     return pa, "", nil
    }
 
-    return nil,"get accounts fail",fmt.Errorf("get accounts fail")
+    return nil,"no accounts",nil
 }
 

@@ -684,7 +684,7 @@ func addGroupSDK(n *Node, p2pType int) {
 	groupTmp.Nodes[len(groupSDKList)] = RpcNode(nodeToRPC(n))
 	groupTmp.count++
 	groupTmp.ID = n.ID
-	groupTmp.Mode = "3/3"
+	groupTmp.Mode = fmt.Sprintf("%v/%v", groupTmp.count, groupTmp.count)
 	groupTmp.P2pType = byte(p2pType)
 	groupTmp.Type = "1+2"
 	//fmt.Printf("addGroupSDK, gid: %v\n", groupTmp.ID)

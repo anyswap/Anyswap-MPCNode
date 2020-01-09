@@ -131,6 +131,8 @@ func getGroupAndCode(gid discover.NodeID, p2pType int) (*discover.Group, int) {
 }
 
 func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) {
+	sdkGroupLock.Lock()
+	sdkGroupLock.Unlock()
 	for id, g := range SdkGroup {
 		if g.Type != "1+1+1" && g.Type != "1+2" {
 			continue
@@ -290,6 +292,8 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 }
 
 func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType int, Type string) {
+	sdkGroupLock.Lock()
+	sdkGroupLock.Unlock()
 	//log.Debug("==== recvGroupInfo() ====", "gid", gid, "req", req)
 	//fmt.Printf("==== recvGroupInfo() ====, gid: %v, req: %v\n", gid, req)
 	//log.Debug("recvGroupInfo", "local ID: ", selfid)
@@ -495,6 +499,8 @@ func updateGroupNodesNumber(number, p2pType int) {
 func InitServer(nodeserv interface{}) {
 	selfid = discover.GetLocalID()
 	p2pServer = nodeserv.(p2p.Server)
+	sdkGroupLock.Lock()
+	sdkGroupLock.Unlock()
 	discover.RecoverGroupAll(SdkGroup)
 	for i, g := range SdkGroup {
 		for _, node := range g.Nodes {

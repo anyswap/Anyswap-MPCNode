@@ -32,10 +32,8 @@ import (
     "strings"
     "fmt"
     "strconv"
-    //"github.com/syndtr/goleveldb/leveldb"
     "math/big"
     "github.com/fsn-dev/dcrm-walletService/p2p/rlp"
-    //"github.com/fsn-dev/dcrm-walletService/ethdb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
@@ -1657,7 +1655,6 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
 	    if err = rlp.DecodeBytes(vs, tx2); err != nil {
-		//return "","check accepter fail",err
 		continue
 	    }
 
@@ -1667,7 +1664,6 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 		signer = types.NewEIP155Signer(big.NewInt(4)) //
 		from2, err = types.Sender(signer, tx2)
 		if err != nil {
-		    //return "","check accepter fail",err
 		    continue
 		}
 	    }
@@ -2058,26 +2054,6 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     ac := dss.(*AcceptReqAddrData)
     fmt.Println("=====================AcceptReqAddr,ac.Deal = %v,ac.Accept =%s,ac.Status =%s, key =%s======================",ac.Deal,ac.Accept,ac.Status,key)
     
-    /*ac.Deal = deal
-    if accept != "" {
-	ac.Accept = accept
-    }
-    if pubkey != "" {
-	ac.PubKey = pubkey
-    }
-    if tip != "" {
-	ac.Tip = tip
-    }
-    if errinfo != "" {
-	ac.Error = errinfo
-    }
-    if status != "" {
-	ac.Status = status
-    }
-    if allreply != "" {
-	ac.AllReply = allreply
-    }*/
-    
     acp := ac.Accept
     if accept != "" {
 	acp = accept
@@ -2168,26 +2144,6 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     ac := dss.(*AcceptLockOutData)
     fmt.Println("=====================AcceptLockOut,ac.Deal = %v,ac.Accept =%s,ac.Status =%s, key =%s======================",ac.Deal,ac.Accept,ac.Status,key)
 
-    /*ac.Deal = deal
-    if accept != "" {
-	ac.Accept = accept
-    }
-    if outhash != "" {
-	ac.OutTxHash = outhash
-    }
-    if tip != "" {
-	ac.Tip = tip
-    }
-    if errinfo != "" {
-	ac.Error = errinfo
-    }
-    if status != "" {
-	ac.Status = status
-    }
-    if allreply != "" {
-	ac.AllReply = allreply
-    }*/
-    
     acp := ac.Accept
     if accept != "" {
 	acp = accept
@@ -2363,40 +2319,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			       return
 			    }
 			   
-			    /*all := "{"
-			    all += "\""
-			    all += cur_enode
-			    all += "\""
-			    all += ":"
-			    all += "\""
-			    all += lo_res
-			    all += "\""
-			    all += ","
-			    iter := w.msg_acceptlockoutres.Front()
-			    for iter != nil {
-				mdss := iter.Value.(string)
-				ms := strings.Split(mdss,Sep)
-				prexs := strings.Split(ms[0],"-")
-				node := prexs[1]
-				fmt.Println("==============RecvMsg.Run,lockout,333333,get enode =%s==================",node)
-				if strings.EqualFold(ms[2],"false") {
-				    reply = false
-				}
-				all += "\""
-				all += node
-				all += "\""
-				all += ":"
-				all += "\""
-				all += ms[2] 
-				all += "\""
-				if iter.Next() != nil {
-				    all += ","
-				}
-				iter = iter.Next()
-			    }
-			    all += "}"
-			    */
-
 			    rs := make([]LockOutReply,0)
 			    cur := LockOutReply{Enode:cur_enode,Reply:lo_res}
 			    rs = append(rs,cur)
@@ -3148,57 +3070,6 @@ type AcceptReqAddrData struct {
     AllReply string
 }
 
-/*func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
-    if ac == nil {
-	return fmt.Errorf("no accept data.")
-    }
-
-    lock.Lock()
-    dir := GetAcceptReqAddrDir()
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil || db == nil {
-	for i:=0;i<1000;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil && db != nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
-    }
-    //
-    if db == nil {
-	fmt.Println("=============SaveAcceptReqAddrData,ERROR!!!! db is nil===============")
-        lock.Unlock()
-        return err
-    }
-    
-    key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
-    fmt.Println("==============SaveAcceptReqAddrData,key =%s=================",key)
-    fmt.Println("================SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s ===================",ac.Account,ac.Cointype,ac.GroupId,ac.Nonce,ac.LimitNum,ac.Mode)
-    
-    alos,err := Encode2(ac)
-    if err != nil {
-	db.Close()
-	lock.Unlock()
-	return err
-    }
-    
-    ss,err := Compress([]byte(alos))
-    if err != nil {
-	db.Close()
-	lock.Unlock()
-	return err 
-    }
-   
-    db.Put([]byte(key),[]byte(ss))
-    db.Close()
-    lock.Unlock()
-    return nil
-}
-*/
-
 func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
     if ac == nil {
 	return fmt.Errorf("no accept data.")
@@ -3291,55 +3162,6 @@ func IsInGroup(enode string,groupId string) bool {
 
     return false
 }
-
-/*func GetGroupIdByEnode(enode string) string {
-    if enode == "" {
-	return ""
-    }
-
-    lock.Lock()
-    dir := GetGroupDir()
-    db, err := leveldb.OpenFile(dir, nil) 
-    if err != nil { 
-	lock.Unlock()
-	return "" 
-    }
-
-    var data string
-    var b bytes.Buffer 
-    b.WriteString("") 
-    b.WriteByte(0) 
-    b.WriteString("") 
-    iter := db.NewIterator(nil, nil) 
-    for iter.Next() { 
-	key := string(iter.Key())
-	value := string(iter.Value())
-	if strings.EqualFold(key,"GroupIds") {
-	    data = value
-	    break
-	}
-    }
-    iter.Release()
-    ///////
-    if data == "" {
-	db.Close()
-	lock.Unlock()
-	return "" 
-    }
-
-    m := strings.Split(data,":")
-    for _,v := range m {
-	if IsInGroup(enode,v) {
-	    db.Close()
-	    lock.Unlock()
-	    return v 
-	}
-    }
-
-    db.Close()
-    lock.Unlock()
-    return ""
-}*/
 
 func GetEnodesInfo(GroupId string) {
     if GroupId == "" {
@@ -4014,6 +3836,7 @@ func homeDir() string {
 	}
 	return ""
 }
+
 func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
@@ -4045,88 +3868,6 @@ type AccountsList struct {
        GroupID string
        Accounts []string
 }
-
-/*func GetAccounts(gid, mode string) (interface{}, string, error) {
-    lock.Lock()
-    dir := GetDbDir()
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil {
-	for i:=0;i<1000;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
-    }
-    //
-    if err != nil {
-	lock.Unlock()
-	fmt.Println("==============GetAccounts,err = %v===============",err)
-        return nil, "open leveldb fail", err
-    }
-   
-    gp := make(map[string][]string)
-    iter := db.NewIterator() 
-    for iter.Next() { 
-	value := string(iter.Value())
-	ss,err := UnCompress(value)
-	if err != nil {
-	    fmt.Println("==============GetAccounts,1111 err = %v===============",err)
-	    continue
-	}
-	
-	pubs,err := Decode2(ss,"PubKeyData")
-	if err != nil {
-	    fmt.Println("==============GetAccounts,2222 err = %v===============",err)
-	    continue
-	}
-	
-	pb := (pubs.(*PubKeyData)).Pub
-	pubkeyhex := hex.EncodeToString([]byte(pb))
-	gid := (pubs.(*PubKeyData)).GroupId
-	md := (pubs.(*PubKeyData)).Mode
-	fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
-	if mode == md {
-	    al,exsit := gp[gid]
-	    if exsit == true {
-		al = append(al,pubkeyhex)
-		gp[gid] = al
-	    } else {
-		a := make([]string,0)
-		a = append(a,pubkeyhex)
-		gp[gid] = a
-	    }
-	}
-    }
-    iter.Release()
-
-    als := make([]AccountsList, 0)
-    if gid != "" {
-	al,exsit := gp[gid]
-	if exsit == true {
-	    alNew := AccountsList{GroupID: gid, Accounts: al}
-	    als = append(als, alNew)
-	    pa := &PubAccounts{Group: als}
-	    lock.Unlock()
-	    return pa, "", nil
-	}
-    }
-
-    fmt.Println("==============GetAccounts,333333333===============")
-    for k,v := range gp {
-	fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
-	alNew := AccountsList{GroupID: k, Accounts: v}
-	als = append(als, alNew)
-    }
-    
-    lock.Unlock()
-    pa := &PubAccounts{Group: als}
-    return pa, "", nil
-}
-*/
 
 func GetAccounts(gid, mode string) (interface{}, string, error) {
    if len(AllAccounts) != 0 {

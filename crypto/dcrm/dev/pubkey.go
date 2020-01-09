@@ -32,7 +32,6 @@ import (
     cryptorand "crypto/rand"
     "crypto/sha512"
     "encoding/hex"
-    //"github.com/syndtr/goleveldb/leveldb"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
     "github.com/astaxie/beego/logs"
@@ -138,11 +137,6 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	fmt.Println("===============dcrm_genPubKey,pubkey = %s,nonce =%s ==================",pubkeyhex,nonce)
 	////save to db
 	////add for req addr
-	/*reqnonce,_,err := GetReqAddrNonce(account)
-	if err != nil {
-	    reqnonce = "0"
-	}
-	SetReqAddrNonce(account,reqnonce)*/
 	key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	kd := KeyData{Key:[]byte(key2),Data:nonce}
 	PubKeyDataChan <-kd
@@ -195,43 +189,6 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    /////
 	    LdbPubKeyData[key] = []byte(ss)
 	    ////
-
-	    /*lock.Lock()
-	    dir := GetDbDir()
-	    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err != nil { 
-		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
-		ch <- res
-		return
-	    }
-
-	    h := cryptocoins.NewCryptocoinHandler(cointype)
-	    if h == nil {
-		db.Close()
-		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
-		ch <- res
-		return
-	    }
-
-	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-	    if err != nil {
-		db.Close()
-		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,Err:err}
-		ch <- res
-		return
-	    }
-
-	    //add for lockout
-	    db.Put(sedpk[:],[]byte(ss))
-	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	    db.Put([]byte(key),[]byte(ss))
-	    key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-	    db.Put([]byte(key),[]byte(ss))
-	    db.Close()
-	    lock.Unlock()*/
 	} else {
 	    kd = KeyData{Key:sedpk[:],Data:ss}
 	    PubKeyDataChan <-kd
@@ -267,43 +224,6 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 		LdbPubKeyData[key] = []byte(ss)
 		////
 	    }
-	    
-	    /*lock.Lock()
-	    dir := GetDbDir()
-	    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err != nil { 
-		lock.Unlock()
-		res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
-		ch <- res
-		return
-	    }
-
-	    //add for lockout
-	    db.Put(sedpk[:],[]byte(ss))
-	    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	    db.Put([]byte(key),[]byte(ss))
-	    
-	    for _, ct := range cryptocoins.Cointypes {
-		if strings.EqualFold(ct, "ALL") {
-		    continue
-		}
-
-		h := cryptocoins.NewCryptocoinHandler(ct)
-		if h == nil {
-		    continue
-		}
-		ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-		if err != nil {
-		    continue
-		}
-		
-		key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-		db.Put([]byte(key),[]byte(ss))
-	    }
-
-	    db.Close()
-	    lock.Unlock()
-	    */
 	}
 
 	res := RpcDcrmRes{Ret:pubkeyhex,Tip:"",Err:nil}
@@ -393,23 +313,12 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 
     pubkeyhex := hex.EncodeToString(ys)
     fmt.Println("===============dcrm_genPubKey,pubkey = %s,nonce =%s ==================",pubkeyhex,nonce)
-    //tip, err := StorePubAccount(wk.groupid, pubkeyhex, mode)
-    //fmt.Printf("==== dcrm_genPubKey() ====, StorePubAccount tip: %v, err: %v\n", tip, err)
-    ////save to db
     
-    ////add for req addr
-    /*reqnonce,_,err := GetReqAddrNonce(account)
-    if err != nil {
-	reqnonce = "0"
-    }
-    SetReqAddrNonce(account,reqnonce)*/
     key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
     kd := KeyData{Key:[]byte(key2),Data:nonce}
     PubKeyDataChan <-kd
     /////
     LdbPubKeyData[key2] = []byte(nonce)
-    //key2 = Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
-    //LdbPubKeyData[key2] = []byte("0")
     ////
 
     tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
@@ -453,43 +362,6 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	/////
 	LdbPubKeyData[key] = []byte(ss)
 	////
-
-	/*lock.Lock()
-	dir := GetDbDir()
-	db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-	if err != nil { 
-	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
-	    ch <- res
-	    return
-	}
-
-	h := cryptocoins.NewCryptocoinHandler(cointype)
-	if h == nil {
-	    db.Close()
-	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
-	    ch <- res
-	    return
-	}
-
-	ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-	if err != nil {
-	    db.Close()
-	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkeyhex,Err:err}
-	    ch <- res
-	    return
-	}
-
-	//add for lockout
-	db.Put(ys,[]byte(ss))
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	db.Put([]byte(key),[]byte(ss))
-	key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-	db.Put([]byte(key),[]byte(ss))
-	db.Close()
-	lock.Unlock()*/
     } else {
 	kd = KeyData{Key:ys,Data:ss}
 	PubKeyDataChan <-kd
@@ -525,44 +397,6 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    LdbPubKeyData[key] = []byte(ss)
 	    ////
 	}
-	/*lock.Lock()
-	dir := GetDbDir()
-	db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-	if err != nil { 
-	    lock.Unlock()
-	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:open level db fail",Err:err}
-	    ch <- res
-	    return
-	}
-
-	//add for lockout
-	db.Put(ys,[]byte(ss))
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	db.Put([]byte(key),[]byte(ss))
-        key = Keccak256Hash([]byte(strings.ToLower(pubkeyhex))).Hex()
-        db.Put([]byte(key),[]byte(ss))
-	
-	for _, ct := range cryptocoins.Cointypes {
-	    if strings.EqualFold(ct, "ALL") {
-		continue
-	    }
-
-	    h := cryptocoins.NewCryptocoinHandler(ct)
-	    if h == nil {
-		continue
-	    }
-	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-	    if err != nil {
-		continue
-	    }
-	    
-	    key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-	    db.Put([]byte(key),[]byte(ss))
-	}
-
-	db.Close()
-	lock.Unlock()
-	*/
     }
     
     res := RpcDcrmRes{Ret:pubkeyhex,Tip:"",Err:nil}

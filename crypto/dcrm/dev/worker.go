@@ -72,7 +72,7 @@ var (
 
     KeyFile string
     
-    AllAccounts = make([]*PubKeyData,0)
+    AllAccounts = common.NewSafeMap(10)//make([]*PubKeyData,0)
     AllAccountsChan = make(chan KeyData, 1000)
     
     LdbPubKeyData = common.NewSafeMap(10)//make(map[string][]byte)
@@ -3955,22 +3955,25 @@ type AccountsList struct {
 }
 
 func GetAccounts(gid, mode string) (interface{}, string, error) {
-   if len(AllAccounts) != 0 {
+   if AllAccounts.MapLength() != 0 {
     fmt.Println("================!!!GetAccounts,get pubkey data from AllAccounts success!!!====================")
     gp := make(map[string][]string)
-    for _,v := range AllAccounts {
+    _,lmvalue := AllAccounts.ListMap()
+    for _,v := range lmvalue {
 	if v == nil {
 	    continue
 	}
 
-	if v.Pub == "" || v.GroupId == "" || v.Mode == "" {
+	vv := v.(*PubKeyData)
+
+	if vv.Pub == "" || vv.GroupId == "" || vv.Mode == "" {
 	    continue
 	}
 
-	pb := v.Pub
+	pb := vv.Pub
 	pubkeyhex := hex.EncodeToString([]byte(pb))
-	gid := v.GroupId
-	md := v.Mode
+	gid := vv.GroupId
+	md := vv.Mode
 	fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
 	if mode == md {
 	    al,exsit := gp[gid]

@@ -128,13 +128,14 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    return
 	}
 
-	count := len(AllAccounts)
+	count := AllAccounts.MapLength()
 	index := strconv.Itoa(count)
 	keytmp := Keccak256Hash([]byte(strings.ToLower(index))).Hex()
 	kdtmp := KeyData{Key:[]byte(keytmp),Data:ss}
 	AllAccountsChan <-kdtmp
 	////TODO
-	AllAccounts = append(AllAccounts,pubs)
+	//AllAccounts = append(AllAccounts,pubs)
+	AllAccounts.WriteMap(index,pubs)
 	////////
 
 	pubkeyhex := hex.EncodeToString(sedpk)
@@ -315,13 +316,14 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	return
     }
    
-    count := len(AllAccounts)
+    count := AllAccounts.MapLength()
     index := strconv.Itoa(count)
     keytmp := Keccak256Hash([]byte(strings.ToLower(index))).Hex()
     kdtmp := KeyData{Key:[]byte(keytmp),Data:ss}
     AllAccountsChan <-kdtmp
     ////TODO
-    AllAccounts = append(AllAccounts,pubs)
+    //AllAccounts = append(AllAccounts,pubs)
+    AllAccounts.WriteMap(index,pubs)
     ////////
 
     pubkeyhex := hex.EncodeToString(ys)
@@ -618,8 +620,8 @@ func GetLockOutValueFromDb(key string) []byte {
     return da
 }
 
-func GetAllPubKeyDataFromDb() []*PubKeyData {
-    kd := make([]*PubKeyData,0)
+func GetAllPubKeyDataFromDb() *common.SafeMap {
+    kd := common.NewSafeMap(10)
     fmt.Println("==============GetAllPubKeyDataFromDb,start read from db===============")
     dir := GetAllAccountsDir()
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
@@ -637,6 +639,7 @@ func GetAllPubKeyDataFromDb() []*PubKeyData {
     //
     if db != nil {
 	fmt.Println("==============GetAllPubKeyDataFromDb,open db success===============")
+	index := 0
 	iter := db.NewIterator() 
 	for iter.Next() {
 	    value := string(iter.Value())
@@ -657,7 +660,9 @@ func GetAllPubKeyDataFromDb() []*PubKeyData {
 		continue
 	    }
 
-	    kd = append(kd,pd)
+	    ind := strconv.Itoa(index)
+	    kd.WriteMap(ind,pd)
+	    index++
 	}
 	iter.Release()
 	db.Close()

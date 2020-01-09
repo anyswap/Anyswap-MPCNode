@@ -293,6 +293,8 @@ func SdkProtocol_getGroup(gID string) (int, string) {
 }
 
 func checkExistGroup(gid discover.NodeID) bool {
+	sdkGroupLock.Lock()
+	sdkGroupLock.Unlock()
 	if SdkGroup[gid] != nil {
 		if SdkGroup[gid].Type == "1+2" || SdkGroup[gid].Type == "1+1+1" {
 			return true
@@ -347,6 +349,8 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	}
 	gid, err := discover.BytesID(id)
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
+	sdkGroupLock.Lock()
+	sdkGroupLock.Unlock()
 	for i, g := range SdkGroup {
 		if i == gid {
 			return gid.String(), len(g.Nodes), "group is exist"

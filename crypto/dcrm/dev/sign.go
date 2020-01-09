@@ -1161,7 +1161,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	SendMsgToDcrmGroup(ss,w.groupid)
 	///////////////
 
-	tip,reply := AcceptLockOut(account,w.groupid,nonce,dcrmaddr,w.limitnum,true,"true","Success",lockout_tx_hash,"","","") 
+	tip,reply := AcceptLockOut(account,w.groupid,nonce,dcrmaddr,w.limitnum,true,"true","Success",lockout_tx_hash,"","","",w.id) 
 	if reply != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update lockout status error.")}
 	    ch <- res

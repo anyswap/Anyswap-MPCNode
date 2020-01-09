@@ -650,7 +650,7 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
     ////////////////////////////
 
-    tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,"Pending","","","","")
+    tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,"Pending","","","","",ac.WorkId)
     if err != nil {
 	return "",tip,err
     }
@@ -764,7 +764,38 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
     ////////////////////////////
 
-    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"Pending","","","","")
+    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept
+    key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[8]))).Hex()
+    da,exsit = dev.LdbLockOut[key]
+    if exsit == false {
+	da = dev.GetLockOutValueFromDb(key)
+	if da == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
+    ///////
+    if exsit == false {
+	return "","dcrm back-end internal error:get accept result from db fail",fmt.Errorf("get accept result from db fail")
+    }
+
+    ds,err := dev.UnCompress(string(da))
+    if err != nil {
+	return "","dcrm back-end internal error:uncompress accept result fail",fmt.Errorf("uncompress accept result fail")
+    }
+
+    dss,err := dev.Decode2(ds,"AcceptLockOutData")
+    if err != nil {
+	return "","dcrm back-end internal error:decode accept result fail",fmt.Errorf("decode accept result fail")
+    }
+
+    ac := dss.(*dev.AcceptLockOutData)
+    if ac == nil {
+	return "","dcrm back-end internal error:get accept result from db fail",fmt.Errorf("get accept result from db fail")
+    }
+
+    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"Pending","","","","",ac.WorkId)
     if err != nil {
 	return "",tip,err
     }

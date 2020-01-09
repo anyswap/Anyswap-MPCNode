@@ -147,7 +147,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	//LdbPubKeyData[key2] = []byte("0")
 	////
 
-	tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
+	tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","",id)
 	if reply != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update req addr status error.")}
 	    ch <- res
@@ -321,7 +321,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     LdbPubKeyData[key2] = []byte(nonce)
     ////
 
-    tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","")
+    tip,reply := AcceptReqAddr(account,cointype,wk.groupid,nonce,wk.limitnum,mode,true,"true","Success",pubkeyhex,"","","",id)
     if reply != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update req addr status error.")}
 	ch <- res

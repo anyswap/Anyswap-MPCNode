@@ -734,6 +734,17 @@ func updateGroup(n *Node, p2pType int) {//nooo
 	}
 }
 
+func sendGroupToNode(n *Node, p2pType int) {
+	for _, g := range SDK_groupList {
+		for _, node := range g.Nodes {
+			if node.ID == n.ID {
+				sendGroupInfo(g, p2pType)
+				break
+			}
+		}
+	}
+}
+
 func checkNodeIDExist(n *Node) (bool, bool) {//exist, update //nooo
 	groupTmp := SDK_groupList[n.ID]
 	for _, node := range groupTmp.Nodes {
@@ -800,6 +811,8 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 		if et == true {
 			if ut == true {
 				go updateGroup(n, p2pType)
+			} else {
+				go sendGroupToNode(n, p2pType)
 			}
 			return
 		}

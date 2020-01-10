@@ -1333,15 +1333,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	return false 
     }
 
-    //1. generate their own "partial" private key secretly
-    u1 := GetRandomIntFromZn(secp256k1.S256().N)
-
-    // 2. calculate "partial" public key, make "pritial" public key commiment to get (C,D)
-    u1Gx, u1Gy := secp256k1.S256().ScalarBaseMult(u1.Bytes())
-    commitU1G := new(ec2.Commitment).Commit(u1Gx, u1Gy)
-
-    // 3. generate their own paillier public key and private key
-    u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
+    u1,commitU1G,u1PaillierPk, u1PaillierSk := DECDSA_Key_RoundOne()
 
     // 4. Broadcast
     // commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
@@ -1373,7 +1365,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 
     ids := GetIds(cointype,GroupId)
 
-    u1PolyG, _, u1Shares, err := ec2.Vss(u1, ids, ThresHold, NodeCnt)
+    u1PolyG,_,u1Shares,err := DECDSA_Key_Vss(u1,ids,ThresHold,NodeCnt)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:generate vss fail",Err:err}
 	ch <- res
@@ -1401,7 +1393,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	}
 
 	for _,v := range u1Shares {
-	    uid := ec2.GetSharesId(v)
+	    uid := DECDSA_Key_GetShareId(v)
 	    if uid.Cmp(id) == 0 {
 		mp := []string{msgprex,cur_enode}
 		enode := strings.Join(mp,"-")

@@ -423,28 +423,9 @@ func CheckAddPeer(mode string, enodes []string) error {
 			go func(node *discover.Node) {
 				defer wg.Done()
 				p2pServer.AddPeer(node)
-				fmt.Printf("CheckAddPeer, waitting add peer ...\n")
-				count := 0
-				for {
-					p := emitter.peers[node.ID]
-					if p == nil {
-						time.Sleep(time.Duration(100) * time.Millisecond)
-						count += 1
-						if count > 200 {
-							fmt.Printf("CheckAddPeer, add peer failed node: %v\n", node)
-							msg = fmt.Sprintf("%v; CheckAddPeer, add peer failed node: %v", msg, node)
-							return
-						}
-						continue
-					}
-					fmt.Printf("CheckAddPeer, add peer success node: %v\n", node)
-				}
 			}(node)
 		}
 		wg.Wait()
-		if len(msg) != 0 {
-			return errors.New(msg)
-		}
 	}
 	return nil
 }

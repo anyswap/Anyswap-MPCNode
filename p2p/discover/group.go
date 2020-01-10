@@ -842,9 +842,7 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 				addGroupSDK(n, p2pType)
 			} else {
 				et, up := checkNodeIDExist(n)
-				if et == true && up == false {
-					return
-				} else {
+				if et == true && up == true {
 					if SDK_groupList[n.ID] != nil { // exist group
 						delete(SDK_groupList, n.ID)
 					}

@@ -1277,22 +1277,32 @@ func GetReqAddrStatus(key string) (string,string,error) {
     }
     ///////
     if exsit == false {
+	fmt.Println("==================GetReqAddrStatus,get accept data fail from db,key =%s ===================",key)
 	return "","dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("==================GetReqAddrStatus,uncompress accept data fail,key =%s ===================",key)
 	return "","dcrm back-end internal error:uncompress accept data fail",err
     }
 
     dss,err := Decode2(ds,"AcceptReqAddrData")
     if err != nil {
+	fmt.Println("==================GetReqAddrStatus,decode accept data fail,key =%s ===================",key)
 	return "","dcrm back-end internal error:decode accept data fail",err
     }
 
     ac := dss.(*AcceptReqAddrData)
+    fmt.Println("==================GetReqAddrStatus,ac.Status=%s,ac.PubKey=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.PubKey,ac.Tip,ac.Error,ac.AllReply,key)
     los := &ReqAddrStatus{Status:ac.Status,PubKey:ac.PubKey,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
     ret,err := json.Marshal(los)
+    if err != nil {
+	fmt.Println("==================GetReqAddrStatus,get result fail,err =%v,key =%s ===================",err,key)
+    } else {
+	fmt.Println("==================GetReqAddrStatus,get result success,ret =%s,key =%s ===================",string(ret),key)
+    }
+
     return string(ret),"",nil
 }
 
@@ -1320,23 +1330,31 @@ func GetLockOutStatus(key string) (string,string,error) {
     }
     ///////
     if exsit == false {
+	fmt.Println("==================GetLockOutStatus,get accept data fail from db,key =%s ===================",key)
 	return "","dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
+	fmt.Println("==================GetLockOutStatus,uncompress accept data fail,key =%s ===================",key)
 	return "","dcrm back-end internal error:uncompress accept data fail",err
     }
 
     dss,err := Decode2(ds,"AcceptLockOutData")
     if err != nil {
+	fmt.Println("==================GetLockOutStatus,decode accept data fail,key =%s ===================",key)
 	return "","dcrm back-end internal error:decode accept data fail",err
     }
 
     ac := dss.(*AcceptLockOutData)
+    fmt.Println("==================GetLockOutStatus,ac.Status=%s,ac.OutTxHash=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.OutTxHash,ac.Tip,ac.Error,ac.AllReply,key)
     los := &LockOutStatus{Status:ac.Status,OutTxHash:ac.OutTxHash,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
     ret,err := json.Marshal(los)
-    fmt.Println("================GetLockOutStatus,ret =%s,err =%v=================",string(ret),err)
+    if err != nil {
+	fmt.Println("==================GetLockOutStatus,get result fail,err =%v,key =%s ===================",err,key)
+    } else {
+	fmt.Println("==================GetLockOutStatus,get result success,ret =%s,key =%s ===================",string(ret),key)
+    }
 
     return string(ret),"",err
 }

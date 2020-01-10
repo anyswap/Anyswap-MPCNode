@@ -925,6 +925,8 @@ func LockOut(raw string) (string,string,error) {
     }()
     
     key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
+    fmt.Println("===================LockOut,return key=%s======================",key)
+
     return key,"",nil
 }
 

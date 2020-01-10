@@ -416,7 +416,6 @@ func CheckAddPeer(mode string, enodes []string) error {
 		}
 	}
 	if addpeer {
-		msg := ""
 		wg := &sync.WaitGroup{}
 		wg.Add(len(nodes))
 		for _, node := range nodes {

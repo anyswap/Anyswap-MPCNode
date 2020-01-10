@@ -28,6 +28,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 )
 
 func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool) (string, error) {
@@ -107,6 +108,8 @@ func getGroupAndCode(gid discover.NodeID, p2pType int) (*discover.Group, int) {
 	var xvcGroup *discover.Group = nil
 	switch p2pType {
 	case Sdkprotocol_type:
+		discover.GroupSDK.Lock()
+		defer discover.GroupSDK.Unlock()
 		if SdkGroup != nil {
 			_, xvcGroup = getGroupSDK(gid)
 			msgCode = Sdk_msgCode
@@ -130,9 +133,7 @@ func getGroupAndCode(gid discover.NodeID, p2pType int) (*discover.Group, int) {
 	return xvcGroup, msgCode
 }
 
-func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) {
-	sdkGroupLock.Lock()
-	defer sdkGroupLock.Unlock()
+func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) {//nooo
 	for id, g := range SdkGroup {
 		if g.Type != "1+1+1" && g.Type != "1+2" {
 			continue
@@ -253,6 +254,8 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 	var xvcGroup *discover.Group
 	switch p2pType {
 	case Sdkprotocol_type:
+		discover.GroupSDK.Lock()
+		defer discover.GroupSDK.Unlock()
 		if SdkGroup != nil {
 			_, xvcGroup = getGroupSDK(gid)
 		//	log.Debug("BroadcastToGroup", "gid", gid, "xvcGroup", gid, xvcGroup)
@@ -291,21 +294,30 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 	return count, enode
 }
 
-func recvGroupInfo(gid discover.NodeID, hash, mode string, req interface{}, p2pType int, Type string) {
-	sdkGroupLock.Lock()
-	defer sdkGroupLock.Unlock()
+func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType int, Type string) {
+	discover.GroupSDK.Lock()
+	defer discover.GroupSDK.Unlock()
 	//log.Debug("==== recvGroupInfo() ====", "gid", gid, "req", req)
 	//fmt.Printf("==== recvGroupInfo() ====, gid: %v, req: %v\n", gid, req)
 	//log.Debug("recvGroupInfo", "local ID: ", selfid)
 	var xvcGroup *discover.Group
 	switch (p2pType) {
 	case Sdkprotocol_type:
-		if Type == "1+2" {
-			_, dl := discover.DeleteSDKGroupList4Db(hash)// delete deferent type from sdkList
-			if dl == true {
-				deleteGroup(SdkGroup, hash)
-				deleteGroup(discover.SDK_groupList, hash)
+		keyString := ""
+		for _, enode := range req.([]*discover.Node) {
+			keyString = fmt.Sprintf("%v%v%v%v", keyString, enode.ID, enode.IP, enode.UDP)
+		}
+		key := crypto.Keccak256Hash([]byte(keyString)).Hex()
+		if mode == "1+1+1" {
+			if recvKey1 == key {
+				return
 			}
+			recvKey1 = key
+		} else {
+			if recvKey2 == key {
+				return
+			}
+			recvKey2 = key
 		}
 		//_, groupTmp := getGroupSDK(gid)
 		//if groupTmp != nil {
@@ -318,7 +330,6 @@ func recvGroupInfo(gid discover.NodeID, hash, mode string, req interface{}, p2pT
 		groupTmp.Mode = mode
 		groupTmp.P2pType = byte(p2pType)
 		groupTmp.Type = Type
-		groupTmp.IDListHash = hash
 		SdkGroup[gid] = groupTmp
 		xvcGroup = groupTmp
 		break
@@ -339,7 +350,7 @@ func recvGroupInfo(gid discover.NodeID, hash, mode string, req interface{}, p2pT
 	//	log.Debug("recvGroupInfo", "i: ", i, "e: ", enode)
 		node, _ := discover.ParseNode(enode.String())
 		xvcGroup.Nodes = append(xvcGroup.Nodes, discover.RpcNode{ID: node.ID, IP: node.IP, UDP: node.UDP, TCP: node.UDP})
-		if node.ID != selfid {
+		if node.ID != selfid && emitter.peers[node.ID] == nil {
 			go p2pServer.AddPeer(node)
 		}
 	//	log.Debug("recvGroupInfo", "xvcGroup.group", xvcGroup.group[node.ID.String()])
@@ -355,15 +366,6 @@ func recvGroupInfo(gid discover.NodeID, hash, mode string, req interface{}, p2pT
 
 //	log.Debug("recvGroupInfo", "xvcGroup", xvcGroup)
 //	log.Debug("recvGroupInfo", "Group", p2pType, "enodes", xvcGroup)
-}
-
-func deleteGroup(group map[discover.NodeID]*discover.Group, hash string) {
-	for i, g := range group {
-		if g.IDListHash != hash {
-			fmt.Printf("deleteGroup, hash: %v, g: %v\n", hash, g)
-			delete(group, i)
-		}
-	}
 }
 
 func Broadcast(msg string) {
@@ -514,10 +516,10 @@ func updateGroupNodesNumber(number, p2pType int) {
 }
 
 func InitServer(nodeserv interface{}) {
+	discover.GroupSDK.Lock()
+	defer discover.GroupSDK.Unlock()
 	selfid = discover.GetLocalID()
 	p2pServer = nodeserv.(p2p.Server)
-	sdkGroupLock.Lock()
-	defer sdkGroupLock.Unlock()
 	discover.RecoverGroupAll(SdkGroup)
 	for i, g := range SdkGroup {
 		for _, node := range g.Nodes {

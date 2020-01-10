@@ -27,6 +27,7 @@ import (
 	"time"
 	"fmt"
 
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
@@ -292,8 +293,8 @@ func SdkProtocol_getGroup(gID string) (int, string) {
 }
 
 func checkExistGroup(gid discover.NodeID) bool {
-	sdkGroupLock.Lock()
-	sdkGroupLock.Unlock()
+	discover.GroupSDK.Lock()
+	defer discover.GroupSDK.Unlock()
 	if SdkGroup[gid] != nil {
 		if SdkGroup[gid].Type == "1+2" || SdkGroup[gid].Type == "1+1+1" {
 			return true
@@ -319,8 +320,9 @@ func SdkProtocol_registerSendToGroupReturnCallback(sdkcallback func(interface{},
 // 1 + 1 + 1
 func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	count := len(enodes)
-	enode := []*discover.Node{}
 	sort.Sort(sort.StringSlice(enodes))
+	enode := []*discover.Node{}
+	id := []byte("")
 	for _, un := range enodes {
 		fmt.Printf("for un: %v\n", un)
 		node, err := discover.ParseNode(un)
@@ -338,18 +340,23 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 		}
 		n := fmt.Sprintf("%v", node.ID)
 		fmt.Printf("CreateSDKGroup, n: %v\n", n)
+		if len(id) == 0 {
+			id = crypto.Keccak512([]byte(node.ID.String()))
+		} else {
+			id = crypto.Keccak512(id, []byte(node.ID.String()))
+		}
 		enode = append(enode, node)
 	}
-	id := discover.GetIDHash(enode)
 	gid, err := discover.BytesID(id)
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
-	sdkGroupLock.Lock()
-	sdkGroupLock.Unlock()
+	discover.GroupSDK.Lock()
 	for i, g := range SdkGroup {
 		if i == gid {
+			discover.GroupSDK.Unlock()
 			return gid.String(), len(g.Nodes), "group is exist"
 		}
 	}
+	discover.GroupSDK.Unlock()
 	retErr := discover.StartCreateSDKGroup(gid, mode, enode, "1+1+1")
 	return gid.String(), count, retErr
 }

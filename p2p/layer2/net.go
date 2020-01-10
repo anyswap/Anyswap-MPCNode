@@ -57,11 +57,13 @@ var (
 	Xp_callback   func(interface{})
 	emitter    *Emitter
 	selfid     discover.NodeID
+	recvKey1   string
+	recvKey2   string
 
 	dccpGroup  *discover.Group
 	xpGroup    *discover.Group
 	SdkGroup   map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
-	sdkGroupLock sync.Mutex    // Mutex to sync the SdkGroup
+	//sdkGroupLock sync.Mutex    // Mutex to sync the SdkGroup
 )
 
 type Dcrm struct {

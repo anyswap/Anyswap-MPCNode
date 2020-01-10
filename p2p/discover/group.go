@@ -51,8 +51,8 @@ var (
 	Xp_changed     = 0
 
 	SDK_groupList map[NodeID]*Group = make(map[NodeID]*Group)
-	groupSDK sync.Mutex
-	groupSDKList  = GroupSDKList{}
+	GroupSDK sync.Mutex
+	groupSDKList []*Node
 
 	groupDbLock   sync.Mutex
 	SelfID = ""
@@ -107,9 +107,7 @@ type (
 		count      int
 		P2pType    byte
 		Nodes      []RpcNode
-		IDListHash string
 		Type       string // group type: 1+2, 1+1+1
-		ListIDHash string
 		//userID      []string
 		Expiration uint64
 		// Ignore additional fields (for forward compatibility).
@@ -118,7 +116,6 @@ type (
 
 	GroupSDKList struct {
 		Nodes      []*Node
-		IDListHash string
 	}
 
 	message struct {
@@ -147,10 +144,9 @@ type (
 
 func (req *findgroup) name() string { return "FINDGROUP/v4" }
 
-func getGroupList(gid NodeID, p2pType int) *Group {
+func getGroupList(gid NodeID, p2pType int) *Group {//nooo
 	switch p2pType {
 	case Sdkprotocol_type:
-		fmt.Printf("getGroupList, gid: %v, SDK_groupList[gid]: %v\n", gid, SDK_groupList[gid])
 		return getGroupSDK(gid)
 	case Dcrmprotocol_type:
 		return Dcrm_groupList
@@ -160,7 +156,7 @@ func getGroupList(gid NodeID, p2pType int) *Group {
 	return nil
 }
 
-func getGroupSDK(gid NodeID) *Group{
+func getGroupSDK(gid NodeID) *Group{//nooo
 	for id, g := range SDK_groupList {
 		//if g.status != "SUCCESS" {
 		//	continue
@@ -246,7 +242,7 @@ func getGotPacket(p2pType int) int {
 
 // findgroup sends a findgroup request to the bootnode and waits until
 // the node has sent up to a group.
-func (t *udp) findgroup(gid, toid NodeID, toaddr *net.UDPAddr, target NodeID, p2pType int) ([]*Node, error) {
+func (t *udp) findgroup(gid, toid NodeID, toaddr *net.UDPAddr, target NodeID, p2pType int) ([]*Node, error) {//nooo
 	//log.Debug("====  (t *udp) findgroup()  ====", "gid", gid, "p2pType", p2pType)
 	nodes := make([]*Node, 0, bucketSize)
 	nreceived := 0
@@ -472,7 +468,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        return nil
 }
 
-func getGroupInfo(gid NodeID, p2pType int) *Group {
+func getGroupInfo(gid NodeID, p2pType int) *Group {//nooo
 //	log.Debug("getGroupInfo", "p2pType", p2pType)
 	//groupMemNum := getGroupMemNum(p2pType)
 	groupList := getGroupList(gid, p2pType)
@@ -490,6 +486,8 @@ func getGroupInfo(gid NodeID, p2pType int) *Group {
 }
 
 func InitGroup(groupsNum, nodesNum int) error {
+	GroupSDK.Lock()
+	defer GroupSDK.Unlock()
 //	log.Debug("==== InitGroup() ====")
 	setgroup = 1
 	setgroupNumber = groupsNum
@@ -610,6 +608,8 @@ func PingNode(id NodeID, ip net.IP, port int) error {
 }
 
 func GetGroup(gid, id NodeID, addr *net.UDPAddr, target NodeID, p2pType int) []*Node {
+	GroupSDK.Lock()
+	defer GroupSDK.Unlock()
 //	log.Debug("GetGroup", "gid", gid, "id", id, "addr", addr, "target", target, "p2pType", p2pType)
 	if SDK_groupList != nil && SDK_groupList[gid] != nil {
 		nodes := make([]*Node, 0, bucketSize)
@@ -644,7 +644,7 @@ func setGroup(n *Node, replace string) {
 	setGroupCC(n, replace, Dcrmprotocol_type)
 }
 
-func sendGroupInfo(groupList *Group, p2pType int) {
+func sendGroupInfo(groupList *Group, p2pType int) {//nooo
 	count := 0
 	enode := ""
 	for i := 0; i < len(groupList.Nodes); i++ {
@@ -677,15 +677,14 @@ func sendGroupInfo(groupList *Group, p2pType int) {
 	}
 }
 
-func addGroupSDK(n *Node, p2pType int) {
+func addGroupSDK(n *Node, p2pType int) {//nooo
 	groupTmp := new(Group)
 	groupTmp.Nodes = make([]RpcNode, SDK_groupNum)
-	for i, node := range groupSDKList.Nodes {
+	for i, node := range groupSDKList {
 		groupTmp.Nodes[i] = RpcNode(nodeToRPC(node))
 		groupTmp.count++
 	}
-	groupTmp.IDListHash = groupSDKList.IDListHash
-	groupTmp.Nodes[len(groupSDKList.Nodes)] = RpcNode(nodeToRPC(n))
+	groupTmp.Nodes[len(groupSDKList)] = RpcNode(nodeToRPC(n))
 	groupTmp.count++
 	groupTmp.ID = n.ID
 	groupTmp.Mode = fmt.Sprintf("%v/%v", groupTmp.count, groupTmp.count)
@@ -704,6 +703,8 @@ func StartCreateSDKGroup(gid NodeID, mode string, enode []*Node, Type string) st
 }
 
 func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string) {
+	GroupSDK.Lock()
+	defer GroupSDK.Unlock()
 	fmt.Printf("==== buildSDKGroup() ====, gid: %v\n", gid)
 	groupTmp := new(Group)
 	groupTmp.Mode = mode
@@ -716,10 +717,10 @@ func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string) {
 	}
 	groupTmp.ID = gid
 	SDK_groupList[groupTmp.ID] = groupTmp
-	go sendGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type)
+	sendGroupInfo(SDK_groupList[groupTmp.ID], Sdkprotocol_type)
 }
 
-func updateGroup(n *Node, p2pType int) {
+func updateGroup(n *Node, p2pType int) {//nooo
 	for _, g := range SDK_groupList {
 		for i, node := range g.Nodes {
 			if node.ID == n.ID {
@@ -733,7 +734,7 @@ func updateGroup(n *Node, p2pType int) {
 	}
 }
 
-func checkNodeIDExist(n *Node) (bool, bool) {//exist, update
+func checkNodeIDExist(n *Node) (bool, bool) {//exist, update //nooo
 	groupTmp := SDK_groupList[n.ID]
 	for _, node := range groupTmp.Nodes {
 		if node.ID == n.ID {
@@ -746,7 +747,7 @@ func checkNodeIDExist(n *Node) (bool, bool) {//exist, update
 	return false, true
 }
 
-func updateGroupSDKNode(nd *Node, p2pType int) {
+func updateGroupSDKNode(nd *Node, p2pType int) {//nooo
 	n := RpcNode(nodeToRPC(nd))
 	for gid, g := range SDK_groupList {
 		for i, node := range g.Nodes {
@@ -757,8 +758,8 @@ func updateGroupSDKNode(nd *Node, p2pType int) {
 					fmt.Printf("==== updateGroupSDKNode() ====, node.IP:%v, n.IP:%v, node.UDP:%v, n.UDP:%v\n", ip1, ip2, node.UDP, n.UDP)
 					g.Nodes[i] = n
 					fmt.Printf("==== updateGroupSDKNode() ====, update group(gid=%v) enode %v -> %v\n", gid, node, n)
-					go sendGroupInfo(g, p2pType)
-					go StoreGroupToDb(g)
+					sendGroupInfo(g, p2pType)
+					StoreGroupToDb(g)
 					break
 				}
 			}
@@ -766,16 +767,16 @@ func updateGroupSDKNode(nd *Node, p2pType int) {
 	}
 }
 
-func checkGroupSDKListExist(n *Node) (bool, bool) { //return: exist, update
-	for i, node := range groupSDKList.Nodes {
+func checkGroupSDKListExist(n *Node) (bool, bool) { //return: exist, update //nooo
+	for i, node := range groupSDKList {
 		//nrpc := nodeToRPC(node)
 		if node.ID == n.ID {
 			ip1 := fmt.Sprintf("%v", node.IP)
 			ip2 := fmt.Sprintf("%v", n.IP)
 			if ip1 != ip2 || node.UDP != n.UDP {
 				fmt.Printf("==== checkGroupSDKListExist() ====, string(node.IP)=%v, string(n.IP)=%v, node.UDP=%v, n.UDP=%v\n", ip1, ip2, node.UDP, n.UDP)
-				fmt.Printf("==== checkGroupSDKListExist() ====, enode %v -> %v(new connect)\n", groupSDKList.Nodes[i], n)
-				groupSDKList.Nodes[i] = n
+				fmt.Printf("==== checkGroupSDKListExist() ====, enode %v -> %v(new connect)\n", groupSDKList[i], n)
+				groupSDKList[i] = n
 				return true, true
 			}
 			return true, false
@@ -785,9 +786,9 @@ func checkGroupSDKListExist(n *Node) (bool, bool) { //return: exist, update
 }
 
 func setGroupSDK(n *Node, replace string, p2pType int) {
+	GroupSDK.Lock()
+	defer GroupSDK.Unlock()
 //	log.Debug("==== setGroupSDK() ====", "node", n, "add/replace", replace)
-	groupSDK.Lock()
-	defer groupSDK.Unlock()
 	if replace == "add" {
 		if setgroup == 0 {
 			//check 1+1+1 group
@@ -802,8 +803,8 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 			}
 			return
 		}
-		fmt.Printf("==== setGroupSDK() ====, len(groupSDKList) = %v, SDK_groupNum = %v\n", len(groupSDKList.Nodes), SDK_groupNum)
-		if len(groupSDKList.Nodes) == (SDK_groupNum - 1) {
+		fmt.Printf("==== setGroupSDK() ====, len(groupSDKList) = %v, SDK_groupNum = %v\n", len(groupSDKList), SDK_groupNum)
+		if len(groupSDKList) == (SDK_groupNum - 1) {
 			if SDK_groupList[n.ID] == nil { // not exist group
 				addGroupSDK(n, p2pType)
 			} else {
@@ -818,20 +819,22 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 				}
 			}
 			fmt.Printf("==== setGroupSDK() ====, nodeID: %v, group: %v\n", n.ID, SDK_groupList[n.ID])
-			go sendGroupInfo(SDK_groupList[n.ID], p2pType)
-			go StoreGroupToDb(SDK_groupList[n.ID])
+			sendGroupInfo(SDK_groupList[n.ID], p2pType)
+			StoreGroupToDb(SDK_groupList[n.ID])
 		} else { // add self node
-			if len(groupSDKList.Nodes) < SDK_groupNum {
+			if len(groupSDKList) < SDK_groupNum {
 				//e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
-				groupSDKList.Nodes = append(groupSDKList.Nodes, n)
-				fmt.Printf("==== setGroupSDK() ====, len(groupSDKList) = %v\n", len(groupSDKList.Nodes))
-				if len(groupSDKList.Nodes) == (SDK_groupNum - 1) {
-					groupSDKList.IDListHash = fmt.Sprintf("%v", GetIDHash(groupSDKList.Nodes))
+				groupSDKList = append(groupSDKList, n)
+				fmt.Printf("==== setGroupSDK() ====, len(groupSDKList) = %v\n", len(groupSDKList))
+				if len(groupSDKList) == (SDK_groupNum - 1) {
 					StoreGroupSDKListToDb()
 				}
 			}
 		}
 	} else {
+		if setgroup == 1 {
+			fmt.Printf("==== setGroupSDK() ====, node: %v, add/replace: %v\n", n, replace)
+		}
 		//if SDK_groupList[n.ID] != nil { // exist group
 		//	delete(SDK_groupList, n.ID)
 		//}
@@ -966,9 +969,11 @@ func (t *udp) sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pT
 	if req == nil {
 		return nil
 	}
+	fmt.Printf("====  (t *udp) sendToPeer()  ====, toaddr: %v, pending\n", toaddr)
 	errc := t.pending(toid, byte(Dcrm_groupInfoPacket), func(r interface{}) bool {
 		return true
 	})
+	fmt.Printf("====  (t *udp) sendToPeer()  ====, toaddr: %v, send\n", toaddr)
 //	log.Warn("====  (t *udp) sendToPeer()  ====", "sendtoAddress", toaddr)
 	_, errt := t.send(toaddr, byte(Dcrm_groupInfoPacket), req)
 	if errt != nil {
@@ -982,7 +987,6 @@ func (t *udp) sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pT
 func (req *Group) name() string { return "GROUPMSG/v4" }
 func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
 //	log.Debug("====  (req *groupmessage) handle()  ====")
-	//fmt.Printf("====  (req *groupmessage) handle()  ====, req: %v\n", req)
 	if expired(req.Expiration) {
 		return errExpired
 	}
@@ -999,8 +1003,8 @@ func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) e
 
 //	log.Debug("group msg handle", "req.Nodes: ", nodes)
 //	log.Warn("group msg handle", "req.Nodes: ", nodes)
-	fmt.Sprintf("group msg handle, callGroupEvent(), req.Nodes: %v\n", nodes)
-	go callGroupEvent(req.ID, req.IDListHash, req.Mode, nodes, int(req.P2pType), req.Type)
+	fmt.Printf("group msg handle, callGroupEvent(), req.Nodes: %v\n", nodes)
+	go callGroupEvent(req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
 	return nil
 }
 
@@ -1033,15 +1037,15 @@ func (req *message) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte)
 	return nil
 }
 
-var groupcallback func(NodeID, string, string, interface{}, int, string)
+var groupcallback func(NodeID, string, interface{}, int, string)
 
-func RegisterGroupCallback(callbackfunc func(NodeID, string, string, interface{}, int, string)) {
+func RegisterGroupCallback(callbackfunc func(NodeID, string, interface{}, int, string)) {
 	groupcallback = callbackfunc
 }
 
-func callGroupEvent(gid NodeID, hash, mode string, n []*Node, p2pType int, Type string) {
+func callGroupEvent(gid NodeID, mode string, n []*Node, p2pType int, Type string) {
 	fmt.Printf("callGroupEvent\n")
-	groupcallback(gid, hash, mode, n, p2pType, Type)
+	groupcallback(gid, mode, n, p2pType, Type)
 }
 
 var prikeycallback func(interface{})
@@ -1262,7 +1266,7 @@ func GetEnodeStatus(enode string) (string, error) {
 	return "OffLine", nil
 }
 
-func StoreGroupToDb(groupInfo *Group) error {
+func StoreGroupToDb(groupInfo *Group) error {//nooo
 	groupDbLock.Lock()
 	defer groupDbLock.Unlock()
 
@@ -1282,7 +1286,6 @@ func StoreGroupToDb(groupInfo *Group) error {
 	for _, n := range groupInfo.Nodes {
 		ac.Nodes = append(ac.Nodes, n)
 	}
-	ac.IDListHash = groupInfo.IDListHash
 	alos, err := Encode2(ac)
 	if err != nil {
 		db.Close()
@@ -1294,7 +1297,7 @@ func StoreGroupToDb(groupInfo *Group) error {
 		return err
 	}
 
-	fmt.Printf("==== StoreGroupInfo() ==== new, key: %v, ac: %v\n", key, ac)
+	fmt.Printf("==== StoreGroupInfo() ==== new, ac: %v\n", ac)
 	db.Put([]byte(key), []byte(ss), nil)
 	db.Close()
 	return nil
@@ -1335,19 +1338,7 @@ func RecoverGroupByGID(gid NodeID) (*Group, error) {
 	return nil, err
 }
 
-func GetIDHash(nodes []*Node) []byte {// nodes must be sorted
-	id := []byte("")
-	for _, node := range nodes {
-		if len(id) == 0 {
-			id = crypto.Keccak512([]byte(node.ID.String()))
-		} else {
-			id = crypto.Keccak512(id, []byte(node.ID.String()))
-		}
-	}
-	return id
-}
-
-func StoreGroupSDKListToDb() error {
+func StoreGroupSDKListToDb() error {//nooo
 	groupDbLock.Lock()
 	defer groupDbLock.Unlock()
 
@@ -1360,10 +1351,9 @@ func StoreGroupSDKListToDb() error {
 	key := crypto.Keccak256Hash([]byte("groupsdklist")).Hex()
 	ac := new(GroupSDKList)
 	ac.Nodes = make([]*Node, 0)
-	for _, n := range groupSDKList.Nodes {
+	for _, n := range groupSDKList {
 		ac.Nodes = append(ac.Nodes, n)
 	}
-	ac.IDListHash = groupSDKList.IDListHash
 	alos, err := Encode2(ac)
 	if err != nil {
 		db.Close()
@@ -1381,7 +1371,7 @@ func StoreGroupSDKListToDb() error {
 	return nil
 }
 
-func RecoverGroupSDKList() error {
+func RecoverGroupSDKList() error {//nooo
 	groupDbLock.Lock()
 	defer groupDbLock.Unlock()
 
@@ -1409,9 +1399,8 @@ func RecoverGroupSDKList() error {
 		ac := dss.(*GroupSDKList)
 		fmt.Printf("==== RecoverGroupSDKList() ====, groupSDKList: %v\n", ac)
 		for _, n := range ac.Nodes {
-			groupSDKList.Nodes = append(groupSDKList.Nodes, n)
+			groupSDKList = append(groupSDKList, n)
 		}
-		groupSDKList.IDListHash = ac.IDListHash
 		return nil
 	}
 	return err
@@ -1511,15 +1500,15 @@ func UnCompress(s string) (string, error) {
 	return out.String(), nil
 }
 
-func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
+func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {//nooo
 	groupDbLock.Lock()
 	defer groupDbLock.Unlock()
 
 	dir := getGroupDir()
-	fmt.Printf("==== RecoverGroupAll() ====, dir = %v\n", dir)
+	fmt.Printf("==== getGroupFromDb() ====, dir = %v\n", dir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		fmt.Printf("==== RecoverGroupAll() ====, db open err %v\n", err)
+		fmt.Printf("==== getGroupFromDb() ====, db open err %v\n", err)
 		return err
 	}
 
@@ -1528,13 +1517,13 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
 		value := string(iter.Value())
 		ss, err := UnCompress(value)
 		if err != nil {
-			fmt.Printf("==== RecoverGroupAll() ====, UnCompress err %v\n", err)
+			fmt.Printf("==== getGroupFromDb() ====, UnCompress err %v\n", err)
 			continue
 		}
 
 		g, err := Decode2(ss, "Group")
 		if err != nil {
-			fmt.Printf("==== RecoverGroupAll() ====, Decode2 err %v\n", err)
+			fmt.Printf("==== getGroupFromDb() ====, Decode2 err %v\n", err)
 			continue
 		}
 
@@ -1544,7 +1533,6 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
 		groupTmp.P2pType = gm.P2pType
 		groupTmp.Type = gm.Type
 		groupTmp.ID = gm.ID
-		groupTmp.IDListHash = gm.IDListHash
 		SdkGroup[gm.ID] = groupTmp
 		groupTmp.Nodes = make([]RpcNode, 0)
 		//fmt.Printf("==== getGroupFromDb() ====, for gm = %v\n", gm)
@@ -1553,49 +1541,9 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error {
 			groupTmp.Nodes = append(groupTmp.Nodes, node)
 		}
 	}
-	fmt.Printf("==== RecoverGroupAll() ====, SdkGroup: %v\n", SdkGroup)
+	fmt.Printf("==== getGroupFromDb() ====, SdkGroup: %v\n", SdkGroup)
 	db.Close()
 	return nil
-}
-
-func DeleteSDKGroupList4Db(hash string) (error, bool) {// delete deferent type from sdkList
-	groupDbLock.Lock()
-	defer groupDbLock.Unlock()
-
-	dl := false
-	dir := getGroupDir()
-	fmt.Printf("==== checkDbTypeDelete() ====, dir = %v\n", dir)
-	db, err := leveldb.OpenFile(dir, nil)
-	if err != nil {
-		fmt.Printf("==== checkDbTypeDelete() ====, db open err %v\n", err)
-		return err, dl
-	}
-
-	iter := db.NewIterator(nil, nil)
-	for iter.Next() {
-		value := string(iter.Value())
-		ss, err := UnCompress(value)
-		if err != nil {
-			fmt.Printf("==== checkDbTypeDelete() ====, UnCompress err %v\n", err)
-			continue
-		}
-
-		g, err := Decode2(ss, "Group")
-		if err != nil {
-			fmt.Printf("==== checkDbTypeDelete() ====, Decode2 err %v\n", err)
-			continue
-		}
-
-		gm := g.(*Group)
-		if gm.IDListHash != hash {
-			key := crypto.Keccak256Hash([]byte(strings.ToLower(fmt.Sprintf("%v", gm.ID)))).Hex()
-			fmt.Printf("==== checkDbTypeDelete() ====, Delete key %v, gm.IDListHash: %v, new hash: %v\n", key, gm.IDListHash, hash)
-			db.Delete([]byte(key), nil)
-			dl = true
-		}
-	}
-	db.Close()
-	return nil, dl
 }
 
 func NewGroup() *Group {

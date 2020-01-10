@@ -27,9 +27,9 @@ import (
 	"sync"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
-	cryptocoinsconfig "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
+	"github.com/fsn-dev/dcrm-walletService/coins"
+	"github.com/fsn-dev/dcrm-walletService/coins/types"
+	cryptocoinsconfig "github.com/fsn-dev/dcrm-walletService/coins/config"
 	"encoding/json"
 	//"github.com/syndtr/goleveldb/leveldb"
 	//"github.com/fsn-dev/dcrm-walletService/ethdb"
@@ -47,7 +47,7 @@ var (
 
 func Start() {
     cryptocoinsconfig.Init()
-    cryptocoins.Init()
+    coins.Init()
 }
 
 type DcrmAccountsBalanceRes struct {
@@ -268,7 +268,7 @@ func GetPubKeyData(key string,account string,cointype string) (string,string,err
     var m interface{}
     if !strings.EqualFold(cointype, "ALL") {
 
-	h := cryptocoins.NewCryptocoinHandler(cointype)
+	h := coins.NewCryptocoinHandler(cointype)
 	if h == nil {
 	    return "","cointype is not supported",fmt.Errorf("req addr fail.cointype is not supported.")
 	}
@@ -284,12 +284,12 @@ func GetPubKeyData(key string,account string,cointype string) (string,string,err
     }
     
     addrmp := make(map[string]string)
-    for _, ct := range cryptocoins.Cointypes {
+    for _, ct := range coins.Cointypes {
 	if strings.EqualFold(ct, "ALL") {
 	    continue
 	}
 
-	h := cryptocoins.NewCryptocoinHandler(ct)
+	h := coins.NewCryptocoinHandler(ct)
 	if h == nil {
 	    continue
 	}
@@ -385,7 +385,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 
 	var m interface{}
 	if !strings.EqualFold(msgs[1], "ALL") {
-	    h := cryptocoins.NewCryptocoinHandler(msgs[1])
+	    h := coins.NewCryptocoinHandler(msgs[1])
 	    if h == nil {
 		return "","cointype is not supported",fmt.Errorf("req addr fail.cointype is not supported.")
 	    }
@@ -401,12 +401,12 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	}
 	
 	addrmp := make(map[string]string)
-	for _, ct := range cryptocoins.Cointypes {
+	for _, ct := range coins.Cointypes {
 	    if strings.EqualFold(ct, "ALL") {
 		continue
 	    }
 
-	    h := cryptocoins.NewCryptocoinHandler(ct)
+	    h := coins.NewCryptocoinHandler(ct)
 	    fmt.Println("================dcrm.SendReqToGroup,get cointpe handler = %v,cointype =%s,================",h,ct)
 	    if h == nil {
 		continue
@@ -490,12 +490,12 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    ///
 	    var m interface{}
 	    addrmp := make(map[string]string)
-	    for _, ct := range cryptocoins.Cointypes {
+	    for _, ct := range coins.Cointypes {
 		if strings.EqualFold(ct, "ALL") {
 		    continue
 		}
 
-		h := cryptocoins.NewCryptocoinHandler(ct)
+		h := coins.NewCryptocoinHandler(ct)
 		if h == nil {
 		    continue
 		}
@@ -1026,7 +1026,7 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
             }(cointype, subaddr)
         }
         wg.Wait()
-	for _, cointype := range cryptocoins.Cointypes {
+	for _, cointype := range coins.Cointypes {
 	     if ret[cointype] != nil {
 		 balances = append(balances, *(ret[cointype]))
 		 fmt.Printf("balances: %v\n", balances)
@@ -1053,7 +1053,7 @@ func GetBalance(account string, cointype string,dcrmaddr string) (string,string,
 	return "0","",nil  //TODO
     }
 
-    h := cryptocoins.NewCryptocoinHandler(cointype)
+    h := coins.NewCryptocoinHandler(cointype)
     if h == nil {
 	return "","coin type is not supported",fmt.Errorf("coin type is not supported")
     }

@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/eos"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/rpcutils"
+	"github.com/fsn-dev/dcrm-walletService/coins"
+	"github.com/fsn-dev/dcrm-walletService/coins/config"
+	"github.com/fsn-dev/dcrm-walletService/coins/eos"
+	"github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	//"github.com/syndtr/goleveldb/leveldb"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"github.com/astaxie/beego/logs"
@@ -26,7 +26,7 @@ var (
 
 func CreateRealEosAccount(accountName string, ownerkey string, activekey string) error {
 	fmt.Println("==========create eos account Start!!,account name = %s,ownerkey = %s,activekey = %s, ==============",accountName,ownerkey,activekey)
-	av := cryptocoins.NewAddressValidator("EOS_NORMAL")
+	av := coins.NewAddressValidator("EOS_NORMAL")
 	if !av.IsValidAddress(accountName) {
 		return errors.New("eos account name format error")
 	}

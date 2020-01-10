@@ -12,12 +12,12 @@ import (
 	"github.com/binance-chain/go-sdk/keys"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/xrp"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/trx"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/eos"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/bnb"
-	api "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/config"
+	"github.com/fsn-dev/dcrm-walletService/coins/xrp"
+	"github.com/fsn-dev/dcrm-walletService/coins/trx"
+	"github.com/fsn-dev/dcrm-walletService/coins/eos"
+	"github.com/fsn-dev/dcrm-walletService/coins/bnb"
+	api "github.com/fsn-dev/dcrm-walletService/coins"
+	"github.com/fsn-dev/dcrm-walletService/coins/config"
 )
 
 func init() {

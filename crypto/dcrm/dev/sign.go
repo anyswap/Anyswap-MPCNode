@@ -33,10 +33,10 @@ import (
     "encoding/hex"
     //"github.com/syndtr/goleveldb/leveldb"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
-    "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
+    "github.com/fsn-dev/dcrm-walletService/coins"
     "github.com/fsn-dev/dcrm-walletService/internal/common"
-    "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
-    "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/eos"
+    "github.com/fsn-dev/dcrm-walletService/coins/types"
+    "github.com/fsn-dev/dcrm-walletService/coins/eos"
     "github.com/astaxie/beego/logs"
     "github.com/agl/ed25519"
     "runtime/debug"
@@ -169,7 +169,7 @@ func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string
 func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
     fmt.Println("========validate_lockout,acc =%s,dcrmaddr =%s,cointype =%s,value =%s,to =%s,nonce =%s============",account,dcrmaddr,cointype,value,to,nonce)
     var ret2 Err
-    chandler := cryptocoins.NewCryptocoinHandler(cointype)
+    chandler := coins.NewCryptocoinHandler(cointype)
     if chandler == nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:GetRetErr(ErrCoinTypeNotSupported)}
 	    ch <- res

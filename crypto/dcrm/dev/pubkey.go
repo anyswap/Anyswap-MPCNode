@@ -28,12 +28,12 @@ import (
     "strings"
     "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ed"
     "github.com/fsn-dev/dcrm-walletService/internal/common"
-    "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins/types"
+    "github.com/fsn-dev/dcrm-walletService/coins/types"
     cryptorand "crypto/rand"
     "crypto/sha512"
     "encoding/hex"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
-    "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/cryptocoins"
+    "github.com/fsn-dev/dcrm-walletService/coins"
     "github.com/astaxie/beego/logs"
 )
 
@@ -159,7 +159,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	}
     
 	if !strings.EqualFold(cointype, "ALL") {
-	    h := cryptocoins.NewCryptocoinHandler(cointype)
+	    h := coins.NewCryptocoinHandler(cointype)
 	    if h == nil {
 		res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
 		ch <- res
@@ -212,12 +212,12 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    LdbPubKeyData.WriteMap(key,[]byte(ss))
 	    ////
 
-	    for _, ct := range cryptocoins.Cointypes {
+	    for _, ct := range coins.Cointypes {
 		if strings.EqualFold(ct, "ALL") {
 		    continue
 		}
 
-		h := cryptocoins.NewCryptocoinHandler(ct)
+		h := coins.NewCryptocoinHandler(ct)
 		if h == nil {
 		    continue
 		}
@@ -345,7 +345,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     }
 
     if !strings.EqualFold(cointype, "ALL") {
-	h := cryptocoins.NewCryptocoinHandler(cointype)
+	h := coins.NewCryptocoinHandler(cointype)
 	if h == nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"cointype is not supported",Err:fmt.Errorf("req addr fail,cointype is not supported.")}
 	    ch <- res
@@ -397,12 +397,12 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	LdbPubKeyData.WriteMap(key,[]byte(ss))
 	////
 
-	for _, ct := range cryptocoins.Cointypes {
+	for _, ct := range coins.Cointypes {
 	    if strings.EqualFold(ct, "ALL") {
 		continue
 	    }
 
-	    h := cryptocoins.NewCryptocoinHandler(ct)
+	    h := coins.NewCryptocoinHandler(ct)
 	    if h == nil {
 		continue
 	    }

@@ -599,9 +599,12 @@ func AcceptReqAddr(raw string) (string,string,error) {
 	return "","transaction data format error,the lastest segment is not AGREE or DISAGREE",fmt.Errorf("transaction data format error")
     }
 
+    status := "Pending"
     accept := "false"
     if datas[7] == "AGREE" {
 	accept = "true"
+    } else {
+	status = "Failure"
     }
 
     ////bug,check valid accepter
@@ -672,7 +675,7 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
     ////////////////////////////
 
-    tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,"Pending","","","","",ac.WorkId)
+    tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,status,"","","","",ac.WorkId)
     if err != nil {
 	return "",tip,err
     }
@@ -719,9 +722,12 @@ func AcceptLockOut(raw string) (string,string,error) {
 	return "",tip,err
     }
 
+    status := "Pending"
     accept := "false"
     if datas[10] == "AGREE" {
 	accept = "true"
+    } else {
+	status = "Failure"
     }
 
     ////bug,check valid accepter
@@ -826,7 +832,7 @@ func AcceptLockOut(raw string) (string,string,error) {
 	return "","dcrm back-end internal error:get accept result from db fail",fmt.Errorf("get accept result from db fail")
     }
 
-    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,"Pending","","","","",ac.WorkId)
+    tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,status,"","","","",ac.WorkId)
     if err != nil {
 	return "",tip,err
     }

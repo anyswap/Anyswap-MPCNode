@@ -553,6 +553,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    msg += ":"
 	    msg += datas[3+j]
 	}
+	fmt.Println("============dcrm_reqDcrmAddr,len(datas)=%v,nums=%s,nodecnt=%v=================",len(datas),nums,nodecnt)
 
 	addr,_,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
 	if addr != "" && err == nil {
@@ -1095,7 +1096,7 @@ func GetReqAddrReply(geter_acc string) ([]string,string,error) {
     //fmt.Println("=========== call dcrm.GetReqAddrReply ============")
     reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_reqaddr_reply")
     if reply == "" || err != nil {
-	fmt.Println("===========dcrm.GetReqAddrReply,err =%v ============",err)
+	fmt.Println("===========dcrm.GetReqAddrReply,get result fail,err =%v ============",err)
 	return nil,tip,err 
     }
 
@@ -1107,7 +1108,7 @@ func GetLockOutReply(geter_acc string) ([]string,string,error) {
     //fmt.Println("=========== call dcrm.GetLockOutReply ============")
     reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_lockout_reply")
     if reply == "" || err != nil {
-	fmt.Println("===========call dcrm.GetLockOutReply,err =%v ============",err)
+	fmt.Println("===========dcrm.GetLockOutReply,get result fail,err =%v ============",err)
 	return nil,tip,err 
     }
 

@@ -1395,7 +1395,8 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	check := false
 	eaccs := make([]EnAcc,0)
 	////bug,check valid accepter
-	for _,v := range ac.NodeSigs {
+	for k,v := range ac.NodeSigs {
+	    fmt.Println("=============GetReqAddrReply,check accepter,index =%v=========================",k)
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
 	    if err = rlp.DecodeBytes(vs, tx2); err != nil {
@@ -1430,12 +1431,12 @@ func GetReqAddrReply(geter_acc string) (string,string,error) {
 	}
 
 	if ac.Deal == true || ac.Status == "Success" {
-	    //fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
+	    fmt.Println("================GetReqAddrReply,this req addr has handle,nonce =%s===================",ac.Nonce)
 	    continue
 	}
 
 	if ac.Status != "Pending" {
-	    //fmt.Println("================GetReqAddrReply,this is not pending,nonce =%s===================",ac.Nonce)
+	    fmt.Println("================GetReqAddrReply,this is not pending,nonce =%s===================",ac.Nonce)
 	    continue
 	}
 
@@ -1537,7 +1538,8 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	check := false
 	eaccs := make([]EnAcc,0)
 	////bug,check valid accepter
-	for _,v := range nodesigs {
+	for k,v := range nodesigs {
+	    fmt.Println("=============GetLockOutReply,check accepter,index =%v=========================",k)
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
 	    if err = rlp.DecodeBytes(vs, tx2); err != nil {
@@ -1573,12 +1575,12 @@ func GetLockOutReply(geter_acc string) (string,string,error) {
 	}
 
 	if ac.Deal == true || ac.Status == "Success" {
-	    //fmt.Println("===============GetLockOutReply,ac.Deal is true,nonce =%s===============",ac.Nonce)
+	    fmt.Println("===============GetLockOutReply,ac.Deal is true,nonce =%s===============",ac.Nonce)
 	    continue
 	}
 
 	if ac.Status != "Pending" {
-	    //fmt.Println("===============GetLockOutReply,this is not pending,nonce =%s===============",ac.Nonce)
+	    fmt.Println("===============GetLockOutReply,this is not pending,nonce =%s===============",ac.Nonce)
 	    continue
 	}
 
@@ -2247,6 +2249,8 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		for j:=0;j<nodecnt;j++ {
 		    nodesigs = append(nodesigs,msgs[6+j])
 		}
+		fmt.Println("============RecvMsg.Run,len(msgs)=%v,nums=%s,nodecnt =%v=================",len(msgs),nums,nodecnt)
+
 		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],NodeSigs:nodesigs,Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
 		fmt.Println("===================call SaveAcceptReqAddrData,workid =%s,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",wid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
 		err := SaveAcceptReqAddrData(ac)
@@ -2608,7 +2612,8 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
     GetEnodesInfo(self.GroupId)
     msg := self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode
-    for _,v := range self.NodeSigs {
+    for k,v := range self.NodeSigs {
+	fmt.Println("===========ReqAddrSendMsgToDcrm.Run,get node sigs,index=%v===========",k)
 	msg += ":"
 	msg += v
     }
@@ -2923,6 +2928,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    for j:=0;j<nodecnt;j++ {
 		sigs = append(sigs,msgs[6+j])
 	    }
+	    fmt.Println("==========SendReqToGroup,len(msgs)=%v,nums=%s,nodecnt=%v========================",len(msgs),nums,nodecnt)
 
 	    v := ReqAddrSendMsgToDcrm{Account:msgs[0],Cointype:msgs[1],GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4], Mode:msgs[5],NodeSigs:sigs}
 	    rch := make(chan interface{},1)

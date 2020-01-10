@@ -644,6 +644,26 @@ func setGroup(n *Node, replace string) {
 	setGroupCC(n, replace, Dcrmprotocol_type)
 }
 
+func sendGroupToNode(groupList *Group, p2pType int, node *Node) {//nooo
+	ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+	go SendToPeer(groupList.ID, node.ID, ipa, "", p2pType)
+	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
+		var tmp int = 0
+		for i := 0; i < groupList.count; i++ {
+			n := groupList.Nodes[i]
+			tmp++
+			if n.ID != node.ID {
+				continue
+			}
+			cDgid := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
+			fmt.Printf("==== sendGroupToNode() ====, cDgid = %v\n", cDgid)
+			ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+			SendMsgToNode(node.ID, ipa, cDgid)
+			break
+		}
+	}
+}
+
 func sendGroupInfo(groupList *Group, p2pType int) {//nooo
 	count := 0
 	enode := ""
@@ -734,11 +754,11 @@ func updateGroup(n *Node, p2pType int) {//nooo
 	}
 }
 
-func sendGroupToNode(n *Node, p2pType int) {
+func updateGroupNode(n *Node, p2pType int) {
 	for _, g := range SDK_groupList {
 		for _, node := range g.Nodes {
 			if node.ID == n.ID {
-				sendGroupInfo(g, p2pType)
+				sendGroupToNode(g, p2pType, n)
 				break
 			}
 		}
@@ -812,7 +832,7 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 			if ut == true {
 				go updateGroup(n, p2pType)
 			} else {
-				go sendGroupToNode(n, p2pType)
+				go updateGroupNode(n, p2pType)
 			}
 			return
 		}

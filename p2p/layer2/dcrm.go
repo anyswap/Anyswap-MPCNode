@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"time"
 	"fmt"
+	"sync"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
@@ -415,26 +416,34 @@ func CheckAddPeer(mode string, enodes []string) error {
 		}
 	}
 	if addpeer {
+		msg := ""
+		wg := &sync.WaitGroup{}
+		wg.Add(len(nodes))
 		for _, node := range nodes {
 			go func(node *discover.Node) {
+				defer wg.Done()
 				p2pServer.AddPeer(node)
+				fmt.Printf("CheckAddPeer, waitting add peer ...\n")
+				count := 0
+				for {
+					p := emitter.peers[node.ID]
+					if p == nil {
+						time.Sleep(time.Duration(100) * time.Millisecond)
+						count += 1
+						if count > 200 {
+							fmt.Printf("CheckAddPeer, add peer failed node: %v\n", node)
+							msg = fmt.Sprintf("%v; CheckAddPeer, add peer failed node: %v", msg, node)
+							return
+						}
+						continue
+					}
+					fmt.Printf("CheckAddPeer, add peer success node: %v\n", node)
+				}
 			}(node)
 		}
-		fmt.Printf("CheckAddPeer, waitting add peer ...\n")
-		count := 0
-		for _, node := range nodes {
-			p := emitter.peers[node.ID]
-			if p == nil {
-				time.Sleep(time.Duration(1) * time.Second)
-				count += 1
-				if count > (len(nodes) * 10) {
-					fmt.Printf("CheckAddPeer, add peer failed node: %v\n", node)
-					msg := fmt.Sprintf("CheckAddPeer, add peer failed node: %v", node)
-					return errors.New(msg)
-				}
-				continue
-			}
-			fmt.Printf("CheckAddPeer, add peer success node: %v\n", node)
+		wg.Wait()
+		if len(msg) != 0 {
+			return errors.New(msg)
 		}
 	}
 	return nil

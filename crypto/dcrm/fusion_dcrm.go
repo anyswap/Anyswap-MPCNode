@@ -909,6 +909,23 @@ func LockOut(raw string) (string,string,error) {
 	    }
 	}
     }
+
+    //nonce check
+    cur_nonce_str,tip,err := dev.GetLockOutNonce(from.Hex(),cointype,dcrmaddr)
+    if err != nil {
+	return "",tip,err
+    }
+
+    if strings.EqualFold(fmt.Sprintf("%v",Nonce),cur_nonce_str) == false {
+	return "","lockout tx nonce error",fmt.Errorf("nonce error.")
+    }
+    //
+    
+    tip,err = dev.SetLockOutNonce(from.Hex(),cointype,dcrmaddr,fmt.Sprintf("%v",Nonce))
+    if err != nil {
+	return "",tip,fmt.Errorf("update nonce error.")
+    }
+
     //////////
    
     go func() {

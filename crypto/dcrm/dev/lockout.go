@@ -368,13 +368,6 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    return
 	}
 
-	tip,err = SetLockOutNonce(account,cointype,dcrmaddr,nonce)
-	if err != nil {
-	    res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("update nonce error.")}
-	    ch <- res
-	    return
-	}
-
 	///////TODO tmp
 	//sid-enode:SendLockOutRes:Success:lockout_tx_hash
 	//sid-enode:SendLockOutRes:Fail:err

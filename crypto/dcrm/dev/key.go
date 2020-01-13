@@ -61,5 +61,43 @@ func DECDSA_Key_GetShareId(v *ec2.ShareStruct) *big.Int {
     return uid
 }
 
+func DECDSA_Key_VSS_Verify(share *ec2.ShareStruct,polyG *ec2.PolyGStruct) bool {
+    if share == nil || polyG == nil {
+	return false
+    }
+
+    return share.Verify(polyG)
+}
+
+func DECDSA_Key_Commitment_Verify(com *ec2.Commitment) bool {
+    if com == nil {
+	return false
+    }
+
+    return com.Verify()
+}
+
+func DECDSA_Key_Commitment_DeCommit(com *ec2.Commitment) (bool,[]*big.Int) {
+    if com == nil {
+	return false,nil
+    }
+
+    return com.DeCommit()
+}
+
+func DECDSA_Key_ZK(u1PaillierSk *ec2.PrivateKey,u1 *big.Int) (*ec2.ZkFactProof,*ec2.ZkUProof) {
+    if u1PaillierSk == nil || u1 == nil {
+	return nil,nil
+    }
+    
+    // zk of paillier key
+    u1zkFactProof := u1PaillierSk.ZkFactProve()
+    // zk of u
+    //u1zkUProof := schnorrZK.ZkUProve(u1)
+    u1zkUProof := ec2.ZkUProve(u1)
+
+    return u1zkFactProof,u1zkUProof
+}
+
 ////////////////////////////////////
 

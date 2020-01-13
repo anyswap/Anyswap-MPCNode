@@ -1465,6 +1465,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	ch <- res
 	return false
     }
+
     itmp := 0
     iter := w.msg_share1.Front()
     for iter != nil {
@@ -1492,8 +1493,9 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	prexs := strings.Split(prex,"-")
 	sstruct[prexs[len(prexs)-1]] = ushare
     }
+
     for _,v := range u1Shares {
-	uid := ec2.GetSharesId(v)
+	uid := DECDSA_Key_GetShareId(v)
 	enodes := GetEnodesByUid(uid,cointype,GroupId)
 	if IsCurNode(enodes,cur_enode) {
 	    sstruct[cur_enode] = v 
@@ -1507,6 +1509,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	ch <- res
 	return false
     }
+
     itmp = 0
     iter = w.msg_d1_1.Front()
     for iter != nil {
@@ -1546,7 +1549,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     for _,id := range ids {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
-	if sstruct[en[0]].Verify(upg[en[0]]) == false {
+	if DECDSA_Key_VSS_Verify(sstruct[en[0]],upg[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:verification share1 fail",Err:GetRetErr(ErrVerifySHARE1Fail)}
 	    ch <- res
 	    return false
@@ -1561,6 +1564,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	ch <- res
 	return false
     }
+
     itmp = 0
     iter = w.msg_c1.Front()
     for iter != nil {
@@ -1600,7 +1604,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     for _,id := range ids {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
-	if udecom[en[0]].Verify() == false {
+	if DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:verification commitment fail",Err:GetRetErr(ErrKeyGenVerifyCommitFail)}
 	    ch <- res
 	    return false
@@ -1612,7 +1616,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     for _,id := range ids {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
 	en := strings.Split(string(enodes[8:]),"@")
-	_, u1G := udecom[en[0]].DeCommit()
+	_, u1G := DECDSA_Key_Commitment_DeCommit(udecom[en[0]])
 	ug[en[0]] = u1G
     }
 
@@ -1701,11 +1705,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
     // 6. calculate the zk
     // ## add content: zk of paillier key, zk of u
     
-    // zk of paillier key
-    u1zkFactProof := u1PaillierSk.ZkFactProve()
-    // zk of u
-    //u1zkUProof := schnorrZK.ZkUProve(u1)
-    u1zkUProof := ec2.ZkUProve(u1)
+    u1zkFactProof,u1zkUProof := DECDSA_Key_ZK(u1PaillierSk,u1)
 
     // 7. Broadcast zk
     // u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
@@ -1762,6 +1762,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	ch <- res
 	return false
     }
+
     itmp = 0
     iter = w.msg_zkfact.Front()
     for iter != nil {
@@ -1816,6 +1817,7 @@ func KeyGenerate_ec2(msgprex string,ch chan interface{},id int,cointype string) 
 	ch <- res
 	return false
     }
+
     itmp = 0
     iter = w.msg_zku.Front()
     for iter != nil {

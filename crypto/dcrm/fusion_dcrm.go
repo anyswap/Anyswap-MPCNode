@@ -939,36 +939,30 @@ func GetLockOutStatus(key string) (string,string,error) {
 }
 
 func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, error) {
-    ////bug,check valid accepter
-    check := false
-    _,lmvalue := dev.LdbReqAddr.ListMap()
+    _,lmvalue := dev.AllAccounts.ListMap()
     for _,v := range lmvalue {
 	if v == nil {
 	    continue
 	}
 
-	vv := v.([]byte)
-	value := string(vv)
-	////
-	ds,err := dev.UnCompress(value)
-	if err != nil {
+	vv := v.(*dev.PubKeyData)
+
+	if vv.Pub == "" || vv.GroupId == "" || vv.Mode == "" {
 	    continue
 	}
 
-	dss,err := dev.Decode2(ds,"AcceptReqAddrData")
-	if err != nil {
+	pb := vv.Pub
+	pubkeyhex := hex.EncodeToString([]byte(pb))
+	if strings.EqualFold(pubkey,pubkeyhex) == false {
 	    continue
 	}
 
-	ac := dss.(*dev.AcceptReqAddrData)
-	if ac == nil {
-	    continue
-	}
-	
-	for _,v := range ac.NodeSigs {
+	////bug,check valid accepter
+	check := false
+	for _,v := range vv.NodeSigs {
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
-	    if err = rlp.DecodeBytes(vs, tx2); err != nil {
+	    if err := rlp.DecodeBytes(vs, tx2); err != nil {
 		continue
 	    }
 
@@ -990,55 +984,54 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 	    }
 	}
 
-	if check == true {
-	    break
+	if check == false {
+	    continue
 	}
-    }
-
-    if check == false {
-	fmt.Println("============GetAccountsBalance,check accepter fail,geter_acc =%s===============",geter_acc)
-	return nil,"check accepter fail",nil
-    }
-
-    key,err2 := hex.DecodeString(pubkey)
-    if err2 != nil {
-	fmt.Printf("==============GetAccountsBalance,decode pubkey string fail,err =%v=============",err2)
-	return nil,"decode pubkey fail",err2
-    }
-
-    ret, tip, err := GetPubKeyData(string(key), pubkey, "ALL")
-    fmt.Printf("================GetAccountsBalance, ret =%s, err =%v============\n", ret,err)
-    var m interface{}
-    if err == nil {
-        dp := DcrmPubkeyRes{}
-        _ = json.Unmarshal([]byte(ret), &dp)
-        balances := make([]SubAddressBalance, 0)
-        var wg sync.WaitGroup
-	var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
-        for cointype, subaddr := range dp.DcrmAddress {
-            wg.Add(1)
-            go func (cointype, subaddr string) {
-                defer wg.Done()
-                balance, _, err := GetBalance(pubkey,cointype, subaddr)
-                fmt.Println("===============GetAccountsBalance,cointype =%s, dcrmaddr =%s, balance =%s, err =%v================", cointype, subaddr, balance, err)
-                if err != nil {
-                    balance = "0"
-                }
-		ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
-            }(cointype, subaddr)
-        }
-        wg.Wait()
-	for _, cointype := range coins.Cointypes {
-	     if ret[cointype] != nil {
-		 balances = append(balances, *(ret[cointype]))
-		 fmt.Printf("balances: %v\n", balances)
-		 delete(ret, cointype)
-	     }
+	
+	key,err2 := hex.DecodeString(pubkey)
+	if err2 != nil {
+	    fmt.Printf("==============GetAccountsBalance,decode pubkey string fail,err =%v=============",err2)
+	    return nil,"decode pubkey fail",err2
 	}
-        m = &DcrmAccountsBalanceRes{PubKey:pubkey,Balances:balances}
+
+	ret, tip, err := GetPubKeyData(string(key), pubkey, "ALL")
+	var m interface{}
+	if err == nil {
+	    fmt.Println("================GetAccountsBalance,get pubkey data success============")
+	    dp := DcrmPubkeyRes{}
+	    _ = json.Unmarshal([]byte(ret), &dp)
+	    balances := make([]SubAddressBalance, 0)
+	    var wg sync.WaitGroup
+	    var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
+	    for cointype, subaddr := range dp.DcrmAddress {
+		wg.Add(1)
+		go func (cointype, subaddr string) {
+		    defer wg.Done()
+		    balance, _, err := GetBalance(pubkey,cointype, subaddr)
+		    fmt.Println("===============GetAccountsBalance,call GetBalance,pubkey =%s,cointype =%s, dcrmaddr =%s, balance =%s, err =%v================",pubkey,cointype, subaddr, balance, err)
+		    if err != nil {
+			balance = "0"
+		    }
+		    ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
+		}(cointype, subaddr)
+	    }
+	    wg.Wait()
+	    for _, cointype := range coins.Cointypes {
+		 if ret[cointype] != nil {
+		     balances = append(balances, *(ret[cointype]))
+		     fmt.Printf("balances: %v\n", balances)
+		     delete(ret, cointype)
+		 }
+	    }
+	    m = &DcrmAccountsBalanceRes{PubKey:pubkey,Balances:balances}
+	} else {
+	    fmt.Println("================GetAccountsBalance,get pubkey data fail,err =%v============",err)
+	}
+	
+	return m, tip, err
     }
-    
-    return m, tip, err
+
+    return nil,"get accounts balance fail",fmt.Errorf("get accounts balance fail")
 }
 
 func GetBalance(account string, cointype string,dcrmaddr string) (string,string,error) {

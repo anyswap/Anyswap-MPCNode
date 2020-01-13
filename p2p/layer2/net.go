@@ -63,12 +63,10 @@ var (
 	dccpGroup  *discover.Group
 	xpGroup    *discover.Group
 	SdkGroup   map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
-	//sdkGroupLock sync.Mutex    // Mutex to sync the SdkGroup
 )
 
 type Dcrm struct {
 	protocol p2p.Protocol
-	//peers     map[discover.NodeID]*Peer
 	peers     map[discover.NodeID]*peer
 	dccpPeers map[discover.NodeID]bool
 	peerMu    sync.Mutex    // Mutex to sync the active peer set
@@ -78,7 +76,6 @@ type Dcrm struct {
 
 type Xp struct {
 	protocol p2p.Protocol
-	//peers     map[discover.NodeID]*Peer
 	peers     map[discover.NodeID]*peer
 	dccpPeers map[discover.NodeID]bool
 	peerMu    sync.Mutex    // Mutex to sync the active peer set

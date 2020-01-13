@@ -158,19 +158,3 @@ func (this *Service) GetEnodeStatus(enode string) string {
 	return packageResult(status, errString, errString, es)
 }
 
-func (this *Service) GetSDKGids() []string {
-	retGroup := this.GetSDKGroup4Dcrm()
-	var msg json.RawMessage
-	buf := Result{Data: &msg}
-	err := json.Unmarshal([]byte(retGroup), &buf)
-	fmt.Printf("GetSDKGids, buf = %v, err = %v\n", buf, err)
-	group := sdkGroupInfo{}
-	err = json.Unmarshal(msg, &group)
-	fmt.Printf("GetSDKGids, grouplist = %v\n", group)
-
-	ret := make([]string, 0)
-	for _, g := range group.GroupList {
-		ret = append(ret, g.Gid)
-	}
-	return ret
-}

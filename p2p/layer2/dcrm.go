@@ -19,12 +19,10 @@ package layer2
 import (
 	"context"
 	"errors"
-	//"math"
 	"net"
 	"sort"
 	"strings"
 	"strconv"
-	"time"
 	"fmt"
 	"sync"
 
@@ -143,16 +141,6 @@ func DcrmNew(cfg *Config) *Dcrm {
 	return dcrm
 }
 
-//TODO callback
-func recvPrivkeyInfo(msg interface{}) {
-	fmt.Printf("==== recvPrivkeyInfo() ====\n")
-	fmt.Println("recvprikey,msg = ", msg)
-	//TODO
-	//store privatekey slice
-	time.Sleep(time.Duration(10) * time.Second)
-	DcrmProtocol_broadcastInGroupOthers("aaaa")
-}
-
 // other
 // Start implements node.Service, starting the background data propagation thread
 // of the Whisper protocol.
@@ -181,11 +169,6 @@ func (dcrm *Dcrm) APIs() []rpc.API {
 func DcrmProtocol_getEnodes() (int, string) {
 	return getGroup(discover.NodeID{}, DcrmProtocol_type)
 }
-
-func RegisterUpdateOrderCacheCallback(recvDcrmFunc func(interface{})) {
-	discover.RegisterUpdateOrderCacheCallback(recvDcrmFunc)
-}
-
 
 
 //=============================== DCRM =================================
@@ -284,7 +267,6 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 }
 
 func SdkProtocol_getGroup(gID string) (int, string) {
-	//fmt.Printf("getGroup, gid: %v\n", gID)
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		fmt.Printf("broadcastInGroupAll, group gid: %v not exist\n", gid)

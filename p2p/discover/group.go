@@ -492,8 +492,6 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
        go func() {
                msgc := callMsgEvent(msgp, int(req.P2pType), fromID.String())
                msg := <-msgc
-	       msg = "rrrrrrr"
-		fmt.Printf("return, send to target: %v, from: %v, msg(len = %v)\n", fromID, from, len(msg))
 		_, err := t.udpSendMsg(fromID, from, msg, number, int(req.P2pType), true)
 	       if err != nil {
 			fmt.Printf("dcrm handle, send to target: %v, from: %v, msg(len = %v), err: %v\n", fromID, from, len(msg), err)

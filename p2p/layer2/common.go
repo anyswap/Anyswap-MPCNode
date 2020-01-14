@@ -42,12 +42,8 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	}
 	groupTmp := *xvcGroup
 	emitter.Unlock()
-	failret := p2pBroatcast(&groupTmp, msg, msgCode, myself)
-	if failret != 0 {
-		e := fmt.Sprintf("BroadcastToGroup send failed nodecount >= %v", failret)
-		return "", errors.New(e)
-	}
-	return "BroadcastToGroup send Success", nil
+	go p2pBroatcast(&groupTmp, msg, msgCode, myself)
+	return "BroadcastToGroup send end", nil
 }
 
 func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself bool) int {
@@ -70,7 +66,6 @@ func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself boo
 			defer wg.Done()
 			err := p2pSendMsg(node, uint64(msgCode), msg)
 			if err != nil {
-				ret += 1
 			}
 		}(node)
 	}
@@ -111,10 +106,11 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 			emitter.Unlock()
 		}
 		countSendFail += 1
-		if countSendFail > 300 {
+		if countSendFail > 3000 {
+			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail\n", node.ID)
 			break
 		}
-		if countSendFail % 50 == 0 {
+		if countSendFail % 100 == 0 {
 			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
 		}
 		time.Sleep(time.Duration(100) * time.Millisecond)

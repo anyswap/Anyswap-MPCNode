@@ -127,7 +127,7 @@ func InitDev(keyfile string,groupId string) {
     go SaveReqAddrToDb()
     go SaveLockOutToDb()
 
-    ReSendTimes = 10
+    ReSendTimes = 1
 }
 
 ////////////////////////dcrm///////////////////////////////

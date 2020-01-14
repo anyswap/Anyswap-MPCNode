@@ -1974,6 +1974,36 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    wid = rr.WorkId
 	} else {
 	    wid = workid
+	    
+	    //nonce check
+	    if rr.MsgType == "rpc_lockout" {
+		msgs := strings.Split(rr.Msg,":")
+		//nonce check
+		cur_nonce_str,_,err := GetLockOutNonce(msgs[0],msgs[4],msgs[1])
+		if err != nil {
+		    //TODO must set acceptlockout(.....)
+		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("get lockout nonce fail in recvmsg.run")}
+		    ch <- res2
+		    return false
+		}
+
+		if strings.EqualFold(msgs[6],cur_nonce_str) == false {
+		    //TODO must set acceptlockout(.....)
+		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:lockout tx nonce error",Err:fmt.Errorf("lockout tx nonce error")}
+		    ch <- res2
+		    return false
+		}
+		//
+		
+		_,err = SetLockOutNonce(msgs[0],msgs[4],msgs[1],msgs[6])
+		if err != nil {
+		    //TODO must set acceptlockout(.....)
+		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("set lockout nonce fail in recvmsg.run")}
+		    ch <- res2
+		    return false
+		}
+		////
+	    }
 	}
 
 	//rpc_lockout
@@ -1989,32 +2019,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    fmt.Println("==============RecvMsg.Run,lockout,groupid =%s,get mode =%s=================",msgs[5],msgs[8])
 
 	    ////bug
-	    //nonce check
-	    cur_nonce_str,_,err := GetLockOutNonce(msgs[0],msgs[4],msgs[1])
-	    if err != nil {
-		//TODO must set acceptlockout(.....)
-		res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("get lockout nonce fail in recvmsg.run")}
-		ch <- res2
-		return false
-	    }
-
-	    if strings.EqualFold(msgs[6],cur_nonce_str) == false {
-		//TODO must set acceptlockout(.....)
-		res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:lockout tx nonce error",Err:fmt.Errorf("lockout tx nonce error")}
-		ch <- res2
-		return false
-	    }
-	    //
-	    
-	    _,err = SetLockOutNonce(msgs[0],msgs[4],msgs[1],msgs[6])
-	    if err != nil {
-		//TODO must set acceptlockout(.....)
-		res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("set lockout nonce fail in recvmsg.run")}
-		ch <- res2
-		return false
-	    }
-	    ////
-
 	    if msgs[8] == "0" {// self-group
 		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
 		fmt.Println("===================call SaveAcceptLockOutData,workid =%s,acc =%s,groupid =%s,nonce =%s,dcrmfrom =%s,dcrmto =%s,value =%s,cointype =%s,threshold =%s,mode =%s =====================",wid,msgs[0],msgs[5],msgs[6],msgs[1],msgs[2],msgs[3],msgs[4],msgs[7],msgs[8])

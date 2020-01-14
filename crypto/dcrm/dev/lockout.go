@@ -176,7 +176,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    return
     }
 
-    Nonce,_ := new(big.Int).SetString(nonce,10)
+    /*Nonce,_ := new(big.Int).SetString(nonce,10)
 
     //nonce check
     cur_nonce_str,tip,err := GetLockOutNonce(account,cointype,dcrmaddr)
@@ -191,7 +191,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	res := RpcDcrmRes{Ret:"",Tip:"lockout tx nonce error",Err:fmt.Errorf("nonce error.")}
 	ch <- res
 	return
-    }
+    }*/
     //
     
     key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()

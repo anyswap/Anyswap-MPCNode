@@ -617,6 +617,8 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 		req = new(dcrmmessage)
 	case gotXpPacket:
 		req = new(dcrmmessage)
+	case Ack_Packet:
+		req = new(Ack)
 	default:
 		return nil, fromID, hash, fmt.Errorf("unknown type: %d", ptype)
 	}

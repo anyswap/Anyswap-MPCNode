@@ -356,8 +356,8 @@ func (t *udp) udpSendMsg(toid NodeID, toaddr *net.UDPAddr, msg string, number [3
 		Sequence:   s,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	}
+	timeout := false
 	go func() {
-	        timeout := false
 		go func() {
 			SendWaitTimeOut := time.NewTicker(SendWaitTime)
 			select {
@@ -394,6 +394,9 @@ func (t *udp) udpSendMsg(toid NodeID, toaddr *net.UDPAddr, msg string, number [3
 			break
 		}
 	}()
+	if timeout == true {
+		return "", errors.New("timeout")
+	}
 	return "", nil
 }
 

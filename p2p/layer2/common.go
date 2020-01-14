@@ -187,6 +187,7 @@ func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
 	fmt.Printf("==== addPeer() ====\nid: %+v ...\n", p.ID().String()[:8])
 	e.Lock()
 	defer e.Unlock()
+	discover.RemoveSequenceDoneRecv(p.ID().String())
 	e.peers[p.ID()] = &peer{ws: ws, peer: p, peerInfo: &peerInfo{int(ProtocolVersion)}, knownTxs: mapset.NewSet()}
 }
 

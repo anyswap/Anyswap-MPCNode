@@ -414,7 +414,6 @@ func (t *udp) sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pTyp
        var err error = nil
        retmsg := ""
        number[0]++
-       fmt.Printf("==== (t *udp) sendToGroupCC() ====, len(msg): %v\n", len(msg))
        if len(msg) <= 800 {
                number[1] = 1
                number[2] = 1
@@ -462,11 +461,14 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
 	ss := fmt.Sprintf("%v-%v", fromID, req.Sequence)
+	sequenceLock.Lock()
 	if _, ok := sequenceDoneRecv.Load(ss); ok {
 		fmt.Printf("\n==== (req *getdcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
+		sequenceLock.Unlock()
 		return nil
 	}
 	sequenceDoneRecv.Store(ss, 1)
+	sequenceLock.Unlock()
 
        msgp := req.Msg
        num := req.Number
@@ -500,6 +502,19 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
        return nil
 }
 
+func RemoveSequenceDoneRecv(id string) {
+	sequenceLock.Lock()
+	defer sequenceLock.Unlock()
+	sequenceDoneRecv.Range(func(k, v interface{}) bool {
+		kid := k.(string)
+		kslice := strings.Split(kid, "-")
+		if kslice[0] == id {
+			sequenceDoneRecv.Delete(k)
+		}
+		return true
+	})
+}
+
 func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
        //if expired(req.Expiration) {
        //        return errExpired
@@ -510,11 +525,14 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
 	ss := fmt.Sprintf("%v-%v", fromID, req.Sequence)
+	sequenceLock.Lock()
 	if _, ok := sequenceDoneRecv.Load(ss); ok {
 		fmt.Printf("==== (req *getdcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
+		sequenceLock.Unlock()
 		return nil
 	}
 	sequenceDoneRecv.Store(ss, 1)
+	sequenceLock.Unlock()
        fmt.Printf("dcrmmessage, handle, callCCReturn\n")
        go callCCReturn(req.Msg, int(req.P2pType), fromID.String())
        return nil

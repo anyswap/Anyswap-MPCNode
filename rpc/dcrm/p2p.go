@@ -22,6 +22,8 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
 )
 
+var RPCTEST bool = false
+
 const (
 	SUCCESS string = "Success"
 	FAIL    string = "Error"
@@ -156,5 +158,35 @@ func (this *Service) GetEnodeStatus(enode string) string {
 		errString = fmt.Sprintf("%v", err.Error())
 	}
 	return packageResult(status, errString, errString, es)
+}
+
+// TEST
+func (this *Service) GetSDKGroupAll() string {
+if RPCTEST == false { return "" }
+	retMsg := layer2.GetGroupSDKAll()
+	fmt.Printf("==== GetSDKGroupAll() ====, ret: %v\n", retMsg)
+	return packageResult(SUCCESS, "", "", retMsg)
+}
+
+func (this *Service) BroadcastInSDKGroupAll(gid, msg string) string {
+if RPCTEST == false { return "" }
+	retMsg, err := layer2.SdkProtocol_broadcastInGroupAll(gid, msg)
+	status := SUCCESS
+	if err != nil {
+		status = FAIL
+	}
+	fmt.Printf("==== BroadcastInSDKGroupAll() ====, ret: %v\n", retMsg)
+	return packageResult(status, "", retMsg, msg)
+}
+
+func (this *Service) SendToGroupAllNodes(gid, msg string) string {
+if RPCTEST == false { return "" }
+	retMsg, err := layer2.SdkProtocol_SendToGroupAllNodes(gid, msg)
+	status := SUCCESS
+	if err != nil {
+		status = FAIL
+	}
+	fmt.Printf("==== SendToGroupAllNodes() ====, ret: %v\n", retMsg)
+	return packageResult(status, "", retMsg, msg)
 }
 

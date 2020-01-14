@@ -110,7 +110,7 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail\n", node.ID)
 			break
 		}
-		if countSendFail % 100 == 0 {
+		if countSendFail <= 1 || countSendFail % 100 == 0 {
 			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
 		}
 		time.Sleep(time.Duration(100) * time.Millisecond)
@@ -146,6 +146,17 @@ func getGroupAndCode(gid discover.NodeID, p2pType int) (*discover.Group, int) {
 		return nil, msgCode
 	}
 	return xvcGroup, msgCode
+}
+
+func GetGroupSDKAll() ([]*discover.Group) {//nooo
+	var groupTmp []*discover.Group
+	for _, g := range SdkGroup {
+		if g.Type != "1+1+1" && g.Type != "1+2" {
+			continue
+		}
+		groupTmp = append(groupTmp, g)
+	}
+	return groupTmp
 }
 
 func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) {//nooo

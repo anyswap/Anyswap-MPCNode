@@ -471,10 +471,10 @@ func startRpcServer() error {
 
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
-func (this *Service) GetAccounts(gid,mode string) map[string]interface{} {
-    fmt.Println("==========dcrm_getAccounts,gid = %s,mode = %s ===========",gid,mode)
+func (this *Service) GetAccounts(geter_acc,mode string) map[string]interface{} {
+    fmt.Println("==========dcrm_getAccounts,geter_acc = %s,mode = %s ===========",geter_acc,mode)
     data := make(map[string]interface{})
-    ret, tip, err := dcrm.GetAccounts(gid,mode)
+    ret, tip, err := dcrm.GetAccounts(geter_acc,mode)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

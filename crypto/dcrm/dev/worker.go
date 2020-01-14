@@ -3662,7 +3662,7 @@ type AccountsList struct {
        Accounts []string
 }
 
-func GetAccounts(gid, mode string) (interface{}, string, error) {
+func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
    if AllAccounts.MapLength() != 0 {
     fmt.Println("================!!!GetAccounts,get pubkey data from AllAccounts success!!!====================")
     gp := make(map[string][]string)
@@ -3677,6 +3677,39 @@ func GetAccounts(gid, mode string) (interface{}, string, error) {
 	if vv.Pub == "" || vv.GroupId == "" || vv.Mode == "" {
 	    continue
 	}
+
+	////bug,check valid accepter
+	check := false
+	for k,v2 := range vv.NodeSigs {
+	    fmt.Println("=============GetAccounts,check accepter,index =%v=========================",k)
+	    tx2 := new(types.Transaction)
+	    vs := common.FromHex(v2)
+	    if err := rlp.DecodeBytes(vs, tx2); err != nil {
+		continue
+	    }
+
+	    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+	    from2, err := types.Sender(signer, tx2)
+	    if err != nil {
+		signer = types.NewEIP155Signer(big.NewInt(4)) //
+		from2, err = types.Sender(signer, tx2)
+		if err != nil {
+		    continue
+		}
+	    }
+
+	    eid := string(tx2.Data())
+	    fmt.Println("============GetAccounts,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
+	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
+		check = true
+		break
+	    }
+	}
+
+	if check == false {
+	    continue
+	}
+	/////
 
 	pb := vv.Pub
 	pubkeyhex := hex.EncodeToString([]byte(pb))
@@ -3697,19 +3730,8 @@ func GetAccounts(gid, mode string) (interface{}, string, error) {
     }
 
     als := make([]AccountsList, 0)
-    if gid != "" {
-	al,exsit := gp[gid]
-	if exsit == true {
-	    alNew := AccountsList{GroupID: gid, Accounts: al}
-	    als = append(als, alNew)
-	    pa := &PubAccounts{Group: als}
-	    return pa, "", nil
-	}
-    }
-
-    fmt.Println("==============GetAccounts,333333333===============")
     for k,v := range gp {
-	fmt.Println("==============GetAccounts,44444,key =%s,value =%s ===============",k,v)
+	fmt.Println("==============GetAccounts,33333,key =%s,value =%s ===============",k,v)
 	alNew := AccountsList{GroupID: k, Accounts: v}
 	als = append(als, alNew)
     }

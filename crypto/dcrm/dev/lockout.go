@@ -1760,7 +1760,10 @@ func GetZkFactProof(save string,index int) *ec2.ZkFactProof {
 
 func SendMsgToDcrmGroup(msg string,groupid string) {
     fmt.Println("==============SendMsgToDcrmGroup,msg =%s,send to groupid =%s =================",msg,groupid)
-    BroadcastInGroupOthers(groupid,msg)
+    for i:= 0;i<ReSendTimes;i++ {
+	BroadcastInGroupOthers(groupid,msg)
+	time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+    }
 }
 
 ///
@@ -1809,7 +1812,7 @@ func DecryptMsg (cm string) (string, error) {
 ///
 
 func SendMsgToPeer(enodes string,msg string) {
-    /*fmt.Println("==============SendMsgToPeer,msg =%s,send to peer %s ===================",msg,enodes)
+    fmt.Println("==============SendMsgToPeer,msg =%s,send to peer %s ===================",msg,enodes)
     en := strings.Split(string(enodes[8:]),"@")
     cm,err := EncryptMsg(msg,en[0])
     if err != nil {
@@ -1817,8 +1820,11 @@ func SendMsgToPeer(enodes string,msg string) {
 	return
     }
 
-    SendToPeer(enodes,cm)*/
-    SendToPeer(enodes,msg)
+    for i:= 0;i<ReSendTimes;i++ {
+	SendToPeer(enodes,cm)
+	//SendToPeer(enodes,msg)
+	time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+    }
 }
 
 type ECDSASignature struct {

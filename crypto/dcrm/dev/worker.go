@@ -77,6 +77,9 @@ var (
     
     LdbLockOut = common.NewSafeMap(10)//make(map[string][]byte)
     LockOutChan = make(chan KeyData, 1000)
+
+    ReSendTimes int //resend p2p msg times
+    DcrmCalls = common.NewSafeMap(10)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -123,6 +126,8 @@ func InitDev(keyfile string,groupId string) {
     go SaveAllAccountsToDb()
     go SaveReqAddrToDb()
     go SaveLockOutToDb()
+
+    ReSendTimes = 20
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -1051,9 +1056,19 @@ type RecvMsg struct {
 }
 
 func DcrmCall(msg interface{},enode string) <-chan string {
-    ch := make(chan string, 1)
     s := msg.(string)
+    ch := make(chan string, 1)
     fmt.Println("=============DcrmCall,len(receiv) = %v,enode =%s ==============",len(s),enode)
+    ///check
+    _,exsit := DcrmCalls.ReadMap(s)
+    if exsit == false {
+	DcrmCalls.WriteMap(s,"true")
+    } else {
+	ret := ("fail"+Sep+"already exsit in DcrmCalls"+Sep+"dcrm back-end internal error:already exsit in DcrmCalls"+Sep+"already exsit in DcrmCalls") //TODO "no-data"
+	ch <- ret
+	return ch
+    }
+    ///
 
     ////////
     if s == "" {
@@ -1126,6 +1141,12 @@ func DcrmCallRet(msg interface{},enode string) {
 
     status := ss[0]
     if strings.EqualFold(status, "fail") {
+	//check
+	if ss[1] == "already exsit in DcrmCalls" {
+	    return
+	}
+	//
+
 	if len(ss) < 5 {
 	    return
 	}
@@ -1940,10 +1961,10 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     }
 
     ////
-    /*msgdata,errdec := DecryptMsg(res) //for SendMsgToPeer
+    msgdata,errdec := DecryptMsg(res) //for SendMsgToPeer
     if errdec == nil {
 	res = msgdata
-    }*/
+    }
     ////
     mm := strings.Split(res,Sep)
     if len(mm) >= 2 {
@@ -2689,13 +2710,16 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
     w := workers[workid]
 
-    _,err = SendToGroupAllNodes(self.GroupId,res)
-    if err != nil {
+    for i:=0;i<ReSendTimes;i++ {
+	SendToGroupAllNodes(self.GroupId,res)
+	time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+    }
+    /*if err != nil {
 	fmt.Println("=============ReqAddrSendMsgToMsg.Run,send to group all nodes,err =%v ===========",err)
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail in req addr",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false
-    }
+    }*/
 
     fmt.Println("=============ReqAddrSendMsgToMsg.Run,Waiting For Result===========")
     <-w.acceptWaitReqAddrChan
@@ -2758,13 +2782,17 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    _,err = SendToGroupAllNodes(self.GroupId,res)
+    for i:=0;i<ReSendTimes;i++ {
+	SendToGroupAllNodes(self.GroupId,res)
+	time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+    }
+    /*_,err = SendToGroupAllNodes(self.GroupId,res)
     if err != nil {
 	fmt.Println("=============LockOutSendMsgToDcrm.Run,send to group all nodes,err =%v ===========",err)
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:send data to group fail",Err:GetRetErr(ErrSendDataToGroupFail)}
 	ch <- res
 	return false
-    }
+    }*/
 
     w := workers[workid]
     ////
@@ -3155,6 +3183,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_acceptreqaddrres,msg) {
+		return
+	    }
+
 	    w.msg_acceptreqaddrres.PushBack(msg)
 	    if w.msg_acceptreqaddrres.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All AcceptReqAddrRes===========","GroupId",w.groupid)
@@ -3166,6 +3198,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_acceptlockoutres,msg) {
+		return
+	    }
+
 	    w.msg_acceptlockoutres.PushBack(msg)
 	    if w.msg_acceptlockoutres.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All AcceptLockOutRes===========","GroupId",w.groupid)
@@ -3177,6 +3213,10 @@ func DisMsg(msg string) {
 		return
 	    }
 	    ///
+	    if Find(w.msg_sendlockoutres,msg) {
+		return
+	    }
+
 	    w.msg_sendlockoutres.PushBack(msg)
 	    if w.msg_sendlockoutres.Len() == (NodeCnt-1) {
 		fmt.Println("=========Get All SendLockOutRes===========","GroupId",w.groupid)

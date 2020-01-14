@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
@@ -33,37 +34,42 @@ import (
 
 func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool) (string, error) {
 	emitter.Lock()
-	defer emitter.Unlock()
 
 	xvcGroup, msgCode := getGroupAndCode(gid, p2pType)
 	if xvcGroup == nil {
 		e := fmt.Sprintf("BroadcastToGroup p2pType=%v is not exist", p2pType)
 		return "", errors.New(e)
 	}
-	failret := p2pBroatcast(xvcGroup, msg, msgCode, myself)
-	if failret != 0 {
-		e := fmt.Sprintf("BroadcastToGroup send failed nodecount=%v", failret)
-		return "", errors.New(e)
-	}
-	return "BroadcastToGroup send Success", nil
+	groupTmp := *xvcGroup
+	emitter.Unlock()
+	go p2pBroatcast(&groupTmp, msg, msgCode, myself)
+	return "BroadcastToGroup send end", nil
 }
 
 func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself bool) int {
-	fmt.Printf("==== p2pBroatcast() ====, group : %v\n", dccpGroup)
+	fmt.Printf("==== p2pBroatcast() ====, group : %v, len(nodes): %v\n", dccpGroup, len(dccpGroup.Nodes))
 	if dccpGroup == nil {
 		return 0
 	}
 	var ret int = 0
+	wg := &sync.WaitGroup{}
+	wg.Add(len(dccpGroup.Nodes))
 	for _, node := range dccpGroup.Nodes {
-		fmt.Printf("==== p2pBroatcast() ====, send to node : %v\n", node)
 		if selfid == node.ID {
+			wg.Done()
 			if myself == true {
 				go callEvent(msg, node.ID.String())
 			}
 			continue
 		}
-		go p2pSendMsg(node, uint64(msgCode), msg)
+		go func(node discover.RpcNode) {
+			defer wg.Done()
+			err := p2pSendMsg(node, uint64(msgCode), msg)
+			if err != nil {
+			}
+		}(node)
 	}
+	wg.Wait()
 	return ret
 }
 
@@ -73,31 +79,42 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	}
 	fmt.Printf("==== p2pSendMsg() ====, send to node: %v\n", node)
 	err := errors.New("p2pSendMsg err")
+	emitter.Lock()
 	p := emitter.peers[node.ID]
 	if p == nil {
 		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, peer not exist\n", node)
 		return errors.New("peer not exist")
 	}
+	emitter.Unlock()
 	countSendFail := 0
 	for {
 		errp := discover.PingNode(node.ID, node.IP, int(node.UDP))
 		if errp == nil {
+			fmt.Printf("==== p2pSendMsg() ====, pingNode: %v OK\n", node.ID)
+			emitter.Lock()
+			p = emitter.peers[node.ID]
+			if p == nil {
+				emitter.Unlock()
+				continue
+			}
 			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
 			} else {
+				emitter.Unlock()
 				fmt.Printf("==== p2pSendMsg() ====, send to node: %v SUCCESS, countSend : %v\n", node.ID, countSendFail)
 				return nil
 			}
+			emitter.Unlock()
 		}
 		countSendFail += 1
-		if countSendFail > 100 {
+		if countSendFail > 3000 {
+			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail\n", node.ID)
 			break
 		}
-		if countSendFail % 10 == 0 {
+		if countSendFail % 100 == 0 {
 			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
 		}
-		time.Sleep(time.Duration(300) * time.Millisecond)
+		time.Sleep(time.Duration(100) * time.Millisecond)
 	}
-	fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail, countSendFail : %v timeout\n", node.ID, countSendFail)
 	return err
 }
 

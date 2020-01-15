@@ -1110,11 +1110,10 @@ func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,str
     return nonce,"",nil
 }
 
-func GetReqAddrReply(geter_acc string) ([]string,string,error) {
-    //fmt.Println("=========== call dcrm.GetReqAddrReply ============")
-    reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_reqaddr_reply")
+func GetCurNodeReqAddrInfo(geter_acc string) ([]string,string,error) {
+    reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_cur_node_reqaddr_info")
     if reply == "" || err != nil {
-	fmt.Println("===========dcrm.GetReqAddrReply,get result fail,err =%v ============",err)
+	fmt.Println("===========dcrm.GetCurNodeReqAddrInfo,get result fail,err =%v ============",err)
 	return nil,tip,err 
     }
 
@@ -1122,11 +1121,10 @@ func GetReqAddrReply(geter_acc string) ([]string,string,error) {
     return ss,"",nil 
 }
 
-func GetLockOutReply(geter_acc string) ([]string,string,error) {
-    //fmt.Println("=========== call dcrm.GetLockOutReply ============")
-    reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_lockout_reply")
+func GetCurNodeLockOutInfo(geter_acc string) ([]string,string,error) {
+    reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_cur_node_lockout_info")
     if reply == "" || err != nil {
-	fmt.Println("===========dcrm.GetLockOutReply,get result fail,err =%v ============",err)
+	fmt.Println("===========dcrm.GetCurNodeLockOutInfo,get result fail,err =%v ============",err)
 	return nil,tip,err 
     }
 

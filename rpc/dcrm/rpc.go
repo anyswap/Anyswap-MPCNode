@@ -259,7 +259,7 @@ func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interfac
     fmt.Println("==============rpc.GetCurNodeReqAddrInfo,geter acc =%s================",geter_acc)
 
     data := make(map[string]interface{})
-    s,tip,err := dcrm.GetReqAddrReply(geter_acc)
+    s,tip,err := dcrm.GetCurNodeReqAddrInfo(geter_acc)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -286,7 +286,7 @@ func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interfac
     fmt.Println("==============rpc.GetCurNodeLockOutInfo,geter acc =%s================",geter_acc)
 
     data := make(map[string]interface{})
-    s,tip,err := dcrm.GetLockOutReply(geter_acc)
+    s,tip,err := dcrm.GetCurNodeLockOutInfo(geter_acc)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

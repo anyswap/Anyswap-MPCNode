@@ -50,6 +50,11 @@ func GenRandomInt(length int) {
 
     for {
 	if len(RndInt) < 1000 {
+	    ////TODO tmp:1000-->4
+	    if len(SafePrime) == 4 {
+		break
+	    }
+	    //////
 	    p := random.GetSafeRandomInt(length/2)
 	    RndInt <-p
 	    

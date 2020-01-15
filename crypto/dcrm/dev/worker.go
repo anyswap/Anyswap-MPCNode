@@ -20,6 +20,7 @@ import (
     "time"
     "container/list"
     "bytes"
+    "sort"
     "compress/zlib"
     "io"
     "os"
@@ -1475,11 +1476,39 @@ type ReqAddrReply struct {
     GroupAccounts []EnAcc
 }
 
+func SortCurNodeInfo(value []interface{}) []interface{} {
+    if len(value) == 0 {
+	return value
+    }
+    
+    var ids sortableIDSSlice
+    for _,v := range value {
+	uid := DoubleHash(string(v.([]byte)),"ALL")
+	ids = append(ids,uid)
+    }
+    
+    sort.Sort(ids)
+
+    var ret = make([]interface{},0)
+    for _,v := range ids {
+	for _,vv := range value {
+	    uid := DoubleHash(string(vv.([]byte)),"ALL")
+	    if v.Cmp(uid) == 0 {
+		ret = append(ret,vv)
+		break
+	    }
+	}
+    }
+
+    return ret
+}
+
 func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
     //fmt.Println("================call dev.GetCurNodeReqAddrInfo, geter acc =%s===================",geter_acc)
     
     var ret []string
     _,lmvalue := LdbReqAddr.ListMap()
+    lmvalue = SortCurNodeInfo(lmvalue)
     for _,v := range lmvalue {
 	if v == nil {
 	    continue
@@ -1589,6 +1618,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
     
     var ret []string
     _,lmvalue := LdbLockOut.ListMap()
+    lmvalue = SortCurNodeInfo(lmvalue)
     for _,v := range lmvalue {
 	if v == nil {
 	    continue

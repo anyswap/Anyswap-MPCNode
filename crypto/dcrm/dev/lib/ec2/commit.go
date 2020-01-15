@@ -34,21 +34,19 @@ func (commitment *Commitment) Commit(secrets ...*big.Int) *Commitment {
 	rnd := random.GetRandomInt(256)
 
 	// First, hash with the keccak256
-	keccak256 := sha3.NewKeccak256()
+	sha3256 := sha3.New256()
+	//keccak256 := sha3.NewKeccak256()
 
-	keccak256.Write(rnd.Bytes())
+	sha3256.Write(rnd.Bytes())
 
 	for _, secret := range secrets {
-		keccak256.Write(secret.Bytes())
+		sha3256.Write(secret.Bytes())
 	}
 
-	digestKeccak256 := keccak256.Sum(nil)
+	digestKeccak256 := sha3256.Sum(nil)
 
 	//second, hash with the SHA3-256
-	sha3256 := sha3.New256()
-
 	sha3256.Write(digestKeccak256)
-
 	digest := sha3256.Sum(nil)
 
 	// convert the hash ([]byte) to big.Int
@@ -67,13 +65,11 @@ func (commitment *Commitment) Verify() bool {
 	C := commitment.C
 	D := commitment.D
 
-	keccak256 := sha3.NewKeccak256()
-	for _, secret := range D {
-		keccak256.Write(secret.Bytes())
-	}
-	digestKeccak256 := keccak256.Sum(nil)
-
 	sha3256 := sha3.New256()
+	for _, secret := range D {
+		sha3256.Write(secret.Bytes())
+	}
+	digestKeccak256 := sha3256.Sum(nil)
 	sha3256.Write(digestKeccak256)
 	computeDigest := sha3256.Sum(nil)
 

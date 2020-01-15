@@ -1,30 +1,15 @@
-/*
- *  Copyright (C) 2018-2019  Fusion Foundation Ltd. All rights reserved.
- *  Copyright (C) 2018-2019  changxing@fusion.org
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the Apache License, Version 2.0.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
- *
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- */
-
-package ec2 
+package ec2
 
 import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
-	//"github.com/fusion/dcrm-sdk/crypto/dcrm/dev/lib/ec2/paillier"
 	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"math/big"
 )
 
-type MtAZK2Proof struct {
+type MtAZK3Proof struct {
+	Ux   *big.Int
+	Uy   *big.Int
 	Z    *big.Int
 	ZBar *big.Int
 	T    *big.Int
@@ -37,8 +22,7 @@ type MtAZK2Proof struct {
 	T2   *big.Int
 }
 
-//func MtAZK2Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *paillier.PublicKey, zkFactProof *paillier.ZkFactProof) *MtAZK2Proof {
-func MtAZK2Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *PublicKey, zkFactProof *ZkFactProof) *MtAZK2Proof {
+func MtAZK3Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *PublicKey, zkFactProof *ZkFactProof) *MtAZK3Proof {
 	q3Ntilde := new(big.Int).Mul(s256.S256().N3(), zkFactProof.N)
 	qNtilde := new(big.Int).Mul(s256.S256().N, zkFactProof.N)
 
@@ -49,6 +33,10 @@ func MtAZK2Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *Pub
 	beta := random.GetRandomIntFromZnStar(publicKey.N)
 	gamma := random.GetRandomIntFromZnStar(publicKey.N)
 	delta := random.GetRandomIntFromZn(qNtilde)
+
+	// ux, uy := s256.S256().ScalarBaseMult(alpha.Bytes())
+	ux := big.NewInt(0)
+	uy := big.NewInt(0)
 
 	z := new(big.Int).Exp(zkFactProof.H1, x, zkFactProof.N)
 	z = new(big.Int).Mul(z, new(big.Int).Exp(zkFactProof.H2, rho, zkFactProof.N))
@@ -73,6 +61,8 @@ func MtAZK2Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *Pub
 	w = new(big.Int).Mod(w, zkFactProof.N)
 
 	sha3256 := sha3.New256()
+	sha3256.Write(ux.Bytes())
+	sha3256.Write(uy.Bytes())
 	sha3256.Write(z.Bytes())
 	sha3256.Write(zBar.Bytes())
 	sha3256.Write(t.Bytes())
@@ -97,62 +87,59 @@ func MtAZK2Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *Pub
 	t2 := new(big.Int).Mul(e, sigma)
 	t2 = new(big.Int).Add(t2, delta)
 
-	mtAZK2Proof := &MtAZK2Proof{Z: z, ZBar: zBar, T: t, V: v, W: w, S: s, S1: s1, S2: s2, T1: t1, T2: t2}
+	mtAZK3Proof := &MtAZK3Proof{Ux: ux, Uy: uy, Z: z, ZBar: zBar, T: t, V: v, W: w, S: s, S1: s1, S2: s2, T1: t1, T2: t2}
 
-	return mtAZK2Proof
+	return mtAZK3Proof
 }
 
-//func (mtAZK2Proof *MtAZK2Proof) MtAZK2Verify(c1 *big.Int, c2 *big.Int, publicKey *paillier.PublicKey, zkFactProof *paillier.ZkFactProof) bool {
-func (mtAZK2Proof *MtAZK2Proof) MtAZK2Verify(c1 *big.Int, c2 *big.Int, publicKey *PublicKey, zkFactProof *ZkFactProof) bool {
-    if mtAZK2Proof.S1 == nil || s256.S256().N3() == nil { //bug:lockin/lockout fail will crash
-	    return false
-	}
-
-	if mtAZK2Proof.S1.Cmp(s256.S256().N3()) >= 0 { //MtAZK2 question 1
+func (mtAZK3Proof *MtAZK3Proof) MtAZK3Verify(c1 *big.Int, c2 *big.Int, publicKey *PublicKey, zkFactProof *ZkFactProof) bool {
+	if mtAZK3Proof.S1.Cmp(s256.S256().N3()) >= 0 {
 		return false
 	}
 
 	sha3256 := sha3.New256()
-	sha3256.Write(mtAZK2Proof.Z.Bytes())
-	sha3256.Write(mtAZK2Proof.ZBar.Bytes())
-	sha3256.Write(mtAZK2Proof.T.Bytes())
-	sha3256.Write(mtAZK2Proof.V.Bytes())
-	sha3256.Write(mtAZK2Proof.W.Bytes())
+	sha3256.Write(mtAZK3Proof.Ux.Bytes())
+	sha3256.Write(mtAZK3Proof.Uy.Bytes())
+	sha3256.Write(mtAZK3Proof.Z.Bytes())
+	sha3256.Write(mtAZK3Proof.ZBar.Bytes())
+	sha3256.Write(mtAZK3Proof.T.Bytes())
+	sha3256.Write(mtAZK3Proof.V.Bytes())
+	sha3256.Write(mtAZK3Proof.W.Bytes())
 	eBytes := sha3256.Sum(nil)
 	e := new(big.Int).SetBytes(eBytes)
 
-	s12 := new(big.Int).Exp(zkFactProof.H1, mtAZK2Proof.S1, zkFactProof.N)
-	s12 = new(big.Int).Mul(s12, new(big.Int).Exp(zkFactProof.H2, mtAZK2Proof.S2, zkFactProof.N))
+	s12 := new(big.Int).Exp(zkFactProof.H1, mtAZK3Proof.S1, zkFactProof.N)
+	s12 = new(big.Int).Mul(s12, new(big.Int).Exp(zkFactProof.H2, mtAZK3Proof.S2, zkFactProof.N))
 	s12 = new(big.Int).Mod(s12, zkFactProof.N)
 
-	zzbar := new(big.Int).Exp(mtAZK2Proof.Z, e, zkFactProof.N)
-	zzbar = new(big.Int).Mul(zzbar, mtAZK2Proof.ZBar)
+	zzbar := new(big.Int).Exp(mtAZK3Proof.Z, e, zkFactProof.N)
+	zzbar = new(big.Int).Mul(zzbar, mtAZK3Proof.ZBar)
 	zzbar = new(big.Int).Mod(zzbar, zkFactProof.N)
 
 	if s12.Cmp(zzbar) != 0 {
 		return false
 	}
 
-	h12 := new(big.Int).Exp(zkFactProof.H1, mtAZK2Proof.T1, zkFactProof.N)
-	h12 = new(big.Int).Mul(h12, new(big.Int).Exp(zkFactProof.H2, mtAZK2Proof.T2, zkFactProof.N))
+	h12 := new(big.Int).Exp(zkFactProof.H1, mtAZK3Proof.T1, zkFactProof.N)
+	h12 = new(big.Int).Mul(h12, new(big.Int).Exp(zkFactProof.H2, mtAZK3Proof.T2, zkFactProof.N))
 	h12 = new(big.Int).Mod(h12, zkFactProof.N)
 
-	tw := new(big.Int).Exp(mtAZK2Proof.T, e, zkFactProof.N)
-	tw = new(big.Int).Mul(tw, mtAZK2Proof.W)
+	tw := new(big.Int).Exp(mtAZK3Proof.T, e, zkFactProof.N)
+	tw = new(big.Int).Mul(tw, mtAZK3Proof.W)
 	tw = new(big.Int).Mod(tw, zkFactProof.N)
 
 	if h12.Cmp(tw) != 0 {
 		return false
 	}
 
-	cs := new(big.Int).Exp(publicKey.G, mtAZK2Proof.T1, publicKey.N2)
-	cs = new(big.Int).Mul(cs, new(big.Int).Exp(mtAZK2Proof.S, publicKey.N, publicKey.N2))
+	cs := new(big.Int).Exp(publicKey.G, mtAZK3Proof.T1, publicKey.N2)
+	cs = new(big.Int).Mul(cs, new(big.Int).Exp(mtAZK3Proof.S, publicKey.N, publicKey.N2))
 	cs = new(big.Int).Mod(cs, publicKey.N2)
-	cs = new(big.Int).Mul(cs, new(big.Int).Exp(c1, mtAZK2Proof.S1, publicKey.N2))
+	cs = new(big.Int).Mul(cs, new(big.Int).Exp(c1, mtAZK3Proof.S1, publicKey.N2))
 	cs = new(big.Int).Mod(cs, publicKey.N2)
 
 	cv := new(big.Int).Exp(c2, e, publicKey.N2)
-	cv = new(big.Int).Mul(cv, mtAZK2Proof.V)
+	cv = new(big.Int).Mul(cv, mtAZK3Proof.V)
 	cv = new(big.Int).Mod(cv, publicKey.N2)
 
 	if cs.Cmp(cv) != 0 {

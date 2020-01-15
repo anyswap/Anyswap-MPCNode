@@ -56,7 +56,7 @@ func DECDSA_Key_Vss(u1 *big.Int,ids []*big.Int,ThresHold int,NodeCnt int) (*ec2.
     return u1PolyG,u1Poly,u1Shares,err
 }
 
-func DECDSA_Key_GetShareId(v *ec2.ShareStruct) *big.Int {
+func DECDSA_Key_GetShareId(v *ec2.ShareStruct2) *big.Int {
     uid := ec2.GetSharesId(v)
     return uid
 }

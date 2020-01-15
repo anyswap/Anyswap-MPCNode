@@ -43,8 +43,12 @@ type PrivateKey struct {
 func GenerateKeyPair(length int) (*PublicKey, *PrivateKey) {
 	one := big.NewInt(1)
 
-	p := random.GetRandomPrimeInt(length / 2)
-	q := random.GetRandomPrimeInt(length / 2)
+	p := <-SafePrime //random.GetSafeRandomPrimeInt(length / 2)
+	q := <-SafePrime //random.GetSafeRandomPrimeInt(length / 2)
+
+	if p == nil || q == nil {
+	    return nil,nil
+	}
 
 	n := new(big.Int).Mul(p, q)
 	n2 := new(big.Int).Mul(n, n)

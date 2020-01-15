@@ -1,67 +1,30 @@
-/*
- *  Copyright (C) 2018-2019  Fusion Foundation Ltd. All rights reserved.
- *  Copyright (C) 2018-2019  changxing@fusion.org
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the Apache License, Version 2.0.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
- *
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- */
-
 package ec2 
 
 import (
-	"errors"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"math/big"
 )
 
-//var ErrShareNotPass = errors.New("[ERROR]: the set of shares contain invalid share.")
-var ErrIdNoEqualN = errors.New("[ERROR]: the length of input ids is not equal to the share number n.")
-var ErrShareNotEnough = errors.New("[ERROR]: the shares is not enough to satisfy the threshold.")
-
-type PolyGStruct struct {
-	T     int          // threshold
-	N     int          // total num
+type PolyGStruct2 struct {
 	PolyG [][]*big.Int //x and y
 }
 
-type PolyStruct struct {
-	PolyGStruct
+type PolyStruct2 struct {
 	Poly []*big.Int // coefficient set
 }
 
-type ShareStruct struct {
-	T     int
+type ShareStruct2 struct {
 	Id    *big.Int // ID, x coordinate
 	Share *big.Int
 }
 
-func GetSharesId(ss *ShareStruct2) *big.Int {
-    if ss != nil {
-	return ss.Id
-    }
-
-    return nil 
-}
-
-func Vss(secret *big.Int, ids []*big.Int, t int, n int) (*PolyGStruct, *PolyStruct, []*ShareStruct, error) {
-	if len(ids) != n {
-		return nil, nil, nil, ErrIdNoEqualN
-	}
+func Vss2Init(secret *big.Int, t int) (*PolyStruct2, *PolyGStruct2, error) {
 
 	poly := make([]*big.Int, 0)
 	polyG := make([][]*big.Int, 0)
 
 	poly = append(poly, secret)
-
 	pointX, pointY := s256.S256().ScalarBaseMult(secret.Bytes())
 	polyG = append(polyG, []*big.Int{pointX, pointY})
 
@@ -71,33 +34,33 @@ func Vss(secret *big.Int, ids []*big.Int, t int, n int) (*PolyGStruct, *PolyStru
 
 		pointX, pointY := s256.S256().ScalarBaseMult(rndInt.Bytes())
 		polyG = append(polyG, []*big.Int{pointX, pointY})
-
 	}
+	polyStruct := &PolyStruct2{Poly: poly}
+	polyGStruct := &PolyGStruct2{PolyG: polyG}
 
-	polyGStruct := &PolyGStruct{T: t, N: n, PolyG: polyG}
-	polyStruct := &PolyStruct{PolyGStruct: *polyGStruct, Poly: poly}
+	return polyStruct, polyGStruct, nil
+}
 
-	shares := make([]*ShareStruct, 0)
+func (polyStruct *PolyStruct2) Vss2(ids []*big.Int) ([]*ShareStruct2, error) {
 
-	for i := 0; i < n; i++ {
-		shareVal := calculatePolynomial(poly, ids[i])
-		shareStruct := &ShareStruct{T: t, Id: ids[i], Share: shareVal}
+	shares := make([]*ShareStruct2, 0)
+
+	for i := 0; i < len(ids); i++ {
+		shareVal := calculatePolynomial2(polyStruct.Poly, ids[i])
+		shareStruct := &ShareStruct2{Id: ids[i], Share: shareVal}
 		shares = append(shares, shareStruct)
 	}
 
-	return polyGStruct, polyStruct, shares, nil
+	return shares, nil
 }
 
-func (share *ShareStruct) Verify(polyG *PolyGStruct) bool {
-	if share.T != polyG.T {
-		return false
-	}
+func (share *ShareStruct2) Verify2(polyG *PolyGStruct2) bool {
 
 	idVal := share.Id
 
 	computePointX, computePointY := polyG.PolyG[0][0], polyG.PolyG[0][1]
 
-	for i := 1; i < polyG.T; i++ {
+	for i := 1; i < len(polyG.PolyG); i++ {
 		pointX, pointY := s256.S256().ScalarMult(polyG.PolyG[i][0], polyG.PolyG[i][1], idVal.Bytes())
 
 		computePointX, computePointY = s256.S256().Add(computePointX, computePointY, pointX, pointY)
@@ -114,10 +77,7 @@ func (share *ShareStruct) Verify(polyG *PolyGStruct) bool {
 	}
 }
 
-func Combine(shares []*ShareStruct) (*big.Int, error) {
-	if shares != nil && shares[0].T > len(shares) {
-		return nil, ErrShareNotEnough
-	}
+func Combine2(shares []*ShareStruct2) (*big.Int, error) {
 
 	// build x coordinate set
 	xSet := make([]*big.Int, 0)
@@ -151,7 +111,7 @@ func Combine(shares []*ShareStruct) (*big.Int, error) {
 	return secret, nil
 }
 
-func calculatePolynomial(poly []*big.Int, id *big.Int) *big.Int {
+func calculatePolynomial2(poly []*big.Int, id *big.Int) *big.Int {
 	lastIndex := len(poly) - 1
 	result := poly[lastIndex]
 

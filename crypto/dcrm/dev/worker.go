@@ -24,6 +24,7 @@ import (
     "io"
     "os"
     "github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+    "github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
     "github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
     "runtime"
     "path/filepath"
@@ -80,6 +81,8 @@ var (
 
     ReSendTimes int //resend p2p msg times
     DcrmCalls = common.NewSafeMap(10)
+    
+    RpcReqQueueCache = make(chan RpcReq,RpcMaxQueue)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -128,6 +131,14 @@ func InitDev(keyfile string,groupId string) {
     go SaveLockOutToDb()
 
     ReSendTimes = 1
+    
+    go CommitRpcReq()
+    go ec2.GenRandomInt(2048)
+    go ec2.GenRandomSafePrime(2048)
+}
+
+func GenRandomSafePrime(length int) {
+    ec2.GenRandomSafePrime(length)
 }
 
 ////////////////////////dcrm///////////////////////////////
@@ -216,6 +227,18 @@ type RpcReqWorker struct {
     msg_d11_1 *list.List
     splitmsg_d11_1 map[string]*list.List
     
+    msg_commitbigvab *list.List
+    splitmsg_commitbigvab map[string]*list.List
+    
+    msg_zkabproof *list.List
+    splitmsg_zkabproof map[string]*list.List
+    
+    msg_commitbigut *list.List
+    splitmsg_commitbigut map[string]*list.List
+    
+    msg_commitbigutd11 *list.List
+    splitmsg_commitbigutd11 map[string]*list.List
+    
     msg_s1 *list.List
     splitmsg_s1 map[string]*list.List
     
@@ -239,6 +262,10 @@ type RpcReqWorker struct {
     bzku chan bool
     bmtazk1proof chan bool
     bkc chan bool
+    bcommitbigvab chan bool
+    bzkabproof chan bool
+    bcommitbigut chan bool
+    bcommitbigutd11 chan bool
     bs1 chan bool
     bss1 chan bool
     bc11 chan bool
@@ -386,6 +413,14 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     splitmsg_delta1:make(map[string]*list.List),
     msg_d11_1:list.New(),
     splitmsg_d11_1:make(map[string]*list.List),
+    msg_commitbigvab:list.New(),
+    splitmsg_commitbigvab:make(map[string]*list.List),
+    msg_zkabproof:list.New(),
+    splitmsg_zkabproof:make(map[string]*list.List),
+    msg_commitbigut:list.New(),
+    splitmsg_commitbigut:make(map[string]*list.List),
+    msg_commitbigutd11:list.New(),
+    splitmsg_commitbigutd11:make(map[string]*list.List),
     msg_s1:list.New(),
     splitmsg_s1:make(map[string]*list.List),
     msg_ss1:list.New(),
@@ -408,6 +443,10 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     bd1_1:make(chan bool,1),
     bc11:make(chan bool,1),
     bkc:make(chan bool,1),
+    bcommitbigvab:make(chan bool,1),
+    bzkabproof:make(chan bool,1),
+    bcommitbigut:make(chan bool,1),
+    bcommitbigutd11:make(chan bool,1),
     bs1:make(chan bool,1),
     bss1:make(chan bool,1),
     bmkg:make(chan bool,1),
@@ -538,6 +577,26 @@ func (w *RpcReqWorker) Clear() {
         w.msg_d11_1.Remove(e)
     }
 
+    for e := w.msg_commitbigvab.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_commitbigvab.Remove(e)
+    }
+
+    for e := w.msg_zkabproof.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_zkabproof.Remove(e)
+    }
+
+    for e := w.msg_commitbigut.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_commitbigut.Remove(e)
+    }
+
+    for e := w.msg_commitbigutd11.Front(); e != nil; e = next {
+        next = e.Next()
+        w.msg_commitbigutd11.Remove(e)
+    }
+
     for e := w.msg_s1.Front(); e != nil; e = next {
         next = e.Next()
         w.msg_s1.Remove(e)
@@ -606,6 +665,18 @@ func (w *RpcReqWorker) Clear() {
     }
     if len(w.bkc) == 1 {
 	<-w.bkc
+    }
+    if len(w.bcommitbigvab) == 1 {
+	<-w.bcommitbigvab
+    }
+    if len(w.bzkabproof) == 1 {
+	<-w.bzkabproof
+    }
+    if len(w.bcommitbigut) == 1 {
+	<-w.bcommitbigut
+    }
+    if len(w.bcommitbigutd11) == 1 {
+	<-w.bcommitbigutd11
     }
     if len(w.bs1) == 1 {
 	<-w.bs1
@@ -731,6 +802,10 @@ func (w *RpcReqWorker) Clear() {
     w.splitmsg_mtazk1proof = make(map[string]*list.List)
     w.splitmsg_c11 = make(map[string]*list.List)
     w.splitmsg_d11_1 = make(map[string]*list.List)
+    w.splitmsg_commitbigvab = make(map[string]*list.List)
+    w.splitmsg_zkabproof = make(map[string]*list.List)
+    w.splitmsg_commitbigut = make(map[string]*list.List)
+    w.splitmsg_commitbigutd11 = make(map[string]*list.List)
     w.splitmsg_s1 = make(map[string]*list.List)
     w.splitmsg_ss1 = make(map[string]*list.List)
     
@@ -2994,6 +3069,17 @@ func GetEnodesInfo(GroupId string) {
     cur_enode = GetSelfEnode()
 }
 
+func CommitRpcReq() {
+    for {
+	select {
+	case req := <-RpcReqQueueCache:
+	    RpcReqQueue <- req
+	}
+	
+	time.Sleep(time.Duration(1000000000))  //na, 1 s = 10e9 na /////////!!!!!fix bug:if large sign at same time,it will very slowly!!!!!
+    }
+}
+
 func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     var req RpcReq
     switch rpctype {
@@ -3043,7 +3129,8 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	t = sendtogroup_timeout
     }
 
-    RpcReqQueue <- req
+    //RpcReqQueue <- req
+    RpcReqQueueCache <- req
     chret,tip,cherr := GetChannelValue(t,req.ch)
     if cherr != nil {
 	return chret,tip,cherr
@@ -3267,7 +3354,8 @@ func DisMsg(msg string) {
 		fmt.Println("=========Get All SHARE1===========","GroupId",w.groupid)
 		w.bshare1 <- true
 	    }
-	case "ZKFACTPROOF":
+	//case "ZKFACTPROOF":
+	case "NTILDEH1H2":
 	    ///bug
 	    if w.msg_zkfact.Len() >= (NodeCnt-1) {
 		return
@@ -3279,7 +3367,8 @@ func DisMsg(msg string) {
 
 	    w.msg_zkfact.PushBack(msg)
 	    if w.msg_zkfact.Len() == (NodeCnt-1) {
-		fmt.Println("=========Get All ZKFACTPROOF===========","GroupId",w.groupid)
+		fmt.Println("=========Get All NTILDEH1H2,Nonce =%s,GroupId =%s===========",prexs[0],w.groupid)
+		//fmt.Println("=========Get All ZKFACTPROOF===========","GroupId",w.groupid)
 		w.bzkfact <- true
 	    }
 	case "ZKUPROOF":
@@ -3402,6 +3491,66 @@ func DisMsg(msg string) {
 	    if w.msg_d11_1.Len() == (ThresHold-1) {
 		fmt.Println("=========Get All D11===========","GroupId",w.groupid)
 		w.bd11_1 <- true
+	    }
+	case "CommitBigVAB":
+	    ///bug
+	    if w.msg_commitbigvab.Len() >= (ThresHold-1) {
+		return
+	    }
+	    ///
+	    if Find(w.msg_commitbigvab,msg) {
+		return
+	    }
+
+	    w.msg_commitbigvab.PushBack(msg)
+	    if w.msg_commitbigvab.Len() == (ThresHold-1) {
+		fmt.Println("=========Get All CommitBigVAB,Nonce =%s,GroupId =%s===========",prexs[0],w.groupid)
+		w.bcommitbigvab <- true
+	    }
+	case "ZKABPROOF":
+	    ///bug
+	    if w.msg_zkabproof.Len() >= (ThresHold-1) {
+		return
+	    }
+	    ///
+	    if Find(w.msg_zkabproof,msg) {
+		return
+	    }
+
+	    w.msg_zkabproof.PushBack(msg)
+	    if w.msg_zkabproof.Len() == (ThresHold-1) {
+		fmt.Println("=========Get All ZKABPROOF,Nonce =%s,GroupId =%s===========",prexs[0],w.groupid)
+		w.bzkabproof <- true
+	    }
+	case "CommitBigUT":
+	    ///bug
+	    if w.msg_commitbigut.Len() >= (ThresHold-1) {
+		return
+	    }
+	    ///
+	    if Find(w.msg_commitbigut,msg) {
+		return
+	    }
+
+	    w.msg_commitbigut.PushBack(msg)
+	    if w.msg_commitbigut.Len() == (ThresHold-1) {
+		fmt.Println("=========Get All CommitBigUT,Nonce =%s,GroupId =%s===========",prexs[0],w.groupid)
+		w.bcommitbigut <- true
+	    }
+	case "CommitBigUTD11":
+	    ///bug
+	    if w.msg_commitbigutd11.Len() >= (ThresHold-1) {
+		return
+	    }
+	    ///
+	    if Find(w.msg_commitbigutd11,msg) {
+		return
+	    }
+
+	    w.msg_commitbigutd11.PushBack(msg)
+	    if w.msg_commitbigutd11.Len() == (ThresHold-1) {
+		fmt.Println("=========Get All CommitBigUTD11,Nonce =%s,GroupId =%s===========",prexs[0],w.groupid)
+		w.bcommitbigutd11 <- true
 	    }
 	case "S1":
 	    ///bug

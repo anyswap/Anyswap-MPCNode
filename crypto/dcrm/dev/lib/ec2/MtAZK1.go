@@ -18,6 +18,7 @@ package ec2
 
 import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	//"github.com/fusion/dcrm-sdk/crypto/dcrm/dev/lib/ec2/paillier"
 	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"math/big"
@@ -75,9 +76,8 @@ func MtAZK1Prove(m *big.Int, r *big.Int, publicKey *PublicKey, zkFactProof *ZkFa
 	return mtAZK1Proof
 }
 
-//func (mtAZK1Proof *MtAZK1Proof) MtAZK1Verify(c *big.Int, publicKey *paillier.PublicKey, zkFactProof *paillier.ZkFactProof) bool {
 func (mtAZK1Proof *MtAZK1Proof) MtAZK1Verify(c *big.Int, publicKey *PublicKey, zkFactProof *ZkFactProof) bool {
-	if mtAZK1Proof.S1.Cmp(s256.S256().N3()) >= 0 {
+	if mtAZK1Proof.S1.Cmp(s256.S256().N3()) >= 0 { //MtAZK1 question 1
 		return false
 	}
 

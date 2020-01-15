@@ -57,11 +57,11 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "fsn-dev")
+			return filepath.Join(home, "Library", "Fusion")
 		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "fsn-dev")
+			return filepath.Join(home, "AppData", "Roaming", "Fusion")
 		} else {
-			return filepath.Join(home, ".fsn-dev")
+			return filepath.Join(home, ".dcrm-walletservice")
 		}
 	}
 	// As we cannot guess a stable location, return empty and handle later

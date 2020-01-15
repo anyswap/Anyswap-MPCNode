@@ -3827,7 +3827,7 @@ func DefaultDataDir() string {
 		} else if runtime.GOOS == "windows" {
 			return filepath.Join(home, "AppData", "Roaming", "Fusion")
 		} else {
-			return filepath.Join(home, ".fusion")
+			return filepath.Join(home, ".dcrm-walletservice")
 		}
 	}
 	// As we cannot guess a stable location, return empty and handle later

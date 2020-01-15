@@ -29,7 +29,7 @@ var (
 
 func GenRandomSafePrime(length int) {
     for {
-	if len(SafePrime) < 1000 {
+	if len(SafePrime) < 4 { /////TODO  tmp:1000-->4
 	    rndInt := <-RndInt
 	    p := random.GetSafeRandomPrimeInt2(length/2,rndInt)
 	    if p != nil {
@@ -37,6 +37,12 @@ func GenRandomSafePrime(length int) {
 		time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
 	    }
 	}
+
+	////TODO tmp:1000-->4
+	if len(SafePrime) == 4 {
+	    break
+	}
+	//////
     }
 }
 

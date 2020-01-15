@@ -20,6 +20,11 @@ func GenerateNtildeH1H2(length int) *NtildeH1H2 {
 	    return nil
 	}
 
+	////TODO tmp:1000-->4
+	SafePrime <-p
+	SafePrime <-q
+	///////
+
 	ntilde := new(big.Int).Mul(p, q)
 
 	h1 := random.GetRandomIntFromZnStar(ntilde)

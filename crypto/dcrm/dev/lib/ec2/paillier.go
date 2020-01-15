@@ -50,6 +50,11 @@ func GenerateKeyPair(length int) (*PublicKey, *PrivateKey) {
 	    return nil,nil
 	}
 
+	////TODO tmp:1000-->4
+	SafePrime <-p
+	SafePrime <-q
+	///////
+
 	n := new(big.Int).Mul(p, q)
 	n2 := new(big.Int).Mul(n, n)
 	g := new(big.Int).Add(n, one)

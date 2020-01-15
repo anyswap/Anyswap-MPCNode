@@ -25,6 +25,10 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	"os"
+	"os/user"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"strconv"
 	"sync"
@@ -60,7 +64,8 @@ var (
 	sequenceDoneRecv  sync.Map
 	Sequence = uint64(1)
 	SelfID = ""
-	groupSuffix = ".p2p/GroupDb-"
+	groupSuffix = "p2p-"
+	groupDir = ""
 )
 var (
 	Dcrm_groupMemNum = 0
@@ -156,6 +161,10 @@ type (
 		Expiration uint64
 	}
 )
+
+func init() {
+	groupDir = DefaultDataDir()
+}
 
 func (req *findgroup) name() string { return "FINDGROUP/v4" }
 
@@ -1431,11 +1440,13 @@ func RecoverGroupSDKList() error {//nooo
 }
 
 func getGroupDir() string {
-	dir := groupSuffix
+	dir := groupDir
 	if setgroup != 0 {
-		dir = groupSuffix + "bootnode-"
+		dir = filepath.Join(dir, groupSuffix + "bootnode-" + SelfID)
+	} else {
+		dir = filepath.Join(dir, groupSuffix + SelfID)
 	}
-	dir = dir + SelfID
+	fmt.Printf("==== getGroupDir() ====, dir: %v\n", dir)
 	return dir
 }
 
@@ -1443,7 +1454,8 @@ func getGroupSDKListDir() string {
 	if setgroup == 0 {
 		return ""
 	}
-	dir := groupSuffix + "SDKList-" + SelfID
+	dir := filepath.Join(groupDir, groupSuffix + "SDKList-" + SelfID)
+	fmt.Printf("==== getGroupSDKListDir() ====, dir: %v\n", dir)
 	return dir
 }
 
@@ -1579,3 +1591,30 @@ func checkFrom(n *Node) {
 	}
 }
 
+// DefaultDataDir is the default data directory to use for the databases and other
+// persistence requirements.
+func DefaultDataDir() string {
+	// Try to place the data folder in the user's home dir
+	home := homeDir()
+	if home != "" {
+		if runtime.GOOS == "darwin" {
+			return filepath.Join(home, "Library", "dcrm-walletservice")
+		} else if runtime.GOOS == "windows" {
+			return filepath.Join(home, "AppData", "Roaming", "dcrm-walletservice")
+		} else {
+			return filepath.Join(home, ".dcrm-walletservice")
+		}
+	}
+	// As we cannot guess a stable location, return empty and handle later
+	return ""
+}
+
+func homeDir() string {
+	if home := os.Getenv("HOME"); home != "" {
+		return home
+	}
+	if usr, err := user.Current(); err == nil {
+		return usr.HomeDir
+	}
+	return ""
+}

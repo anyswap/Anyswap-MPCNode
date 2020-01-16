@@ -376,33 +376,31 @@ func (t *udp) udpSendMsg(toid NodeID, toaddr *net.UDPAddr, msg string, number [3
 				timeout = true
 			}
 		}()
-		pCount := 0
 		for {
 			if timeout == true {
 				fmt.Printf("====  (t *udp) udpSendMsg()  ====, send toaddr: %v, err: timeout\n", toaddr)
 				break
 			}
 			errc := t.pending(toid, byte(Ack_Packet), func(r interface{}) bool {
-				fmt.Printf("recv ack ====  (t *udp) udpSendMsg()  ====, from: %v, sequence: %v, ackSequence: %v\n", toid, s, r.(*Ack).Sequence)
+				fmt.Printf("recv ack ====  (t *udp) udpSendMsg()  ====, from: %v, sequence: %v, ackSequence: %v\n", toaddr, s, r.(*Ack).Sequence)
 				return true
 			})
 			var errs error
 			if ret == true {
 				_, errs = t.send(toaddr, byte(getPacket), req)
+				fmt.Printf("==== (t *udp) udpSendMsg()  ====, send toaddr: %v, sequence: %v, errs: %v, dcrmmessage\n", toaddr, s, errs)
 			} else {
 				_, errs = t.send(toaddr, byte(getPacket), reqGet)
+				fmt.Printf("==== (t *udp) udpSendMsg()  ====, send toaddr: %v, sequence: %v, errs: %v, getdcrmmessage\n", toaddr, s, errs)
 			}
-			pCount += 1
-			if pCount % 10 == 0 {
-				fmt.Printf("==== (t *udp) udpSendMsg()  ====, send toaddr: %v, pCount: %v\n", toaddr, pCount)
-			}
-			time.Sleep(time.Duration(1) * time.Second)
+			time.Sleep(time.Duration(5) * time.Second)
 			err := <-errc
 			if errs != nil || err != nil {
-				continue
+			        continue
 			}
 			fmt.Printf("====  (t *udp) udpSendMsg()  ====, send toaddr: %v, SUCCESS\n", toaddr)
 			break
+
 		}
 	}()
 	if timeout == true {
@@ -469,12 +467,13 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
                // (which is a much bigger packet than findnode) to the victim.
                return errUnknownNode
        }
-	fmt.Printf("send ack ==== (req *getdcrmmessage) handle() ====, to: %v\n", from)
+	fmt.Printf("send ack ==== (req *getdcrmmessage) handle() ====, to: %v, mac: %v\n", from, mac)
 	t.send(from, byte(Ack_Packet), &Ack{
 		Sequence: req.Sequence,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
-	ss := fmt.Sprintf("%v-%v", fromID, req.Sequence)
+	ss := fmt.Sprintf("get-%v-%v", fromID, req.Sequence)
+	fmt.Printf("==== (req *getdcrmmessage) handle() ====, from: %v, sequence: %v\n", from, req.Sequence)
 	sequenceLock.Lock()
 	if _, ok := sequenceDoneRecv.Load(ss); ok {
 		fmt.Printf("\n==== (req *getdcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
@@ -533,15 +532,16 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        //if expired(req.Expiration) {
        //        return errExpired
        //}
-	fmt.Printf("send ack ==== (req *getdcrmmessage) handle() ====, to: %v\n", from)
+	fmt.Printf("send ack ==== (req *dcrmmessage) handle() ====, to: %v, mac: %v\n", from, mac)
 	t.send(from, byte(Ack_Packet), &Ack{
 		Sequence: req.Sequence,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
 	ss := fmt.Sprintf("%v-%v", fromID, req.Sequence)
+	fmt.Printf("==== (req *dcrmmessage) handle() ====, recvMsg: %v\n", ss)
 	sequenceLock.Lock()
 	if _, ok := sequenceDoneRecv.Load(ss); ok {
-		fmt.Printf("==== (req *getdcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
+		fmt.Printf("==== (req *dcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
 		sequenceLock.Unlock()
 		return nil
 	}

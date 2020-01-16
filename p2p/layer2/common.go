@@ -47,23 +47,27 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 }
 
 func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself bool) int {
-	fmt.Printf("==== p2pBroatcast() ====, group : %v, len(nodes): %v\n", dccpGroup, len(dccpGroup.Nodes))
+	fmt.Printf("==== p2pBroatcast() ====, group : %v, msg: %v\n", dccpGroup, msg)
 	if dccpGroup == nil {
+		fmt.Printf("==== p2pBroatcast() ====, group : nil, msg: %v error\n", dccpGroup, msg)
 		return 0
 	}
 	var ret int = 0
 	wg := &sync.WaitGroup{}
 	wg.Add(len(dccpGroup.Nodes))
 	for _, node := range dccpGroup.Nodes {
+		fmt.Printf("  ==== p2pBroatcast() ====, group : %v, msg: %v, nodeID: %v\n", dccpGroup, msg, node.ID)
 		if selfid == node.ID {
-			wg.Done()
 			if myself == true {
+				fmt.Printf("    ==== p2pBroatcast() ====, group : %v, msg: %v, myself\n", dccpGroup, msg)
 				go callEvent(msg, node.ID.String())
 			}
+			wg.Done()
 			continue
 		}
 		go func(node discover.RpcNode) {
 			defer wg.Done()
+			fmt.Printf("    ==== p2pBroatcast() ====, group : %v, msg: %v, call p2pSendMsg\n", dccpGroup, msg)
 			err := p2pSendMsg(node, uint64(msgCode), msg)
 			if err != nil {
 			}
@@ -75,43 +79,43 @@ func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself boo
 
 func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	if msg == "" {
+		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, msg: nil error\n", node.ID)
 		return errors.New("p2pSendMsg msg is nil")
 	}
-	fmt.Printf("==== p2pSendMsg() ====, send to node: %v\n", node)
+	fmt.Printf("==== p2pSendMsg() ====, send to node: %v, msg\n", node.ID, msg)
 	err := errors.New("p2pSendMsg err")
 	emitter.Lock()
 	p := emitter.peers[node.ID]
 	if p == nil {
-		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, peer not exist\n", node)
+		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, peer not exist\n", node.ID)
 		return errors.New("peer not exist")
 	}
 	emitter.Unlock()
 	countSendFail := 0
 	for {
-		errp := discover.PingNode(node.ID, node.IP, int(node.UDP))
-		if errp == nil {
-			fmt.Printf("==== p2pSendMsg() ====, pingNode: %v OK\n", node.ID)
-			emitter.Lock()
-			p = emitter.peers[node.ID]
-			if p == nil {
-				emitter.Unlock()
-				continue
-			}
-			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
-			} else {
-				emitter.Unlock()
-				fmt.Printf("==== p2pSendMsg() ====, send to node: %v SUCCESS, countSend : %v\n", node.ID, countSendFail)
-				return nil
-			}
+		emitter.Lock()
+		p = emitter.peers[node.ID]
+		if p == nil {
 			emitter.Unlock()
+			continue
 		}
+		if err = p2p.Send(p.ws, msgCode, msg); err != nil {
+		} else {
+			emitter.Unlock()
+			fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v, msg: %v, SUCCESS, countSend : %v\n", node.ID, msg, countSendFail)
+			return nil
+		}
+		emitter.Unlock()
+
 		countSendFail += 1
 		if countSendFail > 3000 {
 			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail\n", node.ID)
+			fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v, msg: %v timeout fail\n", node.ID, msg)
 			break
 		}
 		if countSendFail <= 1 || countSendFail % 100 == 0 {
 			fmt.Printf("==== p2pSendMsg() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
+			fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
 		}
 		time.Sleep(time.Duration(100) * time.Millisecond)
 	}
@@ -205,6 +209,7 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			if err != nil {
 				fmt.Printf("Err: decode msg err %+v\n", err)
 			} else {
+				fmt.Printf("==== p2pBroatcast Recv callEvent() ====, peerMsgCode fromID: %v, msg: %v\n", peer.ID().String(), string(recv))
 				go callEvent(string(recv), peer.ID().String())
 			}
 			break
@@ -214,6 +219,7 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			if err != nil {
 				fmt.Printf("Err: decode msg err %+v\n", err)
 			} else {
+				fmt.Printf("==== p2pBroatcast Recv Sdk_callEvent() ====, Sdk_msgCode fromID: %v, msg: %v\n", peer.ID().String(), string(recv))
 				go Sdk_callEvent(string(recv), peer.ID().String())
 			}
 			break

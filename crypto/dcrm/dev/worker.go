@@ -124,8 +124,8 @@ func InitDev(keyfile string,groupId string) {
     GetEnodesInfo(groupId)
     KeyFile = keyfile
     AllAccounts = GetAllPubKeyDataFromDb()
-    LdbReqAddr = GetAllPendingReqAddrFromDb()
-    LdbLockOut = GetAllPendingLockOutFromDb()
+    //LdbReqAddr = GetAllPendingReqAddrFromDb()
+    //LdbLockOut = GetAllPendingLockOutFromDb()
     go SavePubKeyDataToDb()
     go SaveAllAccountsToDb()
     go SaveReqAddrToDb()
@@ -1510,13 +1510,35 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
     var ret []string
     _,lmvalue := LdbReqAddr.ListMap()
     ////for test only
-    for kk,vv := range lmvalue {
-	fmt.Println("================GetCurNodeReqAddrInfo,list map index =%v,len(value) =%v ===================",kk,len(string(vv.([]byte))))
+    for kk,vv2 := range lmvalue {
+	fmt.Println("================GetCurNodeReqAddrInfo,TEST,list map index =%v,len(value) =%v ===================",kk,len(string(vv2.([]byte))))
+	vv3 := vv2.([]byte)
+	value := string(vv3)
+	fmt.Println("================GetCurNodeReqAddrInfo,TEST,len(value) =%v ===================",len(value))
+	////
+	ds,err := UnCompress(value)
+	if err != nil {
+	    fmt.Println("================GetCurNodeReqAddrInfo,TEST,uncompress err =%v ===================",err)
+	    continue
+	}
+
+	dss,err := Decode2(ds,"AcceptReqAddrData")
+	if err != nil {
+	    fmt.Println("================GetCurNodeReqAddrInfo,TEST,decode err =%v ===================",err)
+	    continue
+	}
+
+	ac := dss.(*AcceptReqAddrData)
+	if ac == nil {
+	    fmt.Println("================GetCurNodeReqAddrInfo,TEST,decode err ===================")
+	    continue
+	}
+	fmt.Println("================GetCurNodeReqAddrInfo,TEST,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
     }
     /////////////////
 
-    lmvalue = SortCurNodeInfo(lmvalue)
-    for _,v := range lmvalue {
+    lmvalue2 := SortCurNodeInfo(lmvalue)
+    for _,v := range lmvalue2 {
 	if v == nil {
 	    continue
 	}
@@ -1542,7 +1564,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetCurNodeReqAddrInfo,decode err ===================")
 	    continue
 	}
-	fmt.Println("================GetCurNodeReqAddrInfo,ac.Account =%s,ac =%v ===================",ac.Account,ac)
+	fmt.Println("================GetCurNodeReqAddrInfo,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
 
 	check := false
 	eaccs := make([]EnAcc,0)
@@ -1625,13 +1647,36 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
     var ret []string
     _,lmvalue := LdbLockOut.ListMap()
     ////for test only
-    for kk,vv := range lmvalue {
-	fmt.Println("================GetCurNodeLockOutInfo,list map index =%v,len(value) =%v ===================",kk,len(string(vv.([]byte))))
+    for kk,vv2 := range lmvalue {
+	fmt.Println("================GetCurNodeLockOutInfo,TEST,list map index =%v,len(value) =%v ===================",kk,len(string(vv2.([]byte))))
+	vv3 := vv2.([]byte)
+	value := string(vv3)
+	fmt.Println("================GetCurNodeLockOutInfo,TEST,len(value) =%v ===================",len(value))
+	////
+	ds,err := UnCompress(value)
+	if err != nil {
+	    fmt.Println("================GetCurNodeLockOutInfo,TEST,uncompress err =%v ===================",err)
+	    continue
+	}
+
+	dss,err := Decode2(ds,"AcceptLockOutData")
+	if err != nil {
+	    fmt.Println("================GetCurNodeLockOutInfo,TEST,decode err =%v ===================",err)
+	    continue
+	}
+
+	ac := dss.(*AcceptLockOutData)
+	if ac == nil {
+	    fmt.Println("================GetCurNodeLockOutInfo,TEST,decode err ===================")
+	    continue
+	}
+	fmt.Println("================GetCurNodeLockOutInfo,TEST,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
     }
     /////////////////
 
-    lmvalue = SortCurNodeInfo(lmvalue)
-    for _,v := range lmvalue {
+
+    lmvalue2 := SortCurNodeInfo(lmvalue)
+    for _,v := range lmvalue2 {
 	if v == nil {
 	    continue
 	}
@@ -1657,7 +1702,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
 	    continue
 	}
-	fmt.Println("================GetCurNodeLockOutInfo,ac.Account =%s,ac =%v ===================",ac.Account,ac)
+	fmt.Println("================GetCurNodeLockOutInfo,ac.Account =%s,ac.Status=%s,ac =%v ===================",ac.Account,ac.Status,ac)
 
 	nodesigs := make([]string,0)
 	rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()

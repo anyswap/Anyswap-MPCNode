@@ -1,4 +1,4 @@
-package dcrm
+package eos 
 
 import (
 	"encoding/json"
@@ -7,43 +7,59 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"github.com/fsn-dev/dcrm-walletService/coins"
+	"regexp"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
-	"github.com/fsn-dev/dcrm-walletService/coins/eos"
 	"github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
-	//"github.com/syndtr/goleveldb/leveldb"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
+	"github.com/fsn-dev/dcrm-walletService/node"
 	"github.com/astaxie/beego/logs"
 	"fmt"
 	"bytes"
 	"sync"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev"
 )
 
 var (
     lock sync.Mutex
 )
 
+//eos_init---> eos account
+//key: crypto.Keccak256Hash([]byte("eossettings"))
+//value: pubkey+eos account
+func GetEosDbDir() string {
+    dir := node.DefaultDataDir()
+    dir += "/dcrmdata/eosdb"
+    return dir
+}
+
+var EOSRegExpmap map[string]string = map[string]string {
+	"EOSDCRM":"^d[1-5a-z]{32,33}$",
+	//"EOS":"^(d[1-5a-z]{32,33})|([1-5a-z]{12})$",
+	"EOS":"^([a-z\\d\\.]+)$",
+	"EOS_NORMAL":"^([1-5a-z]{12})$",
+}
+
 func CreateRealEosAccount(accountName string, ownerkey string, activekey string) error {
 	fmt.Println("==========create eos account Start!!,account name = %s,ownerkey = %s,activekey = %s, ==============",accountName,ownerkey,activekey)
-	av := coins.NewAddressValidator("EOS_NORMAL")
-	if !av.IsValidAddress(accountName) {
+	match, _ := regexp.MatchString(EOSRegExpmap["EOS_NORMAL"], accountName)
+	//av := coins.NewAddressValidator("EOS_NORMAL")
+	//if !av.IsValidAddress(accountName) {
+	if !match {
 		return errors.New("eos account name format error")
 	}
-	owner, e1 := eos.HexToPubKey(ownerkey)
-	active, e2 := eos.HexToPubKey(activekey)
+	owner, e1 := HexToPubKey(ownerkey)
+	active, e2 := HexToPubKey(activekey)
 	if e1 != nil || e2 != nil {
 		fmt.Println("==========create eos account ==========,ownerkey error = %+v,active error = %+v",e1,e2)
 		return errors.New("cannot convert to eos pubkey format.")
 	}
 	fmt.Println("==========create eos account,owner = %s,active = %s,==============",owner,active)
 ///*
-	ojbk, err := eos.CreateNewAccount(eos.CREATOR_ACCOUNT,eos.CREATOR_PRIVKEY,accountName,owner.String(),active.String(),eos.InitialRam)
+	ojbk, err := CreateNewAccount(CREATOR_ACCOUNT,CREATOR_PRIVKEY,accountName,owner.String(),active.String(),InitialRam)
 	if ojbk == false || err != nil {
 		fmt.Println("create eos account failed,error = %+v",err)
 		return errors.New("create eos account failed")
 	}
-	ojbk2, err := eos.DelegateBW(eos.CREATOR_ACCOUNT,eos.CREATOR_PRIVKEY,accountName,eos.InitialCPU,eos.InitialStakeNet,true)
+	ojbk2, err := DelegateBW(CREATOR_ACCOUNT,CREATOR_PRIVKEY,accountName,InitialCPU,InitialStakeNet,true)
 	if ojbk2 == false || err != nil {
 		fmt.Println("delegate cpu and net failed,error = %+v",err)
 		return errors.New("delegate cpu and net failed")
@@ -93,8 +109,8 @@ func CheckRealEosAccount(accountName, ownerkey, activekey string) (ok bool) {
 	// 3. check active key
 	// 4. check no other keys authorized
 
-	owner, e1 := eos.HexToPubKey(ownerkey)  //EOS8JXJf7nuBEs8dZ8Pc5NpS8BJJLt6bMAmthWHE8CSqzX4VEFKtq
-	active, e2 := eos.HexToPubKey(activekey)
+	owner, e1 := HexToPubKey(ownerkey)  //EOS8JXJf7nuBEs8dZ8Pc5NpS8BJJLt6bMAmthWHE8CSqzX4VEFKtq
+	active, e2 := HexToPubKey(activekey)
 	if e1 != nil || e2 != nil {
 		logs.Debug("public key error","owner key error", e1, "active key error", e2)
 		return false
@@ -112,15 +128,15 @@ func CheckRealEosAccount(accountName, ownerkey, activekey string) (ok bool) {
 		return false
 	}
 	// 5. enough ram cpu net
-	if info.RamQuato - info.RamUsage < eos.InitialRam / 2 {
+	if info.RamQuato - info.RamUsage < InitialRam / 2 {
 		logs.Debug("account ram is too low")
 		return false
 	}
-	if int64(info.CpuLimit.Max) < eos.InitialCPU * 5 {
+	if int64(info.CpuLimit.Max) < InitialCPU * 5 {
 		logs.Debug("account cpu is too low")
 		return false
 	}
-	if int64(info.NetLimit.Max) < eos.InitialStakeNet * 5 {
+	if int64(info.NetLimit.Max) < InitialStakeNet * 5 {
 		logs.Debug("account net bandwidth is too low")
 		return false
 	}
@@ -183,7 +199,7 @@ type Limit struct {
 
 func GetEosAccount() (acct, owner, active string) {
 	lock.Lock()
-	dir := dev.GetEosDbDir()
+	dir := GetEosDbDir()
 	db,err := ethdb.NewLDBDatabase(dir, 0, 0)
 	if err != nil {
 		logs.Debug("==============open db fail.============")

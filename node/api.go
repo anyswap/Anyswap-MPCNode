@@ -182,17 +182,6 @@ func (api *PrivateAdminAPI) StartRPC(host *string, port *int, cors *string, apis
 		}
 	}
 
-	modules := api.node.httpWhitelist
-	if apis != nil {
-		modules = nil
-		for _, m := range strings.Split(*apis, ",") {
-			modules = append(modules, strings.TrimSpace(m))
-		}
-	}
-
-	if err := api.node.startHTTP(fmt.Sprintf("%s:%d", *host, *port), api.node.rpcAPIs, modules, allowedOrigins, allowedVHosts, api.node.config.HTTPTimeouts); err != nil {
-		return false, err
-	}
 	return true, nil
 }
 
@@ -236,17 +225,6 @@ func (api *PrivateAdminAPI) StartWS(host *string, port *int, allowedOrigins *str
 		}
 	}
 
-	modules := api.node.config.WSModules
-	if apis != nil {
-		modules = nil
-		for _, m := range strings.Split(*apis, ",") {
-			modules = append(modules, strings.TrimSpace(m))
-		}
-	}
-
-	if err := api.node.startWS(fmt.Sprintf("%s:%d", *host, *port), api.node.rpcAPIs, modules, origins, api.node.config.WSExposeAll); err != nil {
-		return false, err
-	}
 	return true, nil
 }
 

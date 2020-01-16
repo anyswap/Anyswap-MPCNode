@@ -19,7 +19,6 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"

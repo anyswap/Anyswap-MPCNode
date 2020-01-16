@@ -28,11 +28,10 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/coins"
+	"github.com/fsn-dev/dcrm-walletService/coins/eos"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
 	cryptocoinsconfig "github.com/fsn-dev/dcrm-walletService/coins/config"
 	"encoding/json"
-	//"github.com/syndtr/goleveldb/leveldb"
-	//"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"encoding/hex"
 )
 
@@ -1145,7 +1144,7 @@ func init(){
 	dev.RegP2pBroadcastInGroupOthersCallBack(p2pdcrm.SdkProtocol_broadcastInGroupOthers)
 	dev.RegP2pSendMsgToPeerCallBack(p2pdcrm.SendMsgToPeer)
 	dev.RegP2pParseNodeCallBack(p2pdcrm.ParseNodeID)
-	dev.RegDcrmGetEosAccountCallBack(GetEosAccount)
+	dev.RegDcrmGetEosAccountCallBack(eos.GetEosAccount)
 	dev.InitChan()
 }
 

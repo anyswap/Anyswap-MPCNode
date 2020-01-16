@@ -3864,15 +3864,6 @@ func DefaultDataDir() string {
 	return ""
 }
 
-//eos_init---> eos account
-//key: crypto.Keccak256Hash([]byte("eossettings"))
-//value: pubkey+eos account
-func GetEosDbDir() string {
-    dir := DefaultDataDir()
-    dir += "/dcrmdata/eosdb"
-    return dir
-}
-
 type PubAccounts struct {
        Group []AccountsList
 }

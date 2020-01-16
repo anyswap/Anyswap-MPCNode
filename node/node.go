@@ -36,7 +36,6 @@ import (
 type Node struct {
 	eventmux *event.TypeMux // Event multiplexer used between the services of a stack
 	config   *Config
-	accman   *accounts.Manager
 
 	ephemeralKeystore string         // if non-empty, the key directory that will be removed by Stop
 
@@ -91,17 +90,9 @@ func New(conf *Config) (*Node, error) {
 	if strings.HasSuffix(conf.Name, ".ipc") {
 		return nil, errors.New(`Config.Name cannot end in ".ipc"`)
 	}
-	// Ensure that the AccountManager method works before the node has started.
-	// We rely on this in cmd/geth.
-	am, ephemeralKeystore, err := makeAccountManager(conf)
-	if err != nil {
-		return nil, err
-	}
 	// Note: any interaction with Config that would create/touch files
 	// in the data directory or instance directory is delayed until Start.
 	return &Node{
-		accman:            am,
-		ephemeralKeystore: ephemeralKeystore,
 		config:            conf,
 		serviceFuncs:      []ServiceConstructor{},
 		ipcEndpoint:       conf.IPCEndpoint(),
@@ -161,7 +152,6 @@ func (n *Node) Start() error {
 			config:         n.config,
 			services:       make(map[reflect.Type]Service),
 			EventMux:       n.eventmux,
-			AccountManager: n.accman,
 		}
 		for kind, s := range services { // copy needed for threaded access
 			ctx.services[kind] = s
@@ -220,7 +210,7 @@ func (n *Node) Start() error {
 	return nil
 }
 
-/*func (n *Node) openDataDir() error {
+func (n *Node) openDataDir() error {
 	if n.config.DataDir == "" {
 		return nil // ephemeral
 	}
@@ -230,59 +220,13 @@ func (n *Node) Start() error {
 		return err
 	}
 	// Lock the instance directory to prevent concurrent use by another instance as well as
-	// accidental use of the instance directory as a database.
-	release, _, err := flock.New(filepath.Join(instdir, "LOCK"))
-	if err != nil {
-		return convertFileLockError(err)
-	}
-	n.instanceDirLock = release
 	return nil
 }
-*/
 
 // startRPC is a helper method to start all the various RPC endpoint during node
 // startup. It's not meant to be called at any time afterwards as it makes certain
 // assumptions about the state of the node.
 func (n *Node) startRPC(services map[reflect.Type]Service) error {
-	// Gather all the possible APIs to surface
-	apis := n.apis()
-	for _, service := range services {
-		apis = append(apis, service.APIs()...)
-	}
-	// Start the various API endpoints, terminating all in case of errors
-	if err := n.startInProc(apis); err != nil {
-		return err
-	}
-	if err := n.startIPC(apis); err != nil {
-		n.stopInProc()
-		return err
-	}
-	if err := n.startHTTP(n.httpEndpoint, apis, n.config.HTTPModules, n.config.HTTPCors, n.config.HTTPVirtualHosts, n.config.HTTPTimeouts); err != nil {
-		n.stopIPC()
-		n.stopInProc()
-		return err
-	}
-	if err := n.startWS(n.wsEndpoint, apis, n.config.WSModules, n.config.WSOrigins, n.config.WSExposeAll); err != nil {
-		n.stopHTTP()
-		n.stopIPC()
-		n.stopInProc()
-		return err
-	}
-	// All API endpoints started successfully
-	n.rpcAPIs = apis
-	return nil
-}
-
-// startInProc initializes an in-process RPC endpoint.
-func (n *Node) startInProc(apis []rpc.API) error {
-	// Register all the APIs exposed by the services
-	handler := rpc.NewServer()
-	for _, api := range apis {
-		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
-			return err
-		}
-	}
-	n.inprocHandler = handler
 	return nil
 }
 
@@ -292,20 +236,6 @@ func (n *Node) stopInProc() {
 		n.inprocHandler.Stop()
 		n.inprocHandler = nil
 	}
-}
-
-// startIPC initializes and starts the IPC RPC endpoint.
-func (n *Node) startIPC(apis []rpc.API) error {
-	if n.ipcEndpoint == "" {
-		return nil // IPC disabled.
-	}
-	listener, handler, err := rpc.StartIPCEndpoint(n.ipcEndpoint, apis)
-	if err != nil {
-		return err
-	}
-	n.ipcListener = listener
-	n.ipcHandler = handler
-	return nil
 }
 
 // stopIPC terminates the IPC RPC endpoint.
@@ -321,24 +251,6 @@ func (n *Node) stopIPC() {
 	}
 }
 
-// startHTTP initializes and starts the HTTP RPC endpoint.
-func (n *Node) startHTTP(endpoint string, apis []rpc.API, modules []string, cors []string, vhosts []string, timeouts rpc.HTTPTimeouts) error {
-	// Short circuit if the HTTP endpoint isn't being exposed
-	if endpoint == "" {
-		return nil
-	}
-	listener, handler, err := rpc.StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
-	if err != nil {
-		return err
-	}
-	// All listeners booted successfully
-	n.httpEndpoint = endpoint
-	n.httpListener = listener
-	n.httpHandler = handler
-
-	return nil
-}
-
 // stopHTTP terminates the HTTP RPC endpoint.
 func (n *Node) stopHTTP() {
 	if n.httpListener != nil {
@@ -350,24 +262,6 @@ func (n *Node) stopHTTP() {
 		n.httpHandler.Stop()
 		n.httpHandler = nil
 	}
-}
-
-// startWS initializes and starts the websocket RPC endpoint.
-func (n *Node) startWS(endpoint string, apis []rpc.API, modules []string, wsOrigins []string, exposeAll bool) error {
-	// Short circuit if the WS endpoint isn't being exposed
-	if endpoint == "" {
-		return nil
-	}
-	listener, handler, err := rpc.StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
-	if err != nil {
-		return err
-	}
-	// All listeners booted successfully
-	n.wsEndpoint = endpoint
-	n.wsListener = listener
-	n.wsHandler = handler
-
-	return nil
 }
 
 // stopWS terminates the websocket RPC endpoint.
@@ -410,13 +304,6 @@ func (n *Node) Stop() error {
 	n.server.Stop()
 	n.services = nil
 	n.server = nil
-
-	// Release instance directory lock.
-	if n.instanceDirLock != nil {
-		if err := n.instanceDirLock.Release(); err != nil {
-		}
-		n.instanceDirLock = nil
-	}
 
 	// unblock n.Wait
 	close(n.stop)
@@ -523,11 +410,6 @@ func (n *Node) InstanceDir() string {
 	return n.config.instanceDir()
 }
 
-// AccountManager retrieves the account manager used by the protocol stack.
-func (n *Node) AccountManager() *accounts.Manager {
-	return n.accman
-}
-
 // IPCEndpoint retrieves the current IPC endpoint used by the protocol stack.
 func (n *Node) IPCEndpoint() string {
 	return n.ipcEndpoint
@@ -564,42 +446,3 @@ func (n *Node) ResolvePath(x string) string {
 	return n.config.ResolvePath(x)
 }
 
-// apis returns the collection of RPC descriptors this node offers.
-/*func (n *Node) apis() []rpc.API {
-	return []rpc.API{
-		{
-			Namespace: "fsn",
-			Version:   "1.0",
-			Service:   NewPublicFsnAPI(n),
-			Public:    true,
-		}, {
-			Namespace: "lilo",
-			Version:   "1.0",
-			Service:   NewPublicFsnAPI(n),
-			Public:    true,
-		}, {
-			Namespace: "admin",
-			Version:   "1.0",
-			Service:   NewPrivateAdminAPI(n),
-		}, {
-			Namespace: "admin",
-			Version:   "1.0",
-			Service:   NewPublicAdminAPI(n),
-			Public:    true,
-		}, {
-			Namespace: "debug",
-			Version:   "1.0",
-			Service:   debug.Handler,
-		}, {
-			Namespace: "debug",
-			Version:   "1.0",
-			Service:   NewPublicDebugAPI(n),
-			Public:    true,
-		}, {
-			Namespace: "web3",
-			Version:   "1.0",
-			Service:   NewPublicWeb3API(n),
-			Public:    true,
-		},
-	}
-}*/

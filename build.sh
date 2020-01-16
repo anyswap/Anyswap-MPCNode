@@ -9,6 +9,7 @@ if [ ! -f "build.sh" ]; then
 
 	export GO111MODULE=on
 	export GOPROXY=https://goproxy.io
+	#export GOPRIVATE=*.mingbai.com
 
 	echo "RUN go mod init"
 	go mod init github.com/fsn-dev/dcrm-walletService 2>/dev/null || true

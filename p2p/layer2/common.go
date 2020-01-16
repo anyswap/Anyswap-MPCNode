@@ -49,6 +49,7 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself bool) int {
 	fmt.Printf("==== p2pBroatcast() ====, group : %v, msg: %v\n", dccpGroup, msg)
 	if dccpGroup == nil {
+		fmt.Printf("==== p2pBroatcast() ====, group : nil, msg: %v error\n", dccpGroup, msg)
 		return 0
 	}
 	var ret int = 0
@@ -78,6 +79,7 @@ func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself boo
 
 func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	if msg == "" {
+		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, msg: nil error\n", node.ID)
 		return errors.New("p2pSendMsg msg is nil")
 	}
 	fmt.Printf("==== p2pSendMsg() ====, send to node: %v, msg\n", node.ID, msg)
@@ -85,7 +87,7 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	emitter.Lock()
 	p := emitter.peers[node.ID]
 	if p == nil {
-		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, peer not exist\n", node)
+		fmt.Printf("==== p2pSendMsg() ====, send to node: %v, peer not exist\n", node.ID)
 		return errors.New("peer not exist")
 	}
 	emitter.Unlock()

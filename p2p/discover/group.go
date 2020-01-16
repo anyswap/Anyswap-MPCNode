@@ -75,6 +75,8 @@ var (
 
 const (
 	SendWaitTime = 10 * time.Minute
+	pingCount = 10
+
 	Dcrmprotocol_type = iota + 1
 	Xprotocol_type
 	Sdkprotocol_type
@@ -1291,9 +1293,13 @@ func GetEnodeStatus(enode string) (string, error) {
 		return "OnLine", nil
 	} else {
 		ipa := &net.UDPAddr{IP: n.IP, Port: int(n.UDP)}
-		errp := Table4group.net.ping(n.ID, ipa)
-		if errp == nil {
-			return "OnLine", nil
+		for i := 0; i < pingCount; i++ {
+			errp := Table4group.net.ping(n.ID, ipa)
+			if errp == nil {
+			        return "OnLine", nil
+			}
+			time.Sleep(time.Duration(500) * time.Millisecond)
+			continue
 		}
 	}
 	return "OffLine", nil

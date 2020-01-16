@@ -1482,17 +1482,20 @@ func SortCurNodeInfo(value []interface{}) []interface{} {
     }
     
     var ids sortableIDSSlice
-    for _,v := range value {
+    for k,v := range value {
 	uid := DoubleHash(string(v.([]byte)),"ALL")
 	ids = append(ids,uid)
+	fmt.Println("===============SortCurNodeInfo,11111,index =%v,uid =%v,len(v)=%v,================",k,uid,len(string(v.([]byte))))
     }
     
     sort.Sort(ids)
 
     var ret = make([]interface{},0)
-    for _,v := range ids {
-	for _,vv := range value {
+    for k,v := range ids {
+	fmt.Println("===============SortCurNodeInfo,ids index=%v,ids uid =%v================",k,v)
+	for kk,vv := range value {
 	    uid := DoubleHash(string(vv.([]byte)),"ALL")
+	    fmt.Println("===============SortCurNodeInfo,22222,index =%v,uid =%v,len(vv)=%v,================",kk,uid,len(string(vv.([]byte))))
 	    if v.Cmp(uid) == 0 {
 		ret = append(ret,vv)
 		break
@@ -1504,10 +1507,14 @@ func SortCurNodeInfo(value []interface{}) []interface{} {
 }
 
 func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
-    //fmt.Println("================call dev.GetCurNodeReqAddrInfo, geter acc =%s===================",geter_acc)
-    
     var ret []string
     _,lmvalue := LdbReqAddr.ListMap()
+    ////for test only
+    for kk,vv := range lmvalue {
+	fmt.Println("================GetCurNodeReqAddrInfo,list map index =%v,len(value) =%v ===================",kk,len(string(vv.([]byte))))
+    }
+    /////////////////
+
     lmvalue = SortCurNodeInfo(lmvalue)
     for _,v := range lmvalue {
 	if v == nil {
@@ -1516,6 +1523,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 
 	vv := v.([]byte)
 	value := string(vv)
+	fmt.Println("================GetCurNodeReqAddrInfo,len(value) =%v ===================",len(value))
 	////
 	ds,err := UnCompress(value)
 	if err != nil {
@@ -1534,6 +1542,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetCurNodeReqAddrInfo,decode err ===================")
 	    continue
 	}
+	fmt.Println("================GetCurNodeReqAddrInfo,ac.Account =%s,ac =%v ===================",ac.Account,ac)
 
 	check := false
 	eaccs := make([]EnAcc,0)
@@ -1613,11 +1622,14 @@ type LockOutCurNodeInfo struct {
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
-   
-    //fmt.Println("================call dev.GetCurNodeLockOutInfo, geter acc =%s===================",geter_acc)
-    
     var ret []string
     _,lmvalue := LdbLockOut.ListMap()
+    ////for test only
+    for kk,vv := range lmvalue {
+	fmt.Println("================GetCurNodeLockOutInfo,list map index =%v,len(value) =%v ===================",kk,len(string(vv.([]byte))))
+    }
+    /////////////////
+
     lmvalue = SortCurNodeInfo(lmvalue)
     for _,v := range lmvalue {
 	if v == nil {
@@ -1626,6 +1638,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 
 	vv := v.([]byte)
 	value := string(vv)
+	fmt.Println("================GetCurNodeLockOutInfo,len(value) =%v ===================",len(value))
 	////
 	ds,err := UnCompress(value)
 	if err != nil {
@@ -1644,6 +1657,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
 	    continue
 	}
+	fmt.Println("================GetCurNodeLockOutInfo,ac.Account =%s,ac =%v ===================",ac.Account,ac)
 
 	nodesigs := make([]string,0)
 	rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()

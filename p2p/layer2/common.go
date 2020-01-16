@@ -95,15 +95,13 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	for {
 		emitter.Lock()
 		p = emitter.peers[node.ID]
-		if p == nil {
-			emitter.Unlock()
-			continue
-		}
-		if err = p2p.Send(p.ws, msgCode, msg); err != nil {
-		} else {
-			emitter.Unlock()
-			fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v, msg: %v, SUCCESS, countSend : %v\n", node.ID, msg, countSendFail)
-			return nil
+		if p != nil {
+			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
+			} else {
+				emitter.Unlock()
+				fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v, msg: %v, SUCCESS, countSend : %v\n", node.ID, msg, countSendFail)
+				return nil
+			}
 		}
 		emitter.Unlock()
 
@@ -382,14 +380,34 @@ func Broadcast(msg string) {
 
 func SendMsgToPeer(enode string, msg string) error {
 	node, _ := discover.ParseNode(enode)
-	p := emitter.peers[node.ID]
-	if p == nil {
-		return errors.New("peerID mismatch!")
+	countSendFail := 0
+	for {
+		emitter.Lock()
+		p := emitter.peers[node.ID]
+		if p != nil {
+			if err := p2p.Send(p.ws, peerMsgCode, msg); err != nil {
+			} else {
+				fmt.Printf("==== SendMsgToPeer() ====, send to node: %v, msg: %v, SUCCESS, countSend : %v\n", node.ID, msg, countSendFail)
+				emitter.Unlock()
+				return nil
+			}
+		}
+		emitter.Unlock()
+
+		countSendFail += 1
+		if countSendFail > 3000 {
+			fmt.Printf("==== SendMsgToPeer() ====, send to node: %v fail\n", node.ID)
+			fmt.Printf("==== SendMsgToPeer() ====, send to node: %v, msg: %v timeout fail\n", node.ID, msg)
+			break
+		}
+		if countSendFail <= 1 || countSendFail % 100 == 0 {
+			fmt.Printf("==== SendMsgToPeer() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
+			fmt.Printf("==== SendMsgToPeer() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
+		}
+		time.Sleep(time.Duration(100) * time.Millisecond)
 	}
-	if err := p2p.Send(p.ws, peerMsgCode, msg); err != nil {
-		return err
-	}
-	return nil
+	retMsg := fmt.Sprintf("==== SendMsgToPeer() ====, send msg: %v to node: %v timeout err", msg, node.ID)
+	return errors.New(retMsg)
 }
 
 func SendToMyself(enode, msg string, p2pType int) error {

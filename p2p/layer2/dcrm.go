@@ -359,14 +359,13 @@ func CheckAddPeer(mode string, enodes []string) error {
 		msg := fmt.Sprintf("args mode and enodes not match")
 		return errors.New(msg)
 	}
-	addpeer := false
-	var nodes []*discover.Node
 	var nodeid map[discover.NodeID]int = make(map[discover.NodeID]int, nodeNum)
 	defer func() {
 		for k := range nodeid {
 			delete(nodeid, k)
 		}
 	}()
+	wg := &sync.WaitGroup{}
 	for _, enode := range enodes {
 		node, err := discover.ParseNode(enode)
 		if err != nil {
@@ -391,23 +390,13 @@ func CheckAddPeer(mode string, enodes []string) error {
 			msg := fmt.Sprintf("CheckAddPeer, enode: %v offline", enode)
 			return errors.New(msg)
 		}
-		p := emitter.peers[node.ID]
-		if p == nil {
-			addpeer = true
-			nodes = append(nodes, node)
-		}
+		go func(node *discover.Node) {
+			wg.Add(1)
+			defer wg.Done()
+			p2pServer.AddPeer(node)
+		}(node)
 	}
-	if addpeer {
-		wg := &sync.WaitGroup{}
-		wg.Add(len(nodes))
-		for _, node := range nodes {
-			go func(node *discover.Node) {
-				defer wg.Done()
-				p2pServer.AddPeer(node)
-			}(node)
-		}
-		wg.Wait()
-	}
+	wg.Wait()
 	return nil
 }
 

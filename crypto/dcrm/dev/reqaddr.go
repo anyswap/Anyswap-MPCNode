@@ -1308,33 +1308,14 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     return true
 }
 
-func ECDSAGenKeyRoundOne(msgprex string,ch chan interface{},w *RpcReqWorker) (*big.Int,*ec2.PolyStruct2, *ec2.PolyGStruct2,*ec2.Commitment,*ec2.PublicKey, *ec2.PrivateKey,bool) {
+func DECDSAGenKeyRoundOne(msgprex string,ch chan interface{},w *RpcReqWorker) (*big.Int,*ec2.PolyStruct2, *ec2.PolyGStruct2,*ec2.Commitment,*ec2.PublicKey, *ec2.PrivateKey,bool) {
     if w == nil || msgprex == "" {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("no find worker.")}
 	ch <- res
 	return nil,nil,nil,nil,nil,nil,false
     }
 
-    //1. generate their own "partial" private key secretly
-    u1 := GetRandomIntFromZn(secp256k1.S256().N)
-
-    //
-    u1Poly, u1PolyG, _ := ec2.Vss2Init(u1, ThresHold)
-
-    // 2. calculate "partial" public key, make "pritial" public key commiment to get (C,D)
-    //also commit vss
-    u1Gx, u1Gy := secp256k1.S256().ScalarBaseMult(u1.Bytes())
-    u1Secrets := make([]*big.Int, 0)
-    u1Secrets = append(u1Secrets, u1Gx)
-    u1Secrets = append(u1Secrets, u1Gy)
-    for i := 1; i < len(u1PolyG.PolyG); i++ {
-	    u1Secrets = append(u1Secrets, u1PolyG.PolyG[i][0])
-	    u1Secrets = append(u1Secrets, u1PolyG.PolyG[i][1])
-    }
-    commitU1G := new(ec2.Commitment).Commit(u1Secrets...)
-
-    // 3. generate their own paillier public key and private key
-    u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
+    u1,u1Poly,u1PolyG,commitU1G,u1PaillierPk, u1PaillierSk := DECDSA_Key_RoundOne(ThresHold,PaillierKeyLength)
     if u1PaillierPk == nil || u1PaillierSk == nil {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("gen paillier key pair fail")}
 	ch <- res
@@ -1368,7 +1349,7 @@ func ECDSAGenKeyRoundOne(msgprex string,ch chan interface{},w *RpcReqWorker) (*b
     return u1,u1Poly,u1PolyG,commitU1G,u1PaillierPk, u1PaillierSk,true
 }
 
-func ECDSAGenKeyRoundTwo(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,u1Poly *ec2.PolyStruct2,ids sortableIDSSlice) ([]*ec2.ShareStruct2,bool) {
+func DECDSAGenKeyRoundTwo(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,u1Poly *ec2.PolyStruct2,ids sortableIDSSlice) ([]*ec2.ShareStruct2,bool) {
     if w == nil || cointype == "" || msgprex == "" || u1Poly == nil || len(ids) == 0 {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1379,7 +1360,7 @@ func ECDSAGenKeyRoundTwo(msgprex string,cointype string,ch chan interface{},w *R
     // [notes]
     // all nodes has their own id, in practival, we can take it as double hash of public key of fusion
 
-    u1Shares,err := u1Poly.Vss2(ids)
+    u1Shares,err := DECDSA_Key_Vss(u1Poly,ids)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Err:err}
 	ch <- res
@@ -1407,8 +1388,8 @@ func ECDSAGenKeyRoundTwo(msgprex string,cointype string,ch chan interface{},w *R
 	}
 
 	for _,v := range u1Shares {
-	    uid := ec2.GetSharesId(v)
-	    if uid.Cmp(id) == 0 {
+	    uid := DECDSA_Key_GetSharesId(v)
+	    if uid != nil && uid.Cmp(id) == 0 {
 		mp := []string{msgprex,cur_enode}
 		enode := strings.Join(mp,"-")
 		s0 := "SHARE1"
@@ -1424,7 +1405,7 @@ func ECDSAGenKeyRoundTwo(msgprex string,cointype string,ch chan interface{},w *R
     return u1Shares,true
 }
 
-func ECDSAGenKeyRoundThree(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,u1PolyG *ec2.PolyGStruct2,commitU1G *ec2.Commitment,ids sortableIDSSlice) bool {
+func DECDSAGenKeyRoundThree(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,u1PolyG *ec2.PolyGStruct2,commitU1G *ec2.Commitment,ids sortableIDSSlice) bool {
     if w == nil || cointype == "" || msgprex == "" || u1PolyG == nil || len(ids) == 0 || commitU1G == nil {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1473,7 +1454,7 @@ func ECDSAGenKeyRoundThree(msgprex string,cointype string,ch chan interface{},w 
     return true
 }
 
-func ECDSAGenKeyVerifyShareData(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,u1PolyG *ec2.PolyGStruct2,u1Shares []*ec2.ShareStruct2,ids sortableIDSSlice) (map[string]*ec2.ShareStruct2,[]string,bool) {
+func DECDSAGenKeyVerifyShareData(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,u1PolyG *ec2.PolyGStruct2,u1Shares []*ec2.ShareStruct2,ids sortableIDSSlice) (map[string]*ec2.ShareStruct2,[]string,bool) {
     if w == nil || cointype == "" || msgprex == "" || u1PolyG == nil || len(ids) == 0 {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1522,7 +1503,11 @@ func ECDSAGenKeyVerifyShareData(msgprex string,cointype string,ch chan interface
     }
 
     for _,v := range u1Shares {
-	uid := ec2.GetSharesId(v)
+	uid := DECDSA_Key_GetSharesId(v)
+	if uid == nil {
+	    continue
+	}
+
 	enodes := GetEnodesByUid(uid,cointype,w.groupid)
 	if IsCurNode(enodes,cur_enode) {
 	    sstruct[cur_enode] = v 
@@ -1608,7 +1593,7 @@ func ECDSAGenKeyVerifyShareData(msgprex string,cointype string,ch chan interface
     return sstruct,ds,true
 }
 
-func ECDSAGenKeyCalcPubKey(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,udecom map[string]*ec2.Commitment,ids sortableIDSSlice) (map[string][]*big.Int,bool) {
+func DECDSAGenKeyCalcPubKey(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,udecom map[string]*ec2.Commitment,ids sortableIDSSlice) (map[string][]*big.Int,bool) {
     if w == nil || cointype == "" || msgprex == "" || len(udecom) == 0 || len(ids) == 0 {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1650,7 +1635,7 @@ func ECDSAGenKeyCalcPubKey(msgprex string,cointype string,ch chan interface{},w 
     return ug,true
 }
  
-func ECDSAGenKeyCalcPrivKey(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,sstruct map[string]*ec2.ShareStruct2,ids sortableIDSSlice) (*big.Int,bool) {
+func DECDSAGenKeyCalcPrivKey(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,sstruct map[string]*ec2.ShareStruct2,ids sortableIDSSlice) (*big.Int,bool) {
     if w == nil || cointype == "" || msgprex == "" || len(sstruct) == 0 || len(ids) == 0 {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1680,7 +1665,7 @@ func ECDSAGenKeyCalcPrivKey(msgprex string,cointype string,ch chan interface{},w
     return skU1,true
 }
 
-func ECDSAGenKeyVerifyCommitment(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,ds []string,commitU1G *ec2.Commitment,ids sortableIDSSlice) ([]string,map[string]*ec2.Commitment,bool) {
+func DECDSAGenKeyVerifyCommitment(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,ds []string,commitU1G *ec2.Commitment,ids sortableIDSSlice) ([]string,map[string]*ec2.Commitment,bool) {
     if w == nil || cointype == "" || msgprex == "" || len(ds) == 0 || len(ids) == 0 || commitU1G == nil {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1769,7 +1754,7 @@ func ECDSAGenKeyVerifyCommitment(msgprex string,cointype string,ch chan interfac
     return cs,udecom,true
 }
 
-func ECDSAGenKeyRoundFour(msgprex string,ch chan interface{},w *RpcReqWorker) (*ec2.NtildeH1H2,bool) {
+func DECDSAGenKeyRoundFour(msgprex string,ch chan interface{},w *RpcReqWorker) (*ec2.NtildeH1H2,bool) {
     if w == nil || msgprex == "" {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1810,7 +1795,7 @@ func ECDSAGenKeyRoundFour(msgprex string,ch chan interface{},w *RpcReqWorker) (*
     return u1NtildeH1H2,true
 }
 
-func ECDSAGenKeyRoundFive(msgprex string,ch chan interface{},w *RpcReqWorker,u1 *big.Int) bool {
+func DECDSAGenKeyRoundFive(msgprex string,ch chan interface{},w *RpcReqWorker,u1 *big.Int) bool {
     if w == nil || msgprex == "" {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1842,7 +1827,7 @@ func ECDSAGenKeyRoundFive(msgprex string,ch chan interface{},w *RpcReqWorker,u1 
     return true
 }
 
-func ECDSAGenKeyVerifyZKU(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,ids sortableIDSSlice,ug map[string][]*big.Int) bool {
+func DECDSAGenKeyVerifyZKU(msgprex string,cointype string,ch chan interface{},w *RpcReqWorker,ids sortableIDSSlice,ug map[string][]*big.Int) bool {
     if w == nil || msgprex == "" || cointype == "" || len(ids) == 0 || len(ug) == 0 {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1890,7 +1875,7 @@ func ECDSAGenKeyVerifyZKU(msgprex string,cointype string,ch chan interface{},w *
     return true
 }
 
-func ECDSAGenKeySaveData(cointype string,ids sortableIDSSlice,w *RpcReqWorker,ch chan interface{},skU1 *big.Int,u1PaillierPk *ec2.PublicKey, u1PaillierSk *ec2.PrivateKey,cs []string,u1NtildeH1H2 *ec2.NtildeH1H2) bool {
+func DECDSAGenKeySaveData(cointype string,ids sortableIDSSlice,w *RpcReqWorker,ch chan interface{},skU1 *big.Int,u1PaillierPk *ec2.PublicKey, u1PaillierSk *ec2.PrivateKey,cs []string,u1NtildeH1H2 *ec2.NtildeH1H2) bool {
     if cointype == "" || len(ids) == 0 || w == nil || skU1 == nil || u1PaillierPk == nil || u1PaillierSk == nil || len(cs) == 0 || u1NtildeH1H2 == nil {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -2003,64 +1988,64 @@ func KeyGenerate_DECDSA(msgprex string,ch chan interface{},id int,cointype strin
     
     //*******************!!!Distributed ECDSA Start!!!**********************************
 
-    u1,u1Poly, u1PolyG,commitU1G,u1PaillierPk, u1PaillierSk,status := ECDSAGenKeyRoundOne(msgprex,ch,w)
+    u1,u1Poly, u1PolyG,commitU1G,u1PaillierPk, u1PaillierSk,status := DECDSAGenKeyRoundOne(msgprex,ch,w)
     if status != true {
 	return status
     }
     fmt.Println("=================generate key,round one finish===================")
 
-    u1Shares,status := ECDSAGenKeyRoundTwo(msgprex,cointype,ch,w,u1Poly,ids)
+    u1Shares,status := DECDSAGenKeyRoundTwo(msgprex,cointype,ch,w,u1Poly,ids)
     if status != true {
 	return status
     }
     fmt.Println("=================generate key,round two finish===================")
 
-    if ECDSAGenKeyRoundThree(msgprex,cointype,ch,w,u1PolyG,commitU1G,ids) == false {
+    if DECDSAGenKeyRoundThree(msgprex,cointype,ch,w,u1PolyG,commitU1G,ids) == false {
 	return false
     }
     fmt.Println("=================generate key,round three finish===================")
 
-    sstruct,ds,status := ECDSAGenKeyVerifyShareData(msgprex,cointype,ch,w,u1PolyG,u1Shares,ids)
+    sstruct,ds,status := DECDSAGenKeyVerifyShareData(msgprex,cointype,ch,w,u1PolyG,u1Shares,ids)
     if status != true {
 	return status
     }
     fmt.Println("=================generate key,verify share data finish===================")
 
-    cs,udecom,status := ECDSAGenKeyVerifyCommitment(msgprex,cointype,ch,w,ds,commitU1G,ids)
+    cs,udecom,status := DECDSAGenKeyVerifyCommitment(msgprex,cointype,ch,w,ds,commitU1G,ids)
     if status != true {
 	return false
     }
     fmt.Println("=================generate key,verify commitment finish===================")
 
-    ug,status := ECDSAGenKeyCalcPubKey(msgprex,cointype,ch,w,udecom,ids)
+    ug,status := DECDSAGenKeyCalcPubKey(msgprex,cointype,ch,w,udecom,ids)
     if status != true {
 	return false
     }
     fmt.Println("=================generate key,calc pubkey finish===================")
 
-    skU1,status := ECDSAGenKeyCalcPrivKey(msgprex,cointype,ch,w,sstruct,ids)
+    skU1,status := DECDSAGenKeyCalcPrivKey(msgprex,cointype,ch,w,sstruct,ids)
     if status != true {
 	return false
     }
     fmt.Println("=================generate key,calc privkey finish===================")
 
-    u1NtildeH1H2,status := ECDSAGenKeyRoundFour(msgprex,ch,w)
+    u1NtildeH1H2,status := DECDSAGenKeyRoundFour(msgprex,ch,w)
     if status != true {
 	return false
     }
     fmt.Println("=================generate key,round four finish===================")
 
-    if ECDSAGenKeyRoundFive(msgprex,ch,w,u1) != true {
+    if DECDSAGenKeyRoundFive(msgprex,ch,w,u1) != true {
 	return false
     }
     fmt.Println("=================generate key,round five finish===================")
 
-    if ECDSAGenKeyVerifyZKU(msgprex,cointype,ch,w,ids,ug) != true {
+    if DECDSAGenKeyVerifyZKU(msgprex,cointype,ch,w,ids,ug) != true {
 	return false
     }
     fmt.Println("=================generate key,verify zk of u1 finish===================")
 
-    if ECDSAGenKeySaveData(cointype,ids,w,ch,skU1,u1PaillierPk,u1PaillierSk,cs,u1NtildeH1H2) != true {
+    if DECDSAGenKeySaveData(cointype,ids,w,ch,skU1,u1PaillierPk,u1PaillierSk,cs,u1NtildeH1H2) != true {
 	return false
     }
     fmt.Println("=================generate key,save data finish===================")

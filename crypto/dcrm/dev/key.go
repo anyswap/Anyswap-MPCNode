@@ -38,65 +38,47 @@ import (
 )
 
 ////////////////////////////////////
-func DECDSA_Key_RoundOne() (*big.Int,*ec2.Commitment,*ec2.PublicKey, *ec2.PrivateKey) {
+
+func DECDSA_Key_RoundOne(ThresHold int,PaillierKeyLength int) (*big.Int,*ec2.PolyStruct2, *ec2.PolyGStruct2,*ec2.Commitment,*ec2.PublicKey, *ec2.PrivateKey) {
     //1. generate their own "partial" private key secretly
     u1 := GetRandomIntFromZn(secp256k1.S256().N)
 
+    //
+    u1Poly, u1PolyG, _ := ec2.Vss2Init(u1, ThresHold)
+
     // 2. calculate "partial" public key, make "pritial" public key commiment to get (C,D)
+    //also commit vss
     u1Gx, u1Gy := secp256k1.S256().ScalarBaseMult(u1.Bytes())
-    commitU1G := new(ec2.Commitment).Commit(u1Gx, u1Gy)
+    u1Secrets := make([]*big.Int, 0)
+    u1Secrets = append(u1Secrets, u1Gx)
+    u1Secrets = append(u1Secrets, u1Gy)
+    for i := 1; i < len(u1PolyG.PolyG); i++ {
+	    u1Secrets = append(u1Secrets, u1PolyG.PolyG[i][0])
+	    u1Secrets = append(u1Secrets, u1PolyG.PolyG[i][1])
+    }
+    commitU1G := new(ec2.Commitment).Commit(u1Secrets...)
 
     // 3. generate their own paillier public key and private key
     u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
-    return u1,commitU1G,u1PaillierPk, u1PaillierSk
+
+    return u1,u1Poly,u1PolyG,commitU1G,u1PaillierPk, u1PaillierSk
 }
 
-func DECDSA_Key_Vss(u1 *big.Int,ids []*big.Int,ThresHold int,NodeCnt int) (*ec2.PolyGStruct, *ec2.PolyStruct, []*ec2.ShareStruct, error) {
-    u1PolyG, u1Poly, u1Shares, err := ec2.Vss(u1, ids, ThresHold, NodeCnt)
-    return u1PolyG,u1Poly,u1Shares,err
-}
-
-func DECDSA_Key_GetShareId(v *ec2.ShareStruct2) *big.Int {
-    uid := ec2.GetSharesId(v)
-    return uid
-}
-
-func DECDSA_Key_VSS_Verify(share *ec2.ShareStruct,polyG *ec2.PolyGStruct) bool {
-    if share == nil || polyG == nil {
-	return false
-    }
-
-    return share.Verify(polyG)
-}
-
-func DECDSA_Key_Commitment_Verify(com *ec2.Commitment) bool {
-    if com == nil {
-	return false
-    }
-
-    return com.Verify()
-}
-
-func DECDSA_Key_Commitment_DeCommit(com *ec2.Commitment) (bool,[]*big.Int) {
-    if com == nil {
-	return false,nil
-    }
-
-    return com.DeCommit()
-}
-
-func DECDSA_Key_ZK(u1PaillierSk *ec2.PrivateKey,u1 *big.Int) (*ec2.ZkFactProof,*ec2.ZkUProof) {
-    if u1PaillierSk == nil || u1 == nil {
+func DECDSA_Key_Vss(u1Poly *ec2.PolyStruct2,ids sortableIDSSlice) ([]*ec2.ShareStruct2,error) {
+    if u1Poly == nil {
 	return nil,nil
     }
-    
-    // zk of paillier key
-    u1zkFactProof := u1PaillierSk.ZkFactProve()
-    // zk of u
-    //u1zkUProof := schnorrZK.ZkUProve(u1)
-    u1zkUProof := ec2.ZkUProve(u1)
 
-    return u1zkFactProof,u1zkUProof
+    u1Shares,err := u1Poly.Vss2(ids)
+    return u1Shares,err
+}
+
+func DECDSA_Key_GetSharesId(v *ec2.ShareStruct2) *big.Int {
+    if v == nil {
+	return nil
+    }
+
+    return ec2.GetSharesId(v)
 }
 
 ////////////////////////////////////

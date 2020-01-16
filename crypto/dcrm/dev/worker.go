@@ -2239,6 +2239,12 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	                   return
                        case <-agreeWaitTimeOut.C:
                            fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
+			   //bug: if self not accept and timeout
+			    AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","Timeout","","get other node accept lockout result timeout","get other node accept lockout result timeout","",wid)
+			    reply = false
+			    tip = "get other node accept lockout result timeout"
+			    //
+
                            timeout <- true
                            return
                        }
@@ -2541,6 +2547,12 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	                   return
                        case <-agreeWaitTimeOut.C:
                            fmt.Printf("==== (self *RecvMsg) Run() ====, timerout %v\n", agreeWaitTime)
+			   //bug: if self not accept and timeout
+			    AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Timeout","","get other node accept req addr result timeout","get other node accept req addr result timeout","",wid)
+			    tip = "get other node accept req addr result timeout"
+			    reply = false
+			    //
+
                            timeout <- true
                            return
                        }

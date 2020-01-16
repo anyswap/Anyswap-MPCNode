@@ -3853,9 +3853,9 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "Dcrm-WalletService")
+			return filepath.Join(home, "Library", "dcrm-walletservice")
 		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "Dcrm-WalletService")
+			return filepath.Join(home, "AppData", "Roaming", "dcrm-walletservice")
 		} else {
 			return filepath.Join(home, ".dcrm-walletservice")
 		}

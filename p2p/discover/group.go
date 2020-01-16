@@ -474,7 +474,7 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
 		Sequence: req.Sequence,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	})
-	ss := fmt.Sprintf("%v-%v", fromID, req.Sequence)
+	ss := fmt.Sprintf("get-%v-%v", fromID, req.Sequence)
 	sequenceLock.Lock()
 	if _, ok := sequenceDoneRecv.Load(ss); ok {
 		fmt.Printf("\n==== (req *getdcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
@@ -533,7 +533,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        //if expired(req.Expiration) {
        //        return errExpired
        //}
-	fmt.Printf("send ack ==== (req *getdcrmmessage) handle() ====, to: %v\n", from)
+	fmt.Printf("send ack ==== (req *dcrmmessage) handle() ====, to: %v\n", from)
 	t.send(from, byte(Ack_Packet), &Ack{
 		Sequence: req.Sequence,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
@@ -541,7 +541,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
 	ss := fmt.Sprintf("%v-%v", fromID, req.Sequence)
 	sequenceLock.Lock()
 	if _, ok := sequenceDoneRecv.Load(ss); ok {
-		fmt.Printf("==== (req *getdcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
+		fmt.Printf("==== (req *dcrmmessage) handle() ====, from: %v, req.Sequence: %v exist\n", from, req.Sequence)
 		sequenceLock.Unlock()
 		return nil
 	}

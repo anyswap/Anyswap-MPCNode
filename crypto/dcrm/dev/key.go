@@ -97,6 +97,14 @@ func DECDSA_Key_Commitment_Verify(com *ec2.Commitment) bool {
     return com.Verify()
 }
 
+func DECDSA_Key_DeCommit(com *ec2.Commitment) (bool, []*big.Int) {
+    if com == nil {
+	return false,nil
+    }
+
+    return com.DeCommit()
+}
+
 func DECDSA_Key_GenerateNtildeH1H2(length int) *ec2.NtildeH1H2 {
     return ec2.GenerateNtildeH1H2(length)
 }

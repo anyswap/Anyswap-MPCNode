@@ -25,7 +25,6 @@ import (
     "time"
     "sort"
     "bytes"
-    "crypto/rand"
     "strconv"
     "strings"
     "crypto/sha512"
@@ -629,14 +628,7 @@ func ECDSASignRoundOne(msgprex string,w *RpcReqWorker,idSign sortableIDSSlice,ch
 	return nil,nil,nil
     }
 
-    // 2. select k and gamma randomly
-    u1K := GetRandomIntFromZn(secp256k1.S256().N)
-    u1Gamma := GetRandomIntFromZn(secp256k1.S256().N)
-    
-    // 3. make gamma*G commitment to get (C, D)
-    u1GammaGx,u1GammaGy := secp256k1.S256().ScalarBaseMult(u1Gamma.Bytes())
-    commitU1GammaG := new(ec2.Commitment).Commit(u1GammaGx, u1GammaGy)
-
+    u1K,u1Gamma,commitU1GammaG := DECDSA_Sign_RoundOne()
     // 4. Broadcast
     //	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
     mp := []string{msgprex,cur_enode}
@@ -682,7 +674,7 @@ func ECDSASignPaillierEncrypt(cointype string,save string,w *RpcReqWorker,idSign
 		return nil,nil,nil
 	    }
 
-	    u1KCipher,u1R,_ := u1PaillierPk.Encrypt(u1K)
+	    u1KCipher,u1R,_ := DECDSA_Sign_Paillier_Encrypt(u1PaillierPk,u1K)
 	    ukc[en[0]] = u1KCipher
 	    ukc2[en[0]] = u1R
 	    ukc3[en[0]] = u1PaillierPk
@@ -724,10 +716,10 @@ func ECDSASignRoundTwo(msgprex string,cointype string,save string,w *RpcReqWorke
 
 	zkfactproof[en[0]] = u1zkFactProof
 	if IsCurNode(enodes,cur_enode) {
-	    u1u1MtAZK1Proof := ec2.MtAZK1Prove_nhh(u1K,ukc2[en[0]], ukc3[en[0]], u1zkFactProof)
+	    u1u1MtAZK1Proof := DECDSA_Sign_MtAZK1Prove(u1K,ukc2[en[0]], ukc3[en[0]], u1zkFactProof)
 	    zk1proof[en[0]] = u1u1MtAZK1Proof
 	} else {
-	    u1u1MtAZK1Proof := ec2.MtAZK1Prove_nhh(u1K,ukc2[cur_enode], ukc3[cur_enode], u1zkFactProof)
+	    u1u1MtAZK1Proof := DECDSA_Sign_MtAZK1Prove(u1K,ukc2[cur_enode], ukc3[cur_enode], u1zkFactProof)
 	    mp := []string{msgprex,cur_enode}
 	    enode := strings.Join(mp,"-")
 	    s0 := "MTAZK1PROOF"
@@ -888,7 +880,7 @@ func ECDSASignVerifyZKNtilde(msgprex string,cointype string,save string,w *RpcRe
 	    }
 
 	    //delete zkfactor,add ntilde h1 h2
-	    u1rlt1 := zk1proof[cur_enode].MtAZK1Verify_nhh(ukc[cur_enode],ukc3[cur_enode],zkfactproof[cur_enode])
+	    u1rlt1 := DECDSA_Sign_MtAZK1Verify(zk1proof[cur_enode],ukc[cur_enode],ukc3[cur_enode],zkfactproof[cur_enode])
 	    if !u1rlt1 {
 		fmt.Println("============sign,111111111,verify mtazk1proof fail===================")
 		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
@@ -937,7 +929,7 @@ func ECDSASignVerifyZKNtilde(msgprex string,cointype string,save string,w *RpcRe
 		return false
 	    }
 
-	    u1rlt1 := zk1proof[en[0]].MtAZK1Verify_nhh(ukc[en[0]],u1PaillierPk,zkfactproof[cur_enode])
+	    u1rlt1 := DECDSA_Sign_MtAZK1Verify(zk1proof[en[0]],ukc[en[0]],u1PaillierPk,zkfactproof[cur_enode])
 	    if !u1rlt1 {
 		fmt.Println("============sign,333333333,verify mtazk1proof fail===================")
 		res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMTAZK1PROOFFail)}
@@ -948,40 +940,6 @@ func ECDSASignVerifyZKNtilde(msgprex string,cointype string,save string,w *RpcRe
     }
 
     return true
-}
-
-func GetRandomBetaV(PaillierKeyLength int) ([]*big.Int,[]*big.Int,[]*big.Int,[]*big.Int) {
-    // 2.6
-    // select betaStar randomly, and calculate beta, MtA(k, gamma)
-    // select betaStar randomly, and calculate beta, MtA(k, w)
-   
-    // [Notes]
-    // 1. betaStar is in [1, paillier.N - secp256k1.N^2]
-    NSalt := new(big.Int).Lsh(big.NewInt(1), uint(PaillierKeyLength-PaillierKeyLength/10))
-    NSubN2 := new(big.Int).Mul(secp256k1.S256().N, secp256k1.S256().N)
-    NSubN2 = new(big.Int).Sub(NSalt, NSubN2)
-    // 2. MinusOne
-    MinusOne := big.NewInt(-1)
-    
-    betaU1Star := make([]*big.Int,ThresHold)
-    betaU1 := make([]*big.Int,ThresHold)
-    for i:=0;i<ThresHold;i++ {
-	beta1U1Star := GetRandomIntFromZn(NSubN2)
-	beta1U1 := new(big.Int).Mul(MinusOne, beta1U1Star)
-	betaU1Star[i] = beta1U1Star
-	betaU1[i] = beta1U1
-    }
-
-    vU1Star := make([]*big.Int,ThresHold)
-    vU1 := make([]*big.Int,ThresHold)
-    for i:=0;i<ThresHold;i++ {
-	v1U1Star := GetRandomIntFromZn(NSubN2)
-	v1U1 := new(big.Int).Mul(MinusOne, v1U1Star)
-	vU1Star[i] = v1U1Star
-	vU1[i] = v1U1
-    }
-
-    return betaU1Star,betaU1,vU1Star,vU1
 }
 
 func ECDSASignRoundFour(msgprex string,cointype string,save string,w *RpcReqWorker,idSign sortableIDSSlice,ukc map[string]*big.Int,ukc3 map[string]*ec2.PublicKey,zkfactproof map[string]*ec2.NtildeH1H2,u1Gamma *big.Int,w1 *big.Int,betaU1Star []*big.Int,vU1Star []*big.Int,ch chan interface{}) (map[string]*big.Int,map[string]*ec2.MtAZK2Proof_nhh,map[string]*big.Int,map[string]*ec2.MtAZK3Proof_nhh,bool) {
@@ -1006,17 +964,16 @@ func ECDSASignRoundFour(msgprex string,cointype string,save string,w *RpcReqWork
 		return nil,nil,nil,nil,false
 	    }
 
-	    u1KGamma1Cipher := u1PaillierPk.HomoMul(ukc[en[0]], u1Gamma)
+	    u1KGamma1Cipher := DECDSA_Sign_Paillier_HomoMul(u1PaillierPk,ukc[en[0]], u1Gamma)
 	    if betaU1Star[k] == nil {
 		res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get betaU1Star fail")}
 		ch <- res
 		return nil,nil,nil,nil,false
 	    }
 
-	    beta1U1StarCipher, u1BetaR1,_ := u1PaillierPk.Encrypt(betaU1Star[k])
-	    u1KGamma1Cipher = u1PaillierPk.HomoAdd(u1KGamma1Cipher, beta1U1StarCipher) // send to u1
+	    beta1U1StarCipher, u1BetaR1,_ := DECDSA_Sign_Paillier_Encrypt(u1PaillierPk,betaU1Star[k])
+	    u1KGamma1Cipher = DECDSA_Sign_Paillier_HomoAdd(u1PaillierPk,u1KGamma1Cipher,beta1U1StarCipher) // send to u1
 	    
-	    //delete zkfactor,add ntilde h1 h2
 	    u1u1MtAZK2Proof := ec2.MtAZK2Prove_nhh(u1Gamma, betaU1Star[k], u1BetaR1, ukc[cur_enode],ukc3[cur_enode], zkfactproof[cur_enode])
 	    mkg[en[0]] = u1KGamma1Cipher
 	    mkg_mtazk2[en[0]] = u1u1MtAZK2Proof
@@ -1030,16 +987,16 @@ func ECDSASignRoundFour(msgprex string,cointype string,save string,w *RpcReqWork
 	    return nil,nil,nil,nil,false
 	}
 
-	u2KGamma1Cipher := u2PaillierPk.HomoMul(ukc[en[0]], u1Gamma)
+	u2KGamma1Cipher := DECDSA_Sign_Paillier_HomoMul(u2PaillierPk,ukc[en[0]], u1Gamma)
 	if betaU1Star[k] == nil {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get betaU1Star fail")}
 	    ch <- res
 	    return nil,nil,nil,nil,false
 	}
 
-	beta2U1StarCipher, u2BetaR1,_ := u2PaillierPk.Encrypt(betaU1Star[k])
-	u2KGamma1Cipher = u2PaillierPk.HomoAdd(u2KGamma1Cipher, beta2U1StarCipher) // send to u2
-	u2u1MtAZK2Proof := ec2.MtAZK2Prove_nhh(u1Gamma, betaU1Star[k], u2BetaR1, ukc[en[0]],u2PaillierPk,zkfactproof[cur_enode])
+	beta2U1StarCipher, u2BetaR1,_ := DECDSA_Sign_Paillier_Encrypt(u2PaillierPk,betaU1Star[k])
+	u2KGamma1Cipher = DECDSA_Sign_Paillier_HomoAdd(u2PaillierPk,u2KGamma1Cipher, beta2U1StarCipher) // send to u2
+	u2u1MtAZK2Proof := DECDSA_Sign_MtAZK2Prove(u1Gamma, betaU1Star[k], u2BetaR1, ukc[en[0]],u2PaillierPk,zkfactproof[cur_enode])
 	mp := []string{msgprex,cur_enode}
 	enode := strings.Join(mp,"-")
 	s0 := "MKG"
@@ -1075,16 +1032,16 @@ func ECDSASignRoundFour(msgprex string,cointype string,save string,w *RpcReqWork
 		return nil,nil,nil,nil,false
 	    }
 
-	    u1Kw1Cipher := u1PaillierPk.HomoMul(ukc[en[0]], w1)
+	    u1Kw1Cipher := DECDSA_Sign_Paillier_HomoMul(u1PaillierPk,ukc[en[0]], w1)
 	    if vU1Star[k] == nil {
 		res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get vU1Star fail")}
 		ch <- res
 		return nil,nil,nil,nil,false
 	    }
 
-	    v1U1StarCipher, u1VR1,_ := u1PaillierPk.Encrypt(vU1Star[k])
-	    u1Kw1Cipher = u1PaillierPk.HomoAdd(u1Kw1Cipher, v1U1StarCipher) // send to u1
-	    u1u1MtAZK2Proof2 := ec2.MtAZK3Prove_nhh(w1, vU1Star[k], u1VR1, ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode]) //Fusion_dcrm question 8
+	    v1U1StarCipher, u1VR1,_ := DECDSA_Sign_Paillier_Encrypt(u1PaillierPk,vU1Star[k])
+	    u1Kw1Cipher = DECDSA_Sign_Paillier_HomoAdd(u1PaillierPk,u1Kw1Cipher, v1U1StarCipher) // send to u1
+	    u1u1MtAZK2Proof2 := DECDSA_Sign_MtAZK3Prove(w1, vU1Star[k], u1VR1, ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode]) //Fusion_dcrm question 8
 	    mkw[en[0]] = u1Kw1Cipher
 	    mkw_mtazk2[en[0]] = u1u1MtAZK2Proof2
 	    continue
@@ -1097,16 +1054,16 @@ func ECDSASignRoundFour(msgprex string,cointype string,save string,w *RpcReqWork
 	    return nil,nil,nil,nil,false
 	}
 
-	u2Kw1Cipher := u2PaillierPk.HomoMul(ukc[en[0]], w1)
+	u2Kw1Cipher := DECDSA_Sign_Paillier_HomoMul(u2PaillierPk,ukc[en[0]], w1)
 	if vU1Star[k] == nil {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get vU1Star fail")}
 	    ch <- res
 	    return nil,nil,nil,nil,false
 	}
 
-	v2U1StarCipher, u2VR1,_ := u2PaillierPk.Encrypt(vU1Star[k])
-	u2Kw1Cipher = u2PaillierPk.HomoAdd(u2Kw1Cipher,v2U1StarCipher) // send to u2
-	u2u1MtAZK2Proof2 := ec2.MtAZK3Prove_nhh(w1, vU1Star[k], u2VR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
+	v2U1StarCipher, u2VR1,_ := DECDSA_Sign_Paillier_Encrypt(u2PaillierPk,vU1Star[k])
+	u2Kw1Cipher = DECDSA_Sign_Paillier_HomoAdd(u2PaillierPk,u2Kw1Cipher,v2U1StarCipher) // send to u2
+	u2u1MtAZK2Proof2 := DECDSA_Sign_MtAZK3Prove(w1, vU1Star[k], u2VR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
 
 	mp := []string{msgprex,cur_enode}
 	enode := strings.Join(mp,"-")
@@ -1303,8 +1260,7 @@ func ECDSASignVerifyZKGammaW(cointype string,save string,w *RpcReqWorker,idSign 
 	}
 
 	//
-	//delete zkfactor,add ntilde h1 h2
-	rlt111 := mkg_mtazk2[en[0]].MtAZK2Verify_nhh(ukc[cur_enode], mkg[en[0]],ukc3[cur_enode], zkfactproof[en[0]])
+	rlt111 := DECDSA_Sign_MtAZK2Verify(mkg_mtazk2[en[0]],ukc[cur_enode], mkg[en[0]],ukc3[cur_enode], zkfactproof[en[0]])
 	if !rlt111 {
 	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyMKGFail)}
 	    ch <- res
@@ -1317,7 +1273,7 @@ func ECDSASignVerifyZKGammaW(cointype string,save string,w *RpcReqWorker,idSign 
 	    return false
 	}
 
-	rlt112 := mkw_mtazk2[en[0]].MtAZK3Verify_nhh(ukc[cur_enode], mkw[en[0]], ukc3[cur_enode], zkfactproof[en[0]])
+	rlt112 := DECDSA_Sign_MtAZK3Verify(mkw_mtazk2[en[0]],ukc[cur_enode], mkw[en[0]], ukc3[cur_enode], zkfactproof[en[0]])
 	if !rlt112 {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("mkw mtazk2 verify fail.")}
 	    ch <- res
@@ -1383,7 +1339,7 @@ func DecryptCkGamma(cointype string,idSign sortableIDSSlice,w *RpcReqWorker,u1Pa
 
 	////////
 	en := strings.Split(string(enodes[8:]),"@")
-	alpha1U1, _ := u1PaillierSk.Decrypt(mkg[en[0]])
+	alpha1U1, _ := DECDSA_Sign_Paillier_Decrypt(u1PaillierSk,mkg[en[0]])
 	alpha1[k] = alpha1U1
     }
 
@@ -1412,7 +1368,7 @@ func DecryptCkW(cointype string,idSign sortableIDSSlice,w *RpcReqWorker,u1Pailli
 
 	////////
 	en := strings.Split(string(enodes[8:]),"@")
-	u1U1, _ := u1PaillierSk.Decrypt(mkw[en[0]])
+	u1U1, _ := DECDSA_Sign_Paillier_Decrypt(u1PaillierSk,mkw[en[0]])
 	uu1[k] = u1U1
     }
 
@@ -1610,7 +1566,7 @@ func ECDSASignRoundSix(msgprex string,u1Gamma *big.Int,commitU1GammaG *ec2.Commi
 	return nil
     }
 
-    u1GammaZKProof := ec2.ZkUProve(u1Gamma)
+    u1GammaZKProof := DECDSA_Key_ZkUProve(u1Gamma)
 
     // 3. Broadcast
     // commitU1GammaG.D, commitU2GammaG.D, commitU3GammaG.D
@@ -1774,7 +1730,7 @@ func ECDSASignVerifyCommitment(cointype string,w *RpcReqWorker,idSign sortableID
 	    return nil
 	}
 
-	if udecom[en[0]].Verify() == false {
+	if DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify commit fail.")}
 	    ch <- res
 	    return nil
@@ -1794,9 +1750,9 @@ func ECDSASignVerifyCommitment(cointype string,w *RpcReqWorker,idSign sortableID
 	////////
 
 	en := strings.Split(string(enodes[8:]),"@")
-	_, u1GammaG := udecom[en[0]].DeCommit()
+	_, u1GammaG := DECDSA_Key_DeCommit(udecom[en[0]])
 	ug[en[0]] = u1GammaG
-	if ec2.ZkUVerify(u1GammaG,zkuproof[en[0]]) == false {
+	if DECDSA_Key_ZkUVerify(u1GammaG,zkuproof[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify zkuproof fail.")}
 	    ch <- res
 	    return nil
@@ -2793,64 +2749,6 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     return "" 
 }
 
-func GetPaillierPk(save string,index int) *ec2.PublicKey {
-    if save == "" || index < 0 {
-	return nil
-    }
-
-    mm := strings.Split(save, SepSave)
-    s := 4 + 4*index
-    if len(mm) < (s+4) {
-	return nil
-    }
-
-    l := mm[s]
-    n := new(big.Int).SetBytes([]byte(mm[s+1]))
-    g := new(big.Int).SetBytes([]byte(mm[s+2]))
-    n2 := new(big.Int).SetBytes([]byte(mm[s+3]))
-    publicKey := &ec2.PublicKey{Length: l, N: n, G: g, N2: n2}
-    return publicKey
-}
-
-func GetPaillierSk(save string,index int) *ec2.PrivateKey {
-    publicKey := GetPaillierPk(save,index)
-    if publicKey != nil {
-	mm := strings.Split(save, SepSave)
-	if len(mm) < 4 {
-	    return nil
-	}
-
-	l := mm[1]
-	ll := new(big.Int).SetBytes([]byte(mm[2]))
-	uu := new(big.Int).SetBytes([]byte(mm[3]))
-	privateKey := &ec2.PrivateKey{Length: l, PublicKey: *publicKey, L: ll, U: uu}
-	return privateKey
-    }
-
-    return nil
-}
-
-//paillier question 2,delete zkfactor,add ntilde h1 h2
-func GetZkFactProof(save string,index int) *ec2.NtildeH1H2 {
-    if save == "" || index < 0 {
-	fmt.Println("===============GetZkFactProof,get zkfactproof error,save = %s,index = %v ==============",save,index)
-	return nil
-    }
-
-    mm := strings.Split(save, SepSave)
-    s := 4 + 4*NodeCnt + 3*index////????? TODO
-    if len(mm) < (s+3) {
-	fmt.Println("===============GetZkFactProof,get zkfactproof error,save = %s,index = %v ==============",save,index)
-	return nil
-    }
-
-    ntilde := new(big.Int).SetBytes([]byte(mm[s]))
-    h1 := new(big.Int).SetBytes([]byte(mm[s+1]))
-    h2 := new(big.Int).SetBytes([]byte(mm[s+2]))
-    zkFactProof := &ec2.NtildeH1H2{Ntilde:ntilde,H1: h1, H2: h2}
-    return zkFactProof
-}
-
 func SendMsgToDcrmGroup(msg string,groupid string) {
     fmt.Println("==============SendMsgToDcrmGroup,msg =%s,send to groupid =%s =================",msg,groupid)
     //for i:= 0;i<ReSendTimes;i++ {
@@ -2918,64 +2816,6 @@ func SendMsgToPeer(enodes string,msg string) {
 	//SendToPeer(enodes,msg)
 	//time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
     //}
-}
-
-type ECDSASignature struct {
-	r *big.Int
-	s *big.Int
-	recoveryParam int32
-	roudFiveAborted bool
-}
-
-func (this *ECDSASignature) New() {
-}
-
-func (this *ECDSASignature) New2(r *big.Int,s *big.Int) {
-    this.r = r
-    this.s = s
-}
-
-func (this *ECDSASignature) New3(r *big.Int,s *big.Int,recoveryParam int32) {
-    this.r =r 
-    this.s = s
-    this.recoveryParam = recoveryParam
-}
-
-func Verify2(r *big.Int,s *big.Int,v int32,message string,pkx *big.Int,pky *big.Int) bool {
-    z,_ := new(big.Int).SetString(message,16)
-    ss := new(big.Int).ModInverse(s,secp256k1.S256().N)
-    zz := new(big.Int).Mul(z,ss)
-    u1 := new(big.Int).Mod(zz,secp256k1.S256().N)
-
-    zz2 := new(big.Int).Mul(r,ss)
-    u2 := new(big.Int).Mod(zz2,secp256k1.S256().N)
-    
-    if u1.Sign() == -1 {
-		u1.Add(u1,secp256k1.S256().P)
-    }
-    ug := make([]byte, 32)
-    ReadBits(u1, ug[:])
-    ugx,ugy := secp256k1.KMulG(ug[:])
-
-    if u2.Sign() == -1 {
-		u2.Add(u2,secp256k1.S256().P)
-	}
-    upk := make([]byte, 32)
-    ReadBits(u2,upk[:])
-    upkx,upky := secp256k1.S256().ScalarMult(pkx,pky,upk[:])
-
-    xxx,_ := secp256k1.S256().Add(ugx,ugy,upkx,upky)
-    xR := new(big.Int).Mod(xxx,secp256k1.S256().N)
-
-    if xR.Cmp(r) == 0 {
-	errstring := "============= ECDSA Signature Verify Passed! (r,s) is a Valid Signature ================"
-	fmt.Println(errstring)
-	return true
-    }
-
-    errstring := "================ @@ERROR@@@@@@@@@@@@@@@@@@@@@@@@@@@@: ECDSA Signature Verify NOT Passed! (r,s) is a InValid Siganture! ================"
-    fmt.Println(errstring)
-    return false
 }
 
 ////ed
@@ -3606,38 +3446,6 @@ func EdVerify(input InputVerify) bool {
 
 //////
 
-func (this *ECDSASignature) GetRoudFiveAborted() bool {
-    return this.roudFiveAborted
-}
-
-func (this *ECDSASignature) SetRoudFiveAborted(roudFiveAborted bool) {
-    this.roudFiveAborted = roudFiveAborted
-}
-
-func (this *ECDSASignature) GetR() *big.Int {
-    return this.r
-}
-
-func (this *ECDSASignature) SetR(r *big.Int) {
-    this.r = r
-}
-
-func (this *ECDSASignature) GetS() *big.Int {
-    return this.s
-}
-
-func (this *ECDSASignature) SetS(s *big.Int) {
-    this.s = s
-}
-
-func (this *ECDSASignature) GetRecoveryParam() int32 {
-    return this.recoveryParam
-}
-
-func (this *ECDSASignature) SetRecoveryParam(recoveryParam int32) {
-    this.recoveryParam = recoveryParam
-}
-
 func IsCurNode(enodes string,cur string) bool {
     if enodes == "" || cur == "" {
 	return false
@@ -3686,123 +3494,6 @@ func DoubleHash(id string,cointype string) *big.Int {
     // convert the hash ([]byte) to big.Int
     digestBigInt := new(big.Int).SetBytes(digest)
     return digestBigInt
-}
-
-func GetRandomInt(length int) *big.Int {
-	// NewInt allocates and returns a new Int set to x.
-	/*one := big.NewInt(1)
-	// Lsh sets z = x << n and returns z.
-	maxi := new(big.Int).Lsh(one, uint(length))
-
-	// TODO: Random Seed, need to be replace!!!
-	// New returns a new Rand that uses random values from src to generate other random values.
-	// NewSource returns a new pseudo-random Source seeded with the given value.
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// Rand sets z to a pseudo-random number in [0, n) and returns z.
-	rndNum := new(big.Int).Rand(rnd, maxi)*/
-	one := big.NewInt(1)
-	maxi := new(big.Int).Lsh(one, uint(length))
-	maxi = new(big.Int).Sub(maxi,one)
-	rndNum,err := rand.Int(rand.Reader,maxi)
-	if err != nil {
-	    return nil
-	}
-
-	return rndNum
-}
-
-func GetRandomIntFromZn(n *big.Int) *big.Int {
-	var rndNumZn *big.Int
-	zero := big.NewInt(0)
-
-	for {
-		rndNumZn = GetRandomInt(n.BitLen())
-		if rndNumZn == nil {
-		    return nil
-		}
-
-		if rndNumZn.Cmp(n) < 0 && rndNumZn.Cmp(zero) >= 0 {
-			break
-		}
-	}
-
-	return rndNumZn
-}
-
-func Tool_DecimalByteSlice2HexString(DecimalSlice []byte) string {
-    var sa = make([]string, 0)
-    for _, v := range DecimalSlice {
-        sa = append(sa, fmt.Sprintf("%02X", v))
-    }
-    ss := strings.Join(sa, "")
-    return ss
-}
-
-// ReadBits encodes the absolute value of bigint as big-endian bytes. Callers must ensure
-// that buf has enough space. If buf is too short the result will be incomplete.
-func ReadBits(bigint *big.Int, buf []byte) {
-	// number of bits in a big.Word
-	wordBits := 32 << (uint64(^big.Word(0)) >> 63)
-	// number of bytes in a big.Word
-	wordBytes := wordBits / 8
-	i := len(buf)
-	for _, d := range bigint.Bits() {
-		for j := 0; j < wordBytes && i > 0; j++ {
-			i--
-			buf[i] = byte(d)
-			d >>= 8
-		}
-	}
-}
-
-func GetSignString(r *big.Int,s *big.Int,v int32,i int) string {
-    rr :=  r.Bytes()
-    sss :=  s.Bytes()
-
-    //bug
-    if len(rr) == 31 && len(sss) == 32 {
-	sigs := make([]byte,65)
-	sigs[0] = byte(0)
-	ReadBits(r,sigs[1:32])
-	ReadBits(s,sigs[32:64])
-	sigs[64] = byte(i)
-	ret := Tool_DecimalByteSlice2HexString(sigs)
-	return ret
-    }
-    if len(rr) == 31 && len(sss) == 31 {
-	sigs := make([]byte,65)
-	sigs[0] = byte(0)
-	sigs[32] = byte(0)
-	ReadBits(r,sigs[1:32])
-	ReadBits(s,sigs[33:64])
-	sigs[64] = byte(i)
-	ret := Tool_DecimalByteSlice2HexString(sigs)
-	return ret
-    }
-    if len(rr) == 32 && len(sss) == 31 {
-	sigs := make([]byte,65)
-	sigs[32] = byte(0)
-	ReadBits(r,sigs[0:32])
-	ReadBits(s,sigs[33:64])
-	sigs[64] = byte(i)
-	ret := Tool_DecimalByteSlice2HexString(sigs)
-	return ret
-    }
-    //
-
-    n := len(rr) + len(sss) + 1
-    sigs := make([]byte,n)
-    ReadBits(r,sigs[0:len(rr)])
-    ReadBits(s,sigs[len(rr):len(rr)+len(sss)])
-
-    sigs[len(rr)+len(sss)] = byte(i)
-    ret := Tool_DecimalByteSlice2HexString(sigs)
-
-    return ret
-}
-
-func Verify(r *big.Int,s *big.Int,v int32,message string,pkx *big.Int,pky *big.Int) bool {
-    return Verify2(r,s,v,message,pkx,pky)
 }
 
 func GetEnodesByUid(uid *big.Int,cointype string,groupid string) string {

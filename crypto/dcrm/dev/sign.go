@@ -23,6 +23,7 @@ import (
     "crypto/rand"
     "strings"
     "fmt"
+    "encoding/hex"
 )
 
 //////////////////////////////////////////////////////////////
@@ -202,6 +203,82 @@ func DECDSA_Sign_ZkABProve(a *big.Int, b *big.Int, s *big.Int, R []*big.Int) *ec
     }
 
     return ec2.ZkABProve(a,b,s,R)
+}
+
+func DECDSA_Sign_ZkABVerify(A []*big.Int, B []*big.Int, V []*big.Int, R []*big.Int, zkABProof *ec2.ZkABProof) bool {
+    if A == nil || B == nil || V == nil || R == nil || zkABProof == nil {
+	return false
+    }
+
+    return ec2.ZkABVerify(A,B,V,R,zkABProof)
+}
+
+func DECDSA_Sign_Round_Nine(mMtA *big.Int,r *big.Int,pkx *big.Int,pky *big.Int,BigVx *big.Int,BigVy *big.Int,rho1 *big.Int) (*big.Int,*big.Int) {
+    if mMtA == nil || r == nil || pkx == nil || pky == nil || BigVx == nil || BigVy == nil || rho1 == nil {
+	return nil,nil
+    }
+
+    minusM := new(big.Int).Mul(big.NewInt(-1), mMtA)
+    minusM = new(big.Int).Mod(minusM, secp256k1.S256().N)
+
+    minusR := new(big.Int).Mul(big.NewInt(-1), r)
+    minusR = new(big.Int).Mod(minusR, secp256k1.S256().N)
+
+    G_mY_rx, G_mY_ry := secp256k1.S256().ScalarBaseMult(minusM.Bytes())
+    Y_rx, Y_ry := secp256k1.S256().ScalarMult(pkx, pky, minusR.Bytes())
+    G_mY_rx, G_mY_ry = secp256k1.S256().Add(G_mY_rx, G_mY_ry, Y_rx, Y_ry)
+
+    VAllx, VAlly := secp256k1.S256().Add(G_mY_rx, G_mY_ry, BigVx, BigVy)
+    
+    // *** Round 5C
+    bigU1x, bigU1y := secp256k1.S256().ScalarMult(VAllx, VAlly, rho1.Bytes())
+
+    return bigU1x,bigU1y
+}
+
+func DECDSA_Sign_Round_Nine_Commitment(bigT1x,bigT1y,l1,bigU1x, bigU1y *big.Int) *ec2.Commitment {
+    if bigT1x == nil || bigT1y == nil || l1 == nil || bigU1x == nil || bigU1y == nil {
+	return nil
+    }
+    
+    bigT1x, bigT1y = secp256k1.S256().ScalarMult(bigT1x, bigT1y, l1.Bytes())
+    commitBigUT1 := new(ec2.Commitment).Commit(bigU1x, bigU1y, bigT1x, bigT1y)
+
+    return commitBigUT1
+}
+
+func DECDSA_Sign_Calc_v(r, deltaGammaGy,pkx,pky,R,S *big.Int,hashBytes []byte,invert bool) int {
+    //v
+    recid := secp256k1.Get_ecdsa_sign_v(r, deltaGammaGy)
+    if invert == true {
+	recid ^=1
+    }
+
+    ////check v
+    ys := secp256k1.S256().Marshal(pkx,pky)
+    pubkeyhex := hex.EncodeToString(ys)
+    pbhs := []rune(pubkeyhex)
+    if string(pbhs[0:2]) == "0x" {
+	pubkeyhex = string(pbhs[2:])
+    }
+    
+    rsvBytes1 := append(R.Bytes(),S.Bytes()...)
+    for j := 0; j < 4; j++ {
+	rsvBytes2 := append(rsvBytes1, byte(j))
+	pkr, e := secp256k1.RecoverPubkey(hashBytes,rsvBytes2)
+	pkr2 := hex.EncodeToString(pkr)
+	pbhs2 := []rune(pkr2)
+	if string(pbhs2[0:2]) == "0x" {
+	    pkr2 = string(pbhs2[2:])
+	}
+	if e == nil && strings.EqualFold(pkr2,pubkeyhex) {
+	    recid = j
+	    break
+	}
+    }
+    ///// 
+
+    return recid
 }
 
 func GetPaillierPk(save string,index int) *ec2.PublicKey {
@@ -465,7 +542,7 @@ func GetSignString(r *big.Int,s *big.Int,v int32,i int) string {
     return ret
 }
 
-func Verify(r *big.Int,s *big.Int,v int32,message string,pkx *big.Int,pky *big.Int) bool {
+func DECDSA_Sign_Verify_RSV(r *big.Int,s *big.Int,v int32,message string,pkx *big.Int,pky *big.Int) bool {
     return Verify2(r,s,v,message,pkx,pky)
 }
 

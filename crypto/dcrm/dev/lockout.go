@@ -2039,14 +2039,14 @@ func DECDSASignVerifyBigVAB(cointype string,w *RpcReqWorker,commitbigvabs []stri
 	////////
 
 	en := strings.Split(string(enodes[8:]),"@")
-	if commitbigcom[en[0]].Verify() == false {
+	if DECDSA_Key_Commitment_Verify(commitbigcom[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify commitbigvab fail.")}
 	    ch <- res
 	    return nil,nil,nil
 	}
 
-	_, BigVAB1 := commitbigcom[en[0]].DeCommit()
-	if ec2.ZkABVerify([]*big.Int{BigVAB1[2], BigVAB1[3]}, []*big.Int{BigVAB1[4], BigVAB1[5]}, []*big.Int{BigVAB1[0], BigVAB1[1]}, []*big.Int{r, deltaGammaGy}, zkabproofmap[en[0]]) == false {
+	_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
+	if DECDSA_Sign_ZkABVerify([]*big.Int{BigVAB1[2], BigVAB1[3]}, []*big.Int{BigVAB1[4], BigVAB1[5]}, []*big.Int{BigVAB1[0], BigVAB1[1]}, []*big.Int{r, deltaGammaGy}, zkabproofmap[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify zkabproof fail.")}
 	    ch <- res
 	    return nil,nil,nil
@@ -2071,20 +2071,8 @@ func DECDSASignRoundNine(msgprex string,cointype string,w *RpcReqWorker,idSign s
 	return nil,nil
     }
 
-    minusM := new(big.Int).Mul(big.NewInt(-1), mMtA)
-    minusM = new(big.Int).Mod(minusM, secp256k1.S256().N)
+    bigU1x,bigU1y := DECDSA_Sign_Round_Nine(mMtA,r,pkx,pky,BigVx,BigVy,rho1)
 
-    minusR := new(big.Int).Mul(big.NewInt(-1), r)
-    minusR = new(big.Int).Mod(minusR, secp256k1.S256().N)
-
-    G_mY_rx, G_mY_ry := secp256k1.S256().ScalarBaseMult(minusM.Bytes())
-    Y_rx, Y_ry := secp256k1.S256().ScalarMult(pkx, pky, minusR.Bytes())
-    G_mY_rx, G_mY_ry = secp256k1.S256().Add(G_mY_rx, G_mY_ry, Y_rx, Y_ry)
-
-    VAllx, VAlly := secp256k1.S256().Add(G_mY_rx, G_mY_ry, BigVx, BigVy)
-    
-    // *** Round 5C
-    bigU1x, bigU1y := secp256k1.S256().ScalarMult(VAllx, VAlly, rho1.Bytes())
     // bigA23 = bigA2 + bigA3
     var bigT1x,bigT1y *big.Int
     var ind int
@@ -2103,7 +2091,7 @@ func DECDSASignRoundNine(msgprex string,cointype string,w *RpcReqWorker,idSign s
 	    continue
 	}
 
-	_, BigVAB1 := commitbigcom[en[0]].DeCommit()
+	_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
 	bigT1x = BigVAB1[2]
 	bigT1y = BigVAB1[3]
 	ind = k
@@ -2128,12 +2116,12 @@ func DECDSASignRoundNine(msgprex string,cointype string,w *RpcReqWorker,idSign s
 	    continue
 	}
 
-	_, BigVAB1 := commitbigcom[en[0]].DeCommit()
+	_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
 	bigT1x, bigT1y = secp256k1.S256().Add(bigT1x,bigT1y,BigVAB1[2], BigVAB1[3])
     }
-    bigT1x, bigT1y = secp256k1.S256().ScalarMult(bigT1x, bigT1y, l1.Bytes())
+   
+    commitBigUT1 := DECDSA_Sign_Round_Nine_Commitment(bigT1x,bigT1y,l1,bigU1x,bigU1y)
 
-    commitBigUT1 := new(ec2.Commitment).Commit(bigU1x, bigU1y, bigT1x, bigT1y)
     // Broadcast commitBigUT1.C
     mp := []string{msgprex,cur_enode}
     enode := strings.Join(mp,"-")
@@ -2283,14 +2271,14 @@ func DECDSASignVerifyBigUTCommitment(cointype string,commitbiguts []string,commi
 	////////
 
 	en := strings.Split(string(enodes[8:]),"@")
-	if commitbigutmap[en[0]].Verify() == false {
+	if DECDSA_Key_Commitment_Verify(commitbigutmap[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("verify commit big ut fail.")}
 	    ch <- res
 	    return false
 	}
 
-	_, BigUT1 := commitbigutmap[en[0]].DeCommit()
-	_, BigVAB1 := commitbigcom[en[0]].DeCommit()
+	_, BigUT1 := DECDSA_Key_DeCommit(commitbigutmap[en[0]])
+	_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
 	if k == 0 {
 	    bigTBx = BigUT1[2] 
 	    bigTBy = BigUT1[3] 
@@ -2663,41 +2651,20 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     signature.SetR(r)
     signature.SetS(s)
 
-    //v
-    recid := secp256k1.Get_ecdsa_sign_v(r, deltaGammaGy)
+    invert := false
     if cointype == "ETH" && bb {
-	recid ^=1
+	//recid ^=1
+	invert = true
     }
     if cointype == "BTC" && bb {
-	recid ^= 1
+	//recid ^= 1
+	invert = true
     }
 
-    ////check v
-    ys := secp256k1.S256().Marshal(pkx,pky)
-    pubkeyhex := hex.EncodeToString(ys)
-    pbhs := []rune(pubkeyhex)
-    if string(pbhs[0:2]) == "0x" {
-	pubkeyhex = string(pbhs[2:])
-    }
-    
-    rsvBytes1 := append(signature.GetR().Bytes(), signature.GetS().Bytes()...)
-    for j := 0; j < 4; j++ {
-	rsvBytes2 := append(rsvBytes1, byte(j))
-	pkr, e := secp256k1.RecoverPubkey(hashBytes,rsvBytes2)
-	pkr2 := hex.EncodeToString(pkr)
-	pbhs2 := []rune(pkr2)
-	if string(pbhs2[0:2]) == "0x" {
-	    pkr2 = string(pbhs2[2:])
-	}
-	if e == nil && strings.EqualFold(pkr2,pubkeyhex) {
-	    recid = j
-	    break
-	}
-    }
-    ///// 
+    recid := DECDSA_Sign_Calc_v(r,deltaGammaGy,pkx,pky,signature.GetR(),signature.GetS(),hashBytes,invert)
     signature.SetRecoveryParam(int32(recid))
 
-    if Verify(signature.GetR(),signature.GetS(),signature.GetRecoveryParam(),message,pkx,pky) == false {
+    if DECDSA_Sign_Verify_RSV(signature.GetR(),signature.GetS(),signature.GetRecoveryParam(),message,pkx,pky) == false {
 	fmt.Println("===================dcrm sign,verify is false=================")
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("sign verify fail.")}
 	ch <- res

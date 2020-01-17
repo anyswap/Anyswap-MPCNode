@@ -152,6 +152,58 @@ func DECDSA_Sign_Paillier_Decrypt(privateKey *ec2.PrivateKey,cipherBigInt *big.I
     return privateKey.Decrypt(cipherBigInt)
 }
 
+func DECDSA_Sign_Calc_r(deltaSum,GammaGSumx, GammaGSumy *big.Int) (*big.Int,*big.Int) {
+    if deltaSum == nil || GammaGSumx == nil || GammaGSumy == nil {
+	return nil,nil
+    }
+
+    // 3. calculate deltaSum^-1 * GammaGSum
+    deltaSumInverse := new(big.Int).ModInverse(deltaSum, secp256k1.S256().N)
+    deltaGammaGx, deltaGammaGy := secp256k1.S256().ScalarMult(GammaGSumx, GammaGSumy, deltaSumInverse.Bytes())
+
+    // 4. get r = deltaGammaGx
+    r := deltaGammaGx
+
+    return r,deltaGammaGy
+}
+
+func CalcUs(mMtA *big.Int,u1K *big.Int,r *big.Int,sigma1 *big.Int) *big.Int {
+    mk1 := new(big.Int).Mul(mMtA, u1K)
+    rSigma1 := new(big.Int).Mul(r, sigma1)
+    us1 := new(big.Int).Add(mk1, rSigma1)
+    us1 = new(big.Int).Mod(us1, secp256k1.S256().N)
+   
+    return us1
+}
+
+func DECDSA_Sign_Round_Seven(r,deltaGammaGy,us1 *big.Int) (*ec2.Commitment,*big.Int,*big.Int) {
+    // *** Round 5A
+    l1 := GetRandomIntFromZn(secp256k1.S256().N)
+    rho1 := GetRandomIntFromZn(secp256k1.S256().N)
+
+    bigV1x, bigV1y := secp256k1.S256().ScalarMult(r, deltaGammaGy, us1.Bytes())
+    l1Gx, l1Gy := secp256k1.S256().ScalarBaseMult(l1.Bytes())
+    bigV1x, bigV1y = secp256k1.S256().Add(bigV1x, bigV1y, l1Gx, l1Gy)
+
+    bigA1x, bigA1y := secp256k1.S256().ScalarBaseMult(rho1.Bytes())
+
+    l1rho1 := new(big.Int).Mul(l1, rho1)
+    l1rho1 = new(big.Int).Mod(l1rho1, secp256k1.S256().N)
+    bigB1x, bigB1y := secp256k1.S256().ScalarBaseMult(l1rho1.Bytes())
+
+    commitBigVAB1 := new(ec2.Commitment).Commit(bigV1x, bigV1y, bigA1x, bigA1y, bigB1x, bigB1y)
+   
+    return commitBigVAB1,rho1,l1
+}
+
+func DECDSA_Sign_ZkABProve(a *big.Int, b *big.Int, s *big.Int, R []*big.Int) *ec2.ZkABProof {
+    if a == nil || b == nil || s == nil || R == nil {
+	return nil
+    }
+
+    return ec2.ZkABProve(a,b,s,R)
+}
+
 func GetPaillierPk(save string,index int) *ec2.PublicKey {
     if save == "" || index < 0 {
 	return nil

@@ -1583,7 +1583,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string,cointype string,ch chan interfac
 	    return nil,nil,false
 	}
 	//
-	if sstruct[en[0]].Verify2(upg[en[0]]) == false {
+	if DECDSA_Key_Verify_Share(sstruct[en[0]],upg[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifySHARE1Fail)}
 	    ch <- res
 	    return nil,nil,false
@@ -1744,7 +1744,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string,cointype string,ch chan interfa
 	    ch <- res
 	    return nil,nil,false
 	}
-	if udecom[en[0]].Verify() == false {
+	if DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
 	    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrKeyGenVerifyCommitFail)}
 	    ch <- res
 	    return nil,nil,false
@@ -1766,7 +1766,7 @@ func DECDSAGenKeyRoundFour(msgprex string,ch chan interface{},w *RpcReqWorker) (
     // zk of paillier key
     NtildeLength := 2048 
     // for u1
-    u1NtildeH1H2 := ec2.GenerateNtildeH1H2(NtildeLength)
+    u1NtildeH1H2 := DECDSA_Key_GenerateNtildeH1H2(NtildeLength)
     if u1NtildeH1H2 == nil {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("gen ntilde h1 h2 fail.")}
 	ch <- res
@@ -1803,7 +1803,7 @@ func DECDSAGenKeyRoundFive(msgprex string,ch chan interface{},w *RpcReqWorker,u1
     }
 
     // zk of u
-    u1zkUProof := ec2.ZkUProve(u1)
+    u1zkUProof := DECDSA_Key_ZkUProve(u1) 
 
     // 8. Broadcast zk
     // u1zkUProof, u2zkUProof, u3zkUProof, u4zkUProof, u5zkUProof
@@ -1861,7 +1861,7 @@ func DECDSAGenKeyVerifyZKU(msgprex string,cointype string,ch chan interface{},w 
 		e := new(big.Int).SetBytes([]byte(mm[2]))
 		s := new(big.Int).SetBytes([]byte(mm[3]))
 		zkUProof := &ec2.ZkUProof{E: e, S: s}
-		if !ec2.ZkUVerify(ug[en[0]],zkUProof) {
+		if !DECDSA_Key_ZkUVerify(ug[en[0]],zkUProof) {
 		    res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrVerifyZKUPROOFFail)}
 		    ch <- res
 		    return false 

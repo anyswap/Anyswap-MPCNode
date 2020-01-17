@@ -81,5 +81,41 @@ func DECDSA_Key_GetSharesId(v *ec2.ShareStruct2) *big.Int {
     return ec2.GetSharesId(v)
 }
 
+func DECDSA_Key_Verify_Share(share *ec2.ShareStruct2,polyG *ec2.PolyGStruct2) bool {
+    if share == nil || polyG == nil {
+	return false
+    }
+
+    return share.Verify2(polyG)
+}
+
+func DECDSA_Key_Commitment_Verify(com *ec2.Commitment) bool {
+    if com == nil {
+	return false
+    }
+    
+    return com.Verify()
+}
+
+func DECDSA_Key_GenerateNtildeH1H2(length int) *ec2.NtildeH1H2 {
+    return ec2.GenerateNtildeH1H2(length)
+}
+
+func DECDSA_Key_ZkUProve(u *big.Int) *ec2.ZkUProof {
+    if u == nil {
+	return nil
+    }
+
+    return ec2.ZkUProve(u)
+}
+
+func DECDSA_Key_ZkUVerify(u []*big.Int,zkUProof *ec2.ZkUProof) bool {
+    if u == nil || zkUProof == nil {
+	return false
+    }
+
+    return ec2.ZkUVerify(u,zkUProof)
+}
+
 ////////////////////////////////////
 

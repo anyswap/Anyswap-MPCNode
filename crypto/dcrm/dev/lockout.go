@@ -2722,10 +2722,10 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
 func SendMsgToDcrmGroup(msg string,groupid string) {
     fmt.Println("==============SendMsgToDcrmGroup,msg =%s,send to groupid =%s =================",msg,groupid)
-    //for i:= 0;i<ReSendTimes;i++ {
+    for i:= 0;i<ReSendTimes;i++ {
 	BroadcastInGroupOthers(groupid,msg)
-	//time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
-    //}
+	time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
+    }
 }
 
 ///
@@ -2782,11 +2782,11 @@ func SendMsgToPeer(enodes string,msg string) {
 	return
     }
 
-    //for i:= 0;i<ReSendTimes;i++ {
+    for i:= 0;i<ReSendTimes;i++ {
 	SendToPeer(enodes,cm)
 	//SendToPeer(enodes,msg)
-	//time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
-    //}
+	time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
+    }
 }
 
 ////ed

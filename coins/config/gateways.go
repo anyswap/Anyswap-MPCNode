@@ -60,8 +60,8 @@ ApiAddress = "https://testnet.fsn.dev/api"
 
 # geth rinkeby testnet
 [EthereumGateway]
-#ApiAddress = "http://5.189.139.168:8018"
-ApiAddress = "http://54.183.185.30:8018"
+ApiAddress = "http://5.189.139.168:8018"
+#ApiAddress = "http://54.183.185.30:8018"
 
 
 # eos kylincrypto testnet api

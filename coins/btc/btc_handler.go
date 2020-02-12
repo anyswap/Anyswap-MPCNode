@@ -149,10 +149,16 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 			changeAddress = userChangeAddress.(string)
 		}
 	}
-	unspentOutputs, _, err := listUnspent_electrs(fromAddress)
-//unspentOutputs, err := listUnspent_blockchaininfo(fromAddress)
-//unspentOutputs, err := listUnspent(fromAddress)
+	//unspentOutputs, _, err := listUnspent_electrs(fromAddress)
+	//tmp
+unspentOutputs, err := listUnspent_blockchaininfo(fromAddress)
+if err != nil {
+    fmt.Println("===================btc.BuildUnsignedTransaction,11111,err =%v=====================",err)
+    unspentOutputs, err = listUnspent(fromAddress)
+}
+//
 	if err != nil {
+		fmt.Println("===================btc.BuildUnsignedTransaction,222222222,err =%v=====================",err)
 		err = errContext(err, "failed to fetch unspent outputs")
 		return
 	}
@@ -461,19 +467,25 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 }
 
 func (h *BTCHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error) {
-	/*addrsUrl := "https://api.blockcypher.com/v1/btc/test3/addrs/" + address
+	//tmp open
+	addrsUrl := "https://api.blockcypher.com/v1/btc/test3/addrs/" + address
 	resstr := loginPre1("GET",addrsUrl)
 	if resstr == "" {
+	    fmt.Println("==================GetAddressBalance,cannot get address balance, blockcypher didnt response=====================")
 		err = fmt.Errorf("cannot get address balance, blockcypher didnt response")
 		return
 	}
 
 	addrApiResult := parseAddrApiResult(resstr)
-	balance = big.NewInt(int64(addrApiResult.Balance))
-	return*/
-	_, bal, err := listUnspent_electrs(address)
-	balance.CoinBalance = types.Value{Cointype:"BTC",Val:bal}
+	balance2 := big.NewInt(int64(addrApiResult.Balance))
+	balance.CoinBalance = types.Value{Cointype:"BTC",Val:balance2}
+	fmt.Println("==================GetAddressBalance,balance =%v=====================",balance2)
 	return
+
+	///tmp delete
+	//_, bal, err := listUnspent_electrs(address)
+	//balance.CoinBalance = types.Value{Cointype:"BTC",Val:bal}
+	//return
 }
 
 func (h *BTCHandler) IsToken() bool {

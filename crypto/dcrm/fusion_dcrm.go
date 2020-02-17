@@ -573,10 +573,10 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
-    from, err := types.Sender(signer, tx)
+    _, err := types.Sender(signer, tx)
     if err != nil {
 	signer = types.NewEIP155Signer(big.NewInt(4)) //
-	from, err = types.Sender(signer, tx)
+	_, err = types.Sender(signer, tx)
 	if err != nil {
 	    return "","recover fusion account fail from raw data,maybe raw data error",err
 	}
@@ -637,11 +637,12 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
 
     ac := dss.(*dev.AcceptReqAddrData)
-    if ac == nil || len(ac.NodeSigs) == 0 {
+    //if ac == nil || len(ac.NodeSigs) == 0 {
+    if ac == nil {
 	return "","dcrm back-end internal error:decode accept data fail",fmt.Errorf("decode accept data fail")
     }
 
-    check := false
+    /*check := false
     for _,v := range ac.NodeSigs {
 	tx2 := new(types.Transaction)
 	vs := common.FromHex(v)
@@ -671,7 +672,7 @@ func AcceptReqAddr(raw string) (string,string,error) {
 
     if check == false {
 	return "","invalid accepter",fmt.Errorf("invalid accepter")
-    }
+    }*/
     ////////////////////////////
 
     tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,status,"","","","",ac.WorkId)
@@ -690,10 +691,10 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
-    from, err := types.Sender(signer, tx)
+    _, err := types.Sender(signer, tx)
     if err != nil {
 	signer = types.NewEIP155Signer(big.NewInt(4)) //
-	from, err = types.Sender(signer, tx)
+	_, err = types.Sender(signer, tx)
 	if err != nil {
 	    return "","recover fusion account fail from raw data,maybe raw data error",err
 	}
@@ -764,7 +765,7 @@ func AcceptLockOut(raw string) (string,string,error) {
 	return "","dcrm back-end internal error:decode lockout data from db fail",fmt.Errorf("decode lockout data from db fail")
     }
 
-    check := false
+    /*check := false
     for _,v := range pd.NodeSigs {
 	tx2 := new(types.Transaction)
 	vs := common.FromHex(v)
@@ -794,7 +795,7 @@ func AcceptLockOut(raw string) (string,string,error) {
 
     if check == false {
 	return "","invalid accepter",fmt.Errorf("invalid accepter")
-    }
+    }*/
     ////////////////////////////
 
     //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept
@@ -974,7 +975,7 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 	}
 
 	////bug,check valid accepter
-	check := false
+	/*check := false
 	for _,v := range vv.NodeSigs {
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
@@ -1002,7 +1003,7 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 
 	if check == false {
 	    continue
-	}
+	}*/
 	
 	key,err2 := hex.DecodeString(pubkey)
 	if err2 != nil {

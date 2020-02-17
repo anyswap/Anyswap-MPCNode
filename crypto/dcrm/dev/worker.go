@@ -34,13 +34,13 @@ import (
     "strings"
     "fmt"
     "strconv"
-    "math/big"
-    "github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+    //"math/big"
+    //"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
     "encoding/hex"
-    "github.com/fsn-dev/dcrm-walletService/coins/types"
+    //"github.com/fsn-dev/dcrm-walletService/coins/types"
     "github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
@@ -1566,7 +1566,8 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	}
 	fmt.Println("================GetCurNodeReqAddrInfo,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
 
-	check := false
+	eaccs := make([]EnAcc,0)
+	/*check := false
 	eaccs := make([]EnAcc,0)
 	////bug,check valid accepter
 	for k,v := range ac.NodeSigs {
@@ -1602,7 +1603,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 
 	if check == false {
 	   continue 
-	}
+	}*/
 
 	if ac.Deal == true || ac.Status == "Success" {
 	    fmt.Println("================GetCurNodeReqAddrInfo,this req addr has handle,nonce =%s===================",ac.Nonce)
@@ -1704,7 +1705,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	}
 	fmt.Println("================GetCurNodeLockOutInfo,ac.Account =%s,ac.Status=%s,ac =%v ===================",ac.Account,ac.Status,ac)
 
-	nodesigs := make([]string,0)
+	//nodesigs := make([]string,0)
 	rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()
 	//da,exsit := LdbPubKeyData[rk]
 	var da []byte
@@ -1728,20 +1729,20 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 		if err == nil {
 		    pd := pubs.(*PubKeyData)
 		    if pd != nil {
-			nodesigs = pd.NodeSigs
+	//		nodesigs = pd.NodeSigs
 		    }
 		}
 	    }
 	}
 
-	if len(nodesigs) == 0 {
-	    continue
-	}
+	//if len(nodesigs) == 0 {
+	//    continue
+//	}
 
-	check := false
+	//check := false
 	eaccs := make([]EnAcc,0)
 	////bug,check valid accepter
-	for k,v := range nodesigs {
+	/*for k,v := range nodesigs {
 	    fmt.Println("=============GetCurNodeLockOutInfo,check accepter,index =%v=========================",k)
 	    tx2 := new(types.Transaction)
 	    vs := common.FromHex(v)
@@ -1775,7 +1776,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	
 	if check == false {
 	   continue 
-	}
+	}*/
 
 	if ac.Deal == true || ac.Status == "Success" {
 	    fmt.Println("===============GetCurNodeLockOutInfo,ac.Deal is true,nonce =%s===============",ac.Nonce)
@@ -2485,12 +2486,12 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    
 	    if msgs[5] == "0" {// self-group
 		nodesigs := make([]string,0)
-		nums := strings.Split(msgs[4],"/")
-		nodecnt,_ := strconv.Atoi(nums[1])
-		for j:=0;j<nodecnt;j++ {
-		    nodesigs = append(nodesigs,msgs[6+j])
-		}
-		fmt.Println("============RecvMsg.Run,len(msgs)=%v,nums=%s,nodecnt =%v=================",len(msgs),nums,nodecnt)
+		//nums := strings.Split(msgs[4],"/")
+		//nodecnt,_ := strconv.Atoi(nums[1])
+		//for j:=0;j<nodecnt;j++ {
+		//    nodesigs = append(nodesigs,msgs[6+j])
+		//}
+		//fmt.Println("============RecvMsg.Run,len(msgs)=%v,nums=%s,nodecnt =%v=================",len(msgs),nums,nodecnt)
 
 		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],NodeSigs:nodesigs,Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
 		fmt.Println("===================call SaveAcceptReqAddrData,workid =%s,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s =====================",wid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
@@ -2859,11 +2860,11 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
     GetEnodesInfo(self.GroupId)
     msg := self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode
-    for k,v := range self.NodeSigs {
-	fmt.Println("===========ReqAddrSendMsgToDcrm.Run,get node sigs,index=%v===========",k)
-	msg += ":"
-	msg += v
-    }
+    //for k,v := range self.NodeSigs {
+//	fmt.Println("===========ReqAddrSendMsgToDcrm.Run,get node sigs,index=%v===========",k)
+//	msg += ":"
+//	msg += v
+  //  }
 
     timestamp := time.Now().Unix()
     tt := strconv.Itoa(int(timestamp))
@@ -3960,7 +3961,7 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	}
 
 	////bug,check valid accepter
-	check := false
+	/*check := false
 	for k,v2 := range vv.NodeSigs {
 	    fmt.Println("=============GetAccounts,check accepter,index =%v=========================",k)
 	    tx2 := new(types.Transaction)
@@ -3989,7 +3990,7 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 
 	if check == false {
 	    continue
-	}
+	}*/
 	/////
 
 	pb := vv.Pub

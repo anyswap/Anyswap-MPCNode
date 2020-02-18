@@ -380,7 +380,8 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	}
 
 	pubkeyhex := ret
-	fmt.Println("====================dcrm.SendReqToGroup,pubkey = %s =====================",ret)
+	keytest := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1] + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]))).Hex()
+	fmt.Println("====================dcrm.SendReqToGroup,pubkey = %s,key=%s =====================",ret,keytest)
 
 	var m interface{}
 	if !strings.EqualFold(msgs[1], "ALL") {
@@ -406,12 +407,10 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    }
 
 	    h := coins.NewCryptocoinHandler(ct)
-	    fmt.Println("================dcrm.SendReqToGroup,get cointpe handler = %v,cointype =%s,================",h,ct)
 	    if h == nil {
 		continue
 	    }
 	    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-	    fmt.Println("================dcrm.SendReqToGroup,get dcrm addr = %s,cointype =%s,err =%v================",ctaddr,ct,err)
 	    if err != nil {
 		continue
 	    }
@@ -421,7 +420,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 
 	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddress:addrmp}
 	b,_ := json.Marshal(m)
-	fmt.Println("================dcrm.SendReqToGroup,get all dcrm addr = %s================",string(b))
+	fmt.Println("================dcrm.SendReqToGroup,get all dcrm addr = %s,key=%s================",string(b),keytest)
 	return string(b),"",nil
     }
     
@@ -541,6 +540,23 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 		}
 	    }
 	}
+
+		//nonce check
+	cur_nonce_str,tip,err := dev.GetReqAddrNonce(from.Hex())
+	if err != nil {
+	    return "",tip,err
+	}
+
+	if strings.EqualFold(fmt.Sprintf("%v",Nonce),cur_nonce_str) == false {
+	    return "","req addr nonce error",fmt.Errorf("nonce error.")
+	}
+	//
+
+	tip,err = dev.SetReqAddrNonce(from.Hex(),fmt.Sprintf("%v",Nonce))
+	if err != nil {
+	    return "",tip,fmt.Errorf("update nonce error.")
+	}
+
 	////////bug
     }
 

@@ -55,6 +55,7 @@ func packageResult(status, tip, errors string, msg interface{}) string {
 }
 
 func (this *Service) GetEnode() string {
+	fmt.Printf("==== GetEnode() ====\n")
 	en := layer2.GetEnode()
 	reten := &Enode{Enode: en}
 	fmt.Printf("==== GetEnode() ====, en: %v, ret: %v\n", en, reten)

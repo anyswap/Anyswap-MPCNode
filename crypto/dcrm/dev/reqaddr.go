@@ -41,7 +41,7 @@ import (
 //msgprex = hash 
 func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interface{}, mode string,nonce string) {
 
-    fmt.Println("========dcrm_genPubKey============")
+    fmt.Println("========dcrm_genPubKey,accout =%s============",account)
 
     wk,err := FindWorker(msgprex)
     if err != nil || wk == nil {
@@ -113,7 +113,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    }
 	}
 	////////
-	pubs := &PubKeyData{Pub:string(sedpk),Save:sedsave,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
+	pubs := &PubKeyData{Account:account,Pub:string(sedpk),Save:sedsave,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
 	epubs,err := Encode2(pubs)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ed pubkey",Err:err}
@@ -301,7 +301,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	}
     }
     ////////
-    pubs := &PubKeyData{Pub:string(ys),Save:save,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
+    pubs := &PubKeyData{Account:account,Pub:string(ys),Save:save,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
     epubs,err := Encode2(pubs)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey",Err:err}
@@ -550,6 +550,36 @@ func SaveLockOutToDb() {
     }
 }
 
+func SaveGAccsDataToDb() {
+    for {
+	select {
+	    case kd := <-GAccsDataChan:
+		dir := GetGAccsDir()
+		db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+		//bug
+		if err != nil {
+		    for i:=0;i<100;i++ {
+			db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+			if err == nil && db != nil {
+			    break
+			}
+			
+			time.Sleep(time.Duration(1000000))
+		    }
+		}
+		//
+		if db != nil {
+		    db.Put(kd.Key,[]byte(kd.Data))
+		    db.Close()
+		} else {
+		    GAccsDataChan <-kd
+		}
+		
+		time.Sleep(time.Duration(1000000))  //na, 1 s = 10e9 na
+	}
+    }
+}
+
 func GetReqAddrValueFromDb(key string) []byte {
     lock.Lock()
     dir := GetAcceptReqAddrDir()
@@ -785,6 +815,45 @@ func GetAllPendingLockOutFromDb() *common.SafeMap {
     }
 
     return kd
+}
+
+func GetGAccsValueFromDb(key string) []byte {
+    fmt.Println("==================GetGAccsValueFromDb start,key=%s=====================",key)
+    lock.Lock()
+    dir := GetGAccsDir()
+    ////////
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<100;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
+	fmt.Println("==================GetGAccsValueFromDb end,key=%s=====================",key)
+        lock.Unlock()
+	return nil 
+    }
+    
+    da,err := db.Get([]byte(key))
+    ///////
+    if err != nil {
+	fmt.Println("==================GetGAccsValueFromDb end,key=%s=====================",key)
+	db.Close()
+	lock.Unlock()
+	return nil
+    }
+
+    db.Close()
+    lock.Unlock()
+    fmt.Println("==================GetGAccsValueFromDb end,data =%s,key=%s=====================",string(da),key)
+    return da
 }
 
 //ed

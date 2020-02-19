@@ -84,6 +84,9 @@ var (
     DcrmCalls = common.NewSafeMap(10)
     
     RpcReqQueueCache = make(chan RpcReq,RpcMaxQueue)
+    
+    GAccs = common.NewSafeMap(10)
+    GAccsDataChan = make(chan KeyData, 1000)
 )
 
 func RegP2pGetGroupCallBack(f func(string)(int,string)) {
@@ -253,6 +256,7 @@ type RpcReqWorker struct {
     bacceptreqaddrres chan bool
     bacceptlockoutres chan bool
     bsendlockoutres chan bool
+    bgaccs chan bool
     bc1 chan bool
     bmkg chan bool
     bmkw chan bool
@@ -440,6 +444,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
     bacceptreqaddrres:make(chan bool,1),
     bacceptlockoutres:make(chan bool,1),
     bsendlockoutres:make(chan bool,1),
+    bgaccs:make(chan bool,1),
     bc1:make(chan bool,1),
     bd1_1:make(chan bool,1),
     bc11:make(chan bool,1),
@@ -654,6 +659,9 @@ func (w *RpcReqWorker) Clear() {
     }
     if len(w.bacceptreqaddrres) == 1 {
 	<-w.bacceptreqaddrres
+    }
+    if len(w.bgaccs) == 1 {
+	<-w.bgaccs
     }
     if len(w.bc1) == 1 {
 	<-w.bc1
@@ -944,6 +952,9 @@ func (w *RpcReqWorker) Clear2() {
     }
     if len(w.bacceptreqaddrres) == 1 {
 	<-w.bacceptreqaddrres
+    }
+    if len(w.bgaccs) == 1 {
+	<-w.bgaccs
     }
     if len(w.bc1) == 1 {
 	<-w.bc1
@@ -1516,7 +1527,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
     var ret []string
     _,lmvalue := LdbReqAddr.ListMap()
     ////for test only
-    for kk,vv2 := range lmvalue {
+    /*for kk,vv2 := range lmvalue {
 	fmt.Println("================GetCurNodeReqAddrInfo,TEST,list map index =%v,len(value) =%v ===================",kk,len(string(vv2.([]byte))))
 	vv3 := vv2.([]byte)
 	value := string(vv3)
@@ -1540,7 +1551,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    continue
 	}
 	fmt.Println("================GetCurNodeReqAddrInfo,TEST,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
-    }
+    }*/
     /////////////////
 
     lmvalue2 := SortCurNodeInfo(lmvalue)
@@ -1654,7 +1665,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
     var ret []string
     _,lmvalue := LdbLockOut.ListMap()
     ////for test only
-    for kk,vv2 := range lmvalue {
+    /*for kk,vv2 := range lmvalue {
 	fmt.Println("================GetCurNodeLockOutInfo,TEST,list map index =%v,len(value) =%v ===================",kk,len(string(vv2.([]byte))))
 	vv3 := vv2.([]byte)
 	value := string(vv3)
@@ -1678,7 +1689,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	    continue
 	}
 	fmt.Println("================GetCurNodeLockOutInfo,TEST,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
-    }
+    }*/
     /////////////////
 
 
@@ -2686,6 +2697,19 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		}
 	    }
 
+	    ///////////////////////
+	    /*go GetGaccs(wid,keytest)
+	    <- workers[wid].bgaccs
+	    _,tip,err = GetChannelValue(300,workers[wid].bgaccs)
+	    if err != nil {
+		fmt.Println("================RecvMsg.Run,group accounts result err =%v,key=%s ==================",err,keytest)
+		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Failure","","get group account sigs data timeout","get group account sigs data timeout","",wid)
+		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:"get group account sigs data timeout",Err:fmt.Errorf("get group account sigs data timeout")}
+		ch <- res2
+		return false
+	    }*/
+	    ///////////////////////
+
 	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[5],msgs[3])
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
@@ -2722,6 +2746,7 @@ type SendMsg struct {
 }
 
 type PubKeyData struct {
+    Account string
     Pub string
     Save string
     Nonce string
@@ -3413,6 +3438,17 @@ func DisMsg(msg string) {
 	return
     }
 
+    /////////////////
+    if mm[1] == "GroupAccounts" {
+	key := prexs[0]
+	kd := KeyData{Key:[]byte(key),Data:msg}
+	GAccsDataChan <-kd
+	GAccs.WriteMap(key,msg)
+	fmt.Println("==================DisMsg,get group accounts,msg =%s,key =%s====================",msg,key)
+	return
+    }
+    /////////////////
+
 	//msg:  hash-enode:C1:X1:X2
 	w,err := FindWorker(prexs[0])
 	if err != nil || w == nil {
@@ -3966,6 +4002,12 @@ func GetAcceptReqAddrDir() string {
     return dir
 }
 
+func GetGAccsDir() string {
+    dir := DefaultDataDir()
+    dir += "/dcrmdata/dcrmdb/gaccs" + cur_enode
+    return dir
+}
+
 func homeDir() string {
 	if home := os.Getenv("HOME"); home != "" {
 		return home
@@ -3999,6 +4041,90 @@ type AccountsList struct {
        Accounts []string
 }
 
+//////tmp code 
+func checkacc(geter_acc string,mode string,vv *PubKeyData) bool {
+    fmt.Println("================!!!checkacc!!!====================")
+    if geter_acc == "" || mode == "" || vv == nil {
+	fmt.Println("================!!!checkacc,param error.!!!====================")
+	return false
+    }
+   
+    ///get account
+    /*_,lmvalue := LdbReqAddr.ListMap()
+    lmvalue2 := SortCurNodeInfo(lmvalue)
+    for _,v := range lmvalue2 {
+	if v == nil {
+	    continue
+	}
+
+	vv2 := v.([]byte)
+	value := string(vv2)
+	////
+	ds,err := UnCompress(value)
+	if err != nil {
+	    fmt.Println("================checkacc,uncompress err =%v ===================",err)
+	    continue
+	}
+
+	dss,err := Decode2(ds,"AcceptReqAddrData")
+	if err != nil {
+	    fmt.Println("================checkacc,decode err =%v ===================",err)
+	    continue
+	}
+
+	ac := dss.(*AcceptReqAddrData)
+	if ac == nil {
+	    fmt.Println("================checkacc,decode err ===================")
+	    continue
+	}
+	
+	fmt.Println("================checkacc,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
+    }
+*/
+    ////
+
+    rk := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
+    fmt.Println("================checkacc,Account =%s,groupid =%s,nonce =%s,limitnum =%s,mode=%s,key=%s ===================",vv.Account,vv.GroupId,vv.Nonce,vv.LimitNum,vv.Mode,rk)
+    
+    var da []byte
+    datmp,exsit := GAccs.ReadMap(rk)
+    if exsit == false {
+	fmt.Println("===================checkacc,no exsit key=%s======================",rk)
+	da2 := GetGAccsValueFromDb(rk)
+	if da2 == nil {
+	    fmt.Println("===================checkacc,no exsit,2222, key=%s======================",rk)
+	    exsit = false
+	} else {
+	    fmt.Println("===================checkacc,exsit,4444, key=%s======================",rk)
+	    exsit = true
+	    da = da2
+	}
+    } else {
+	fmt.Println("===================checkacc,exsit ,1111,data =%v,key=%s======================",datmp,rk)
+	//da = datmp.([]byte)
+	da = []byte(fmt.Sprintf("%v",datmp))
+	//fmt.Println("===================checkacc,exsit ,5555,data =%s,key=%s======================",string(da),rk)
+	exsit = true
+    }
+
+    if exsit == true {
+	fmt.Println("===================checkacc,exsit ,2222,data =%v,key=%s======================",string(da),rk)
+	mms := strings.Split(string(da),common.Sep)
+	//fmt.Println("===================checkacc,exsit ,3333,data =%v,key=%s======================",string(da),rk)
+	for _,mm := range mms {
+	    //fmt.Println("================!!!checkacc,mm =%s,key=%s!!!====================",mm,rk)
+	    if strings.EqualFold(mm,geter_acc) {
+		fmt.Println("=============checkacc,return true,geter acc =%s,key=%s====================",geter_acc,rk)
+		return true
+	    }
+	}
+    }
+
+    fmt.Println("=============checkacc,return false,geter acc =%s,key=%s====================",geter_acc,rk)
+    return false
+}
+/////////////
+
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
    if AllAccounts.MapLength() != 0 {
     fmt.Println("================!!!GetAccounts,get pubkey data from AllAccounts success!!!====================")
@@ -4014,6 +4140,12 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	if vv.Pub == "" || vv.GroupId == "" || vv.Mode == "" {
 	    continue
 	}
+
+	///////
+	if checkacc(geter_acc,mode,vv) == false {
+	    continue
+	}
+	/////
 
 	////bug,check valid accepter
 	/*check := false

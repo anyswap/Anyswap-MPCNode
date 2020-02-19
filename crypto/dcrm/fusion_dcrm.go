@@ -560,7 +560,8 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	////////bug
     }
 
-    fmt.Println("========================================dcrm_reqDcrmAddr,fusion account = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v ====================================",from.Hex(),groupid,threshold,mode,Nonce)
+    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
+    fmt.Println("========================================ReqDcrmAddr,fusion account = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v,key=%s ====================================",from.Hex(),groupid,threshold,mode,Nonce,key)
 
     go func() {
 	msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
@@ -568,7 +569,47 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    msg += ":"
 	    msg += datas[3+j]
 	}
-	fmt.Println("============dcrm_reqDcrmAddr,len(datas)=%v,nums=%s,nodecnt=%v=================",len(datas),nums,nodecnt)
+	fmt.Println("============dcrm_reqDcrmAddr,len(datas)=%v,nums=%s,nodecnt=%v,key=%s=================",len(datas),nums,nodecnt,key)
+
+	/////////////////////tmp code //////////////////////
+	mp := []string{key,cur_enode}
+	enode := strings.Join(mp,"-")
+	s0 := "GroupAccounts"
+	s1 := nums[1]
+	ss := enode + common.Sep + s0 + common.Sep + s1
+	
+	for j:=0;j<nodecnt;j++ {
+	    tx2 := new(types.Transaction)
+	    vs := common.FromHex(datas[3+j])
+	    if err := rlp.DecodeBytes(vs, tx2); err != nil {
+		return
+	    }
+
+	    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+	    from2, err := types.Sender(signer, tx2)
+	    if err != nil {
+		signer = types.NewEIP155Signer(big.NewInt(4)) //
+		from2, err = types.Sender(signer, tx2)
+		if err != nil {
+		    return
+		}
+	    }
+
+	    eid := string(tx2.Data())
+	    acc := from2.Hex()
+	    ss += common.Sep
+	    ss += eid
+	    ss += common.Sep
+	    ss += acc
+	}
+	
+	kd := dev.KeyData{Key:[]byte(key),Data:ss}
+	dev.GAccsDataChan <-kd
+	dev.GAccs.WriteMap(key,ss)
+	dev.SendMsgToDcrmGroup(ss,groupid)
+	fmt.Println("===============ReqDcrmAddr,group accounts =%s,key =%s================",ss,key)
+
+	////////////////////////////////////////////////////
 
 	addr,_,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
 	if addr != "" && err == nil {
@@ -576,7 +617,6 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	}
     }()
 
-    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
     fmt.Println("===============ReqDcrmAddr,return key =%s================",key)
     return key,"",nil
 }

@@ -51,6 +51,7 @@ var (
 	RemoteIP       net.IP
 	RemotePort     = uint16(0)
 	RemoteUpdate   = false
+	SelfEnode      = ""
 	changed        = 0
 	Xp_changed     = 0
 
@@ -1243,7 +1244,7 @@ func GetLocalID() NodeID {
 }
 
 func GetEnode() string {
-	return fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), GetRemoteIP(), GetRemotePort())
+	return SelfEnode
 }
 
 func updateRemoteIP(ip net.IP, port uint16) {
@@ -1252,6 +1253,7 @@ func updateRemoteIP(ip net.IP, port uint16) {
 		fmt.Printf("updateRemoteIP, IP:port = %v:%v\n\n", ip, port)
 		RemoteIP = ip
 		RemotePort = port
+		SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
 	}
 }
 

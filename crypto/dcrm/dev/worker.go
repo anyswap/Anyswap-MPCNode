@@ -120,7 +120,15 @@ func RegDcrmGetEosAccountCallBack(f func() (string,string,string)) {
 func InitDev(keyfile string,groupId string) {
     cur_enode = GetSelfEnode()
     fmt.Println("=========InitDev===========","groupId=",groupId,"cur_enode=",cur_enode)
-    peerscount, _ := GetGroup(groupId)
+    peerscount, enodes := GetGroup(groupId)
+    if peerscount != 0 && enodes != "" {
+	nodes := strings.Split(enodes,SepSg)
+	for _,node := range nodes {
+	    node2 := ParseNode(node)
+	    fmt.Println("=========InitDev,groupid =%s,node =%s===========",groupId,node2)
+	}
+    }
+
    NodeCnt = peerscount
    ThresHold = peerscount
    Enode_cnts = peerscount //bug
@@ -1353,7 +1361,7 @@ func GetGroupRes(wid int) RpcDcrmRes {
 //=========================================
 
 func Call(msg interface{},enode string) {
-    fmt.Println("==============Call,get msg =%s,sender =%s===============",msg.(string),enode)
+    fmt.Println("==============Call,get msg =%v,sender =%s===============",msg,enode)
     s := msg.(string)
     SetUpMsgList(s,enode)
 }
@@ -1526,34 +1534,6 @@ func SortCurNodeInfo(value []interface{}) []interface{} {
 func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
     var ret []string
     _,lmvalue := LdbReqAddr.ListMap()
-    ////for test only
-    /*for kk,vv2 := range lmvalue {
-	fmt.Println("================GetCurNodeReqAddrInfo,TEST,list map index =%v,len(value) =%v ===================",kk,len(string(vv2.([]byte))))
-	vv3 := vv2.([]byte)
-	value := string(vv3)
-	fmt.Println("================GetCurNodeReqAddrInfo,TEST,len(value) =%v ===================",len(value))
-	////
-	ds,err := UnCompress(value)
-	if err != nil {
-	    fmt.Println("================GetCurNodeReqAddrInfo,TEST,uncompress err =%v ===================",err)
-	    continue
-	}
-
-	dss,err := Decode2(ds,"AcceptReqAddrData")
-	if err != nil {
-	    fmt.Println("================GetCurNodeReqAddrInfo,TEST,decode err =%v ===================",err)
-	    continue
-	}
-
-	ac := dss.(*AcceptReqAddrData)
-	if ac == nil {
-	    fmt.Println("================GetCurNodeReqAddrInfo,TEST,decode err ===================")
-	    continue
-	}
-	fmt.Println("================GetCurNodeReqAddrInfo,TEST,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
-    }*/
-    /////////////////
-
     lmvalue2 := SortCurNodeInfo(lmvalue)
     for _,v := range lmvalue2 {
 	if v == nil {
@@ -1582,6 +1562,13 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    continue
 	}
 	fmt.Println("================GetCurNodeReqAddrInfo,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
+
+	///////
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+	if CheckAcc(cur_enode,geter_acc,key) == false {
+	    continue
+	}
+	/////
 
 	eaccs := make([]EnAcc,0)
 	/*check := false
@@ -1631,8 +1618,6 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetCurNodeReqAddrInfo,this is not pending,nonce =%s===================",ac.Nonce)
 	    continue
 	}
-
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
 	
 	los := &ReqAddrReply{Key:key,Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
 	ret2,err := json.Marshal(los)
@@ -1736,7 +1721,8 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 		da = da2
 	    }
 	} else {
-	    da = datmp.([]byte)
+	    da = []byte(fmt.Sprintf("%v",datmp))
+	    exsit = true
 	}
 	
 	if exsit == true {
@@ -1747,9 +1733,19 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 		    pd := pubs.(*PubKeyData)
 		    if pd != nil {
 	//		nodesigs = pd.NodeSigs
+			///////
+			key := Keccak256Hash([]byte(strings.ToLower(pd.Account + ":" + "ALL" + ":" + pd.GroupId + ":" + pd.Nonce + ":" + pd.LimitNum + ":" + pd.Mode))).Hex()
+			if CheckAcc(cur_enode,geter_acc,key) == false {
+			    continue
+			}
+			/////
+		    } else {
+			continue
 		    }
 		}
 	    }
+	} else {
+	    continue
 	}
 
 	//if len(nodesigs) == 0 {
@@ -2698,16 +2694,27 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    }
 
 	    ///////////////////////
-	    /*go GetGaccs(wid,keytest)
-	    <- workers[wid].bgaccs
-	    _,tip,err = GetChannelValue(300,workers[wid].bgaccs)
+	    timeout2 := make(chan bool, 1)
+	    go func(rk string) {
+		 for {
+		    _,exsit := GAccs.ReadMap(rk)
+		    if exsit == false {
+			 time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+		    } else {
+			 timeout2 <- true
+			 break
+		    }
+		 }
+	     }(keytest)
+
+	    _,_,err = GetChannelValue(50,timeout2)
 	    if err != nil {
 		fmt.Println("================RecvMsg.Run,group accounts result err =%v,key=%s ==================",err,keytest)
 		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Failure","","get group account sigs data timeout","get group account sigs data timeout","",wid)
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:"get group account sigs data timeout",Err:fmt.Errorf("get group account sigs data timeout")}
 		ch <- res2
 		return false
-	    }*/
+	    }
 	    ///////////////////////
 
 	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[5],msgs[3])
@@ -3505,16 +3512,19 @@ func DisMsg(msg string) {
 	case "C1":
 	    ///bug
 	    if w.msg_c1.Len() >= (NodeCnt-1) {
+		fmt.Println("=================Get C1 fail 11111,msg =%v,prex =%s================",msg,prexs[0])
 		return
 	    }
 	    ///
 	    if Find(w.msg_c1,msg) {
+		fmt.Println("=================C1 has exsit,msg=%v,prex =%s================",msg,prexs[0])
 		return
 	    }
 
+	    fmt.Println("=================Get C1 msg =%v,prex =%s===================",msg,prexs[0])
 	    w.msg_c1.PushBack(msg)
 	    if w.msg_c1.Len() == (NodeCnt-1) {
-		fmt.Println("=========Get All C1===========","GroupId",w.groupid)
+		fmt.Println("=========Get All C1,group id =%s,prex = %s===========",w.groupid,prexs[0])
 		w.bc1 <- true
 	    }
 	case "D1":
@@ -3598,16 +3608,19 @@ func DisMsg(msg string) {
        case "C11":
 	    ///bug
 	    if w.msg_c11.Len() >= (ThresHold-1) {
+		fmt.Println("=================get C11 fail,msg =%v,prex =%s===================",msg,prexs[0])
 		return
 	    }
 	    ///
 	    if Find(w.msg_c11,msg) {
+		fmt.Println("=================C11 exsit,msg =%v,prex =%s===================",msg,prexs[0])
 		return
 	    }
 
+	    fmt.Println("=================Get C11 msg =%v,prex =%s===================",msg,prexs[0])
 	    w.msg_c11.PushBack(msg)
 	    if w.msg_c11.Len() == (ThresHold-1) {
-		fmt.Println("=========Get All C11===========","GroupId",w.groupid)
+		fmt.Println("=========Get All C11,group id =%s,prex =%s===========",w.groupid,prexs[0])
 		w.bc11 <- true
 	    }
        case "KC":
@@ -4042,85 +4055,46 @@ type AccountsList struct {
 }
 
 //////tmp code 
-func checkacc(geter_acc string,mode string,vv *PubKeyData) bool {
-    fmt.Println("================!!!checkacc!!!====================")
-    if geter_acc == "" || mode == "" || vv == nil {
-	fmt.Println("================!!!checkacc,param error.!!!====================")
+func CheckAcc(eid string,geter_acc string,rk string) bool {
+    fmt.Println("================!!!CheckAcc!!!====================")
+    if eid == "" || geter_acc == "" || rk == "" {
+	fmt.Println("================!!!CheckAcc,param error.!!!====================")
 	return false
     }
    
-    ///get account
-    /*_,lmvalue := LdbReqAddr.ListMap()
-    lmvalue2 := SortCurNodeInfo(lmvalue)
-    for _,v := range lmvalue2 {
-	if v == nil {
-	    continue
-	}
-
-	vv2 := v.([]byte)
-	value := string(vv2)
-	////
-	ds,err := UnCompress(value)
-	if err != nil {
-	    fmt.Println("================checkacc,uncompress err =%v ===================",err)
-	    continue
-	}
-
-	dss,err := Decode2(ds,"AcceptReqAddrData")
-	if err != nil {
-	    fmt.Println("================checkacc,decode err =%v ===================",err)
-	    continue
-	}
-
-	ac := dss.(*AcceptReqAddrData)
-	if ac == nil {
-	    fmt.Println("================checkacc,decode err ===================")
-	    continue
-	}
-	
-	fmt.Println("================checkacc,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
-    }
-*/
-    ////
-
-    rk := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
-    fmt.Println("================checkacc,Account =%s,groupid =%s,nonce =%s,limitnum =%s,mode=%s,key=%s ===================",vv.Account,vv.GroupId,vv.Nonce,vv.LimitNum,vv.Mode,rk)
-    
     var da []byte
     datmp,exsit := GAccs.ReadMap(rk)
     if exsit == false {
-	fmt.Println("===================checkacc,no exsit key=%s======================",rk)
+	fmt.Println("===================CheckAcc,no exsit key=%s======================",rk)
 	da2 := GetGAccsValueFromDb(rk)
 	if da2 == nil {
-	    fmt.Println("===================checkacc,no exsit,2222, key=%s======================",rk)
+	    fmt.Println("===================CheckAcc,no exsit,2222, key=%s======================",rk)
 	    exsit = false
 	} else {
-	    fmt.Println("===================checkacc,exsit,4444, key=%s======================",rk)
+	    fmt.Println("===================CheckAcc,exsit,4444, key=%s======================",rk)
 	    exsit = true
 	    da = da2
 	}
     } else {
-	fmt.Println("===================checkacc,exsit ,1111,data =%v,key=%s======================",datmp,rk)
-	//da = datmp.([]byte)
+	fmt.Println("===================CheckAcc,exsit ,1111,data =%v,key=%s======================",datmp,rk)
 	da = []byte(fmt.Sprintf("%v",datmp))
-	//fmt.Println("===================checkacc,exsit ,5555,data =%s,key=%s======================",string(da),rk)
 	exsit = true
     }
 
     if exsit == true {
-	fmt.Println("===================checkacc,exsit ,2222,data =%v,key=%s======================",string(da),rk)
+	fmt.Println("===================CheckAcc,exsit ,2222,data =%v,key=%s======================",string(da),rk)
 	mms := strings.Split(string(da),common.Sep)
-	//fmt.Println("===================checkacc,exsit ,3333,data =%v,key=%s======================",string(da),rk)
-	for _,mm := range mms {
-	    //fmt.Println("================!!!checkacc,mm =%s,key=%s!!!====================",mm,rk)
-	    if strings.EqualFold(mm,geter_acc) {
-		fmt.Println("=============checkacc,return true,geter acc =%s,key=%s====================",geter_acc,rk)
-		return true
+	for k,mm := range mms {
+	    if strings.EqualFold(mm,eid) {
+		if len(mms) >= (k+1) && strings.EqualFold(mms[k+1],geter_acc) {
+		    fmt.Println("=============CheckAcc,return true,eid =%s,geter acc =%s,key=%s====================",eid,geter_acc,rk)
+		    return true
+		}
 	    }
 	}
     }
 
-    fmt.Println("=============checkacc,return false,geter acc =%s,key=%s====================",geter_acc,rk)
+    fmt.Println("=============CheckAcc,return false,eid =%s,geter acc =%s,key=%s====================",eid,geter_acc,rk)
     return false
 }
 /////////////
@@ -4142,7 +4116,8 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	}
 
 	///////
-	if checkacc(geter_acc,mode,vv) == false {
+	rk := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
+	if CheckAcc(cur_enode,geter_acc,rk) == false {
 	    continue
 	}
 	/////

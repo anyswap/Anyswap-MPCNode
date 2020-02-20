@@ -2689,22 +2689,22 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 }
 
 func SendMsgToDcrmGroup(msg string,groupid string) {
-    fmt.Println("==============SendMsgToDcrmGroup,msg =%s,send to groupid =%s =================",msg,groupid)
+    fmt.Println("==============SendMsgToDcrmGroup,msg =%v,send to groupid =%s =================",msg,groupid)
     for i:= 0;i<ReSendTimes;i++ {
 	BroadcastInGroupOthers(groupid,msg)
-	time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
+	//time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
     }
 }
 
 ///
 func EncryptMsg (msg string,enodeID string) (string, error) {
-    fmt.Println("=============EncryptMsg,KeyFile = %s,enodeID = %s ================",KeyFile,enodeID)
+    //fmt.Println("=============EncryptMsg,KeyFile = %s,enodeID = %s ================",KeyFile,enodeID)
     hprv, err1 := hex.DecodeString(enodeID)
     if err1 != nil {
 	return "",err1
     }
 
-    fmt.Println("=============EncryptMsg,hprv len = %v ================",len(hprv))
+    //fmt.Println("=============EncryptMsg,hprv len = %v ================",len(hprv))
     p := &ecdsa.PublicKey{Curve: crypto.S256(), X: new(big.Int), Y: new(big.Int)}
     half := len(hprv) / 2
     p.X.SetBytes(hprv[:half])
@@ -2724,7 +2724,7 @@ func EncryptMsg (msg string,enodeID string) (string, error) {
 }
 
 func DecryptMsg (cm string) (string, error) {
-    fmt.Println("=============DecryptMsg,KeyFile = %s ================",KeyFile)
+    //fmt.Println("=============DecryptMsg,KeyFile = %s ================",KeyFile)
     nodeKey, errkey := crypto.LoadECDSA(KeyFile)
     if errkey != nil {
 	return "",errkey
@@ -2742,7 +2742,7 @@ func DecryptMsg (cm string) (string, error) {
 ///
 
 func SendMsgToPeer(enodes string,msg string) {
-    fmt.Println("==============SendMsgToPeer,msg =%s,send to peer %s ===================",msg,enodes)
+    fmt.Println("==============SendMsgToPeer,msg =%v,send to peer %s ===================",msg,enodes)
     en := strings.Split(string(enodes[8:]),"@")
     cm,err := EncryptMsg(msg,en[0])
     if err != nil {
@@ -2753,7 +2753,7 @@ func SendMsgToPeer(enodes string,msg string) {
     for i:= 0;i<ReSendTimes;i++ {
 	SendToPeer(enodes,cm)
 	//SendToPeer(enodes,msg)
-	time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
+	//time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
     }
 }
 

@@ -629,10 +629,10 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
-    _, err := types.Sender(signer, tx)
+    from, err := types.Sender(signer, tx)
     if err != nil {
 	signer = types.NewEIP155Signer(big.NewInt(4)) //
-	_, err = types.Sender(signer, tx)
+	from, err = types.Sender(signer, tx)
 	if err != nil {
 	    return "","recover fusion account fail from raw data,maybe raw data error",err
 	}
@@ -698,6 +698,12 @@ func AcceptReqAddr(raw string) (string,string,error) {
 	return "","dcrm back-end internal error:decode accept data fail",fmt.Errorf("decode accept data fail")
     }
 
+    ///////
+    if dev.CheckAcc(cur_enode,from.Hex(),key) == false {
+	return "","invalid accepter",fmt.Errorf("invalid accepter")
+    }
+    /////
+
     /*check := false
     for _,v := range ac.NodeSigs {
 	tx2 := new(types.Transaction)
@@ -747,10 +753,10 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
-    _, err := types.Sender(signer, tx)
+    from, err := types.Sender(signer, tx)
     if err != nil {
 	signer = types.NewEIP155Signer(big.NewInt(4)) //
-	_, err = types.Sender(signer, tx)
+	from, err = types.Sender(signer, tx)
 	if err != nil {
 	    return "","recover fusion account fail from raw data,maybe raw data error",err
 	}
@@ -820,6 +826,13 @@ func AcceptLockOut(raw string) (string,string,error) {
     if pd == nil {
 	return "","dcrm back-end internal error:decode lockout data from db fail",fmt.Errorf("decode lockout data from db fail")
     }
+
+    ///////
+    rk := dev.Keccak256Hash([]byte(strings.ToLower(pd.Account + ":" + "ALL" + ":" + pd.GroupId + ":" + pd.Nonce + ":" + pd.LimitNum + ":" + pd.Mode))).Hex()
+    if dev.CheckAcc(cur_enode,from.Hex(),rk) == false {
+	return "","invalid accepter",fmt.Errorf("invalid accepter")
+    }
+    /////
 
     /*check := false
     for _,v := range pd.NodeSigs {
@@ -1030,6 +1043,13 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 	    continue
 	}
 
+	///////
+	rk := dev.Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
+	if dev.CheckAcc(cur_enode,geter_acc,rk) == false {
+	    return "","invalid accepter",fmt.Errorf("invalid accepter")
+	}
+	/////
+
 	////bug,check valid accepter
 	/*check := false
 	for _,v := range vv.NodeSigs {
@@ -1206,7 +1226,7 @@ func init(){
 }
 
 func Call(msg interface{}) {
-	fmt.Println("===========dcrm.Call==============","msg",msg)
+    fmt.Println("===========dcrm.Call,msg =%v==============",msg)
     s := msg.(string)
     SetUpMsgList(s)
 }

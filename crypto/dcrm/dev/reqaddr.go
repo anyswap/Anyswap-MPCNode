@@ -97,7 +97,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 		da = da2
 	    }
 	} else {
-	    da = datmp.([]byte)
+	    da = []byte(fmt.Sprintf("%v",datmp))
+	    exsit = true
 	}
 
 	if exsit == true {
@@ -285,7 +286,8 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    da = da2
 	}
     } else {
-	da = datmp.([]byte)
+	da = []byte(fmt.Sprintf("%v",datmp))
+	exsit = true
     }
 
     if exsit == true {

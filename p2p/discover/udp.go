@@ -240,7 +240,7 @@ func ListenUDP(c conn, cfg Config) (*Table, error) {
 	}
 	fmt.Printf("\nUDP listener up, self %v\n", tab.self)
 	if SelfEnode == "" {
-		SelfEnode = tab.self
+		SelfEnode = fmt.Sprintf("%v", tab.self)
 	}
 	return tab, nil
 }

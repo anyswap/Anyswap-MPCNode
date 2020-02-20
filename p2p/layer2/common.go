@@ -310,6 +310,32 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	var xvcGroup *discover.Group
 	switch (p2pType) {
 	case Sdkprotocol_type:
+		if SdkGroup[gid] != nil {
+			////TODO: check IP,UDP
+			//_, groupTmp := getGroupSDK(gid)
+			//flag := false
+			//for _, enode := range req.([]*discover.Node) {
+			//	node, _ := discover.ParseNode(enode.String())
+			//	flag = false
+			//	for _, n := range groupTmp.Nodes {
+			//		if node.ID == n.ID {
+			//			ip1 := fmt.Sprintf("%v", node.IP)
+			//			ip2 := fmt.Sprintf("%v", n.IP)
+			//			if ip1 == ip2 && node.UDP == node.UDP {
+			//				flag = true
+			//				break
+			//			}
+			//		}
+			//	}
+			//	if flag == false {
+			//		break
+			//	}
+			//}
+			//if flag != false {
+				fmt.Printf("==== recvGroupInfo() ====, gid: %v exist\n", gid)
+				return
+			//}
+		}
 		keyString := ""
 		for _, enode := range req.([]*discover.Node) {
 			keyString = fmt.Sprintf("%v%v%v%v", keyString, enode.ID, enode.IP, enode.UDP)

@@ -76,7 +76,7 @@ var count int = 0
 func init() {
 	//app := cli.NewApp()
 	app.Usage = "Dcrm Wallet Service"
-	app.Version = "5.0.0"
+	app.Version = "5.0.1"
 	app.Action = StartDcrm
 	app.Flags = []cli.Flag{
 		cli.IntFlag{Name: "rpcport", Value: 0, Usage: "listen port", Destination: &rpcport},

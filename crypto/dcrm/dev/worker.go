@@ -2147,7 +2147,25 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    if rr.MsgType == "rpc_req_dcrmaddr" {
 		msgs := strings.Split(rr.Msg,":")
 		//nonce check
-		cur_nonce_str,_,err := GetReqAddrNonce(msgs[0])
+		keytest := Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1] + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]))).Hex()
+		_,exsit := LdbReqAddr.ReadMap(keytest)
+		if exsit == false {
+		    da2 := GetReqAddrValueFromDb(keytest)
+		    if da2 == nil {
+			exsit = false
+		    } else {
+			exsit = true
+		    }
+		}
+
+		if exsit == true {
+		    //TODO must set acceptreqaddr(.....)
+		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:req addr nonce error",Err:fmt.Errorf("req addr nonce error")}
+		    ch <- res2
+		    return false
+		}
+
+		/*cur_nonce_str,_,err := GetReqAddrNonce(msgs[0])
 		if err != nil {
 		    //TODO must set acceptreqaddr(.....)
 		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("get req addr nonce fail in recvmsg.run")}
@@ -2160,7 +2178,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:req addr nonce error",Err:fmt.Errorf("req addr nonce error")}
 		    ch <- res2
 		    return false
-		}
+		}*/
 		//
 
 		_,err = SetReqAddrNonce(msgs[0],msgs[3])
@@ -2177,7 +2195,27 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    if rr.MsgType == "rpc_lockout" {
 		msgs := strings.Split(rr.Msg,":")
 		//nonce check
-		cur_nonce_str,_,err := GetLockOutNonce(msgs[0],msgs[4],msgs[1])
+		keytest := Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[5] + ":" + msgs[6] + ":" + msgs[1] + ":" + msgs[7]))).Hex()
+		
+		_,exsit := LdbLockOut.ReadMap(keytest)
+		if exsit == false {
+		    da2 := GetLockOutValueFromDb(keytest)
+		    if da2 == nil {
+			exsit = false
+		    } else {
+			exsit = true
+		    }
+		}
+		
+		///////
+		if exsit == true {
+		    //TODO must set acceptlockout(.....)
+		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:lockout tx nonce error",Err:fmt.Errorf("lockout tx nonce error")}
+		    ch <- res2
+		    return false
+		}
+
+		/*cur_nonce_str,_,err := GetLockOutNonce(msgs[0],msgs[4],msgs[1])
 		if err != nil {
 		    //TODO must set acceptlockout(.....)
 		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("get lockout nonce fail in recvmsg.run")}
@@ -2190,7 +2228,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:lockout tx nonce error",Err:fmt.Errorf("lockout tx nonce error")}
 		    ch <- res2
 		    return false
-		}
+		}*/
 		//
 		
 		_,err = SetLockOutNonce(msgs[0],msgs[4],msgs[1],msgs[6])
@@ -4020,7 +4058,7 @@ type AccountsList struct {
 
 //////tmp code 
 func CheckAcc(eid string,geter_acc string,rk string) bool {
-    fmt.Println("================!!!CheckAcc!!!====================")
+    //fmt.Println("================!!!CheckAcc!!!====================")
     if eid == "" || geter_acc == "" || rk == "" {
 	fmt.Println("================!!!CheckAcc,param error.!!!====================")
 	return false
@@ -4029,24 +4067,24 @@ func CheckAcc(eid string,geter_acc string,rk string) bool {
     var da []byte
     datmp,exsit := GAccs.ReadMap(rk)
     if exsit == false {
-	fmt.Println("===================CheckAcc,no exsit key=%s======================",rk)
+	//fmt.Println("===================CheckAcc,no exsit key=%s======================",rk)
 	da2 := GetGAccsValueFromDb(rk)
 	if da2 == nil {
-	    fmt.Println("===================CheckAcc,no exsit,2222, key=%s======================",rk)
+//	    fmt.Println("===================CheckAcc,no exsit,2222, key=%s======================",rk)
 	    exsit = false
 	} else {
-	    fmt.Println("===================CheckAcc,exsit,4444, key=%s======================",rk)
+//	    fmt.Println("===================CheckAcc,exsit,4444, key=%s======================",rk)
 	    exsit = true
 	    da = da2
 	}
     } else {
-	fmt.Println("===================CheckAcc,exsit ,1111,data =%v,key=%s======================",datmp,rk)
+//	fmt.Println("===================CheckAcc,exsit ,1111,data =%v,key=%s======================",datmp,rk)
 	da = []byte(fmt.Sprintf("%v",datmp))
 	exsit = true
     }
 
     if exsit == true {
-	fmt.Println("===================CheckAcc,exsit ,2222,data =%v,key=%s======================",string(da),rk)
+//	fmt.Println("===================CheckAcc,exsit ,2222,data =%v,key=%s======================",string(da),rk)
 	mms := strings.Split(string(da),common.Sep)
 	for k,mm := range mms {
 	    if strings.EqualFold(mm,eid) {

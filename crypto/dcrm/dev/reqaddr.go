@@ -114,7 +114,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    }
 	}
 	////////
-	pubs := &PubKeyData{Account:account,Pub:string(sedpk),Save:sedsave,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
+	pubs := &PubKeyData{Account:account,Pub:string(sedpk),Save:sedsave,Nonce:nonce,GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
 	epubs,err := Encode2(pubs)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ed pubkey",Err:err}
@@ -303,7 +303,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	}
     }
     ////////
-    pubs := &PubKeyData{Account:account,Pub:string(ys),Save:save,Nonce:"0",GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
+    pubs := &PubKeyData{Account:account,Pub:string(ys),Save:save,Nonce:nonce,GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
     epubs,err := Encode2(pubs)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey",Err:err}

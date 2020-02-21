@@ -541,22 +541,25 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    }
 	}
 
-		//nonce check
-	cur_nonce_str,tip,err := dev.GetReqAddrNonce(from.Hex())
+	//nonce check
+	if exsit == true {
+	    return "","req addr nonce error",fmt.Errorf("nonce error.")
+	}
+
+	/*cur_nonce_str,tip,err := dev.GetReqAddrNonce(from.Hex())
 	if err != nil {
 	    return "",tip,err
 	}
 
 	if strings.EqualFold(fmt.Sprintf("%v",Nonce),cur_nonce_str) == false {
 	    return "","req addr nonce error",fmt.Errorf("nonce error.")
-	}
+	}*/
 	//
 
-	tip,err = dev.SetReqAddrNonce(from.Hex(),fmt.Sprintf("%v",Nonce))
+	tip,err := dev.SetReqAddrNonce(from.Hex(),fmt.Sprintf("%v",Nonce))
 	if err != nil {
 	    return "",tip,fmt.Errorf("update nonce error.")
 	}
-
 	////////bug
     }
 
@@ -979,18 +982,34 @@ func LockOut(raw string) (string,string,error) {
 	}
     }
 
+    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
     //nonce check
-    cur_nonce_str,tip,err := dev.GetLockOutNonce(from.Hex(),cointype,dcrmaddr)
+    /*cur_nonce_str,tip,err := dev.GetLockOutNonce(from.Hex(),cointype,dcrmaddr)
     if err != nil {
 	return "",tip,err
     }
 
     if strings.EqualFold(fmt.Sprintf("%v",Nonce),cur_nonce_str) == false {
 	return "","lockout tx nonce error",fmt.Errorf("nonce error.")
+    }*/
+    
+    _,exsit = dev.LdbLockOut.ReadMap(key)
+    if exsit == false {
+	da2 := dev.GetLockOutValueFromDb(key)
+	if da2 == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	}
+    }
+    
+    ///////
+    if exsit == true {
+	return "","lockout tx nonce error",fmt.Errorf("nonce error.")
     }
     //
     
-    tip,err = dev.SetLockOutNonce(from.Hex(),cointype,dcrmaddr,fmt.Sprintf("%v",Nonce))
+    tip,err := dev.SetLockOutNonce(from.Hex(),cointype,dcrmaddr,fmt.Sprintf("%v",Nonce))
     if err != nil {
 	return "",tip,fmt.Errorf("update nonce error.")
     }
@@ -1010,7 +1029,6 @@ func LockOut(raw string) (string,string,error) {
 	}
     }()
     
-    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
     fmt.Println("===================LockOut,return key=%s======================",key)
 
     return key,"",nil

@@ -31,6 +31,7 @@ func listenSignal(exit chan int) {
     sig := make(chan os.Signal)
     signal.Notify(sig)
 
+    fmt.Println("============call listenSignal=============")
     for {
 	<-sig
 	exit <- 1

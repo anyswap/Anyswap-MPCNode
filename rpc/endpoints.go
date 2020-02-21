@@ -18,6 +18,7 @@ package rpc
 
 import (
 	"net"
+	"fmt"
 )
 
 // StartHTTPEndpoint starts the HTTP RPC endpoint, configured with cors/vhosts/modules
@@ -32,6 +33,7 @@ func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []str
 	for _, api := range apis {
 		if whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
+				fmt.Println("================================!!!dcrmwalletrpclog,StartHTTPEndpoint,err =%v!!!!===========================================",err)
 				return nil, nil, err
 			}
 		}
@@ -42,9 +44,11 @@ func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []str
 		err      error
 	)
 	if listener, err = net.Listen("tcp", endpoint); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,StartHTTPEndpoint,err =%v!!!!===========================================",err)
 		return nil, nil, err
 	}
 	go NewHTTPServer(cors, vhosts, timeouts, handler).Serve(listener)
+	fmt.Println("================================!!!dcrmwalletrpclog,StartHTTPEndpoint,err =%v!!!!===========================================",err)
 	return listener, handler, err
 }
 

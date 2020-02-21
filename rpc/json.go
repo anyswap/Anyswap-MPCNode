@@ -140,6 +140,7 @@ func (c *jsonCodec) ReadRequestHeaders() ([]rpcRequest, bool, Error) {
 
 	var incomingMsg json.RawMessage
 	if err := c.decode(&incomingMsg); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,jsonCodec.ReadRequestHeaders,err =%v!!!!===========================================",err)
 		return nil, false, &invalidRequestError{err.Error()}
 	}
 	if isBatch(incomingMsg) {
@@ -152,15 +153,20 @@ func (c *jsonCodec) ReadRequestHeaders() ([]rpcRequest, bool, Error) {
 // valid id's are strings, numbers or null
 func checkReqId(reqId json.RawMessage) error {
 	if len(reqId) == 0 {
+		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",fmt.Errorf("missing request id"))
 		return fmt.Errorf("missing request id")
 	}
 	if _, err := strconv.ParseFloat(string(reqId), 64); err == nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",err)
 		return nil
 	}
 	var str string
 	if err := json.Unmarshal(reqId, &str); err == nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",err)
 		return nil
 	}
+	
+	fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",fmt.Errorf("invalid request id"))
 	return fmt.Errorf("invalid request id")
 }
 
@@ -170,10 +176,12 @@ func checkReqId(reqId json.RawMessage) error {
 func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
 	var in jsonRequest
 	if err := json.Unmarshal(incomingMsg, &in); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,parseRequest,err =%v!!!!===========================================",err)
 		return nil, false, &invalidMessageError{err.Error()}
 	}
 
 	if err := checkReqId(in.Id); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,parseRequest,err =%v!!!!===========================================",err)
 		return nil, false, &invalidMessageError{err.Error()}
 	}
 
@@ -184,6 +192,7 @@ func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
 			// first param must be subscription name
 			var subscribeMethod [1]string
 			if err := json.Unmarshal(in.Payload, &subscribeMethod); err != nil {
+				fmt.Println("================================!!!dcrmwalletrpclog,parseRequest,err =%v!!!!===========================================",err)
 				return nil, false, &invalidRequestError{"Unable to parse subscription request"}
 			}
 
@@ -191,6 +200,7 @@ func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
 			reqs[0].params = in.Payload
 			return reqs, false, nil
 		}
+		fmt.Println("================================!!!dcrmwalletrpclog,parseRequest,err =%v!!!!===========================================",fmt.Errorf("Unable to parse subscription request"))
 		return nil, false, &invalidRequestError{"Unable to parse subscription request"}
 	}
 
@@ -217,12 +227,14 @@ func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
 func parseBatchRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
 	var in []jsonRequest
 	if err := json.Unmarshal(incomingMsg, &in); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,parseBatchRequest,err =%v!!!!===========================================",err)
 		return nil, false, &invalidMessageError{err.Error()}
 	}
 
 	requests := make([]rpcRequest, len(in))
 	for i, r := range in {
 		if err := checkReqId(r.Id); err != nil {
+			fmt.Println("================================!!!dcrmwalletrpclog,parseBatchRequest,err =%v!!!!===========================================",err)
 			return nil, false, &invalidMessageError{err.Error()}
 		}
 
@@ -235,6 +247,7 @@ func parseBatchRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) 
 				// first param must be subscription name
 				var subscribeMethod [1]string
 				if err := json.Unmarshal(r.Payload, &subscribeMethod); err != nil {
+					fmt.Println("================================!!!dcrmwalletrpclog,parseBatchRequest,err =%v!!!!===========================================",err)
 					return nil, false, &invalidRequestError{"Unable to parse subscription request"}
 				}
 
@@ -243,6 +256,7 @@ func parseBatchRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) 
 				continue
 			}
 
+			fmt.Println("================================!!!dcrmwalletrpclog,parseBatchRequest,err =%v!!!!===========================================",fmt.Errorf("Unable to parse (un)subscribe request arguments"))
 			return nil, true, &invalidRequestError{"Unable to parse (un)subscribe request arguments"}
 		}
 
@@ -283,30 +297,36 @@ func parsePositionalArguments(rawArgs json.RawMessage, types []reflect.Type) ([]
 	// Read beginning of the args array.
 	dec := json.NewDecoder(bytes.NewReader(rawArgs))
 	if tok, _ := dec.Token(); tok != json.Delim('[') {
+		fmt.Println("================================!!!dcrmwalletrpclog,parsePositionalArguments,err =%v!!!!===========================================",fmt.Errorf("non-array args"))
 		return nil, &invalidParamsError{"non-array args"}
 	}
 	// Read args.
 	args := make([]reflect.Value, 0, len(types))
 	for i := 0; dec.More(); i++ {
 		if i >= len(types) {
+			fmt.Println("================================!!!dcrmwalletrpclog,parsePositionalArguments,err =%v!!!!===========================================",fmt.Errorf("too many arguments, want at most"))
 			return nil, &invalidParamsError{fmt.Sprintf("too many arguments, want at most %d", len(types))}
 		}
 		argval := reflect.New(types[i])
 		if err := dec.Decode(argval.Interface()); err != nil {
+			fmt.Println("================================!!!dcrmwalletrpclog,parsePositionalArguments,err =%v!!!!===========================================",fmt.Errorf("invalid argument"))
 			return nil, &invalidParamsError{fmt.Sprintf("invalid argument %d: %v", i, err)}
 		}
 		if argval.IsNil() && types[i].Kind() != reflect.Ptr {
+			fmt.Println("================================!!!dcrmwalletrpclog,parsePositionalArguments,err =%v!!!!===========================================",fmt.Errorf("missing value for required argument"))
 			return nil, &invalidParamsError{fmt.Sprintf("missing value for required argument %d", i)}
 		}
 		args = append(args, argval.Elem())
 	}
 	// Read end of args array.
 	if _, err := dec.Token(); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,parsePositionalArguments,err =%v!!!!===========================================",err)
 		return nil, &invalidParamsError{err.Error()}
 	}
 	// Set any missing args to nil.
 	for i := len(args); i < len(types); i++ {
 		if types[i].Kind() != reflect.Ptr {
+			fmt.Println("================================!!!dcrmwalletrpclog,parsePositionalArguments,err =%v!!!!===========================================",fmt.Errorf("missing value for required argument"))
 			return nil, &invalidParamsError{fmt.Sprintf("missing value for required argument %d", i)}
 		}
 		args = append(args, reflect.Zero(types[i]))
@@ -321,12 +341,14 @@ func (c *jsonCodec) CreateResponse(id interface{}, reply interface{}) interface{
 
 // CreateErrorResponse will create a JSON-RPC error response with the given id and error.
 func (c *jsonCodec) CreateErrorResponse(id interface{}, err Error) interface{} {
+	fmt.Println("================================!!!dcrmwalletrpclog,jsonCodec.CreateErrorResponse,err =%v!!!!===========================================",err)
 	return &jsonErrResponse{Version: jsonrpcVersion, Id: id, Error: jsonError{Code: err.ErrorCode(), Message: err.Error()}}
 }
 
 // CreateErrorResponseWithInfo will create a JSON-RPC error response with the given id and error.
 // info is optional and contains additional information about the error. When an empty string is passed it is ignored.
 func (c *jsonCodec) CreateErrorResponseWithInfo(id interface{}, err Error, info interface{}) interface{} {
+	fmt.Println("================================!!!dcrmwalletrpclog,jsonCodec.CreateErrorResponseWithInfo,err =%v!!!!===========================================",err)
 	return &jsonErrResponse{Version: jsonrpcVersion, Id: id,
 		Error: jsonError{Code: err.ErrorCode(), Message: err.Error(), Data: info}}
 }

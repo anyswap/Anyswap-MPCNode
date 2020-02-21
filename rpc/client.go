@@ -136,8 +136,10 @@ type requestOp struct {
 func (op *requestOp) wait(ctx context.Context) (*jsonrpcMessage, error) {
 	select {
 	case <-ctx.Done():
+	    fmt.Println("================================!!!dcrmwalletrpclog,requestOp.wait,1111,err =%v!!!!===========================================",ctx.Err())
 		return nil, ctx.Err()
 	case resp := <-op.resp:
+	    fmt.Println("================================!!!dcrmwalletrpclog,requestOp.wait,22222,err =%v!!!!===========================================",op.err)
 		return resp, op.err
 	}
 }
@@ -163,6 +165,7 @@ func Dial(rawurl string) (*Client, error) {
 func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,DialContext,rawurl =%s,err =%v!!!!===========================================",rawurl,err)
 		return nil, err
 	}
 	switch u.Scheme {
@@ -178,14 +181,21 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 type StdIOConn struct{}
 
 func (io StdIOConn) Read(b []byte) (n int, err error) {
-	return os.Stdin.Read(b)
+	//return os.Stdin.Read(b)
+	a,err := os.Stdin.Read(b)
+	fmt.Println("================================!!!dcrmwalletrpclog,StdIOConn.Read,a =%s,err =%v!!!!===========================================",a,err)
+	return a,err
 }
 
 func (io StdIOConn) Write(b []byte) (n int, err error) {
-	return os.Stdout.Write(b)
+	//return os.Stdout.Write(b)
+	a,err := os.Stdout.Write(b)
+	fmt.Println("================================!!!dcrmwalletrpclog,StdIOConn.Write,a =%s,err =%v!!!!===========================================",a,err)
+	return a,err
 }
 
 func (io StdIOConn) Close() error {
+	fmt.Println("================================!!!dcrmwalletrpclog,StdIOConn.Close!!!!===========================================")
 	return nil
 }
 
@@ -217,6 +227,7 @@ func DialStdIO(ctx context.Context) (*Client, error) {
 func newClient(initctx context.Context, connectFunc func(context.Context) (net.Conn, error)) (*Client, error) {
 	conn, err := connectFunc(initctx)
 	if err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,newClient,err =%v!!!!===========================================",err)
 		return nil, err
 	}
 	_, isHTTP := conn.(*httpConn)
@@ -285,6 +296,7 @@ func (c *Client) Call(result interface{}, method string, args ...interface{}) er
 func (c *Client) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	msg, err := c.newMessage(method, args...)
 	if err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,CallContext,err =%v!!!!===========================================",err)
 		return err
 	}
 	op := &requestOp{ids: []json.RawMessage{msg.ID}, resp: make(chan *jsonrpcMessage, 1)}
@@ -295,6 +307,7 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 		err = c.send(ctx, op, msg)
 	}
 	if err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,CallContext,err =%v!!!!===========================================",err)
 		return err
 	}
 
@@ -303,11 +316,16 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 	case err != nil:
 		return err
 	case resp.Error != nil:
+		fmt.Println("================================!!!dcrmwalletrpclog,CallContext,err =%v!!!!===========================================",resp.Error)
 		return resp.Error
 	case len(resp.Result) == 0:
+		fmt.Println("================================!!!dcrmwalletrpclog,CallContext,err =%v!!!!===========================================",ErrNoResult)
 		return ErrNoResult
 	default:
-		return json.Unmarshal(resp.Result, &result)
+		//return json.Unmarshal(resp.Result, &result)
+		err = json.Unmarshal(resp.Result, &result)
+		fmt.Println("================================!!!dcrmwalletrpclog,CallContext,err =%v!!!!===========================================",err)
+		return err
 	}
 }
 
@@ -421,6 +439,7 @@ func (c *Client) Subscribe(ctx context.Context, namespace string, channel interf
 
 	msg, err := c.newMessage(namespace+subscribeMethodSuffix, args...)
 	if err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,client.Subscribe,err =%v!!!!===========================================",err)
 		return nil, err
 	}
 	op := &requestOp{
@@ -432,9 +451,11 @@ func (c *Client) Subscribe(ctx context.Context, namespace string, channel interf
 	// Send the subscription request.
 	// The arrival and validity of the response is signaled on sub.quit.
 	if err := c.send(ctx, op, msg); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,client.Subscribe,err =%v!!!!===========================================",err)
 		return nil, err
 	}
 	if _, err := op.wait(ctx); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,client.Subscribe,err =%v!!!!===========================================",err)
 		return nil, err
 	}
 	return op.sub, nil
@@ -443,6 +464,7 @@ func (c *Client) Subscribe(ctx context.Context, namespace string, channel interf
 func (c *Client) newMessage(method string, paramsIn ...interface{}) (*jsonrpcMessage, error) {
 	params, err := json.Marshal(paramsIn)
 	if err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,client.newMessage,err =%v!!!!===========================================",err)
 		return nil, err
 	}
 	return &jsonrpcMessage{Version: "2.0", ID: c.nextID(), Method: method, Params: params}, nil
@@ -458,12 +480,15 @@ func (c *Client) send(ctx context.Context, op *requestOp, msg interface{}) error
 		//}})
 		err := c.write(ctx, msg)
 		c.sendDone <- err
+		fmt.Println("================================!!!dcrmwalletrpclog,client.send,err =%v!!!!===========================================",err)
 		return err
 	case <-ctx.Done():
 		// This can happen if the client is overloaded or unable to keep up with
 		// subscription notifications.
+		fmt.Println("================================!!!dcrmwalletrpclog,client.send,err =%v!!!!===========================================",ctx.Err())
 		return ctx.Err()
 	case <-c.didQuit:
+		fmt.Println("================================!!!dcrmwalletrpclog,client.send,err =%v!!!!===========================================",ErrClientQuit)
 		return ErrClientQuit
 	}
 }
@@ -476,6 +501,7 @@ func (c *Client) write(ctx context.Context, msg interface{}) error {
 	// The previous write failed. Try to establish a new connection.
 	if c.writeConn == nil {
 		if err := c.reconnect(ctx); err != nil {
+			fmt.Println("================================!!!dcrmwalletrpclog,client.write,err =%v!!!!===========================================",err)
 			return err
 		}
 	}
@@ -485,6 +511,7 @@ func (c *Client) write(ctx context.Context, msg interface{}) error {
 	if err != nil {
 		c.writeConn = nil
 	}
+	fmt.Println("================================!!!dcrmwalletrpclog,client.write,err =%v!!!!===========================================",err)
 	return err
 }
 
@@ -492,6 +519,7 @@ func (c *Client) reconnect(ctx context.Context) error {
 	newconn, err := c.connectFunc(ctx)
 	if err != nil {
 		//log.Trace(fmt.Sprintf("reconnect failed: %v", err))
+		fmt.Println("================================!!!dcrmwalletrpclog,client.reconnect,err =%v!!!!===========================================",err)
 		return err
 	}
 	select {
@@ -500,6 +528,7 @@ func (c *Client) reconnect(ctx context.Context) error {
 		return nil
 	case <-c.didQuit:
 		newconn.Close()
+		fmt.Println("================================!!!dcrmwalletrpclog,client.reconnect,err =%v!!!!===========================================",ErrClientQuit)
 		return ErrClientQuit
 	}
 }
@@ -630,8 +659,10 @@ func (c *Client) handleNotification(msg *jsonrpcMessage) {
 		Result json.RawMessage `json:"result"`
 	}
 	if err := json.Unmarshal(msg.Params, &subResult); err != nil {
+		fmt.Println("================================!!!dcrmwalletrpclog,client.handleNotification,err =%v!!!!===========================================",err)
 		return
 	}
+
 	if c.subs[subResult.ID] != nil {
 		c.subs[subResult.ID].deliver(subResult.Result)
 	}
@@ -672,6 +703,7 @@ func (c *Client) read(conn net.Conn) error {
 	readMessage := func() (rs []*jsonrpcMessage, err error) {
 		buf = buf[:0]
 		if err = dec.Decode(&buf); err != nil {
+			fmt.Println("================================!!!dcrmwalletrpclog,client.read,err =%v!!!!===========================================",err)
 			return nil, err
 		}
 		if isBatch(buf) {
@@ -680,6 +712,7 @@ func (c *Client) read(conn net.Conn) error {
 			rs = make([]*jsonrpcMessage, 1)
 			err = json.Unmarshal(buf, &rs[0])
 		}
+		fmt.Println("================================!!!dcrmwalletrpclog,client.read,err =%v!!!!===========================================",err)
 		return rs, err
 	}
 
@@ -687,6 +720,7 @@ func (c *Client) read(conn net.Conn) error {
 		resp, err := readMessage()
 		if err != nil {
 			c.readErr <- err
+			fmt.Println("================================!!!dcrmwalletrpclog,client.read,err =%v!!!!===========================================",err)
 			return err
 		}
 		c.readResp <- resp
@@ -755,6 +789,7 @@ func (sub *ClientSubscription) quitWithError(err error, unsubscribeServer bool) 
 			if err == ErrClientQuit {
 				err = nil // Adhere to subscription semantics.
 			}
+			fmt.Println("================================!!!dcrmwalletrpclog,quitWithError,err =%v!!!!===========================================",err)
 			sub.err <- err
 		}
 	})
@@ -799,6 +834,7 @@ func (sub *ClientSubscription) forward() (err error, unsubscribeServer bool) {
 		case 1: // <-sub.in
 			val, err := sub.unmarshal(recv.Interface().(json.RawMessage))
 			if err != nil {
+				fmt.Println("================================!!!dcrmwalletrpclog,forward,err =%v!!!!===========================================",err)
 				return err, true
 			}
 			if buffer.Len() == maxClientSubscriptionBuffer {

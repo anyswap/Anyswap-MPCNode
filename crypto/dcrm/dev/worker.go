@@ -1416,13 +1416,13 @@ func GetReqAddrStatus(key string) (string,string,error) {
     }
 
     ac := dss.(*AcceptReqAddrData)
-    fmt.Println("==================GetReqAddrStatus,ac.Status=%s,ac.PubKey=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.PubKey,ac.Tip,ac.Error,ac.AllReply,key)
+    //fmt.Println("==================GetReqAddrStatus,ac.Status=%s,ac.PubKey=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.PubKey,ac.Tip,ac.Error,ac.AllReply,key)
     los := &ReqAddrStatus{Status:ac.Status,PubKey:ac.PubKey,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
     ret,err := json.Marshal(los)
     if err != nil {
-	fmt.Println("==================GetReqAddrStatus,get result fail,err =%v,key =%s ===================",err,key)
+//	fmt.Println("==================GetReqAddrStatus,get result fail,err =%v,key =%s ===================",err,key)
     } else {
-	fmt.Println("==================GetReqAddrStatus,get result success,ret =%s,key =%s ===================",string(ret),key)
+//	fmt.Println("==================GetReqAddrStatus,get result success,ret =%s,key =%s ===================",string(ret),key)
     }
 
     return string(ret),"",nil
@@ -1469,13 +1469,13 @@ func GetLockOutStatus(key string) (string,string,error) {
     }
 
     ac := dss.(*AcceptLockOutData)
-    fmt.Println("==================GetLockOutStatus,ac.Status=%s,ac.OutTxHash=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.OutTxHash,ac.Tip,ac.Error,ac.AllReply,key)
+    //fmt.Println("==================GetLockOutStatus,ac.Status=%s,ac.OutTxHash=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.OutTxHash,ac.Tip,ac.Error,ac.AllReply,key)
     los := &LockOutStatus{Status:ac.Status,OutTxHash:ac.OutTxHash,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
     ret,err := json.Marshal(los)
     if err != nil {
-	fmt.Println("==================GetLockOutStatus,get result fail,err =%v,key =%s ===================",err,key)
+//	fmt.Println("==================GetLockOutStatus,get result fail,err =%v,key =%s ===================",err,key)
     } else {
-	fmt.Println("==================GetLockOutStatus,get result success,ret =%s,key =%s ===================",string(ret),key)
+//	fmt.Println("==================GetLockOutStatus,get result success,ret =%s,key =%s ===================",string(ret),key)
     }
 
     return string(ret),"",err
@@ -1507,20 +1507,17 @@ func SortCurNodeInfo(value []interface{}) []interface{} {
     }
     
     var ids sortableIDSSlice
-    for k,v := range value {
+    for _,v := range value {
 	uid := DoubleHash(string(v.([]byte)),"ALL")
 	ids = append(ids,uid)
-	fmt.Println("===============SortCurNodeInfo,11111,index =%v,uid =%v,len(v)=%v,================",k,uid,len(string(v.([]byte))))
     }
     
     sort.Sort(ids)
 
     var ret = make([]interface{},0)
-    for k,v := range ids {
-	fmt.Println("===============SortCurNodeInfo,ids index=%v,ids uid =%v================",k,v)
-	for kk,vv := range value {
+    for _,v := range ids {
+	for _,vv := range value {
 	    uid := DoubleHash(string(vv.([]byte)),"ALL")
-	    fmt.Println("===============SortCurNodeInfo,22222,index =%v,uid =%v,len(vv)=%v,================",kk,uid,len(string(vv.([]byte))))
 	    if v.Cmp(uid) == 0 {
 		ret = append(ret,vv)
 		break
@@ -1542,7 +1539,6 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 
 	vv := v.([]byte)
 	value := string(vv)
-	fmt.Println("================GetCurNodeReqAddrInfo,len(value) =%v ===================",len(value))
 	////
 	ds,err := UnCompress(value)
 	if err != nil {
@@ -1561,7 +1557,6 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetCurNodeReqAddrInfo,decode err ===================")
 	    continue
 	}
-	fmt.Println("================GetCurNodeReqAddrInfo,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
 
 	///////
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
@@ -1621,7 +1616,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	
 	los := &ReqAddrReply{Key:key,Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
 	ret2,err := json.Marshal(los)
-	fmt.Println("=====================GetCurNodeReqAddrInfo,success get ret =%s,err =%v====================",string(ret2),err)
+	//fmt.Println("=====================GetCurNodeReqAddrInfo,success get ret =%s,err =%v====================",string(ret2),err)
 	
 	ret = append(ret,string(ret2))
 	////
@@ -1649,35 +1644,6 @@ type LockOutCurNodeInfo struct {
 func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
     var ret []string
     _,lmvalue := LdbLockOut.ListMap()
-    ////for test only
-    /*for kk,vv2 := range lmvalue {
-	fmt.Println("================GetCurNodeLockOutInfo,TEST,list map index =%v,len(value) =%v ===================",kk,len(string(vv2.([]byte))))
-	vv3 := vv2.([]byte)
-	value := string(vv3)
-	fmt.Println("================GetCurNodeLockOutInfo,TEST,len(value) =%v ===================",len(value))
-	////
-	ds,err := UnCompress(value)
-	if err != nil {
-	    fmt.Println("================GetCurNodeLockOutInfo,TEST,uncompress err =%v ===================",err)
-	    continue
-	}
-
-	dss,err := Decode2(ds,"AcceptLockOutData")
-	if err != nil {
-	    fmt.Println("================GetCurNodeLockOutInfo,TEST,decode err =%v ===================",err)
-	    continue
-	}
-
-	ac := dss.(*AcceptLockOutData)
-	if ac == nil {
-	    fmt.Println("================GetCurNodeLockOutInfo,TEST,decode err ===================")
-	    continue
-	}
-	fmt.Println("================GetCurNodeLockOutInfo,TEST,ac.Account =%s,ac.Status =%s,ac =%v ===================",ac.Account,ac.Status,ac)
-    }*/
-    /////////////////
-
-
     lmvalue2 := SortCurNodeInfo(lmvalue)
     for _,v := range lmvalue2 {
 	if v == nil {
@@ -1686,7 +1652,6 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 
 	vv := v.([]byte)
 	value := string(vv)
-	fmt.Println("================GetCurNodeLockOutInfo,len(value) =%v ===================",len(value))
 	////
 	ds,err := UnCompress(value)
 	if err != nil {
@@ -1705,7 +1670,6 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
 	    continue
 	}
-	fmt.Println("================GetCurNodeLockOutInfo,ac.Account =%s,ac.Status=%s,ac =%v ===================",ac.Account,ac.Status,ac)
 
 	//nodesigs := make([]string,0)
 	rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()
@@ -1805,7 +1769,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	
 	los := &LockOutCurNodeInfo{Key:key,Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
 	ret2,err := json.Marshal(los)
-	fmt.Println("======================GetCurNodeLockOutInfo,succss get ret =%s,err =%v=================",string(ret2),err)
+	//fmt.Println("======================GetCurNodeLockOutInfo,succss get ret =%s,err =%v=================",string(ret2),err)
 
 	ret = append(ret,string(ret2))
 	////

@@ -45,7 +45,7 @@ type Service struct {}
 // model: "0"  self-group; "1" non self-group
 //return pubkey and coins addr
 func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{} {   //函数名首字母必须大写
-    fmt.Println("==========dcrm_reqDcrmAddr,raw = %s,model = %s ===========",raw,model)
+    fmt.Println("==========ReqDcrmAddr,raw = %s,model = %s ===========",raw,model)
 
     data := make(map[string]interface{})
     if raw == "" || model == "" || (model != "0" && model != "1") {
@@ -59,7 +59,7 @@ func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{}
     }
 
     ret,tip,err := dcrm.ReqDcrmAddr(raw,model)
-    fmt.Println("===========dcrm_reqDcrmAddr,ret = %s,tip =%s,err =%v===========",ret,tip,err)
+    fmt.Println("===========ReqDcrmAddr,ret = %s,tip =%s,err =%v===========",ret,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -80,10 +80,11 @@ func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{}
 }
 
 func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
-    fmt.Println("==========dcrm_acceptReqAddr,raw =%s ===========",raw)
+    fmt.Println("==========AcceptReqAddr,raw =%s ===========",raw)
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.AcceptReqAddr(raw)
+    fmt.Println("==========AcceptReqAddr,raw =%s,ret =%s,tip =%s,err =%v ===========",raw,ret,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -104,10 +105,11 @@ func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 }
 
 func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
-    fmt.Println("==========dcrm_acceptLockOut,raw =%s ===========",raw)
+    fmt.Println("==========AcceptLockOut,raw =%s ===========",raw)
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.AcceptLockOut(raw)
+    fmt.Println("==========AcceptLockOut,raw =%s,ret =%s,tip =%s,err =%v ===========",raw,ret,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -128,10 +130,11 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
-    fmt.Println("==========dcrm_lockOut,raw =%s ===========",raw)
+    fmt.Println("==========LockOut,raw =%s ===========",raw)
 
     data := make(map[string]interface{})
     txhash,tip,err := dcrm.LockOut(raw)
+    fmt.Println("==========LockOut,raw =%s,ret =%s,tip =%s,err =%v ===========",raw,txhash,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -152,7 +155,7 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) map[string]interface{} {
-    fmt.Println("==============dcrm_getBalance================")
+    fmt.Println("==============GetBalance================")
 
     data := make(map[string]interface{})
     if account == "" || cointype == "" || dcrmaddr == "" {
@@ -166,6 +169,7 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
     }
 
     ret,tip,err := dcrm.GetBalance(account,cointype,dcrmaddr)
+    fmt.Println("==========GetBalance,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
 
     if err != nil {
 	data["result"] = "0" 
@@ -187,7 +191,7 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
 }
 
 func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
-    fmt.Println("==============dcrm_getReqAddrNonce================")
+    fmt.Println("==============GetReqAddrNonce================")
 
     data := make(map[string]interface{})
     if account == "" {
@@ -201,6 +205,7 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
     }
 
     ret,tip,err := dcrm.GetReqAddrNonce(account)
+    fmt.Println("==========GetReqAddrNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
 
     if err != nil {
 	data["result"] = "0" 
@@ -222,7 +227,7 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr string) map[string]interface{} {
-    fmt.Println("==============dcrm_getLockOutNonce================")
+    fmt.Println("==============GetLockOutNonce================")
 
     data := make(map[string]interface{})
     if account == "" || cointype == "" || dcrmaddr == "" {
@@ -236,6 +241,7 @@ func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr str
     }
 
     ret,tip,err := dcrm.GetLockOutNonce(account,cointype,dcrmaddr)
+    fmt.Println("==========GetLockOutNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
 
     if err != nil {
 	data["result"] = "0" 
@@ -261,6 +267,7 @@ func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interfac
 
     data := make(map[string]interface{})
     s,tip,err := dcrm.GetCurNodeReqAddrInfo(geter_acc)
+    fmt.Println("==============rpc.GetCurNodeReqAddrInfo,geter acc =%s,ret =%s,tip =%s,err =%v================",geter_acc,s,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -288,6 +295,7 @@ func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interfac
 
     data := make(map[string]interface{})
     s,tip,err := dcrm.GetCurNodeLockOutInfo(geter_acc)
+    fmt.Println("==============rpc.GetCurNodeLockOutInfo,geter acc =%s,ret =%s,tip =%s,err =%v================",geter_acc,s,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -311,10 +319,11 @@ func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interfac
 }
 
 func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
-    fmt.Println("==========dcrm_getReqAddrStatus,key = %s ===========",key)
+    fmt.Println("==========GetReqAddrStatus,key = %s ===========",key)
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.GetReqAddrStatus(key)
+    fmt.Println("==========GetReqAddrStatus,key = %s,ret =%s,tip =%s,err =%v ===========",key,ret,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -339,6 +348,7 @@ func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.GetLockOutStatus(key)
+    fmt.Println("==========GetLockOutStatus,key = %s,ret =%s,tip =%s,err =%v ===========",key,ret,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -473,9 +483,10 @@ func startRpcServer() error {
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
 func (this *Service) GetAccounts(geter_acc,mode string) map[string]interface{} {
-    fmt.Println("==========dcrm_getAccounts,geter_acc = %s,mode = %s ===========",geter_acc,mode)
+    fmt.Println("==========GetAccounts,geter_acc = %s,mode = %s ===========",geter_acc,mode)
     data := make(map[string]interface{})
     ret, tip, err := dcrm.GetAccounts(geter_acc,mode)
+    fmt.Println("==========GetAccounts,geter_acc = %s,mode = %s,ret =%s,tip =%s,err =%v ===========",geter_acc,mode,ret,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -496,7 +507,7 @@ func (this *Service) GetAccounts(geter_acc,mode string) map[string]interface{} {
 }
 
 func (this *Service) GetAccountsBalance(pubkey string,geter_acc string) map[string]interface{} {
-	fmt.Println("==========dcrm_getAccountsBalance,pubkey = %s,geter_acc =%s ===========",pubkey,geter_acc)
+	fmt.Println("==========GetAccountsBalance,pubkey = %s,geter_acc =%s ===========",pubkey,geter_acc)
 	data := make(map[string]interface{})
 	if pubkey == "" {
 	    data["result"] = ""
@@ -509,6 +520,7 @@ func (this *Service) GetAccountsBalance(pubkey string,geter_acc string) map[stri
 	}
 
 	ret, tip, err := dcrm.GetAccountsBalance(pubkey,geter_acc)
+	fmt.Println("==========GetAccountsBalance,pubkey = %s,geter_acc =%s,ret =%s,tip =%s,err =%v ===========",pubkey,geter_acc,ret,tip,err)
 	if err != nil {
 	    data["result"] = ""
 	    return map[string]interface{}{

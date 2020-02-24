@@ -67,12 +67,18 @@ var (
 	SelfID = ""
 	groupSuffix = "p2p-"
 	groupDir = ""
+	nodeOnline map[NodeID]*OnLineStatus = make(map[NodeID]*OnLineStatus)
 )
 var (
 	Dcrm_groupMemNum = 0
 	Xp_groupMemNum   = 0
 	SDK_groupNum = 0
 )
+
+type OnLineStatus struct {
+	Status bool
+	Lock   sync.Mutex
+}
 
 const (
 	SendWaitTime = 10 * time.Minute
@@ -1298,15 +1304,7 @@ func GetEnodeStatus(enode string) (string, error) {
 	if n.ID.String() == selfid {
 		return "OnLine", nil
 	} else {
-		ipa := &net.UDPAddr{IP: n.IP, Port: int(n.UDP)}
-		for i := 0; i < pingCount; i++ {
-			errp := Table4group.net.ping(n.ID, ipa)
-			if errp == nil {
-			        return "OnLine", nil
-			}
-			time.Sleep(time.Duration(500) * time.Millisecond)
-			continue
-		}
+		return getOnLine(n.ID), nil
 	}
 	return "OffLine", nil
 }
@@ -1630,3 +1628,25 @@ func homeDir() string {
 	}
 	return ""
 }
+
+func UpdateOnLine(nodeID NodeID, online bool) {
+	if nodeOnline[nodeID] == nil {
+		nodeOnline[nodeID] = new(OnLineStatus)
+	}
+	nodeOnline[nodeID].Lock.Lock()
+	nodeOnline[nodeID].Status = online
+	nodeOnline[nodeID].Lock.Unlock()
+}
+
+func getOnLine(nodeID NodeID) string {
+	if nodeOnline[nodeID] != nil {
+		nodeOnline[nodeID].Lock.Lock()
+		online := nodeOnline[nodeID].Status
+		nodeOnline[nodeID].Lock.Unlock()
+		if online == true {
+			return "OnLine"
+		}
+	}
+	return "OffLine"
+}
+

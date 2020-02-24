@@ -195,9 +195,11 @@ func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
 
 func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	emitter.addPeer(peer, rw)
+	discover.UpdateOnLine(peer.ID(), true)
 	for {
 		msg, err := rw.ReadMsg()
 		if err != nil {
+			discover.UpdateOnLine(peer.ID(), false)
 			return err
 		}
 		switch msg.Code {

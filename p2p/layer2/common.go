@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync"
+	//"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
@@ -52,28 +52,35 @@ func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself boo
 		fmt.Printf("==== p2pBroatcast() ====, group : nil, msg: %v error\n", dccpGroup, msg)
 		return 0
 	}
+	pi := p2pServer.PeersInfo()
+	for _, pinfo := range pi {
+		fmt.Printf("  ==== p2pBroatcast() ====, peers.Info: %v\n", pinfo)
+	}
 	var ret int = 0
-	wg := &sync.WaitGroup{}
-	wg.Add(len(dccpGroup.Nodes))
+	//wg := &sync.WaitGroup{}
+	//wg.Add(len(dccpGroup.Nodes))
 	for _, node := range dccpGroup.Nodes {
-		fmt.Printf("  ==== p2pBroatcast() ====, group : %v, msg: %v, nodeID: %v\n", dccpGroup, msg, node.ID)
+		fmt.Printf("  ==== p2pBroatcast() ====, group : %v, msg(len = %v): %v, nodeID: %v\n", dccpGroup, len(msg), msg, node.ID)
 		if selfid == node.ID {
 			if myself == true {
 				fmt.Printf("    ==== p2pBroatcast() ====, group : %v, msg: %v, myself\n", dccpGroup, msg)
 				go callEvent(msg, node.ID.String())
 			}
-			wg.Done()
+		//	wg.Done()
 			continue
 		}
-		go func(node discover.RpcNode) {
-			defer wg.Done()
+		//go func(node discover.RpcNode) {//TODO, not go
+		//	defer wg.Done()
 			fmt.Printf("    ==== p2pBroatcast() ====, group : %v, msg: %v, call p2pSendMsg\n", dccpGroup, msg)
+			//TODO, print node info from tab
+			discover.PrintBucketNodeInfo(node.ID)
 			err := p2pSendMsg(node, uint64(msgCode), msg)
 			if err != nil {
 			}
-		}(node)
+		//}(node)
+		time.Sleep(time.Duration(1) * time.Second)
 	}
-	wg.Wait()
+	//wg.Wait()
 	return ret
 }
 
@@ -97,6 +104,7 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 		p = emitter.peers[node.ID]
 		if p != nil {
 			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
+				fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v, msg: %v, fail, countSend : %v\n", node.ID, msg, countSendFail)
 			} else {
 				emitter.Unlock()
 				fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v, msg: %v, SUCCESS, countSend : %v\n", node.ID, msg, countSendFail)
@@ -104,6 +112,7 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 			}
 		}
 		emitter.Unlock()
+		continue//TODO, for test
 
 		countSendFail += 1
 		if countSendFail > 3000 {

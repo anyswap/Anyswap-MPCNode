@@ -539,7 +539,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        //if expired(req.Expiration) {
        //        return errExpired
        //}
-	fmt.Printf("send ack ==== (req *dcrmmessage) handle() ====, to: %v, mac: %v\n", from, mac)
+	fmt.Printf("send ack ==== (req *dcrmmessage) handle() ====, to: %v, mac: %v\n", from, string(mac))
 	t.send(from, byte(Ack_Packet), &Ack{
 		Sequence: req.Sequence,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
@@ -1648,5 +1648,39 @@ func getOnLine(nodeID NodeID) string {
 		}
 	}
 	return "OffLine"
+}
+
+func PrintBucketNodeInfo(id NodeID) {
+	Table4group.mutex.Lock()
+	defer Table4group.mutex.Unlock()
+
+	findNode := false
+	for i := range Table4group.buckets {
+		if findNode == true {
+			break
+		}
+		findReplacements := true
+		b := Table4group.buckets[i]
+		for j, n := range b.entries { // live entries, sorted by time of last contact
+			if id == n.ID {
+				fmt.Printf("==== PrintBucketNodeInfo() ====, buckets: %v, entries: %v, %v:%v\n", i, j, n.IP, n.UDP)
+				findNode = true
+				findReplacements = false
+				break
+			}
+		}
+		if findReplacements == true {
+			for j, n := range b.replacements { // live entries, sorted by time of last contact
+				if id == n.ID {
+					fmt.Printf("==== PrintBucketNodeInfo() ====, replacements: %v, %v:%v\n", j, n.IP, n.UDP)
+					findNode = true
+					break
+				}
+			}
+		}
+	}
+	if findNode != true {
+		fmt.Printf("==== PrintfBucketNodeInfo() ====, %v, not exist int bucket fail\n", id)
+	}
 }
 

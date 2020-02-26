@@ -148,6 +148,7 @@ func (s *dialstate) addStatic(n *discover.Node) {
 	// This overwrites the task instead of updating an existing
 	// entry, giving users the opportunity to force a resolve operation.
 	s.static[n.ID] = &dialTask{flags: staticDialedConn, dest: n}
+	fmt.Printf("==== (s *dialstate) addStatic() ====, %v:%v\n", n.IP, n.UDP)
 }
 
 func (s *dialstate) removeStatic(n *discover.Node) {
@@ -156,6 +157,7 @@ func (s *dialstate) removeStatic(n *discover.Node) {
 	// This removes a previous dial timestamp so that application
 	// can force a server to reconnect with chosen peer immediately.
 	s.hist.remove(n.ID)
+	fmt.Printf("==== (s *dialstate) removeStatic() ====, %v:%v\n", n.IP, n.UDP)
 }
 
 func (s *dialstate) newTasks(nRunning int, peers map[discover.NodeID]*Peer, now time.Time) []task {

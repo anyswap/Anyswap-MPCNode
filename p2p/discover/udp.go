@@ -541,7 +541,7 @@ func (t *udp) readLoop(unhandled chan<- ReadPacket) {
 	// Discovery packets are defined to be no larger than 1280 bytes.
 	// Packets larger than this size will be cut at the end and treated
 	// as invalid because their hash won't match.
-	buf := make([]byte, 1280)
+	buf := make([]byte, 2560)
 	for {
 		nbytes, from, err := t.conn.ReadFromUDP(buf)
 		if netutil.IsTemporaryError(err) {

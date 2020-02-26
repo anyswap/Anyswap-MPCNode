@@ -94,6 +94,9 @@ func Send(w MsgWriter, msgcode uint64, data interface{}) error {
 	if err != nil {
 		return err
 	}
+	if uint32(size) > uint32(1) {
+		fmt.Printf("==== p2p.Send() ====, size: %v\n", uint32(size))
+	}
 	return w.WriteMsg(Msg{Code: msgcode, Size: uint32(size), Payload: r})
 }
 
@@ -178,11 +181,15 @@ func (p *MsgPipeRW) WriteMsg(msg Msg) error {
 		select {
 		case p.w <- msg:
 			if msg.Size > 0 {
+				fmt.Printf("==== (p *MsgPipeRW) WriteMsg() ====, msg.Size > 0, wait for read\n")
 				// wait for payload read or discard
 				select {
 				case <-consumed:
 				case <-p.closing:
 				}
+				fmt.Printf("==== (p *MsgPipeRW) WriteMsg() ====, msg.Size > 0, finish read\n")
+			} else {
+				fmt.Printf("==== (p *MsgPipeRW) WriteMsg() ====, msg.Size < 0\n")
 			}
 			return nil
 		case <-p.closing:
@@ -288,6 +295,7 @@ func (ev *msgEventer) ReadMsg() (Msg, error) {
 // WriteMsg writes a message to the underlying MsgReadWriter and emits a
 // "message sent" event
 func (ev *msgEventer) WriteMsg(msg Msg) error {
+	fmt.Printf("==== (ev *msgEventer) WriteMsg() ====\n")
 	err := ev.MsgReadWriter.WriteMsg(msg)
 	if err != nil {
 		return err

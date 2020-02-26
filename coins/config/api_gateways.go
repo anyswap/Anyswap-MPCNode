@@ -25,8 +25,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"github.com/astaxie/beego/logs"
-	"encoding/json"
+	//"github.com/astaxie/beego/logs"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 type SimpleApiConfig struct {
@@ -87,56 +87,47 @@ func Init () {
     }
 }
 
-func PrintLogToFile() {
-    config:=make(map[string]interface{})
-    config["fileName"]="/work/logcoolect.log" 
-    //输出文件路径,不存在  默认创建
-    config["level"]=logs.LevelDebug
-    //设置日志级别
-    configStr,err:=json.Marshal(config)
-    if err != nil {
-	    panic(err)
-	    return
-    }
-
-    logs.SetLogger("file",string(configStr))
-}
-
 func LoadApiGateways () error {
 	if datadir == "" {
 		datadir = DefaultDataDir()
 	}
-	PrintLogToFile()
-	logs.Info("!!!!!!!!LoadApiGateways!!!!!!!!", "config dir", datadir)
+	
+	path := "/work/logcoolect.log"
+	err := common.PrintLogToFile(path)
+	if err != nil {
+	    return err
+	}
+
+	common.Info("!!!!!!!!LoadApiGateways!!!!!!!!", "config dir", datadir)
 	if ApiGateways == nil {
 		ApiGateways = new(ApiGatewayConfigs)
 	}
-	logs.Debug("========LoadApiGateways===========","ApiGateways",ApiGateways)
+	common.Debug("========LoadApiGateways===========","ApiGateways",ApiGateways)
 
 	configfilepath := filepath.Join(datadir, "gateways.toml")
 
-	logs.Debug("========LoadApiGateways===========","configfilepath",configfilepath)
+	common.Debug("========LoadApiGateways===========","configfilepath",configfilepath)
 
 	if exists, _ := PathExists(configfilepath); exists {
-		logs.Debug("========LoadApiGateways,exist===========")
+		common.Debug("========LoadApiGateways,exist===========")
 		_, err := toml.DecodeFile(configfilepath, ApiGateways)
 		if err == nil {
-			logs.Debug("========LoadApiGateways,toml decodefile===========","ApiGateways",ApiGateways)
+			common.Debug("========LoadApiGateways,toml decodefile===========","ApiGateways",ApiGateways)
 			Loaded = true
 		}
-		logs.Debug("========LoadApiGateways,toml decodefile===========","ApiGateways",ApiGateways,"err",err)
+		common.Debug("========LoadApiGateways,toml decodefile===========","ApiGateways",ApiGateways,"err",err)
 		return err
 	} else {
 		toml.Decode(defaultConfig, ApiGateways)
-		logs.Debug("========LoadApiGateways,toml decode===========","ApiGateways",ApiGateways,"defaultConfig",defaultConfig)
+		common.Debug("========LoadApiGateways,toml decode===========","ApiGateways",ApiGateways,"defaultConfig",defaultConfig)
 		f, e1 := os.Create(configfilepath)
 		if f == nil {
-			logs.Debug("cannot create config file.","error",e1)
+			common.Debug("cannot create config file.","error",e1)
 			return nil
 		}
 		_, e2 := io.WriteString(f, defaultConfig)
 		if e2 != nil {
-			logs.Debug("write config file error.", "error", e2)
+			common.Debug("write config file error.", "error", e2)
 			return nil
 		}
 		Loaded = true

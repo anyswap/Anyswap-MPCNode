@@ -1,19 +1,3 @@
-/*
- *  Copyright (C) 2018-2019  Fusion Foundation Ltd. All rights reserved.
- *  Copyright (C) 2018-2019  gaozhengxin@fusion.org
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the Apache License, Version 2.0.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
- *
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- */
-
 package btc
 
 import (
@@ -43,6 +27,7 @@ import (
 	"github.com/btcsuite/btcwallet/wallet/txrules"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
@@ -149,16 +134,11 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 			changeAddress = userChangeAddress.(string)
 		}
 	}
-	//unspentOutputs, _, err := listUnspent_electrs(fromAddress)
-	//tmp
-unspentOutputs, err := listUnspent_blockchaininfo(fromAddress)
-if err != nil {
-    fmt.Println("===================btc.BuildUnsignedTransaction,11111,err =%v=====================",err)
-    unspentOutputs, err = listUnspent(fromAddress)
-}
-//
+//unspentOutputs, _, err := listUnspent_electrs(fromAddress)
+	unspentOutputs, _, err := ListUnspent_BTCD(fromAddress)
+//unspentOutputs, err := listUnspent_blockchaininfo(fromAddress)
+//unspentOutputs, err := listUnspent(fromAddress)
 	if err != nil {
-		fmt.Println("===================btc.BuildUnsignedTransaction,222222222,err =%v=====================",err)
 		err = errContext(err, "failed to fetch unspent outputs")
 		return
 	}
@@ -363,40 +343,49 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 		return
 	} else {
 		var ret1Obj interface{}
+		common.Debug("==================btc.GetTransactionInfo===============","getrawtransaction result",ret1)
 		json.Unmarshal([]byte(ret1), &ret1Obj)
 		confirmations := ret1Obj.(map[string]interface{})["result"].(map[string]interface{})["confirmations"]
 		if confirmations == nil {
 			confirmed = false
 		} else {
+			common.Debug("=================btc.GetTransactionInfo=================","confirmations",confirmations)
 			confirmed = (int64(confirmations.(float64)) >= RequiredConfirmations)
 		}
 	}
 
 	cmd := btcjson.NewGetRawTransactionCmd(txhash, nil)
+	common.Debug("==================btc.GetTransactionInfo===============","get raw transaction cmd",cmd)
 
 	marshalledJSON, err := btcjson.MarshalCmd(1, cmd)
 	if err != nil {
 		return
 	}
 
+	common.Debug("==================btc.GetTransactionInfo===============","get raw transaction json 111111",string(marshalledJSON))
 	c, _ := rpcutils.NewClient(h.serverHost,h.serverPort,h.rpcuser,h.passwd,h.usessl)
 	retJSON, err := c.Send(string(marshalledJSON))
 	if err != nil {
 		return
 	}
 
+	common.Debug("==================btc.GetTransactionInfo===============","get raw transaction json 2222222",string(retJSON))
 	var rawTx interface{}
 	json.Unmarshal([]byte(retJSON), &rawTx)
 	rawTxStr := rawTx.(map[string]interface{})["result"].(string)
 
+	common.Debug("==================btc.GetTransactionInfo===============","rawTxStr",string(rawTxStr))
 	cmd2 := btcjson.NewDecodeRawTransactionCmd(rawTxStr)
 
+	common.Debug("==================btc.GetTransactionInfo===============","get raw transaction cmd2",cmd2)
 	marshalledJSON2, err := btcjson.MarshalCmd(1, cmd2)
 	if err != nil {
 		return
 	}
+	common.Debug("==================btc.GetTransactionInfo===============","get raw transaction json 33333333",string(marshalledJSON2))
 	
 	retJSON2, err := c.Send(string(marshalledJSON2))
+	common.Debug("==================btc.GetTransactionInfo===============","get raw transaction json 44444444",string(retJSON2))
 	
 	var tx interface{}
 	json.Unmarshal([]byte(retJSON2), &tx)
@@ -406,6 +395,7 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 		flt := vout.(map[string]interface{})["value"].(float64)
 		amt, _ := btcutil.NewAmount(flt)
 		transferAmount := big.NewInt(int64(amt.ToUnit(btcutil.AmountSatoshi)))
+		common.Debug("==================btc.GetTransactionInfo===============","toAddress",toAddress,"transferAmount",transferAmount)
 		txOutputs = append(txOutputs, types.TxOutput{ToAddress:toAddress, Amount:transferAmount})
 	}
 
@@ -420,42 +410,52 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	if vintx == nil {
 		coinbase := tx.(map[string]interface{})["result"].(map[string]interface{})["vin"].([]interface{})[0].(map[string]interface{})["coinbase"]
 		fromAddress = coinbase.(string)
+		common.Debug("==================btc.GetTransactionInfo===============","fromAddress 1111",string(fromAddress))
 	}
 	vintxid := vintx.(string)
 	vinvout := int(tx.(map[string]interface{})["result"].(map[string]interface{})["vin"].([]interface{})[0].(map[string]interface{})["vout"].(float64))
 
+	common.Debug("==================btc.GetTransactionInfo===============","vintxid",string(vintxid))
 	cmd3 := btcjson.NewGetRawTransactionCmd(vintxid, nil)
 
+	common.Debug("==================btc.GetTransactionInfo===============","cmd3",cmd3)
 	marshalledJSON3, err := btcjson.MarshalCmd(1, cmd3)
 	if err != nil {
 		return
 	}
 
+	common.Debug("==================btc.GetTransactionInfo===============","marshalledJSON3",string(marshalledJSON3))
 	retJSON3, err := c.Send(string(marshalledJSON3))
 	if err != nil {
 		return
 	}
+	common.Debug("==================btc.GetTransactionInfo===============","retJSON3",string(retJSON3))
 
 	var rawTx2 interface{}
 	json.Unmarshal([]byte(retJSON3), &rawTx2)
 	rawTxStr2 := rawTx2.(map[string]interface{})["result"].(string)
 
+	common.Debug("==================btc.GetTransactionInfo===============","rawTxStr2",string(rawTxStr2))
 	cmd4 := btcjson.NewDecodeRawTransactionCmd(rawTxStr2)
+	common.Debug("==================btc.GetTransactionInfo===============","cmd4",cmd4)
 
 	marshalledJSON4, err := btcjson.MarshalCmd(1, cmd4)
 	if err != nil {
 		return
 	}
+	common.Debug("==================btc.GetTransactionInfo===============","marshalledJSON4",string(marshalledJSON4))
 
 	retJSON4, err := c.Send(string(marshalledJSON4))
 	if err != nil {
 		return
 	}
+	common.Debug("==================btc.GetTransactionInfo===============","retJSON4",string(retJSON4))
 
 	var tx2 interface{}
 	json.Unmarshal([]byte(retJSON4), &tx2)
 
 	fromAddress = tx2.(map[string]interface{})["result"].(map[string]interface{})["vout"].([]interface{})[vinvout].(map[string]interface{})["scriptPubKey"].(map[string]interface{})["addresses"].([]interface{})[0].(string)
+	common.Debug("==================btc.GetTransactionInfo===============","fromAddress 2222",string(fromAddress))
 
 	electrstx, err := GetTransaction_electrs(txhash)
 	if err != nil {
@@ -467,25 +467,21 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 }
 
 func (h *BTCHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error) {
-	//tmp open
-	addrsUrl := "https://api.blockcypher.com/v1/btc/test3/addrs/" + address
+	/*addrsUrl := "https://api.blockcypher.com/v1/btc/test3/addrs/" + address
 	resstr := loginPre1("GET",addrsUrl)
 	if resstr == "" {
-	    fmt.Println("==================GetAddressBalance,cannot get address balance, blockcypher didnt response=====================")
 		err = fmt.Errorf("cannot get address balance, blockcypher didnt response")
 		return
 	}
 
 	addrApiResult := parseAddrApiResult(resstr)
-	balance2 := big.NewInt(int64(addrApiResult.Balance))
-	balance.CoinBalance = types.Value{Cointype:"BTC",Val:balance2}
-	fmt.Println("==================GetAddressBalance,balance =%v=====================",balance2)
-	return
-
-	///tmp delete
+	balance = big.NewInt(int64(addrApiResult.Balance))
+	return*/
 	//_, bal, err := listUnspent_electrs(address)
-	//balance.CoinBalance = types.Value{Cointype:"BTC",Val:bal}
-	//return
+	_, bal, err := ListUnspent_BTCD(address)
+	common.Debug("============btc.GetAddressBalance============","balance",bal,"error",err)
+	balance.CoinBalance = types.Value{Cointype:"BTC",Val:bal}
+	return
 }
 
 func (h *BTCHandler) IsToken() bool {
@@ -644,16 +640,7 @@ func SendRawTransaction (c *rpcutils.RpcClient, tx *wire.MsgTx, allowHighFees bo
 
 	retJSON, err := c.Send(string(marshalledJSON))
 	var res interface{}
-	//json.Unmarshal([]byte(retJSON),&res)
-	err = json.Unmarshal([]byte(retJSON),&res)
-	if err != nil {
-	    return "", fmt.Errorf("json.Unmarshal retJSON error")
-	}
-
-	if res == nil {
-	    return "", fmt.Errorf("json.Unmarshal retJSON error")
-	}
-
+	json.Unmarshal([]byte(retJSON),&res)
 	txhash := res.(map[string]interface{})["result"]
 	if txhash == nil {
 		return "", fmt.Errorf("retJSON")

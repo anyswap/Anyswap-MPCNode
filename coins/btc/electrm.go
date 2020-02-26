@@ -1,19 +1,3 @@
-/*
- *  Copyright (C) 2018-2019  Fusion Foundation Ltd. All rights reserved.
- *  Copyright (C) 2018-2019  gaozhengxin@fusion.org
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the Apache License, Version 2.0.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
- *
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- */
-
 package btc
 
 import (
@@ -24,6 +8,7 @@ import (
 	"runtime/debug"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"sort"
 )
 
@@ -59,11 +44,13 @@ func listUnspent_electrs(addr string) (list []btcjson.ListUnspentResult, balance
 		path = `tx/` + utxo.Txid
 		txret, txerr := rpcutils.HttpGet(config.ApiGateways.BitcoinGateway.ElectrsAddress, path, nil)
 		if txerr != nil {
+			common.Debug("======== get utxo script ========", "error", txerr)
 			continue
 		}
 		var tx electrsTx
 		txerr = json.Unmarshal(txret, &tx)
 		if txerr != nil {
+common.Debug("======== get utxo script ========", "error", txerr)
 			continue
 		}
 		utxo.Script = tx.Vout[int(utxo.Vout)].Scriptpubkey
@@ -83,6 +70,7 @@ func listUnspent_electrs(addr string) (list []btcjson.ListUnspentResult, balance
 		list = append(list, res)
 	}
 	sort.Sort(sortableLURSlice(list))
+common.Debug("======== get utxo ========", "utxo list", list)
 	return
 }
 
@@ -90,11 +78,13 @@ func GetTransaction_electrs(hash string) (*electrsTx, error) {
 	path := `tx/` + hash
 	txret, txerr := rpcutils.HttpGet(config.ApiGateways.BitcoinGateway.ElectrsAddress, path, nil)
 	if txerr != nil {
+		common.Debug("======== get utxo script ========", "error", txerr)
 		return nil, txerr
 	}
 	var tx electrsTx
 	txerr = json.Unmarshal(txret, &tx)
 	if txerr != nil {
+		common.Debug("======== get utxo script ========", "error", txerr)
 		return nil, txerr
 	}
 	return &tx, nil

@@ -381,7 +381,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 
 	pubkeyhex := ret
 	keytest := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1] + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]))).Hex()
-	fmt.Println("====================dcrm.SendReqToGroup,pubkey = %s,key=%s =====================",ret,keytest)
+	common.Info("====================call dcrm.SendReqToGroup,finish calc dcrm addrs, ","pubkey = ",ret,"key = ",keytest,"","=======================")
 
 	var m interface{}
 	if !strings.EqualFold(msgs[1], "ALL") {
@@ -420,7 +420,7 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 
 	m = &DcrmPubkeyRes{Account:msgs[0],PubKey:pubkeyhex,DcrmAddress:addrmp}
 	b,_ := json.Marshal(m)
-	fmt.Println("================dcrm.SendReqToGroup,get all dcrm addr = %s,key=%s================",string(b),keytest)
+	common.Info("====================call dcrm.SendReqToGroup,finish calc dcrm addrs,get all dcrm addrs. ","addrs = ",string(b),"key = ",keytest,"","=======================")
 	return string(b),"",nil
     }
     
@@ -449,7 +449,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	}
     }
 
-    fmt.Println("===============ReqDcrmAddr,fusion account = %s================",from.Hex())
+    //fmt.Println("===============ReqDcrmAddr,fusion account = %s================",from.Hex())
 
     data := string(tx.Data()) //REQDCRMADDR:gid:threshold:tx1:tx2:tx3...
     datas := strings.Split(data,":")
@@ -534,7 +534,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 		if err == nil {
 		    ac := dss.(*dev.AcceptReqAddrData)
 		    if ac != nil && strings.EqualFold(ac.Status, "Pending") {
-			fmt.Println("===================!!!!dcrm_reqDcrmAddr,this req addr has already handle,acc =%s,cointype =ALL,groupid =%s,nonce =%v,threshold =%s,mode =%s,key =%s!!!!============================",from.Hex(),groupid,Nonce,threshold,mode,key)
+			common.Info("===================!!!!dcrm_reqDcrmAddr,this req addr has already handle,!!!!============================","account = ",from.Hex(),"group id = ",groupid,"nonce = ",Nonce,"threshold = ",threshold,"mode = ",mode,"key = ",key)
 			return "","the req dcrm addr has already handle,status is pending",fmt.Errorf("the req dcrm addr has already handle,status is pending.")
 		    }
 		}
@@ -564,7 +564,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
     }
 
     key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
-    fmt.Println("========================================ReqDcrmAddr,fusion account = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v,key=%s ====================================",from.Hex(),groupid,threshold,mode,Nonce,key)
+    common.Info("========================================ReqDcrmAddr, ","account = ",from.Hex(),"group id = ",groupid,"threshold = ",threshold,"mode = ",mode,"nonce = ",Nonce,"key = ",key,"","============================================")
 
     go func() {
 	msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
@@ -572,7 +572,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    msg += ":"
 	    msg += datas[3+j]
 	}
-	fmt.Println("============dcrm_reqDcrmAddr,len(datas)=%v,nums=%s,nodecnt=%v,key=%s=================",len(datas),nums,nodecnt,key)
+	//fmt.Println("============dcrm_reqDcrmAddr,len(datas)=%v,nums=%s,nodecnt=%v,key=%s=================",len(datas),nums,nodecnt,key)
 
 	/////////////////////tmp code //////////////////////
 	mp := []string{key,cur_enode}
@@ -610,17 +610,18 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	dev.GAccsDataChan <-kd
 	dev.GAccs.WriteMap(key,ss)
 	dev.SendMsgToDcrmGroup(ss,groupid)
-	fmt.Println("===============ReqDcrmAddr,group accounts =%s,key =%s================",ss,key)
+	common.Info("===============ReqDcrmAddr,send group accounts to other nodes ","msg = ",ss,"key = ",key,"","===========================")
 
 	////////////////////////////////////////////////////
 
 	addr,_,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
+	common.Info("===============ReqDcrmAddr,finish calc dcrm addrs. ","addr = ",addr,"err = ",err,"key = ",key,"","===========================")
 	if addr != "" && err == nil {
 	    return
 	}
     }()
 
-    fmt.Println("===============ReqDcrmAddr,return key =%s================",key)
+    common.Info("===============ReqDcrmAddr finish,return","key = ",key,"","=================================")
     return key,"",nil
 }
 
@@ -929,8 +930,6 @@ func LockOut(raw string) (string,string,error) {
 	}
     }
 
-    fmt.Println("===================LockOut,fusion account =%s======================",from.Hex())
-
     data := string(tx.Data())
     datas := strings.Split(data,":")
     //LOCKOUT:dcrmaddr:dcrmto:value:cointype:groupid:threshold:mode
@@ -947,7 +946,7 @@ func LockOut(raw string) (string,string,error) {
     mode := datas[7]
     Nonce := tx.Nonce() 
 
-    fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,mode,Nonce)
+    //fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,mode,Nonce)
     if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" {
 	return "","parameter error from raw data,maybe raw data error",fmt.Errorf("param error.")
     }
@@ -975,7 +974,7 @@ func LockOut(raw string) (string,string,error) {
 	    if err == nil {
 		ac := dss.(*dev.AcceptLockOutData)
 		if ac != nil && strings.EqualFold(ac.Status, "Pending") {
-		    fmt.Println("===================!!!!dcrm_lockOut,this lockout has already handle,acc =%s,groupid =%s,nonce =%v,dcrmfrom =%s,threshold =%s,key =%s!!!!============================",from.Hex(),groupid,Nonce,dcrmaddr,threshold,key2)
+		    common.Info("===================!!!!dcrm_lockOut,this lockout has already handle,","account = ",from.Hex(),"group id = ",groupid,"nonce = ",Nonce,"dcrm from = ",dcrmaddr,"threshold = ",threshold,"key = ",key2)
 		    return "","the lockout has already handle,status is pending",fmt.Errorf("the lockout has already handle,status is pending.")
 		}
 	    }
@@ -1019,7 +1018,7 @@ func LockOut(raw string) (string,string,error) {
     go func() {
 	for i:=0;i<1;i++ {
 	    msg := from.Hex() + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
-	    fmt.Println("========================================dcrm_lockOut,value = %s,cointype = %s,nonce = %v ====================================",value,cointype,Nonce)
+//	    fmt.Println("========================================dcrm_lockOut,value = %s,cointype = %s,nonce = %v ====================================",value,cointype,Nonce)
 	    txhash,_,err2 := SendReqToGroup(msg,"rpc_lockout")
 	    if err2 == nil && txhash != "" {
 		return
@@ -1029,7 +1028,7 @@ func LockOut(raw string) (string,string,error) {
 	}
     }()
     
-    fmt.Println("===================LockOut,return key=%s======================",key)
+    common.Info("=================== LockOut return ","key = ",key,"","===========================")
 
     return key,"",nil
 }
@@ -1101,14 +1100,14 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 	
 	key,err2 := hex.DecodeString(pubkey)
 	if err2 != nil {
-	    fmt.Printf("==============GetAccountsBalance,decode pubkey string fail,err =%v=============",err2)
+//	    fmt.Printf("==============GetAccountsBalance,decode pubkey string fail,err =%v=============",err2)
 	    return nil,"decode pubkey fail",err2
 	}
 
 	ret, tip, err := GetPubKeyData(string(key), pubkey, "ALL")
 	var m interface{}
 	if err == nil {
-	    fmt.Println("================GetAccountsBalance,get pubkey data success============")
+//	    fmt.Println("================GetAccountsBalance,get pubkey data success============")
 	    dp := DcrmPubkeyRes{}
 	    _ = json.Unmarshal([]byte(ret), &dp)
 	    balances := make([]SubAddressBalance, 0)
@@ -1119,7 +1118,7 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 		go func (cointype, subaddr string) {
 		    defer wg.Done()
 		    balance, _, err := GetBalance(pubkey,cointype, subaddr)
-		    fmt.Println("===============GetAccountsBalance,call GetBalance,pubkey =%s,cointype =%s, dcrmaddr =%s, balance =%s, err =%v================",pubkey,cointype, subaddr, balance, err)
+//		    fmt.Println("===============GetAccountsBalance,call GetBalance,pubkey =%s,cointype =%s, dcrmaddr =%s, balance =%s, err =%v================",pubkey,cointype, subaddr, balance, err)
 		    if err != nil {
 			balance = "0"
 		    }
@@ -1136,7 +1135,7 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 	    }
 	    m = &DcrmAccountsBalanceRes{PubKey:pubkey,Balances:balances}
 	} else {
-	    fmt.Println("================GetAccountsBalance,get pubkey data fail,err =%v============",err)
+//	    fmt.Println("================GetAccountsBalance,get pubkey data fail,err =%v============",err)
 	}
 	
 	return m, tip, err
@@ -1177,7 +1176,7 @@ func GetBalance(account string, cointype string,dcrmaddr string) (string,string,
     //ba,err := h.GetAddressBalance(ctaddr,"")
     ba,err := h.GetAddressBalance(dcrmaddr,"")
     if err != nil {
-	fmt.Println("================GetBalance 22222,err =%v =================",err)
+//	fmt.Println("================GetBalance 22222,err =%v =================",err)
 	return "","dcrm back-end internal error:get dcrm addr balance fail",err
     }
 
@@ -1211,7 +1210,7 @@ func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,str
 func GetCurNodeReqAddrInfo(geter_acc string) ([]string,string,error) {
     reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_cur_node_reqaddr_info")
     if reply == "" || err != nil {
-	fmt.Println("===========dcrm.GetCurNodeReqAddrInfo,no get result,err =%v ============",err)
+	//fmt.Println("===========dcrm.GetCurNodeReqAddrInfo,no get result,err =%v ============",err)
 	return nil,tip,err 
     }
 
@@ -1222,7 +1221,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]string,string,error) {
 func GetCurNodeLockOutInfo(geter_acc string) ([]string,string,error) {
     reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_cur_node_lockout_info")
     if reply == "" || err != nil {
-	fmt.Println("===========dcrm.GetCurNodeLockOutInfo,no get result,err =%v ============",err)
+	//fmt.Println("===========dcrm.GetCurNodeLockOutInfo,no get result,err =%v ============",err)
 	return nil,tip,err 
     }
 

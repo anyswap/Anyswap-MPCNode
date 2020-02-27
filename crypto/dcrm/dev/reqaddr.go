@@ -37,11 +37,87 @@ import (
     "github.com/astaxie/beego/logs"
 )
 
+func GetReqAddrNonce(account string) (string,string,error) {
+    key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+    //fmt.Println("==============GetReqAddrNonce,acc =%s,key =%s=================",account,key2)
+    var da []byte
+    datmp,exsit := LdbPubKeyData.ReadMap(key2)
+    if exsit == false {
+	da2 := GetPubKeyDataValueFromDb(key2)
+	if da2 == nil {
+	    exsit = false
+	} else {
+	    exsit = true
+	    da = da2
+	}
+    } else {
+	da = datmp.([]byte)
+    }
+    ///////
+    if exsit == false {
+	fmt.Println("==============GetReqAddrNonce,no exsit,so return 0,key =%s=================",key2)
+	//return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("map not found, account = %s",account)
+	return "0","",nil
+    }
+
+    nonce,_ := new(big.Int).SetString(string(da),10)
+    one,_ := new(big.Int).SetString("1",10)
+    nonce = new(big.Int).Add(nonce,one)
+
+    //fmt.Println("=========GetReqAddrNonce,get new nonce = %v,key =%s ============",nonce,key2)
+    return fmt.Sprintf("%v",nonce),"",nil
+}
+
+func SetReqAddrNonce(account string,nonce string) (string,error) {
+    key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+    kd := KeyData{Key:[]byte(key),Data:nonce}
+    PubKeyDataChan <-kd
+
+    //fmt.Println("================SetReqAddrNonce,acc =%s,nonce =%s,key =%s===============",account,nonce,key)
+    //LdbPubKeyData[key] = []byte(nonce)
+    LdbPubKeyData.WriteMap(key,[]byte(nonce))
+
+    return "",nil
+}
+
+func GetPubKeyDataValueFromDb(key string) []byte {
+    lock.Lock()
+    dir := GetDbDir()
+    ////////
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<100;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    if db == nil {
+        lock.Unlock()
+	return nil 
+    }
+    
+    da,err := db.Get([]byte(key))
+    ///////
+    if err != nil {
+	db.Close()
+	lock.Unlock()
+	return nil
+    }
+
+    db.Close()
+    lock.Unlock()
+    return da
+}
+
 //ec2
 //msgprex = hash 
 func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interface{}, mode string,nonce string) {
-
-    fmt.Println("========dcrm_genPubKey,accout =%s============",account)
 
     wk,err := FindWorker(msgprex)
     if err != nil || wk == nil {
@@ -820,7 +896,6 @@ func GetAllPendingLockOutFromDb() *common.SafeMap {
 }
 
 func GetGAccsValueFromDb(key string) []byte {
-    fmt.Println("==================GetGAccsValueFromDb start,key=%s=====================",key)
     lock.Lock()
     dir := GetGAccsDir()
     ////////
@@ -838,7 +913,6 @@ func GetGAccsValueFromDb(key string) []byte {
     }
     //
     if db == nil {
-	fmt.Println("==================GetGAccsValueFromDb end,key=%s=====================",key)
         lock.Unlock()
 	return nil 
     }
@@ -846,7 +920,6 @@ func GetGAccsValueFromDb(key string) []byte {
     da,err := db.Get([]byte(key))
     ///////
     if err != nil {
-	fmt.Println("==================GetGAccsValueFromDb end,key=%s=====================",key)
 	db.Close()
 	lock.Unlock()
 	return nil
@@ -854,7 +927,6 @@ func GetGAccsValueFromDb(key string) []byte {
 
     db.Close()
     lock.Unlock()
-    fmt.Println("==================GetGAccsValueFromDb end,data =%s,key=%s=====================",string(da),key)
     return da
 }
 
@@ -1410,7 +1482,9 @@ func DECDSAGenKeyRoundOne(msgprex string,ch chan interface{},w *RpcReqWorker) (*
     // 1. Receive Broadcast
     // commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
     // u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk
+    common.Info("===================send C1 finish, ","prex = ",msgprex,"","====================")
      _,tip,cherr := GetChannelValue(ch_t,w.bc1)
+    common.Info("===================finish get C1, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetC1Timeout)}
 	ch <- res
@@ -1515,7 +1589,9 @@ func DECDSAGenKeyRoundThree(msgprex string,cointype string,ch chan interface{},w
     // 1. Receive Broadcast
     // commitU1G.D, commitU2G.D, commitU3G.D, commitU4G.D, commitU5G.D
     // u1PolyG, u2PolyG, u3PolyG, u4PolyG, u5PolyG
+    common.Info("===================send D1 finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bd1_1)
+    common.Info("===================finish get D1, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetD1Timeout)}
 	ch <- res
@@ -1856,7 +1932,9 @@ func DECDSAGenKeyRoundFour(msgprex string,ch chan interface{},w *RpcReqWorker) (
 
     // 1. Receive Broadcast zk
     // u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
+    common.Info("===================send NTILDEH1H2 finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bzkfact)
+    common.Info("===================finish get NTILDEH1H2, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetZKFACTPROOFTimeout)}
 	ch <- res
@@ -1888,7 +1966,9 @@ func DECDSAGenKeyRoundFive(msgprex string,ch chan interface{},w *RpcReqWorker,u1
 
     // 9. Receive Broadcast zk
     // u1zkUProof, u2zkUProof, u3zkUProof, u4zkUProof, u5zkUProof
+    common.Info("===================send ZKUPROOF finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bzku)
+    common.Info("===================finish get ZKUPROOF, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetZKUPROOFTimeout)}
 	ch <- res
@@ -2063,63 +2143,63 @@ func KeyGenerate_DECDSA(msgprex string,ch chan interface{},id int,cointype strin
     if status != true {
 	return status
     }
-    fmt.Println("=================generate key,round one finish===================")
+    common.Info("=================generate key,round one finish===================")
 
     u1Shares,status := DECDSAGenKeyRoundTwo(msgprex,cointype,ch,w,u1Poly,ids)
     if status != true {
 	return status
     }
-    fmt.Println("=================generate key,round two finish===================")
+    common.Info("=================generate key,round two finish===================")
 
     if DECDSAGenKeyRoundThree(msgprex,cointype,ch,w,u1PolyG,commitU1G,ids) == false {
 	return false
     }
-    fmt.Println("=================generate key,round three finish===================")
+    common.Info("=================generate key,round three finish===================")
 
     sstruct,ds,status := DECDSAGenKeyVerifyShareData(msgprex,cointype,ch,w,u1PolyG,u1Shares,ids)
     if status != true {
 	return status
     }
-    fmt.Println("=================generate key,verify share data finish===================")
+    common.Info("=================generate key,verify share data finish===================")
 
     cs,udecom,status := DECDSAGenKeyVerifyCommitment(msgprex,cointype,ch,w,ds,commitU1G,ids)
     if status != true {
 	return false
     }
-    fmt.Println("=================generate key,verify commitment finish===================")
+    common.Info("=================generate key,verify commitment finish===================")
 
     ug,status := DECDSAGenKeyCalcPubKey(msgprex,cointype,ch,w,udecom,ids)
     if status != true {
 	return false
     }
-    fmt.Println("=================generate key,calc pubkey finish===================")
+    common.Info("=================generate key,calc pubkey finish===================")
 
     skU1,status := DECDSAGenKeyCalcPrivKey(msgprex,cointype,ch,w,sstruct,ids)
     if status != true {
 	return false
     }
-    fmt.Println("=================generate key,calc privkey finish===================")
+    common.Info("=================generate key,calc privkey finish===================")
 
     u1NtildeH1H2,status := DECDSAGenKeyRoundFour(msgprex,ch,w)
     if status != true {
 	return false
     }
-    fmt.Println("=================generate key,round four finish===================")
+    common.Info("=================generate key,round four finish===================")
 
     if DECDSAGenKeyRoundFive(msgprex,ch,w,u1) != true {
 	return false
     }
-    fmt.Println("=================generate key,round five finish===================")
+    common.Info("=================generate key,round five finish===================")
 
     if DECDSAGenKeyVerifyZKU(msgprex,cointype,ch,w,ids,ug) != true {
 	return false
     }
-    fmt.Println("=================generate key,verify zk of u1 finish===================")
+    common.Info("=================generate key,verify zk of u1 finish===================")
 
     if DECDSAGenKeySaveData(cointype,ids,w,ch,skU1,u1PaillierPk,u1PaillierSk,cs,u1NtildeH1H2) != true {
 	return false
     }
-    fmt.Println("=================generate key,save data finish===================")
+    common.Info("=================generate key,save data finish===================")
 
     //*******************!!!Distributed ECDSA End!!!**********************************
     return true

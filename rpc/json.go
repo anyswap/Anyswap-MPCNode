@@ -153,20 +153,20 @@ func (c *jsonCodec) ReadRequestHeaders() ([]rpcRequest, bool, Error) {
 // valid id's are strings, numbers or null
 func checkReqId(reqId json.RawMessage) error {
 	if len(reqId) == 0 {
-		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",fmt.Errorf("missing request id"))
+//		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",fmt.Errorf("missing request id"))
 		return fmt.Errorf("missing request id")
 	}
 	if _, err := strconv.ParseFloat(string(reqId), 64); err == nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",err)
+//		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",err)
 		return nil
 	}
 	var str string
 	if err := json.Unmarshal(reqId, &str); err == nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",err)
+//		fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",err)
 		return nil
 	}
 	
-	fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",fmt.Errorf("invalid request id"))
+//	fmt.Println("================================!!!dcrmwalletrpclog,checkReqId,err =%v!!!!===========================================",fmt.Errorf("invalid request id"))
 	return fmt.Errorf("invalid request id")
 }
 

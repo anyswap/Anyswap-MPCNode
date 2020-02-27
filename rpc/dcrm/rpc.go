@@ -24,6 +24,7 @@ import (
 	"net"
 	"strings"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
 )
 
@@ -45,7 +46,7 @@ type Service struct {}
 // model: "0"  self-group; "1" non self-group
 //return pubkey and coins addr
 func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{} {   //函数名首字母必须大写
-    fmt.Println("==========ReqDcrmAddr,raw = %s,model = %s ===========",raw,model)
+    common.Info("==========call rpc ReqDcrmAddr from web  ===========","raw = ",raw,"model = ",model)
 
     data := make(map[string]interface{})
     if raw == "" || model == "" || (model != "0" && model != "1") {
@@ -59,7 +60,7 @@ func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{}
     }
 
     ret,tip,err := dcrm.ReqDcrmAddr(raw,model)
-    fmt.Println("===========ReqDcrmAddr,ret = %s,tip =%s,err =%v===========",ret,tip,err)
+    common.Info("===========call rpc ReqDcrmAddr finish.","ret = ",ret,"tip = ",tip,"err = ",err,"","====================")
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -80,11 +81,11 @@ func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{}
 }
 
 func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
-    fmt.Println("==========AcceptReqAddr,raw =%s ===========",raw)
+    common.Info("==========call rpc AcceptReqAddr from web ==========","raw = ",raw)
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.AcceptReqAddr(raw)
-    fmt.Println("==========AcceptReqAddr,raw =%s,ret =%s,tip =%s,err =%v ===========",raw,ret,tip,err)
+    common.Info("==========finish call rpc AcceptReqAddr, ","ret = ",ret,"tip = ",tip,"err = ",err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -105,11 +106,11 @@ func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 }
 
 func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
-    fmt.Println("==========AcceptLockOut,raw =%s ===========",raw)
+    common.Info("==========call rpc AcceptLockOut from web ==========","raw = ",raw)
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.AcceptLockOut(raw)
-    fmt.Println("==========AcceptLockOut,raw =%s,ret =%s,tip =%s,err =%v ===========",raw,ret,tip,err)
+    common.Info("==========finish call rpc AcceptLockOut, ","ret = ",ret,"tip = ",tip,"err = ",err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -130,11 +131,11 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
-    fmt.Println("==========LockOut,raw =%s ===========",raw)
+    common.Info("==========call rpc LockOut from web ===========")
 
     data := make(map[string]interface{})
     txhash,tip,err := dcrm.LockOut(raw)
-    fmt.Println("==========LockOut,raw =%s,ret =%s,tip =%s,err =%v ===========",raw,txhash,tip,err)
+    common.Info("==============finish call rpc LockOut,","txhash = ",txhash,"tip = ",tip,"err =",err,"","==============")
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -191,7 +192,7 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
 }
 
 func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
-    fmt.Println("==============GetReqAddrNonce================")
+    common.Info("==============call rpc.GetReqAddrNonce from web================")
 
     data := make(map[string]interface{})
     if account == "" {
@@ -205,7 +206,7 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
     }
 
     ret,tip,err := dcrm.GetReqAddrNonce(account)
-    fmt.Println("==========GetReqAddrNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
+    //fmt.Println("==========GetReqAddrNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
 
     if err != nil {
 	data["result"] = "0" 
@@ -227,7 +228,7 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr string) map[string]interface{} {
-    fmt.Println("==============GetLockOutNonce================")
+    common.Info("==============call rpc GetLockOutNonce from web================")
 
     data := make(map[string]interface{})
     if account == "" || cointype == "" || dcrmaddr == "" {
@@ -241,7 +242,7 @@ func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr str
     }
 
     ret,tip,err := dcrm.GetLockOutNonce(account,cointype,dcrmaddr)
-    fmt.Println("==========GetLockOutNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
+//    fmt.Println("==========GetLockOutNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
 
     if err != nil {
 	data["result"] = "0" 
@@ -263,11 +264,11 @@ func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr str
 }
 
 func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interface{} {
-    fmt.Println("==============rpc.GetCurNodeReqAddrInfo,geter acc =%s================",geter_acc)
+    //common.Info("==============call rpc GetCurNodeReqAddrInfo from web ================","geter acc = ",geter_acc)
 
     data := make(map[string]interface{})
     s,tip,err := dcrm.GetCurNodeReqAddrInfo(geter_acc)
-    fmt.Println("==============rpc.GetCurNodeReqAddrInfo,geter acc =%s,ret =%s,tip =%s,err =%v================",geter_acc,s,tip,err)
+    //fmt.Println("==============rpc.GetCurNodeReqAddrInfo,geter acc =%s,ret =%s,tip =%s,err =%v================",geter_acc,s,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -291,11 +292,11 @@ func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interfac
 }
 
 func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interface{} {
-    fmt.Println("==============rpc.GetCurNodeLockOutInfo,geter acc =%s================",geter_acc)
+    //common.Info("==============call rpc GetCurNodeLockOutInfo from web ================","geter acc = ",geter_acc)
 
     data := make(map[string]interface{})
     s,tip,err := dcrm.GetCurNodeLockOutInfo(geter_acc)
-    fmt.Println("==============rpc.GetCurNodeLockOutInfo,geter acc =%s,ret =%s,tip =%s,err =%v================",geter_acc,s,tip,err)
+    //fmt.Println("==============rpc.GetCurNodeLockOutInfo,geter acc =%s,ret =%s,tip =%s,err =%v================",geter_acc,s,tip,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -319,11 +320,11 @@ func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interfac
 }
 
 func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
-    fmt.Println("==========GetReqAddrStatus,key = %s ===========",key)
+    //common.Info("==========call rpc GetReqAddrStatus from web ","key =",key,"","===============")
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.GetReqAddrStatus(key)
-    fmt.Println("==========GetReqAddrStatus,key = %s,ret =%s,tip =%s,err =%v ===========",key,ret,tip,err)
+    //common.Info("==========finish call rpc GetReqAddrStatus,","key = ",key,"ret = ",ret,"tip = ",tip,"err = ",err,"","==========")
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -344,11 +345,11 @@ func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
 }
 
 func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
-    fmt.Println("==========dcrm_getLockOutStatus,key = %s ===========",key)
+    //common.Info("==========call rpc GetLockOutStatus from web ","key =",key,"","===============")
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.GetLockOutStatus(key)
-    fmt.Println("==========GetLockOutStatus,key = %s,ret =%s,tip =%s,err =%v ===========",key,ret,tip,err)
+    //common.Info("==========finish call rpc GetLockOutStatus,","key = ",key,"ret = ",ret,"tip = ",tip,"err = ",err,"","==========")
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -483,10 +484,10 @@ func startRpcServer() error {
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
 func (this *Service) GetAccounts(geter_acc,mode string) map[string]interface{} {
-    fmt.Println("==========GetAccounts,geter_acc = %s,mode = %s ===========",geter_acc,mode)
+    common.Info("==========call rpc GetAccounts from web,","geter acc = ",geter_acc,"mode = ",mode,"","================")
     data := make(map[string]interface{})
     ret, tip, err := dcrm.GetAccounts(geter_acc,mode)
-    fmt.Println("==========GetAccounts,geter_acc = %s,mode = %s,ret =%s,tip =%s,err =%v ===========",geter_acc,mode,ret,tip,err)
+    common.Info("==========finish call rpc GetAccounts,","geter acc = ",geter_acc,"mode = ",mode,"ret = ",ret,"tip = ",tip,"err = ",err,"","============================")
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{
@@ -507,7 +508,7 @@ func (this *Service) GetAccounts(geter_acc,mode string) map[string]interface{} {
 }
 
 func (this *Service) GetAccountsBalance(pubkey string,geter_acc string) map[string]interface{} {
-	fmt.Println("==========GetAccountsBalance,pubkey = %s,geter_acc =%s ===========",pubkey,geter_acc)
+	common.Info("==========call rpc GetAccountsBalance from web,","geter acc = ",geter_acc,"pubkey = ",pubkey,"","================")
 	data := make(map[string]interface{})
 	if pubkey == "" {
 	    data["result"] = ""
@@ -520,7 +521,7 @@ func (this *Service) GetAccountsBalance(pubkey string,geter_acc string) map[stri
 	}
 
 	ret, tip, err := dcrm.GetAccountsBalance(pubkey,geter_acc)
-	fmt.Println("==========GetAccountsBalance,pubkey = %s,geter_acc =%s,ret =%s,tip =%s,err =%v ===========",pubkey,geter_acc,ret,tip,err)
+	common.Info("==========finish call rpc GetAccountsBalance,","geter acc = ",geter_acc,"ret = ",ret,"tip = ",tip,"err = ",err,"","============================")
 	if err != nil {
 	    data["result"] = ""
 	    return map[string]interface{}{

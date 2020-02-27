@@ -31,7 +31,7 @@ import (
     "fmt"
     "encoding/hex"
     //"github.com/syndtr/goleveldb/leveldb"
-    "github.com/fsn-dev/dcrm-walletService/ethdb"
+//    "github.com/fsn-dev/dcrm-walletService/ethdb"
     "github.com/fsn-dev/dcrm-walletService/coins"
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/coins/types"
@@ -45,75 +45,9 @@ import (
     "crypto/ecdsa"
 )
 
-func GetReqAddrNonce(account string) (string,string,error) {
-    key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-    fmt.Println("==============GetReqAddrNonce,acc =%s,key =%s=================",account,key2)
-    var da []byte
-    datmp,exsit := LdbPubKeyData.ReadMap(key2)
-    if exsit == false {
-	da2 := GetPubKeyDataValueFromDb(key2)
-	if da2 == nil {
-	    exsit = false
-	} else {
-	    exsit = true
-	    da = da2
-	}
-    } else {
-	da = datmp.([]byte)
-    }
-    ///////
-    if exsit == false {
-	fmt.Println("==============GetReqAddrNonce,no exsit,so return 0,key =%s=================",key2)
-	//return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("map not found, account = %s",account)
-	return "0","",nil
-    }
-
-    nonce,_ := new(big.Int).SetString(string(da),10)
-    one,_ := new(big.Int).SetString("1",10)
-    nonce = new(big.Int).Add(nonce,one)
-
-    fmt.Println("=========GetReqAddrNonce,get new nonce = %v,key =%s ============",nonce,key2)
-    return fmt.Sprintf("%v",nonce),"",nil
-}
-
-func GetPubKeyDataValueFromDb(key string) []byte {
-    lock.Lock()
-    dir := GetDbDir()
-    ////////
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil {
-	for i:=0;i<100;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
-    }
-    //
-    if db == nil {
-        lock.Unlock()
-	return nil 
-    }
-    
-    da,err := db.Get([]byte(key))
-    ///////
-    if err != nil {
-	db.Close()
-	lock.Unlock()
-	return nil
-    }
-
-    db.Close()
-    lock.Unlock()
-    return da
-}
-
 func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
     key2 := Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
-    fmt.Println("===============GetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,key =%s===================",account,cointype,dcrmaddr,key2)
+    //fmt.Println("===============GetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,key =%s===================",account,cointype,dcrmaddr,key2)
     var da []byte
     datmp,exsit := LdbPubKeyData.ReadMap(key2)
     if exsit == false {
@@ -129,29 +63,17 @@ func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,str
     }
     ///////
     if exsit == false {
-	fmt.Println("===============GetLockOutNonce,no exsit,so return 0,key =%s===================",key2)
+//	fmt.Println("===============GetLockOutNonce,no exsit,so return 0,key =%s===================",key2)
 	return "0","",nil
     }
 
     nonce,_ := new(big.Int).SetString(string(da),10)
-    fmt.Println("=========GetLockOutNonce,get old nonce =%s,key =%s ============",nonce,key2)
+  //  fmt.Println("=========GetLockOutNonce,get old nonce =%s,key =%s ============",nonce,key2)
     one,_ := new(big.Int).SetString("1",10)
     nonce = new(big.Int).Add(nonce,one)
 
-    fmt.Println("=========GetLockOutNonce,get new nonce = %s,key =%s ============",nonce,key2)
+    //fmt.Println("=========GetLockOutNonce,get new nonce = %s,key =%s ============",nonce,key2)
     return fmt.Sprintf("%v",nonce),"",nil
-}
-
-func SetReqAddrNonce(account string,nonce string) (string,error) {
-    key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-    kd := KeyData{Key:[]byte(key),Data:nonce}
-    PubKeyDataChan <-kd
-
-    fmt.Println("================SetReqAddrNonce,acc =%s,nonce =%s,key =%s===============",account,nonce,key)
-    //LdbPubKeyData[key] = []byte(nonce)
-    LdbPubKeyData.WriteMap(key,[]byte(nonce))
-
-    return "",nil
 }
 
 func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string) (string,error) {
@@ -159,7 +81,7 @@ func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string
     kd := KeyData{Key:[]byte(key2),Data:nonce}
     PubKeyDataChan <-kd
 
-    fmt.Println("================SetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,nonce =%s,nonce key =%s==================",account,cointype,dcrmaddr,nonce,key2)
+    //fmt.Println("================SetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,nonce =%s,nonce key =%s==================",account,cointype,dcrmaddr,nonce,key2)
     //LdbPubKeyData[key2] = []byte(nonce)
     LdbPubKeyData.WriteMap(key2,[]byte(nonce))
 
@@ -167,7 +89,6 @@ func SetLockOutNonce(account string,cointype string,dcrmaddr string,nonce string
 }
 
 func validate_lockout(wsid string,account string,dcrmaddr string,cointype string,value string,to string,nonce string,ch chan interface{}) {
-    fmt.Println("========validate_lockout,acc =%s,dcrmaddr =%s,cointype =%s,value =%s,to =%s,nonce =%s============",account,dcrmaddr,cointype,value,to,nonce)
     var ret2 Err
     chandler := coins.NewCryptocoinHandler(cointype)
     if chandler == nil {
@@ -641,7 +562,9 @@ func DECDSASignRoundOne(msgprex string,w *RpcReqWorker,idSign sortableIDSSlice,c
 
     // 1. Receive Broadcast
     //	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
+    common.Info("===================send C11 finish, ","prex = ",msgprex,"","====================")
      _,tip,cherr := GetChannelValue(ch_t,w.bc11)
+    common.Info("===================finish get C11, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetC11Timeout)}
 	ch <- res
@@ -763,7 +686,9 @@ func DECDSASignRoundThree(msgprex string,cointype string,save string,w *RpcReqWo
 
     // 2.4 Receive Broadcast c_k, zk(k)
     // u1KCipher, u2KCipher, u3KCipher
+    common.Info("===================send KC finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bkc)
+    common.Info("===================finish get KC, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:GetRetErr(ErrGetKCTimeout)}
 	ch <- res
@@ -1446,7 +1371,9 @@ func DECDSASignRoundFive(msgprex string,cointype string,delta1 *big.Int,idSign s
 
     // 1. Receive Broadcast
     // delta: delta1, delta2, delta3
+    common.Info("===================send DELTA1 finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bdelta1)
+    common.Info("===================finish get DELTA1, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all delta timeout.")}
 	ch <- res
@@ -1588,7 +1515,9 @@ func DECDSASignRoundSix(msgprex string,u1Gamma *big.Int,commitU1GammaG *ec2.Comm
 
     // 1. Receive Broadcast
     // commitU1GammaG.D, commitU2GammaG.D, commitU3GammaG.D
+    common.Info("===================send D11 finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bd11_1)
+    common.Info("===================finish get D11, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all d11 fail.")}
 	ch <- res
@@ -1835,7 +1764,9 @@ func DECDSASignRoundSeven(msgprex string,r *big.Int,deltaGammaGy *big.Int,us1 *b
     ss := enode + Sep + s0 + Sep + s1
     SendMsgToDcrmGroup(ss,w.groupid)
 
+    common.Info("===================send CommitBigVAB finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bcommitbigvab)
+    common.Info("===================finish get CommitBigVAB, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all CommitBigVAB timeout.")}
 	ch <- res
@@ -1904,7 +1835,9 @@ func DECDSASignRoundEight(msgprex string,r *big.Int,deltaGammaGy *big.Int,us1 *b
     ss = ss + "NULL"
     SendMsgToDcrmGroup(ss,w.groupid)
 
+    common.Info("===================send ZKABPROOF finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bzkabproof)
+    common.Info("===================finish get ZKABPROOF, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all ZKABPROOF timeout.")}
 	ch <- res
@@ -2131,7 +2064,9 @@ func DECDSASignRoundNine(msgprex string,cointype string,w *RpcReqWorker,idSign s
     ss := enode + Sep + s0 + Sep + s1
     SendMsgToDcrmGroup(ss,w.groupid)
 
+    common.Info("===================send CommitBigUT finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bcommitbigut)
+    common.Info("===================finish get CommitBigUT, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all CommitBigUT timeout.")}
 	ch <- res
@@ -2181,7 +2116,9 @@ func DECDSASignRoundTen(msgprex string,commitBigUT1 *ec2.Commitment,w *RpcReqWor
     ss = ss + "NULL"
     SendMsgToDcrmGroup(ss,w.groupid)
 
+    common.Info("===================send CommitBigUTD11 finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bcommitbigutd11)
+    common.Info("===================finish get CommitBigUTD11, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get all CommitBigUTD11 fail.")}
 	ch <- res
@@ -2322,7 +2259,9 @@ func DECDSASignRoundEleven(msgprex string,cointype string,w *RpcReqWorker,idSign
 
     // 1. Receive Broadcast
     // s: s1, s2, s3
+    common.Info("===================send SS1 finish, ","prex = ",msgprex,"","====================")
     _,tip,cherr := GetChannelValue(ch_t,w.bss1)
+    common.Info("===================finish get SS1, ","err = ",cherr,"prex = ",msgprex,"","====================")
     if cherr != nil {
 	res := RpcDcrmRes{Ret:"",Tip:tip,Err:fmt.Errorf("get ss1 timeout.")}
 	ch <- res
@@ -2481,154 +2420,154 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     if skU1 == nil || w1 == nil {
 	return ""
     }
-    fmt.Println("===================sign,map privkey finish===========================")
+    common.Info("===================sign,map privkey finish,","prex = ",msgprex,"","=====================")
 
     u1K,u1Gamma,commitU1GammaG := DECDSASignRoundOne(msgprex,w,idSign,ch)
     if u1K == nil || u1Gamma == nil || commitU1GammaG == nil {
 	return ""
     }
-    fmt.Println("===================sign,round one finish===========================")
+    common.Info("===================sign,round one finish===========================")
 
     ukc,ukc2,ukc3 := DECDSASignPaillierEncrypt(cointype,save,w,idSign,u1K,ch)
     if ukc == nil || ukc2 == nil || ukc3 == nil {
 	return ""
     }
-    fmt.Println("===================sign,paillier encrypt finish===========================")
+    common.Info("===================sign,paillier encrypt finish===========================")
 
     zk1proof,zkfactproof := DECDSASignRoundTwo(msgprex,cointype,save,w,idSign,ch,u1K,ukc2,ukc3)
     if zk1proof == nil || zkfactproof == nil {
 	return ""
     }
-    fmt.Println("===================sign,round two finish===========================")
+    common.Info("===================sign,round two finish===========================")
 
     if DECDSASignRoundThree(msgprex,cointype,save,w,idSign,ch,ukc) == false {
 	return ""
     }
-    fmt.Println("===================sign,round three finish===========================")
+    common.Info("===================sign,round three finish===========================")
 
     if DECDSASignVerifyZKNtilde(msgprex,cointype,save,w,idSign,ch,ukc,ukc3,zk1proof,zkfactproof) == false {
 	return ""
     }
-    fmt.Println("===================sign,verify zk ntilde finish===========================")
+    common.Info("===================sign,verify zk ntilde finish===========================")
 
     betaU1Star,betaU1,vU1Star,vU1 := GetRandomBetaV(PaillierKeyLength)
-    fmt.Println("===================sign,get random betaU1Star/vU1Star finish===========================")
+    common.Info("===================sign,get random betaU1Star/vU1Star finish===========================")
 
     mkg,mkg_mtazk2,mkw,mkw_mtazk2,status := DECDSASignRoundFour(msgprex,cointype,save,w,idSign,ukc,ukc3,zkfactproof,u1Gamma,w1,betaU1Star,vU1Star,ch)
     if status != true {
 	return ""
     }
-    fmt.Println("===================sign,round four finish===========================")
+    common.Info("===================sign,round four finish===========================")
 
     if DECDSASignVerifyZKGammaW(cointype,save,w,idSign,ukc,ukc3,zkfactproof,mkg,mkg_mtazk2,mkw,mkw_mtazk2,ch) != true {
 	return ""
     }
-    fmt.Println("===================sign,verify zk gamma/w finish===========================")
+    common.Info("===================sign,verify zk gamma/w finish===========================")
 
     u1PaillierSk := GetSelfPrivKey(cointype,idSign,w,save,ch)
     if u1PaillierSk == nil {
 	return ""
     }
-    fmt.Println("===================sign,get self privkey finish===========================")
+    common.Info("===================sign,get self privkey finish===========================")
 
     alpha1 := DecryptCkGamma(cointype,idSign,w,u1PaillierSk,mkg,ch)
     if alpha1 == nil {
 	return ""
     }
-    fmt.Println("===================sign,decrypt paillier(k)XGamma finish===========================")
+    common.Info("===================sign,decrypt paillier(k)XGamma finish===========================")
 
     uu1 := DecryptCkW(cointype,idSign,w,u1PaillierSk,mkw,ch)
     if uu1 == nil {
 	return ""
     }
-    fmt.Println("===================sign,decrypt paillier(k)Xw1 finish===========================")
+    common.Info("===================sign,decrypt paillier(k)Xw1 finish===========================")
 
     delta1 := CalcDelta(alpha1,betaU1,ch)
     if delta1 == nil {
 	return ""
     }
-    fmt.Println("===================sign,calc delta finish===========================")
+    common.Info("===================sign,calc delta finish===========================")
 
     sigma1 := CalcSigma(uu1,vU1,ch)
     if sigma1 == nil {
 	return ""
     }
-    fmt.Println("===================sign,calc sigma finish===========================")
+    common.Info("===================sign,calc sigma finish===========================")
 
     deltaSum := DECDSASignRoundFive(msgprex,cointype,delta1,idSign,w,ch)
     if deltaSum == nil {
 	return ""
     }
-    fmt.Println("===================sign,round five finish===========================")
+    common.Info("===================sign,round five finish===========================")
 
     u1GammaZKProof := DECDSASignRoundSix(msgprex,u1Gamma,commitU1GammaG,w,ch)
     if u1GammaZKProof == nil {
 	return ""
     }
-    fmt.Println("===================sign,round six finish===========================")
+    common.Info("===================sign,round six finish===========================")
 
     ug := DECDSASignVerifyCommitment(cointype,w,idSign,commitU1GammaG,u1GammaZKProof,ch)
     if ug == nil {
 	return ""
     }
-    fmt.Println("===================sign,verify commitment finish===========================")
+    common.Info("===================sign,verify commitment finish===========================")
 
     r,deltaGammaGy := Calc_r(cointype,w,idSign,ug,deltaSum,ch)
     if r == nil || deltaGammaGy == nil {
 	return ""
     }
-    fmt.Println("===================sign,calc r finish===========================")
+    common.Info("===================sign,calc r finish===========================")
 
     // 5. calculate s
     us1 := CalcUs(mMtA,u1K,r,sigma1)
-    fmt.Println("===================sign,calc self s finish===========================")
+    common.Info("===================sign,calc self s finish===========================")
 
     commitBigVAB1,commitbigvabs,rho1,l1 := DECDSASignRoundSeven(msgprex,r,deltaGammaGy,us1,w,ch)
     if commitBigVAB1 == nil || commitbigvabs == nil || rho1 == nil || l1 == nil {
 	return ""
     }
-    fmt.Println("===================sign,round seven finish===========================")
+    common.Info("===================sign,round seven finish===========================")
 
     u1zkABProof,zkabproofs := DECDSASignRoundEight(msgprex,r,deltaGammaGy,us1,l1,rho1,w,ch,commitBigVAB1)
     if u1zkABProof == nil || zkabproofs == nil {
 	return ""
     }
-    fmt.Println("===================sign,round eight finish===========================")
+    common.Info("===================sign,round eight finish===========================")
 
     commitbigcom,BigVx,BigVy := DECDSASignVerifyBigVAB(cointype,w,commitbigvabs,zkabproofs,commitBigVAB1,u1zkABProof,idSign,r,deltaGammaGy,ch)
     if commitbigcom == nil || BigVx == nil || BigVy == nil {
 	return ""
     }
-    fmt.Println("===================sign,verify BigVAB finish===========================")
+    common.Info("===================sign,verify BigVAB finish===========================")
 
     commitbiguts,commitBigUT1 := DECDSASignRoundNine(msgprex,cointype,w,idSign,mMtA,r,pkx,pky,BigVx,BigVy,rho1,commitbigcom,l1,ch)
     if commitbiguts == nil || commitBigUT1 == nil {
 	return ""
     }
-    fmt.Println("===================sign,round nine finish===========================")
+    common.Info("===================sign,round nine finish===========================")
 
     commitbigutd11s := DECDSASignRoundTen(msgprex,commitBigUT1,w,ch) 
     if commitbigutd11s == nil {
 	return ""
     }
-    fmt.Println("===================sign,round ten finish===========================")
+    common.Info("===================sign,round ten finish===========================")
     
     if DECDSASignVerifyBigUTCommitment(cointype,commitbiguts,commitbigutd11s,commitBigUT1,w,idSign,ch,commitbigcom) != true {
 	return ""
     }
-    fmt.Println("===================sign,verify BigUT commitment finish===========================")
+    common.Info("===================sign,verify BigUT commitment finish===========================")
 
     ss1s := DECDSASignRoundEleven(msgprex,cointype,w,idSign,ch,us1)
     if ss1s == nil {
 	return ""
     }
-    fmt.Println("===================sign,round eleven finish===========================")
+    common.Info("===================sign,round eleven finish===========================")
 
     s := Calc_s(cointype,w,idSign,ss1s,ch)
     if s == nil {
 	return ""
     }
-    fmt.Println("===================sign,calc s finish===========================")
+    common.Info("===================sign,calc s finish===========================")
 
     // 3. justify the s
     bb := false
@@ -2644,7 +2583,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	ch <- res
 	return ""
     }
-    fmt.Println("===================sign,justify s finish===========================")
+    common.Info("===================sign,justify s finish===========================")
 
     // **[End-Test]  verify signature with MtA
     signature := new(ECDSASignature)
@@ -2666,12 +2605,12 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     signature.SetRecoveryParam(int32(recid))
 
     if DECDSA_Sign_Verify_RSV(signature.GetR(),signature.GetS(),signature.GetRecoveryParam(),message,pkx,pky) == false {
-	fmt.Println("===================dcrm sign,verify is false=================")
+	common.Info("===================dcrm sign,verify is false=================")
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("sign verify fail.")}
 	ch <- res
 	return ""
     }
-    fmt.Println("===================sign,verify (r,s) finish===========================")
+    common.Info("===================sign,verify (r,s) finish===========================","prex = ",msgprex)
 
     signature2 := GetSignString(signature.GetR(),signature.GetS(),signature.GetRecoveryParam(),int(signature.GetRecoveryParam()))
     rstring := "========================== r = " + fmt.Sprintf("%v",signature.GetR()) + " ========================="
@@ -2689,7 +2628,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 }
 
 func SendMsgToDcrmGroup(msg string,groupid string) {
-    fmt.Println("==============SendMsgToDcrmGroup,msg =%v,send to groupid =%s =================",msg,groupid)
+    common.Info("==============SendMsgToDcrmGroup, ","msg = ",msg,"send to group id = ",groupid,"","=====================")
     for i:= 0;i<ReSendTimes;i++ {
 	BroadcastInGroupOthers(groupid,msg)
 	//time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
@@ -2724,29 +2663,36 @@ func EncryptMsg (msg string,enodeID string) (string, error) {
 }
 
 func DecryptMsg (cm string) (string, error) {
-    //fmt.Println("=============DecryptMsg,KeyFile = %s ================",KeyFile)
+    test := Keccak256Hash([]byte(strings.ToLower(cm))).Hex()
+    common.Info("=============DecryptMsg start, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     nodeKey, errkey := crypto.LoadECDSA(KeyFile)
+    common.Info("=============DecryptMsg finish crypto.LoadECDSA, ","err = ",errkey,"keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     if errkey != nil {
 	return "",errkey
     }
 
+    common.Info("=============DecryptMsg start ecies.ImportECDSA, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     prv := ecies.ImportECDSA(nodeKey)
+    common.Info("=============DecryptMsg finish ecies.ImportECDSA, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     var m []byte
+    common.Info("=============DecryptMsg start prv.Decrypt, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     m, err := prv.Decrypt([]byte(cm), nil, nil)
+    common.Info("=============DecryptMsg finish prv.Decrypt, ","err = ",err,"keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     if err != nil {
 	return "",err
     }
 
+    common.Info("=============DecryptMsg finish, ","ret = ",string(m),"keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     return string(m),nil
 }
 ///
 
 func SendMsgToPeer(enodes string,msg string) {
-    fmt.Println("==============SendMsgToPeer,msg =%v,send to peer %s ===================",msg,enodes)
+    common.Info("==============SendMsgToPeer,","msg = ",msg,"send to peer = ",enodes,"","=======================")
     en := strings.Split(string(enodes[8:]),"@")
     cm,err := EncryptMsg(msg,en[0])
     if err != nil {
-	fmt.Println("==============SendMsgToPeer,encrypt msg fail,err = %v ===================",err)
+	common.Info("==============SendMsgToPeer,encrypt msg fail,","err = ",err,"","========================")
 	return
     }
 

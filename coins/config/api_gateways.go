@@ -92,11 +92,11 @@ func LoadApiGateways () error {
 		datadir = DefaultDataDir()
 	}
 	
-	path := "/work/logcoolect.log"
-	err := common.PrintLogToFile(path)
-	if err != nil {
-	    return err
-	}
+	//path := "/work/logcoolect.log"
+	//err := common.PrintLogToFile(path)
+	//if err != nil {
+	//    return err
+	//}
 
 	common.Info("!!!!!!!!LoadApiGateways!!!!!!!!", "config dir", datadir)
 	if ApiGateways == nil {

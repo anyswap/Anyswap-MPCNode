@@ -34,6 +34,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -1636,6 +1637,7 @@ func UpdateOnLine(nodeID NodeID, online bool) {
 	nodeOnline[nodeID].Lock.Lock()
 	nodeOnline[nodeID].Status = online
 	nodeOnline[nodeID].Lock.Unlock()
+	common.Info("==== UpdateOnLine() ====", "nodeid", nodeID, "status", online)
 }
 
 func getOnLine(nodeID NodeID) string {

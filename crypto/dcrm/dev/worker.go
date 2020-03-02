@@ -53,7 +53,7 @@ var (
     PaillierKeyLength = 2048
     sendtogroup_lilo_timeout = 600
     sendtogroup_timeout = 600
-    ch_t = 350
+    ch_t = 60 
     lock5 sync.Mutex
     lock sync.Mutex
 

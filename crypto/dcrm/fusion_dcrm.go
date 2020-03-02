@@ -743,7 +743,17 @@ func AcceptReqAddr(raw string) (string,string,error) {
 	return "",tip,err
     }
 
-    return "","",nil
+   ///////
+    mp := []string{key,cur_enode}
+    enode := strings.Join(mp,"-")
+    s0 := "AcceptReqAddrRes"
+    s1 := accept 
+    s2 := strconv.Itoa(ac.WorkId)
+    ss := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
+    dev.SendMsgToDcrmGroup(ss,datas[3])
+   common.Info("================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes ","key = ",key,"","============================")
+    
+   return "","",nil
 }
 
 func AcceptLockOut(raw string) (string,string,error) {

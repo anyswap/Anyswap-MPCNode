@@ -1974,22 +1974,18 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     kdtmp := KeyData{Key:[]byte(key),Data:es}
     ReqAddrChan <-kdtmp
 
-    //fmt.Println("===============AcceptReqAddr,send key date to ReqAddrChan================")
-
-    //LdbReqAddr[key] = []byte(es)
     LdbReqAddr.WriteMap(key,[]byte(es))
     
+   common.Info("================== AcceptReqAddr, ","Current Node Accept req addr Res = ",acp,"key = ",key,"","============================")
     if workid >= 0 && workid < len(workers) {
 	wtmp := workers[workid]
 	if wtmp != nil {
 	    if len(wtmp.acceptReqAddrChan) == 0 {
-//		fmt.Println("===============AcceptReqAddr,reset wtmp.acceptReqAddrChan================")
-		wtmp.acceptReqAddrChan <- "go on" 
+		//wtmp.acceptReqAddrChan <- "go on" 
 	    }
 	}
     }
 
-  //  fmt.Println("===============AcceptReqAddr,end================")
     return "",nil
 }
 
@@ -2570,43 +2566,16 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                     for {
                        select {
                        case account := <-wtmp2.acceptReqAddrChan:
+			   common.Debug("(self *RecvMsg) Run(),","account= ",account,"key = ",rr.Nonce)
                            tip,reply = GetAcceptReqAddrRes(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5])
 
-			   common.Info("================== (self *RecvMsg) Run() , ","Current Node Accept req addr Res = ",reply,"account = ",account,"key = ",rr.Nonce,"","============================")
-			   ///////
-			    mp := []string{w.sid,cur_enode}
-			    enode := strings.Join(mp,"-")
-			    s0 := "AcceptReqAddrRes"
-			    var req_res string
-			    if reply == false {
-				req_res = "false"
-			    } else {
-				req_res = "true"
-			    }
+			   var req_res string
+			   if reply == false {
+			       req_res = "false"
+			   } else {
+			       req_res = "true"
+			   }
 
-			    s1 := req_res
-			    ss := enode + Sep + s0 + Sep + s1
-			    SendMsgToDcrmGroup(ss,w.groupid)
-			   common.Info("================== (self *RecvMsg) Run() , finish send AcceptReqAddrRes to other nodes ","key = ",rr.Nonce,"","============================")
-			    _,tip,err = GetChannelValue(ch_t,w.bacceptreqaddrres)
-			   common.Info("================== (self *RecvMsg) Run() , the result from other nodes AcceptReqAddrRes ","err = ",err,"key = ",rr.Nonce,"","============================")
-			    if err != nil {
-				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Timeout","","get other node accept req addr result timeout","get other node accept req addr result timeout","",wid)
-				tip = "get other node accept req addr result timeout"
-				reply = false
-			       timeout <- true
-			       return
-			    }
-			    
-			    if w.msg_acceptreqaddrres.Len() != (NodeCnt-1) {
-			       common.Info("================== (self *RecvMsg) Run() , get other nodes AcceptReqAddrRes fail","key = ",rr.Nonce,"","============================")
-				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Failure","","get other node accept req addr result fail","get other node accept req addr result fail","",wid)
-				tip = "dcrm back-end internal error:get accepte req addr result fail."
-				reply = false
-			       timeout <- true
-			       return
-			    }
-			   
 			    all := "{"
 			    all += "\""
 			    all += cur_enode
@@ -2971,6 +2940,16 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     AcceptReqAddr(self.Account,self.Cointype,self.GroupId,self.Nonce,self.LimitNum,self.Mode,false,"true","Pending","","","","",workid)
 
     common.Info("===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself. ","key = ",self.Key,"","============================")
+   ///////
+    mp := []string{self.Key,cur_enode}
+    enode := strings.Join(mp,"-")
+    s0 := "AcceptReqAddrRes"
+    s1 := "true"
+    s2 := strconv.Itoa(workid)
+    ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+    SendMsgToDcrmGroup(ss,self.GroupId)
+   common.Info("================== ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes ","key = ",self.Key,"","============================")
+    
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
     common.Info("==============ReqAddrSendMsgToDcrm.Run,Get Result","result = ",chret,"err = ",cherr,"key = ",self.Key,"","=================")
     if cherr != nil {
@@ -3494,6 +3473,8 @@ func DisMsg(msg string) {
 	    if w.msg_acceptreqaddrres.Len() == (NodeCnt-1) {
 		common.Info("===================Get All AcceptReqAddrRes ","msg hash = ",test,"","====================")
 		w.bacceptreqaddrres <- true
+		wid,_ := strconv.Atoi(mm[3])
+		workers[wid].acceptReqAddrChan <- "go on" 
 	    }
 	case "AcceptLockOutRes":
 	    ///bug

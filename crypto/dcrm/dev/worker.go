@@ -2945,8 +2945,8 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     enode := strings.Join(mp,"-")
     s0 := "AcceptReqAddrRes"
     s1 := "true"
-    s2 := strconv.Itoa(workid)
-    ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+//    s2 := strconv.Itoa(workid)
+    ss := enode + Sep + s0 + Sep + s1
     SendMsgToDcrmGroup(ss,self.GroupId)
    common.Info("================== ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes ","key = ",self.Key,"","============================")
     
@@ -3473,8 +3473,42 @@ func DisMsg(msg string) {
 	    if w.msg_acceptreqaddrres.Len() == (NodeCnt-1) {
 		common.Info("===================Get All AcceptReqAddrRes ","msg hash = ",test,"","====================")
 		w.bacceptreqaddrres <- true
-		wid,_ := strconv.Atoi(mm[3])
-		workers[wid].acceptReqAddrChan <- "go on" 
+		//wid,_ := strconv.Atoi(mm[3])
+		///////
+		var da []byte
+		datmp,exsit := LdbReqAddr.ReadMap(prexs[0])
+		if exsit == false {
+		    da2 := GetReqAddrValueFromDb(prexs[0])
+		    if da2 == nil {
+			exsit = false
+		    } else {
+			exsit = true
+			da = da2
+		    }
+		} else {
+		    da = []byte(fmt.Sprintf("%v",datmp))
+		}
+
+		if exsit == false {
+		    return
+		}
+
+		ds,err := UnCompress(string(da))
+		if err != nil {
+		    return
+		}
+
+		dss,err := Decode2(ds,"AcceptReqAddrData")
+		if err != nil {
+		    return
+		}
+
+		ac := dss.(*AcceptReqAddrData)
+		if ac == nil {
+		    return
+		}
+		///////
+		workers[ac.WorkId].acceptReqAddrChan <- "go on" 
 	    }
 	case "AcceptLockOutRes":
 	    ///bug

@@ -1976,7 +1976,7 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 
     LdbReqAddr.WriteMap(key,[]byte(es))
     
-   common.Info("================== AcceptReqAddr, ","Current Node Accept req addr Res = ",acp,"key = ",key,"","============================")
+   //common.Info("================== AcceptReqAddr, ","Current Node Accept req addr Res = ",acp,"key = ",key,"","============================")
     if workid >= 0 && workid < len(workers) {
 	wtmp := workers[workid]
 	if wtmp != nil {
@@ -2534,6 +2534,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    }
 
 		    wtmp2 := workers[wid]
+		   common.Info("================== (self *RecvMsg) Run() ","wid = ",wid,"key = ",rr.Nonce,"","============================")
 
                     for {
                        select {
@@ -2920,6 +2921,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 //    s2 := strconv.Itoa(workid)
     ss := enode + Sep + s0 + Sep + s1
     SendMsgToDcrmGroup(ss,self.GroupId)
+    DisMsg(ss)
    common.Info("================== ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes ","key = ",self.Key,"","============================")
     
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
@@ -2999,6 +3001,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     s1 := "true" 
     ss := enode + Sep + s0 + Sep + s1
     SendMsgToDcrmGroup(ss,self.GroupId)
+    DisMsg(ss)
    common.Info("================== LockOutSendMsgToDcrm.Run , finish send AcceptLockOutRes to other nodes ","key = ",self.Key,"","============================")
 
     chret,tip,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
@@ -3442,7 +3445,7 @@ func DisMsg(msg string) {
 	switch msgCode {
 	case "AcceptReqAddrRes":
 	    ///bug
-	    if w.msg_acceptreqaddrres.Len() >= (NodeCnt-1) {
+	    if w.msg_acceptreqaddrres.Len() >= NodeCnt {
 		return
 	    }
 	    ///
@@ -3451,8 +3454,8 @@ func DisMsg(msg string) {
 	    }
 
 	    w.msg_acceptreqaddrres.PushBack(msg)
-	    if w.msg_acceptreqaddrres.Len() == (NodeCnt-1) {
-		common.Info("===================Get All AcceptReqAddrRes ","msg hash = ",test,"","====================")
+	    if w.msg_acceptreqaddrres.Len() == NodeCnt {
+		common.Info("===================Get All AcceptReqAddrRes ","msg hash = ",test,"key = ",prexs[0],"","====================")
 		w.bacceptreqaddrres <- true
 		//wid,_ := strconv.Atoi(mm[3])
 		///////
@@ -3467,33 +3470,39 @@ func DisMsg(msg string) {
 			da = da2
 		    }
 		} else {
-		    da = []byte(fmt.Sprintf("%v",datmp))
+		    da = datmp.([]byte)
+		    //da = []byte(fmt.Sprintf("%v",datmp))
 		}
 
 		if exsit == false {
+		    common.Info("==================DisMsg,no exist reqaddr data, ","worker id = ",w.id,"key = ",w.sid,"","=======================")
 		    return
 		}
 
 		ds,err := UnCompress(string(da))
 		if err != nil {
+		    common.Info("==================DisMsg,uncompress reqaddr data error, ","err = ",err,"worker id = ",w.id,"key = ",w.sid,"","=======================")
 		    return
 		}
 
 		dss,err := Decode2(ds,"AcceptReqAddrData")
 		if err != nil {
+		    common.Info("==================DisMsg,decode reqaddr data error, ","err = ",err,"worker id = ",w.id,"key = ",w.sid,"","=======================")
 		    return
 		}
 
 		ac := dss.(*AcceptReqAddrData)
 		if ac == nil {
+		    common.Info("==================DisMsg,get reqaddr data fail, ","worker id = ",w.id,"key = ",w.sid,"","=======================")
 		    return
 		}
 		///////
+		common.Info("==================DisMsg, ","get wid = ",ac.WorkId,"key = ",w.sid,"","=======================")
 		workers[ac.WorkId].acceptReqAddrChan <- "go on" 
 	    }
 	case "AcceptLockOutRes":
 	    ///bug
-	    if w.msg_acceptlockoutres.Len() >= (NodeCnt-1) {
+	    if w.msg_acceptlockoutres.Len() >= NodeCnt {
 		return
 	    }
 	    ///
@@ -3502,7 +3511,7 @@ func DisMsg(msg string) {
 	    }
 
 	    w.msg_acceptlockoutres.PushBack(msg)
-	    if w.msg_acceptlockoutres.Len() == (NodeCnt-1) {
+	    if w.msg_acceptlockoutres.Len() == NodeCnt {
 		common.Info("===================Get All AcceptLockOutRes ","msg hash = ",test,"","====================")
 		w.bacceptlockoutres <- true
 		/////
@@ -3517,7 +3526,8 @@ func DisMsg(msg string) {
 			da = da2
 		    }
 		} else {
-		    da = []byte(fmt.Sprintf("%v",datmp))
+		    da = datmp.([]byte)
+		    //da = []byte(fmt.Sprintf("%v",datmp))
 		}
 
 		if exsit == false {

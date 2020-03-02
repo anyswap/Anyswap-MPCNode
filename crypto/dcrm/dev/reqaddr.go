@@ -160,7 +160,6 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	
 	sedsave := itertmp.Value.(string)
 	////////
-	nodesigs := make([]string,0)
 	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
 	var da []byte
 	datmp,exsit := LdbReqAddr.ReadMap(rk)
@@ -184,13 +183,13 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 		if err == nil {
 		    ac := dss.(*AcceptReqAddrData)
 		    if ac != nil {
-			nodesigs = ac.NodeSigs
+			//nodesigs = ac.NodeSigs
 		    }
 		}
 	    }
 	}
 	////////
-	pubs := &PubKeyData{Account:account,Pub:string(sedpk),Save:sedsave,Nonce:nonce,GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
+	pubs := &PubKeyData{Account:account,Pub:string(sedpk),Save:sedsave,Nonce:nonce,GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode}
 	epubs,err := Encode2(pubs)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ed pubkey",Err:err}
@@ -349,7 +348,6 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     }
     save := iter.Value.(string)
     ////////
-    nodesigs := make([]string,0)
     rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
     var da []byte
     datmp,exsit := LdbReqAddr.ReadMap(rk)
@@ -373,13 +371,13 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	    if err == nil {
 		ac := dss.(*AcceptReqAddrData)
 		if ac != nil {
-		    nodesigs = ac.NodeSigs
+		    //nodesigs = ac.NodeSigs
 		}
 	    }
 	}
     }
     ////////
-    pubs := &PubKeyData{Account:account,Pub:string(ys),Save:save,Nonce:nonce,GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode,NodeSigs:nodesigs}
+    pubs := &PubKeyData{Account:account,Pub:string(ys),Save:save,Nonce:nonce,GroupId:wk.groupid,LimitNum:wk.limitnum,Mode:mode}
     epubs,err := Encode2(pubs)
     if err != nil {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey",Err:err}

@@ -483,6 +483,8 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 
     Nonce := tx.Nonce()
     
+    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
+    
     if mode == "1" { //non self-group
 	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
 	    ///
@@ -512,7 +514,6 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	}
     } else {
 	////////bug
-	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
 	var da []byte
 	datmp,exsit := dev.LdbReqAddr.ReadMap(key)
 	if exsit == false {
@@ -563,17 +564,9 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	////////bug
     }
 
-    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
     common.Info("========================================ReqDcrmAddr, ","account = ",from.Hex(),"group id = ",groupid,"threshold = ",threshold,"mode = ",mode,"nonce = ",Nonce,"key = ",key,"","============================================")
 
     go func() {
-	msg := from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
-	for j:=0;j<nodecnt;j++ {
-	    msg += ":"
-	    msg += datas[3+j]
-	}
-	//fmt.Println("============dcrm_reqDcrmAddr,len(datas)=%v,nums=%s,nodecnt=%v,key=%s=================",len(datas),nums,nodecnt,key)
-
 	/////////////////////tmp code //////////////////////
 	mp := []string{key,cur_enode}
 	enode := strings.Join(mp,"-")
@@ -614,7 +607,11 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 
 	////////////////////////////////////////////////////
 
-	addr,_,err := SendReqToGroup(msg,"rpc_req_dcrmaddr")
+	coin := "ALL"
+	//if !types.IsDefaultED25519(msgs[1]) {  //TODO
+	//}
+
+	addr,_,err := dev.SendReqDcrmAddr(from.Hex(),coin,groupid,fmt.Sprintf("%v",Nonce),threshold,mode,key)
 	common.Info("===============ReqDcrmAddr,finish calc dcrm addrs. ","addr = ",addr,"err = ",err,"key = ",key,"","===========================")
 	if addr != "" && err == nil {
 	    return
@@ -981,7 +978,6 @@ func LockOut(raw string) (string,string,error) {
 	}
     }
 
-    key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
     //nonce check
     /*cur_nonce_str,tip,err := dev.GetLockOutNonce(from.Hex(),cointype,dcrmaddr)
     if err != nil {
@@ -992,9 +988,9 @@ func LockOut(raw string) (string,string,error) {
 	return "","lockout tx nonce error",fmt.Errorf("nonce error.")
     }*/
     
-    _,exsit = dev.LdbLockOut.ReadMap(key)
+    _,exsit = dev.LdbLockOut.ReadMap(key2)
     if exsit == false {
-	da2 := dev.GetLockOutValueFromDb(key)
+	da2 := dev.GetLockOutValueFromDb(key2)
 	if da2 == nil {
 	    exsit = false
 	} else {
@@ -1017,9 +1013,7 @@ func LockOut(raw string) (string,string,error) {
    
     go func() {
 	for i:=0;i<1;i++ {
-	    msg := from.Hex() + ":" + dcrmaddr + ":" + dcrmto + ":" + value + ":" + cointype + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode
-//	    fmt.Println("========================================dcrm_lockOut,value = %s,cointype = %s,nonce = %v ====================================",value,cointype,Nonce)
-	    txhash,_,err2 := SendReqToGroup(msg,"rpc_lockout")
+	    txhash,_,err2 := dev.SendLockOut(from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,fmt.Sprintf("%v",Nonce),threshold,mode,key2) 
 	    if err2 == nil && txhash != "" {
 		return
 	    }
@@ -1028,9 +1022,9 @@ func LockOut(raw string) (string,string,error) {
 	}
     }()
     
-    common.Info("=================== LockOut return ","key = ",key,"","===========================")
+    common.Info("=================== LockOut return ","key = ",key2,"","===========================")
 
-    return key,"",nil
+    return key2,"",nil
 }
 
 func GetReqAddrStatus(key string) (string,string,error) {

@@ -2083,7 +2083,7 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     if workid >= 0 && workid < len(workers) {
 	wtmp := workers[workid]
 	if wtmp != nil && len(wtmp.acceptLockOutChan) == 0 {
-	    wtmp.acceptLockOutChan <- "go on" 
+	    //wtmp.acceptLockOutChan <- "go on" 
 	}
     }
 
@@ -2286,41 +2286,13 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
                     for {
                        select {
                        case account := <-wtmp2.acceptLockOutChan:
+			   common.Debug("(self *RecvMsg) Run(),","account= ",account,"key = ",rr.Nonce)
                            tip,reply = GetAcceptLockOutRes(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7])
-			   common.Info("================== (self *RecvMsg) Run() , ","Current Node Accept lockout Res = ",reply,"account = ",account,"key = ",rr.Nonce,"","============================")
-
-			   ///////
-			    mp := []string{w.sid,cur_enode}
-			    enode := strings.Join(mp,"-")
-			    s0 := "AcceptLockOutRes"
 			    var lo_res string
 			    if reply == false {
 				lo_res = "false"
 			    } else {
 				lo_res = "true"
-			    }
-			    s1 := lo_res
-			    ss := enode + Sep + s0 + Sep + s1
-//			    logs.Debug("================RecvMsg.Run,send msg to other nodes,code is AcceptLockOutRes,key=%s==================",keytest)
-			    SendMsgToDcrmGroup(ss,w.groupid)
-			   common.Info("================== (self *RecvMsg) Run() , finish send AcceptLockOutRes to other nodes ","key = ",rr.Nonce,"","============================")
-			    _,tip,err = GetChannelValue(ch_t,w.bacceptlockoutres)
-			   common.Info("================== (self *RecvMsg) Run() , the result from other nodes AcceptLockOutRes ","err = ",err,"key = ",rr.Nonce,"","============================")
-			    if err != nil {
-				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","Timeout","","get other node accept lockout result timeout","get other node accept lockout result timeout","",wid)
-				tip = "get other node accept lockout result timeout"
-				reply = false
-			       timeout <- true
-			       return
-			    }
-			    
-			    if w.msg_acceptlockoutres.Len() != (NodeCnt-1) {
-			       common.Info("================== (self *RecvMsg) Run() , get other nodes AcceptLockOutRes fail","key = ",rr.Nonce,"","============================")
-				AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","Failure","","get other node accept lockout result fail","get other node accept lockout result fail","",wid)
-				tip = "dcrm back-end internal error:get accepte lockout result fail."
-				reply = false
-			       timeout <- true
-			       return
 			    }
 			   
 			    rs := make([]LockOutReply,0)
@@ -3020,6 +2992,15 @@ func (self *LockOutSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
     AcceptLockOut(self.Account,self.GroupId,self.Nonce,self.DcrmFrom,self.LimitNum,false,"true","Pending","","","","",workid)
     common.Info("===================LockOutSendMsgToDcrm.Run, finish agree this lockout oneself. ","key = ",self.Key,"","============================")
 
+   ///////
+    mp := []string{self.Key,cur_enode}
+    enode := strings.Join(mp,"-")
+    s0 := "AcceptLockOutRes"
+    s1 := "true" 
+    ss := enode + Sep + s0 + Sep + s1
+    SendMsgToDcrmGroup(ss,self.GroupId)
+   common.Info("================== LockOutSendMsgToDcrm.Run , finish send AcceptLockOutRes to other nodes ","key = ",self.Key,"","============================")
+
     chret,tip,cherr := GetChannelValue(sendtogroup_lilo_timeout,w.ch)
     common.Info("==============LockOutSendMsgToDcrm.Run,Get Result","result = ",chret,"err = ",cherr,"key = ",self.Key,"","=================")
     if cherr != nil {
@@ -3524,6 +3505,41 @@ func DisMsg(msg string) {
 	    if w.msg_acceptlockoutres.Len() == (NodeCnt-1) {
 		common.Info("===================Get All AcceptLockOutRes ","msg hash = ",test,"","====================")
 		w.bacceptlockoutres <- true
+		/////
+		var da []byte
+		datmp,exsit := LdbLockOut.ReadMap(prexs[0])
+		if exsit == false {
+		    da2 := GetLockOutValueFromDb(prexs[0])
+		    if da2 == nil {
+			exsit = false
+		    } else {
+			exsit = true
+			da = da2
+		    }
+		} else {
+		    da = []byte(fmt.Sprintf("%v",datmp))
+		}
+
+		if exsit == false {
+		    return
+		}
+
+		ds,err := UnCompress(string(da))
+		if err != nil {
+		    return
+		}
+
+		dss,err := Decode2(ds,"AcceptLockOutData")
+		if err != nil {
+		    return
+		}
+
+		ac := dss.(*AcceptLockOutData)
+		if ac == nil {
+		    return
+		}
+		workers[ac.WorkId].acceptLockOutChan <- "go on" 
+		/////
 	    }
 	case "SendLockOutRes":
 	    ///bug

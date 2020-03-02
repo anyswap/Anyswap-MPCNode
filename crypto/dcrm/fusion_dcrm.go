@@ -917,6 +917,15 @@ func AcceptLockOut(raw string) (string,string,error) {
 	return "",tip,err
     }
 
+   ///////
+    mp := []string{key,cur_enode}
+    enode := strings.Join(mp,"-")
+    s0 := "AcceptLockOutRes"
+    s1 := accept
+    ss2 := enode + dev.Sep + s0 + dev.Sep + s1
+    dev.SendMsgToDcrmGroup(ss2,datas[2])
+   common.Info("================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ","key = ",key,"","============================")
+
     return pubdata,"",nil
 }
 

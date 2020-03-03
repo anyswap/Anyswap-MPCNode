@@ -449,8 +449,6 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	}
     }
 
-    //fmt.Println("===============ReqDcrmAddr,fusion account = %s================",from.Hex())
-
     data := string(tx.Data()) //REQDCRMADDR:gid:threshold:tx1:tx2:tx3...
     datas := strings.Split(data,":")
     if len(datas) < 3 {
@@ -544,6 +542,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 
 	//nonce check
 	if exsit == true {
+	    common.Info("========================================ReqDcrmAddr,req addr nonce error, ","account = ",from.Hex(),"group id = ",groupid,"threshold = ",threshold,"mode = ",mode,"nonce = ",Nonce,"key = ",key,"","============================================")
 	    return "","req addr nonce error",fmt.Errorf("nonce error.")
 	}
 
@@ -558,13 +557,12 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	//
 
 	tip,err := dev.SetReqAddrNonce(from.Hex(),fmt.Sprintf("%v",Nonce))
+	common.Info("========================================ReqDcrmAddr,SetReqAddrNonce, ","account = ",from.Hex(),"group id = ",groupid,"threshold = ",threshold,"mode = ",mode,"nonce = ",Nonce,"err = ",err,"key = ",key,"","============================================")
 	if err != nil {
 	    return "",tip,fmt.Errorf("update nonce error.")
 	}
 	////////bug
     }
-
-    common.Info("========================================ReqDcrmAddr, ","account = ",from.Hex(),"group id = ",groupid,"threshold = ",threshold,"mode = ",mode,"nonce = ",Nonce,"key = ",key,"","============================================")
 
     go func() {
 	/////////////////////tmp code //////////////////////

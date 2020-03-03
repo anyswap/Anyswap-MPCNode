@@ -39,10 +39,10 @@ import (
 
 func GetReqAddrNonce(account string) (string,string,error) {
     key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-    //fmt.Println("==============GetReqAddrNonce,acc =%s,key =%s=================",account,key2)
     var da []byte
     datmp,exsit := LdbPubKeyData.ReadMap(key2)
     if exsit == false {
+	common.Info("==============GetReqAddrNonce,no exsit in memory,so want to read from db,=================","account = ",account,"account hash = ",key2)
 	da2 := GetPubKeyDataValueFromDb(key2)
 	if da2 == nil {
 	    exsit = false
@@ -55,7 +55,7 @@ func GetReqAddrNonce(account string) (string,string,error) {
     }
     ///////
     if exsit == false {
-	fmt.Println("==============GetReqAddrNonce,no exsit,so return 0,key =%s=================",key2)
+	common.Info("==============GetReqAddrNonce,no exsit ,so return 0,=================","account = ",account,"account hash = ",key2)
 	//return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("map not found, account = %s",account)
 	return "0","",nil
     }
@@ -64,7 +64,6 @@ func GetReqAddrNonce(account string) (string,string,error) {
     one,_ := new(big.Int).SetString("1",10)
     nonce = new(big.Int).Add(nonce,one)
 
-    //fmt.Println("=========GetReqAddrNonce,get new nonce = %v,key =%s ============",nonce,key2)
     return fmt.Sprintf("%v",nonce),"",nil
 }
 
@@ -73,7 +72,7 @@ func SetReqAddrNonce(account string,nonce string) (string,error) {
     kd := KeyData{Key:[]byte(key),Data:nonce}
     PubKeyDataChan <-kd
 
-    //fmt.Println("================SetReqAddrNonce,acc =%s,nonce =%s,key =%s===============",account,nonce,key)
+    common.Info("================SetReqAddrNonce,===============","account = ",account,"nonce = ",nonce,"account hash = ",key)
     //LdbPubKeyData[key] = []byte(nonce)
     LdbPubKeyData.WriteMap(key,[]byte(nonce))
 
@@ -98,6 +97,7 @@ func GetPubKeyDataValueFromDb(key string) []byte {
     }
     //
     if db == nil {
+	common.Info("==============GetPubKeyDataValueFromDb,db is nil=================","account hash = ",key)
         lock.Unlock()
 	return nil 
     }
@@ -105,6 +105,7 @@ func GetPubKeyDataValueFromDb(key string) []byte {
     da,err := db.Get([]byte(key))
     ///////
     if err != nil {
+	common.Info("==============GetPubKeyDataValueFromDb,read from db error=================","err = ",err,"account hash = ",key)
 	db.Close()
 	lock.Unlock()
 	return nil

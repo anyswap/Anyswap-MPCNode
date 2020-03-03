@@ -192,7 +192,7 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
 }
 
 func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
-    common.Info("==============call rpc.GetReqAddrNonce from web================")
+    common.Info("==============call rpc.GetReqAddrNonce from web================","account = ",account)
 
     data := make(map[string]interface{})
     if account == "" {
@@ -206,7 +206,7 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
     }
 
     ret,tip,err := dcrm.GetReqAddrNonce(account)
-    //fmt.Println("==========GetReqAddrNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
+    common.Info("==========call rpc.GetReqAddrNonce finish===========","account = ",account,"ret = ",ret,"tip = ",tip,"err = ",err)
 
     if err != nil {
 	data["result"] = "0" 

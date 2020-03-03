@@ -2169,6 +2169,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		}
 
 		if exsit == true {
+		    common.Info("=======================RecvMsg.Run,req addr nonce error, ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"key = ",rr.Nonce,"","========================")
 		    //TODO must set acceptreqaddr(.....)
 		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:req addr nonce error",Err:fmt.Errorf("req addr nonce error")}
 		    ch <- res2
@@ -2192,6 +2193,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		//
 
 		_,err = SetReqAddrNonce(msgs[0],msgs[3])
+		common.Info("=======================RecvMsg.Run,SetReqAddrNonce ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"err = ",err,"key = ",rr.Nonce,"","========================")
 		if err != nil {
 		    //TODO must set acceptreqaddr(.....)
 		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("set req addr nonce fail in recvmsg.run")}

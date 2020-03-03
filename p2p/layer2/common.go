@@ -79,7 +79,6 @@ func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself boo
 			if err != nil {
 			}
 		}(node)
-		time.Sleep(time.Duration(1) * time.Second)
 	}
 	wg.Wait()
 	return ret

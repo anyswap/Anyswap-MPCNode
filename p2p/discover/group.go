@@ -377,6 +377,7 @@ func (t *udp) udpSendMsg(toid NodeID, toaddr *net.UDPAddr, msg string, number [3
 	}
 	timeout := false
 	go func() {
+		msgHash := crypto.Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
 		go func() {
 			SendWaitTimeOut := time.NewTicker(SendWaitTime)
 			select {
@@ -396,10 +397,10 @@ func (t *udp) udpSendMsg(toid NodeID, toaddr *net.UDPAddr, msg string, number [3
 			var errs error
 			if ret == true {
 				_, errs = t.send(toaddr, byte(getPacket), req)
-				fmt.Printf("==== (t *udp) udpSendMsg()  ====, send toaddr: %v, sequence: %v, errs: %v, dcrmmessage\n", toaddr, s, errs)
+				common.Info("==== (t *udp) udpSendMsg()  ====", "send toaddr", toaddr, "sequence", s, "errs", errs, "msgHash", msgHash, "dcrmmessage", "")
 			} else {
 				_, errs = t.send(toaddr, byte(getPacket), reqGet)
-				fmt.Printf("==== (t *udp) udpSendMsg()  ====, send toaddr: %v, sequence: %v, errs: %v, getdcrmmessage\n", toaddr, s, errs)
+				common.Info("==== (t *udp) udpSendMsg()  ====", "send toaddr", toaddr, "sequence", s, "errs", errs, "msgHash", msgHash, "getdcrmmessage", "")
 			}
 			time.Sleep(time.Duration(5) * time.Second)
 			err := <-errc
@@ -513,6 +514,8 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
        }
 
        go func() {
+		msgHash := crypto.Keccak256Hash([]byte(strings.ToLower(msgp))).Hex()
+		common.Info("==== (req *getdcrmmessage) handle() ====", "recv from target", fromID, "from", from, "msgHash", msgHash, "callback", "callMsgEvent")
                msgc := callMsgEvent(msgp, int(req.P2pType), fromID.String())
                msg := <-msgc
 		_, err := t.udpSendMsg(fromID, from, msg, number, int(req.P2pType), true)
@@ -540,7 +543,9 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
        //if expired(req.Expiration) {
        //        return errExpired
        //}
-	fmt.Printf("send ack ==== (req *dcrmmessage) handle() ====, to: %v, mac: %v\n", from, string(mac))
+	msgHash := crypto.Keccak256Hash([]byte(strings.ToLower(req.Msg))).Hex()
+	common.Info("==== (req *dcrmmessage) handle() ====", "recv from target", fromID, "from", from, "msgHash", msgHash)
+	fmt.Printf("send ack ==== (req *dcrmmessage) handle() ====, to: %v, msg: %v\n", from, req.Msg)
 	t.send(from, byte(Ack_Packet), &Ack{
 		Sequence: req.Sequence,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
@@ -555,7 +560,7 @@ func (req *dcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []b
 	}
 	sequenceDoneRecv.Store(ss, 1)
 	sequenceLock.Unlock()
-       fmt.Printf("dcrmmessage, handle, callCCReturn\n")
+	common.Info("==== (req *dcrmmessage) handle() ====", "recv from target", fromID, "from", from, "msgHash", msgHash, "callback", "callCCReturn")
        go callCCReturn(req.Msg, int(req.P2pType), fromID.String())
        return nil
 }

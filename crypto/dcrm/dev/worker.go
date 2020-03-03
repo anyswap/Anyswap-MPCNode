@@ -391,7 +391,7 @@ func FindWorker(sid string) (*RpcReqWorker,error) {
 	}
     }
 
-    time.Sleep(time.Duration(5)*time.Second) //1000 == 1s //TODO
+    time.Sleep(time.Duration(60)*time.Second) //1000 == 1s //TODO
     
     for i := 0; i < RpcMaxWorker; i++ {
 	w := workers[i]

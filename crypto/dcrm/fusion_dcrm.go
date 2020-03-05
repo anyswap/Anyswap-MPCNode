@@ -73,165 +73,11 @@ type DcrmPubkeyRes struct {
     DcrmAddress map[string]string
 }
 
-/*func GetPubKeyData(key []byte,account string,cointype string) (string,string,error) {
-    if key == nil || cointype == "" {
-	return "","dcrm back-end internal error:parameter error in func GetPubKeyData",fmt.Errorf("get pubkey data param error.")
-    }
-
-    PubLock.Lock()
-    dir := dev.GetDbDir()
-    ////////
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil {
-	for i:=0;i<1000;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
-    }
-    //
-    if err != nil {
-        PubLock.Unlock()
-	return "","dcrm back-end internal error:open level db fail",err
-    }
-    
-    da,err := db.Get(key)
-    ///////
-    if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	return "","dcrm back-end internal error:get data from db fail in func GetPubKeyData",err
-    }
-
-    ds,err := dev.UnCompress(string(da))
-    if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	return "","dcrm back-end internal error:uncompress data fail in func GetPubKeyData",err
-    }
-
-    dss,err := dev.Decode2(ds,"PubKeyData")
-    if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	return "","dcrm back-end internal error:decode PubKeyData fail",err
-    }
-
-    pubs := dss.(*dev.PubKeyData)
-    pubkey := hex.EncodeToString([]byte(pubs.Pub))
-    db.Close()
-    PubLock.Unlock()
-    ///////////
-    var m interface{}
-    if !strings.EqualFold(cointype, "ALL") {
-
-	h := cryptocoins.NewCryptocoinHandler(cointype)
-	if h == nil {
-	    return "","cointype is not supported",fmt.Errorf("req addr fail.cointype is not supported.")
-	}
-
-	ctaddr, err := h.PublicKeyToAddress(pubkey)
-	if err != nil {
-	    return "","dcrm back-end internal error:get dcrm addr fail from pubkey:"+pubkey,fmt.Errorf("req addr fail.")
-	}
-
-	m = &DcrmAddrRes{Account:account,PubKey:pubkey,DcrmAddr:ctaddr,Cointype:cointype}
-	b,_ := json.Marshal(m)
-	return string(b),"",nil
-    }
-    
-    addrmp := make(map[string]string)
-    for _, ct := range cryptocoins.Cointypes {
-	if strings.EqualFold(ct, "ALL") {
-	    continue
-	}
-
-	h := cryptocoins.NewCryptocoinHandler(ct)
-	if h == nil {
-	    continue
-	}
-	ctaddr, err := h.PublicKeyToAddress(pubkey)
-	if err != nil {
-	    continue
-	}
-	
-	addrmp[ct] = ctaddr
-    }
-
-    m = &DcrmPubkeyRes{Account:account, PubKey:pubkey, DcrmAddress:addrmp}
-    b,_ := json.Marshal(m)
-    return string(b),"",nil
-}
-
-func ExsitPubKey(account string,cointype string) (string,bool) {
-     //db
-    PubLock.Lock()
-    dir := dev.GetDbDir()
-    ////////
-    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
-    //bug
-    if err != nil {
-	for i:=0;i<1000;i++ {
-	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
-	    if err == nil {
-		break
-	    }
-	    
-	    time.Sleep(time.Duration(1000000))
-	}
-    }
-    //
-    if err != nil {
-        PubLock.Unlock()
-        return "",false
-    }
-    
-    key := dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-    da,err := db.Get([]byte(key))
-    ///////
-    if err != nil {
-	key = dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-	da,err = db.Get([]byte(key))
-	///////
-	if err != nil {
-	    db.Close()
-	    PubLock.Unlock()
-	    return "",false
-	}
-    }
-
-    ds,err := dev.UnCompress(string(da))
-    if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	return "",false
-    }
-
-    dss,err := dev.Decode2(ds,"PubKeyData")
-    if err != nil {
-	db.Close()
-	PubLock.Unlock()
-	return "",false
-    }
-
-    pubs := dss.(*dev.PubKeyData)
-    pubkey := hex.EncodeToString([]byte(pubs.Pub))
-    db.Close()
-    PubLock.Unlock()
-    return pubkey,true
-}
-*/
-
 func GetPubKeyData(key string,account string,cointype string) (string,string,error) {
     if key == "" || cointype == "" {
 	return "","dcrm back-end internal error:parameter error in func GetPubKeyData",fmt.Errorf("get pubkey data param error.")
     }
 
-    //da,exsit := dev.LdbPubKeyData[key]
     var da []byte
     datmp,exsit := dev.LdbPubKeyData.ReadMap(key)
     if exsit == false {
@@ -546,20 +392,15 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    return "","req addr nonce error",fmt.Errorf("nonce error.")
 	}
 
-	/*cur_nonce_str,tip,err := dev.GetReqAddrNonce(from.Hex())
-	if err != nil {
-	    return "",tip,err
-	}
-
-	if strings.EqualFold(fmt.Sprintf("%v",Nonce),cur_nonce_str) == false {
-	    return "","req addr nonce error",fmt.Errorf("nonce error.")
-	}*/
-	//
-
-	tip,err := dev.SetReqAddrNonce(from.Hex(),fmt.Sprintf("%v",Nonce))
-	common.Info("========================================ReqDcrmAddr,SetReqAddrNonce, ","account = ",from.Hex(),"group id = ",groupid,"threshold = ",threshold,"mode = ",mode,"nonce = ",Nonce,"err = ",err,"key = ",key,"","============================================")
-	if err != nil {
-	    return "",tip,fmt.Errorf("update nonce error.")
+	cur_nonce,_,_ := dev.GetReqAddrNonce(from.Hex())
+	cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+	new_nonce_num,_ := new(big.Int).SetString(fmt.Sprintf("%v",Nonce),10)
+	if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+	    tip,err := dev.SetReqAddrNonce(from.Hex(),fmt.Sprintf("%v",Nonce))
+	    common.Info("======================ReqDcrmAddr,SetReqAddrNonce, ","account = ",from.Hex(),"group id = ",groupid,"threshold = ",threshold,"mode = ",mode,"nonce = ",Nonce,"err = ",err,"key = ",key,"","===========================")
+	    if err != nil {
+		return "",tip,fmt.Errorf("update nonce error.")
+	    }
 	}
 	////////bug
     }
@@ -1023,11 +864,15 @@ func LockOut(raw string) (string,string,error) {
     }
     //
     
-    tip,err := dev.SetLockOutNonce(from.Hex(),cointype,dcrmaddr,fmt.Sprintf("%v",Nonce))
-    if err != nil {
-	return "",tip,fmt.Errorf("update nonce error.")
+    cur_nonce,_,_ := dev.GetLockOutNonce(from.Hex(),cointype,dcrmaddr)
+    cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+    new_nonce_num,_ := new(big.Int).SetString(fmt.Sprintf("%v",Nonce),10)
+    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+	tip,err := dev.SetLockOutNonce(from.Hex(),cointype,dcrmaddr,fmt.Sprintf("%v",Nonce))
+	if err != nil {
+	    return "",tip,fmt.Errorf("update nonce error.")
+	}
     }
-
     //////////
    
     go func() {

@@ -34,7 +34,7 @@ import (
     "strings"
     "fmt"
     "strconv"
-    //"math/big"
+    "math/big"
     //"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
     "encoding/json"
     "github.com/astaxie/beego/logs"
@@ -2176,29 +2176,18 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    return false
 		}
 
-		/*cur_nonce_str,_,err := GetReqAddrNonce(msgs[0])
-		if err != nil {
-		    //TODO must set acceptreqaddr(.....)
-		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("get req addr nonce fail in recvmsg.run")}
-		    ch <- res2
-		    return false
-		}
-
-		if strings.EqualFold(msgs[3],cur_nonce_str) == false {
-		    //TODO must set acceptreqaddr(.....)
-		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:req addr nonce error",Err:fmt.Errorf("req addr nonce error")}
-		    ch <- res2
-		    return false
-		}*/
-		//
-
-		_,err = SetReqAddrNonce(msgs[0],msgs[3])
-		common.Info("=======================RecvMsg.Run,SetReqAddrNonce ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"err = ",err,"key = ",rr.Nonce,"","========================")
-		if err != nil {
-		    //TODO must set acceptreqaddr(.....)
-		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("set req addr nonce fail in recvmsg.run")}
-		    ch <- res2
-		    return false
+		cur_nonce,_,_ := GetReqAddrNonce(msgs[0])
+		cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+		new_nonce_num,_ := new(big.Int).SetString(msgs[3],10)
+		if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		    _,err = SetReqAddrNonce(msgs[0],msgs[3])
+		    common.Info("=======================RecvMsg.Run,SetReqAddrNonce ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"err = ",err,"key = ",rr.Nonce,"","========================")
+		    if err != nil {
+			//TODO must set acceptreqaddr(.....)
+			res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("set req addr nonce fail in recvmsg.run")}
+			ch <- res2
+			return false
+		    }
 		}
 		////
 	    }
@@ -2225,28 +2214,17 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    return false
 		}
 
-		/*cur_nonce_str,_,err := GetLockOutNonce(msgs[0],msgs[4],msgs[1])
-		if err != nil {
-		    //TODO must set acceptlockout(.....)
-		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("get lockout nonce fail in recvmsg.run")}
-		    ch <- res2
-		    return false
-		}
-
-		if strings.EqualFold(msgs[6],cur_nonce_str) == false {
-		    //TODO must set acceptlockout(.....)
-		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:lockout tx nonce error",Err:fmt.Errorf("lockout tx nonce error")}
-		    ch <- res2
-		    return false
-		}*/
-		//
-		
-		_,err = SetLockOutNonce(msgs[0],msgs[4],msgs[1],msgs[6])
-		if err != nil {
-		    //TODO must set acceptlockout(.....)
-		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("set lockout nonce fail in recvmsg.run")}
-		    ch <- res2
-		    return false
+		cur_nonce,_,_ := GetLockOutNonce(msgs[0],msgs[4],msgs[1])
+		cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+		new_nonce_num,_ := new(big.Int).SetString(msgs[6],10)
+		if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		    _,err = SetLockOutNonce(msgs[0],msgs[4],msgs[1],msgs[6])
+		    if err != nil {
+			//TODO must set acceptlockout(.....)
+			res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set lockout nonce fail in RecvMsg.Run",Err:fmt.Errorf("set lockout nonce fail in recvmsg.run")}
+			ch <- res2
+			return false
+		    }
 		}
 		////
 	    }

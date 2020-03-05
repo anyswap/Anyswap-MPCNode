@@ -38,7 +38,7 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	xvcGroup, msgCode := getGroupAndCode(gid, p2pType)
 	if xvcGroup == nil {
 		e := fmt.Sprintf("BroadcastToGroup p2pType=%v is not exist", p2pType)
-		common.Info("BroadcastToGroup", "p2pType", p2pType, "is not exist", "")
+		fmt.Printf("==== BroadcastToGroup ====, p2pType: %v, is not exist\n", p2pType)
 		return "", errors.New(e)
 	}
 	groupTmp := *xvcGroup
@@ -48,31 +48,31 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 }
 
 func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself bool) int {
-	common.Info("==== p2pBroatcast() ====", "group", dccpGroup, "msg", msg)
+	fmt.Printf("%v ==== p2pBroatcast() ====, group: %v, msg: %v\n", common.CurrentTime(), dccpGroup, msg)
 	if dccpGroup == nil {
-		common.Info("==== p2pBroatcast() ====", "group", "nil", "msg", msg)
+		fmt.Printf("==== p2pBroatcast() ====, group nil, msg: %v\n", msg)
 		return 0
 	}
 	pi := p2pServer.PeersInfo()
 	for _, pinfo := range pi {
-		common.Info("==== p2pBroatcast() ====", "peers.Info", pinfo)
+		fmt.Printf("==== p2pBroatcast() ====, peers.Info: %v\n", pinfo)
 	}
 	var ret int = 0
 	wg := &sync.WaitGroup{}
 	wg.Add(len(dccpGroup.Nodes))
 	for _, node := range dccpGroup.Nodes {
-		common.Info("==== p2pBroatcast() ====", "group", dccpGroup, "msg", msg, "len", len(msg), "nodeID", node.ID)
+		fmt.Printf("%v ==== p2pBroatcast() ====, nodeID: %v, len: %v, group: %v, msg: %v\n", common.CurrentTime(), node.ID, len(msg), dccpGroup, msg)
 		if selfid == node.ID {
 			if myself == true {
-				common.Info("==== p2pBroatcast() ====", "group", dccpGroup, "msg", msg, "myself", "")
+				fmt.Printf("%v ==== p2pBroatcast() ====, myself, group: %v, msg: %v\n", common.CurrentTime(), dccpGroup, msg)
 				go callEvent(msg, node.ID.String())
 			}
 			wg.Done()
 			continue
 		}
-		go func(node discover.RpcNode) {//TODO, not go
+		go func(node discover.RpcNode) {
 			defer wg.Done()
-			common.Info("==== p2pBroatcast() ====", "group", dccpGroup, "msg", msg, "call p2pSendMsg", "")
+			fmt.Printf("%v ==== p2pBroatcast() ====, call p2pSendMsg, group: %v, msg: %v\n", common.CurrentTime(), dccpGroup, msg)
 			//TODO, print node info from tab
 			discover.PrintBucketNodeInfo(node.ID)
 			err := p2pSendMsg(node, uint64(msgCode), msg)
@@ -86,15 +86,15 @@ func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself boo
 
 func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	if msg == "" {
-		common.Info("==== p2pSendMsg() ====", "send to node", node.ID, "msg", "nil error")
+		fmt.Printf("==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, msg nil p2perror\n", node.ID)
 		return errors.New("p2pSendMsg msg is nil")
 	}
-	common.Info("==== p2pBroatcast p2pSendMsg() ====", "send to node", node.ID, "msg", msg)
+	fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, msg: %v\n", common.CurrentTime(), node.ID, msg)
 	err := errors.New("p2pSendMsg err")
 	emitter.Lock()
 	p := emitter.peers[node.ID]
 	if p == nil {
-		common.Info("==== p2pSendMsg() ====", "send to node", node.ID, "peer", "not exist error")
+		fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, peer not exist p2perror\n", common.CurrentTime(), node.ID)
 		return errors.New("peer not exist")
 	}
 	emitter.Unlock()
@@ -104,10 +104,10 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 		p = emitter.peers[node.ID]
 		if p != nil {
 			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
-				common.Info("==== p2pBroatcast p2pSendMsg() ====", "send to node", node.ID, "msg", msg, "countSend", countSendFail, "fail", "")
+				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, countSend: %v, msg: %v, send fail p2perror\n", common.CurrentTime(), node.ID, countSendFail, msg)
 			} else {
 				emitter.Unlock()
-				common.Info("==== p2pBroatcast p2pSendMsg() ====", "send to node", node.ID, "msg", msg, "countSend", countSendFail, "success", "")
+				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, countSend: %v, msg: %v, send success\n", common.CurrentTime(), node.ID, countSendFail, msg)
 				return nil
 			}
 		}
@@ -194,7 +194,7 @@ func NewEmitter() *Emitter {
 
 // update p2p
 func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
-	common.Info("==== addPeer() ====", "id", p.ID().String()[:8])
+	fmt.Printf("==== addPeer() ====, id: %v\n", p.ID().String()[:8])
 	e.Lock()
 	defer e.Unlock()
 	discover.RemoveSequenceDoneRecv(p.ID().String())
@@ -215,9 +215,9 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			var recv []byte
 			err := rlp.Decode(msg.Payload, &recv)
 			if err != nil {
-				common.Info("==== handle() ====", "Err: decode msg err", err)
+				fmt.Printf("%v ==== handle() ==== p2pBroatcast, Err: decode msg err: %v, p2perror\n", common.CurrentTime(), err)
 			} else {
-				common.Info("==== p2pBroatcast Recv callEvent() handle() ====", "peerMsgCode fromID", peer.ID().String(), "msg", string(recv))
+				fmt.Printf("%v ==== handle() ==== p2pBroatcast, Recv callEvent(), peerMsgCode fromID: %v, msg: %v\n", common.CurrentTime(), peer.ID().String(), string(recv))
 				go callEvent(string(recv), peer.ID().String())
 			}
 			break
@@ -225,9 +225,9 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			var recv []byte
 			err := rlp.Decode(msg.Payload, &recv)
 			if err != nil {
-				common.Info("==== handle() ====", "Err: decode sdk msg err", err)
+				fmt.Printf("%v ==== handle() ==== p2pBroatcast, Err: decode sdk msg err: %v, p2perror\n", common.CurrentTime(), err)
 			} else {
-				common.Info("==== p2pBroatcast Recv Sdk_callEvent() handle() ====", "Sdk_msgCode fromID", peer.ID().String(), "msg", string(recv))
+				fmt.Printf("%v ==== handle() ==== p2pBroatcast, Recv Sdk_callEvent(), Sdk_msgCode fromID: %v, msg: %v\n", common.CurrentTime(), peer.ID().String(), string(recv))
 				go Sdk_callEvent(string(recv), peer.ID().String())
 			}
 			break

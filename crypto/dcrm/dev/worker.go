@@ -1957,7 +1957,12 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 	arl = allreply
     }
 
-    ac2:= &AcceptReqAddrData{Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,PubKey:pk,Tip:ttip,Error:eif,AllReply:arl,WorkId:ac.WorkId}
+    wid := ac.WorkId
+    if workid >= 0 {
+	wid = workid
+    }
+
+    ac2:= &AcceptReqAddrData{Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,PubKey:pk,Tip:ttip,Error:eif,AllReply:arl,WorkId:wid}
     
     e,err := Encode2(ac2)
     if err != nil {
@@ -1975,17 +1980,6 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     ReqAddrChan <-kdtmp
 
     LdbReqAddr.WriteMap(key,[]byte(es))
-    
-   //common.Info("================== AcceptReqAddr, ","Current Node Accept req addr Res = ",acp,"key = ",key,"","============================")
-    if workid >= 0 && workid < len(workers) {
-	wtmp := workers[workid]
-	if wtmp != nil {
-	    if len(wtmp.acceptReqAddrChan) == 0 {
-		//wtmp.acceptReqAddrChan <- "go on" 
-	    }
-	}
-    }
-
     return "",nil
 }
 
@@ -1997,8 +1991,6 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 //if allreply == "",don't set AllReply 
 func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,threshold string,deal bool,accept string,status string,outhash string,tip string,errinfo string,allreply string,workid int) (string,error) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-//    fmt.Println("=====================AcceptLockOut,account =%s,groupid =%s,nonce =%s,dcrmfrom =%s,threshold =%s,key =%s======================",account,groupid,nonce,dcrmfrom,threshold,key)
-  //  fmt.Println("=====================AcceptLockOut,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
     var da []byte
     datmp,exsit := LdbLockOut.ReadMap(key)
     if exsit == false {
@@ -2063,7 +2055,12 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
 	arl = allreply
     }
 
-    ac2 := &AcceptLockOutData{Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,OutTxHash:ah,Tip:ttip,Error:eif,AllReply:arl,WorkId:ac.WorkId}
+    wid := ac.WorkId
+    if workid >= 0 {
+	wid = workid
+    }
+
+    ac2 := &AcceptLockOutData{Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,OutTxHash:ah,Tip:ttip,Error:eif,AllReply:arl,WorkId:wid}
 
     e,err := Encode2(ac2)
     if err != nil {
@@ -2079,14 +2076,6 @@ func AcceptLockOut(account string,groupid string,nonce string,dcrmfrom string,th
     LockOutChan <-kdtmp
 
     LdbLockOut.WriteMap(key,[]byte(es))
-    
-    if workid >= 0 && workid < len(workers) {
-	wtmp := workers[workid]
-	if wtmp != nil && len(wtmp.acceptLockOutChan) == 0 {
-	    //wtmp.acceptLockOutChan <- "go on" 
-	}
-    }
-
     return "",nil
 }
 
@@ -2153,48 +2142,23 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    wid = rr.WorkId
 	} else {
 	    wid = workid
-	   
-	    //nonce check
-	    if rr.MsgType == "rpc_req_dcrmaddr" {
-		msgs := strings.Split(rr.Msg,":")
-		//nonce check
-		_,exsit := LdbReqAddr.ReadMap(rr.Nonce)
-		if exsit == false {
-		    da2 := GetReqAddrValueFromDb(rr.Nonce)
-		    if da2 == nil {
-			exsit = false
-		    } else {
-			exsit = true
-		    }
-		}
+	}
 
-		if exsit == true {
-		    common.Info("=======================RecvMsg.Run,req addr nonce error, ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"key = ",rr.Nonce,"","========================")
-		    //TODO must set acceptreqaddr(.....)
-		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:req addr nonce error",Err:fmt.Errorf("req addr nonce error")}
-		    ch <- res2
-		    return false
-		}
+	common.Info("====================RecvMsg.Run,finish set nonce, ","wid = ",wid,"rr.WorkId = ",rr.WorkId,"msg hash = ",test,"key = ",rr.Nonce,"","======================")
 
-		cur_nonce,_,_ := GetReqAddrNonce(msgs[0])
-		cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
-		new_nonce_num,_ := new(big.Int).SetString(msgs[3],10)
-		if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-		    _,err = SetReqAddrNonce(msgs[0],msgs[3])
-		    common.Info("=======================RecvMsg.Run,SetReqAddrNonce ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"err = ",err,"key = ",rr.Nonce,"","========================")
-		    if err != nil {
-			//TODO must set acceptreqaddr(.....)
-			res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("set req addr nonce fail in recvmsg.run")}
-			ch <- res2
-			return false
-		    }
-		}
-		////
-	    }
-
-	    //nonce check
-	    if rr.MsgType == "rpc_lockout" {
-		msgs := strings.Split(rr.Msg,":")
+	//rpc_lockout
+	if rr.MsgType == "rpc_lockout" {
+	    w := workers[workid]
+	    w.sid = rr.Nonce
+	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode:key
+	    msg := rr.Msg
+	    msgs := strings.Split(msg,":")
+	    w.groupid = msgs[5] 
+	    w.limitnum = msgs[7]
+	    
+	    if strings.EqualFold(cur_enode,self.sender) { //self send
+		AcceptLockOut(msgs[0],msgs[5],msgs[6],msgs[1],msgs[7],false,"false","Pending","","","","",wid)
+	    } else {
 		//nonce check
 		_,exsit := LdbLockOut.ReadMap(rr.Nonce)
 		if exsit == false {
@@ -2226,32 +2190,20 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			return false
 		    }
 		}
+		
+		if msgs[8] == "0" {// self-group
+		    ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
+		    err := SaveAcceptLockOutData(ac)
+		    common.Info("===================finish call SaveAcceptLockOutData, ","wid = ",wid,"account = ",msgs[0],"group id = ",msgs[5],"nonce = ",msgs[6],"dcrm from = ",msgs[1],"dcrm to = ",msgs[2],"value = ",msgs[3],"cointype = ",msgs[4],"threshold = ",msgs[7],"mode = ",msgs[8],"key = ",rr.Nonce,"","=========================")
+		    if err != nil {
+		       //TODO
+		    }
+		}
 		////
 	    }
-	}
-
-	common.Info("====================RecvMsg.Run,finish set nonce, ","wid = ",wid,"rr.WorkId = ",rr.WorkId,"msg hash = ",test,"key = ",rr.Nonce,"","======================")
-
-	//rpc_lockout
-	if rr.MsgType == "rpc_lockout" {
-	    w := workers[workid]
-	    w.sid = rr.Nonce
-	    //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode:key
-	    msg := rr.Msg
-	    msgs := strings.Split(msg,":")
-	    w.groupid = msgs[5] 
-	    w.limitnum = msgs[7]
 	    
 	    ////bug
 	    if msgs[8] == "0" {// self-group
-		ac := &AcceptLockOutData{Account:msgs[0],GroupId:msgs[5],Nonce:msgs[6],DcrmFrom:msgs[1],DcrmTo:msgs[2],Value:msgs[3],Cointype:msgs[4],LimitNum:msgs[7],Mode:msgs[8],Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
-		err := SaveAcceptLockOutData(ac)
-		common.Info("===================finish call SaveAcceptLockOutData, ","wid = ",wid,"account = ",msgs[0],"group id = ",msgs[5],"nonce = ",msgs[6],"dcrm from = ",msgs[1],"dcrm to = ",msgs[2],"value = ",msgs[3],"cointype = ",msgs[4],"threshold = ",msgs[7],"mode = ",msgs[8],"key = ",rr.Nonce,"","=========================")
-		if err != nil {
-		   // fmt.Println("===================call SaveAcceptLockOutData,err =%v,key=%s =====================",err,keytest)
-		   //TODO
-		}
-
 	        ////
 	        var reply bool
 	        var tip string
@@ -2488,15 +2440,55 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    msgs := strings.Split(rr.Msg,":")
 	    w.groupid = msgs[2]
 	    w.limitnum = msgs[4]
-
-	    if msgs[5] == "0" {// self-group
-		ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
-		err := SaveAcceptReqAddrData(ac)
-		common.Info("===================call SaveAcceptReqAddrData finish, ","wid",wid,"account = ",msgs[0],"cointype = ",msgs[1],"group id = ",msgs[2],"nonce = ",msgs[3],"threshold = ",msgs[4],"mode = ",msgs[5],"err = ",err,"key = ",rr.Nonce,"msg hash = ",test,"","======================")
-		if err != nil {
-		    ////TODO
+	    
+	    if strings.EqualFold(cur_enode,self.sender) { //self send
+		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Pending","","","","",wid)
+	    } else {
+		//nonce check
+		_,exsit := LdbReqAddr.ReadMap(rr.Nonce)
+		if exsit == false {
+		    da2 := GetReqAddrValueFromDb(rr.Nonce)
+		    if da2 == nil {
+			exsit = false
+		    } else {
+			exsit = true
+		    }
 		}
 
+		if exsit == true {
+		    common.Info("=======================RecvMsg.Run,req addr nonce error, ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"key = ",rr.Nonce,"","========================")
+		    //TODO must set acceptreqaddr(.....)
+		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:req addr nonce error",Err:fmt.Errorf("req addr nonce error")}
+		    ch <- res2
+		    return false
+		}
+
+		cur_nonce,_,_ := GetReqAddrNonce(msgs[0])
+		cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+		new_nonce_num,_ := new(big.Int).SetString(msgs[3],10)
+		if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		    _,err = SetReqAddrNonce(msgs[0],msgs[3])
+		    common.Info("=======================RecvMsg.Run,SetReqAddrNonce ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"err = ",err,"key = ",rr.Nonce,"","========================")
+		    if err != nil {
+			//TODO must set acceptreqaddr(.....)
+			res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("set req addr nonce fail in recvmsg.run")}
+			ch <- res2
+			return false
+		    }
+		}
+		
+		if msgs[5] == "0" {// self-group
+		    ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
+		    err := SaveAcceptReqAddrData(ac)
+		    common.Info("===================call SaveAcceptReqAddrData finish, ","wid",wid,"account = ",msgs[0],"cointype = ",msgs[1],"group id = ",msgs[2],"nonce = ",msgs[3],"threshold = ",msgs[4],"mode = ",msgs[5],"err = ",err,"key = ",rr.Nonce,"msg hash = ",test,"","======================")
+		    if err != nil {
+			////TODO
+		    }
+		}
+		////
+	    }
+	    
+	    if msgs[5] == "0" {// self-group
 	        ////
 	        var reply bool
 	        var tip string

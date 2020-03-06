@@ -42,11 +42,15 @@ var (
     PubLock sync.Mutex
     SignLock sync.Mutex
     KeyFile string
+    ReqAddrCh = make(chan ReqAddrData, 1000)
+    LockOutCh = make(chan LockOutData, 1000)
 )
 
 func Start() {
     cryptocoinsconfig.Init()
     coins.Init()
+    go RecivReqAddr()
+    go RecivLockOut()
 }
 
 type DcrmAccountsBalanceRes struct {
@@ -278,6 +282,134 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     return ret,"",nil
 }
 
+type ReqAddrData struct {
+    Account string
+    GroupId string
+    Nonce string
+    ThresHold string
+    Mode string
+    Cointype string
+    NodeCnt string
+    Datas []string
+    Key string
+}
+
+func RecivReqAddr() {
+    for {
+	select {
+	case data := <- ReqAddrCh:
+	    ////////bug
+	    var da []byte
+	    datmp,exsit := dev.LdbReqAddr.ReadMap(data.Key)
+	    if exsit == false {
+		da2 := dev.GetReqAddrValueFromDb(data.Key)
+		if da2 == nil {
+		    exsit = false
+		} else {
+		    exsit = true
+		    da = da2
+		}
+	    } else {
+		da = datmp.([]byte)
+	    }
+
+	    if exsit == true {
+		ds,err := dev.UnCompress(string(da))
+		if err == nil {
+		    dss,err := dev.Decode2(ds,"AcceptReqAddrData")
+		    if err == nil {
+			ac := dss.(*dev.AcceptReqAddrData)
+			if ac != nil && strings.EqualFold(ac.Status, "Pending") {
+			    common.Info("===================!!!!RecivReqAddr,this req addr has already handle,!!!!============================","account = ",data.Account,"group id = ",data.GroupId,"nonce = ",data.Nonce,"threshold = ",data.ThresHold,"mode = ",data.Mode,"key = ",data.Key)
+			    return
+			    //AcceptReqAddr(data.Account,data.Cointype,data.GroupId,data.Nonce,data.ThresHold,data.Mode,)
+			    //return "","the req dcrm addr has already handle,status is pending",fmt.Errorf("the req dcrm addr has already handle,status is pending.")
+			}
+		    }
+		}
+	    }
+
+	    //nonce check
+	    if exsit == true {
+		common.Info("========================================RecivReqAddr,req addr nonce error, ","account = ",data.Account,"group id = ",data.GroupId,"threshold = ",data.ThresHold,"mode = ",data.Mode,"nonce = ",data.Nonce,"key = ",data.Key,"","============================================")
+		return
+	    }
+
+	    cur_nonce,_,_ := dev.GetReqAddrNonce(data.Account)
+	    cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+	    new_nonce_num,_ := new(big.Int).SetString(data.Nonce,10)
+	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		_,err := dev.SetReqAddrNonce(data.Account,data.Nonce)
+		common.Info("======================ReqDcrmAddr,SetReqAddrNonce, ","account = ",data.Account,"group id = ",data.GroupId,"threshold = ",data.ThresHold,"mode = ",data.Mode,"nonce = ",data.Nonce,"err = ",err,"key = ",data.Key,"","===========================")
+		if err != nil {
+		    return
+		}
+	    }
+	    
+	    if data.Mode == "0" {// self-group
+		ac := &dev.AcceptReqAddrData{Account:data.Account,Cointype:"ALL",GroupId:data.GroupId,Nonce:data.Nonce,LimitNum:data.ThresHold,Mode:data.Mode,Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
+		err := dev.SaveAcceptReqAddrData(ac)
+		if err != nil {
+		    return
+		}
+	    }
+	    ////////bug
+	    go func(d ReqAddrData) {
+		/////////////////////tmp code //////////////////////
+		mp := []string{d.Key,cur_enode}
+		enode := strings.Join(mp,"-")
+		s0 := "GroupAccounts"
+		s1 := d.NodeCnt
+		ss := enode + common.Sep + s0 + common.Sep + s1
+		
+		nodecnt,_ := strconv.Atoi(d.NodeCnt)
+		for j:=0;j<nodecnt;j++ {
+		    tx2 := new(types.Transaction)
+		    vs := common.FromHex(d.Datas[3+j])
+		    if err := rlp.DecodeBytes(vs, tx2); err != nil {
+			return
+		    }
+
+		    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+		    from2, err := types.Sender(signer, tx2)
+		    if err != nil {
+			signer = types.NewEIP155Signer(big.NewInt(4)) //
+			from2, err = types.Sender(signer, tx2)
+			if err != nil {
+			    return
+			}
+		    }
+
+		    eid := string(tx2.Data())
+		    acc := from2.Hex()
+		    ss += common.Sep
+		    ss += eid
+		    ss += common.Sep
+		    ss += acc
+		}
+		
+		kd := dev.KeyData{Key:[]byte(d.Key),Data:ss}
+		dev.GAccsDataChan <-kd
+		dev.GAccs.WriteMap(d.Key,ss)
+		dev.SendMsgToDcrmGroup(ss,d.GroupId)
+		common.Info("===============ReqDcrmAddr,send group accounts to other nodes ","msg = ",ss,"key = ",d.Key,"","===========================")
+		////////////////////////////////////////////////////
+
+		//coin := "ALL"
+		//if !types.IsDefaultED25519(msgs[1]) {  //TODO
+		//}
+
+		addr,_,err := dev.SendReqDcrmAddr(d.Account,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.Key)
+		common.Info("===============ReqDcrmAddr,finish calc dcrm addrs. ","addr = ",addr,"err = ",err,"key = ",d.Key,"","===========================")
+		if addr != "" && err == nil {
+		    return
+		}
+	    }(data)
+	    //
+	}
+    }
+}
+
 func ReqDcrmAddr(raw string,mode string) (string,string,error) {
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
@@ -328,8 +460,43 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
     Nonce := tx.Nonce()
     
     key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
-    
+
     if mode == "1" { //non self-group
+	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
+	    ///
+	    var m interface{}
+	    addrmp := make(map[string]string)
+	    for _, ct := range coins.Cointypes {
+		if strings.EqualFold(ct, "ALL") {
+		    continue
+		}
+
+		h := coins.NewCryptocoinHandler(ct)
+		if h == nil {
+		    continue
+		}
+		ctaddr, err := h.PublicKeyToAddress(da)
+		if err != nil {
+		    continue
+		}
+		
+		addrmp[ct] = ctaddr
+	    }
+
+	    m = &DcrmPubkeyRes{Account:from.Hex(),PubKey:da,DcrmAddress:addrmp}
+	    bb,_ := json.Marshal(m)
+	    return string(bb),"",nil
+	    ///
+	}
+    }
+
+    data2 := ReqAddrData{Account:from.Hex(),GroupId:groupid,Nonce:fmt.Sprintf("%v",Nonce),ThresHold:threshold,Mode:mode,Cointype:"ALL",NodeCnt:nums[1],Datas:datas,Key:key}
+    ReqAddrCh <-data2
+    
+    common.Info("===============ReqDcrmAddr finish,return","key = ",key,"","=================================")
+    return key,"",nil
+    
+    /*if mode == "1" { //non self-group
 	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
 	    ///
 	    var m interface{}
@@ -456,9 +623,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    return
 	}
     }()
-
-    common.Info("===============ReqDcrmAddr finish,return","key = ",key,"","=================================")
-    return key,"",nil
+    */
 }
 
 func AcceptReqAddr(raw string) (string,string,error) {
@@ -685,39 +850,6 @@ func AcceptLockOut(raw string) (string,string,error) {
     }
     /////
 
-    /*check := false
-    for _,v := range pd.NodeSigs {
-	tx2 := new(types.Transaction)
-	vs := common.FromHex(v)
-	if err = rlp.DecodeBytes(vs, tx2); err != nil {
-	    //return "","check accepter fail",err
-	    continue
-	}
-
-	signer = types.NewEIP155Signer(big.NewInt(30400)) //
-	from2, err := types.Sender(signer, tx2)
-	if err != nil {
-	    signer = types.NewEIP155Signer(big.NewInt(4)) //
-	    from2, err = types.Sender(signer, tx2)
-	    if err != nil {
-		//return "","check accepter fail",err
-		continue
-	    }
-	}
-	
-	eid := string(tx2.Data())
-	fmt.Println("===================!!! AcceptLockOut,eid = %s,cur_enode =%s,from =%s,from2 =%s !!!===============",eid,cur_enode,from.Hex(),from2.Hex())
-	if strings.EqualFold(eid,cur_enode) && strings.EqualFold(from.Hex(),from2.Hex()) {
-	    check = true
-	    break
-	}
-    }
-
-    if check == false {
-	return "","invalid accepter",fmt.Errorf("invalid accepter")
-    }*/
-    ////////////////////////////
-
     //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept
     key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[8]))).Hex()
     datmp,exsit = dev.LdbLockOut.ReadMap(key)
@@ -770,6 +902,91 @@ func AcceptLockOut(raw string) (string,string,error) {
     return pubdata,"",nil
 }
 
+type LockOutData struct {
+    Account string
+    Nonce string
+    DcrmFrom string
+    DcrmTo string
+    Value string
+    Cointype string
+    GroupId string
+    ThresHold string
+    Mode string
+    Key string
+}
+
+func RecivLockOut() {
+    for {
+	select {
+	case data := <- LockOutCh:
+	    var da []byte
+	    datmp,exsit := dev.LdbLockOut.ReadMap(data.Key)
+	    if exsit == false {
+		da2 := dev.GetLockOutValueFromDb(data.Key)
+		if da2 == nil {
+		    exsit = false
+		} else {
+		    exsit = true
+		    da = da2
+		}
+	    } else {
+		da = datmp.([]byte)
+	    }
+
+	    if exsit == true {
+		ds,err := dev.UnCompress(string(da))
+		if err == nil {
+		    dss,err := dev.Decode2(ds,"AcceptLockOutData")
+		    if err == nil {
+			ac := dss.(*dev.AcceptLockOutData)
+			if ac != nil && strings.EqualFold(ac.Status, "Pending") {
+			    common.Info("===================!!!!RecivLockOut,this lockout has already handle,","account = ",data.Account,"group id = ",data.GroupId,"nonce = ",data.Nonce,"dcrm from = ",data.DcrmFrom,"threshold = ",data.ThresHold,"key = ",data.Key)
+			    return
+			}
+		    }
+		}
+	    }
+
+	    ///////
+	    if exsit == true {
+		common.Info("========================================RecivLockOut,lockout nonce error, ","account = ",data.Account,"group id = ",data.GroupId,"threshold = ",data.ThresHold,"mode = ",data.Mode,"nonce = ",data.Nonce,"key = ",data.Key,"","============================================")
+		return
+	    }
+	    //
+	    
+	    cur_nonce,_,_ := dev.GetLockOutNonce(data.Account,data.Cointype,data.DcrmFrom)
+	    cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+	    new_nonce_num,_ := new(big.Int).SetString(data.Nonce,10)
+	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		_,err := dev.SetLockOutNonce(data.Account,data.Cointype,data.DcrmFrom,data.Nonce)
+		if err != nil {
+		    return
+		}
+	    }
+
+	    if data.Mode == "0" {
+		ac := &dev.AcceptLockOutData{Account:data.Account,GroupId:data.GroupId,Nonce:data.Nonce,DcrmFrom:data.DcrmFrom,DcrmTo:data.DcrmTo,Value:data.Value,Cointype:data.Cointype,LimitNum:data.ThresHold,Mode:data.Mode,Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
+		err := dev.SaveAcceptLockOutData(ac)
+		if err != nil {
+		  return 
+		}
+	    }
+	    //////////
+	   
+	    go func(d LockOutData) {
+		for i:=0;i<1;i++ {
+		    txhash,_,err2 := dev.SendLockOut(d.Account,d.DcrmFrom,d.DcrmTo,d.Value,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.Key) 
+		    if err2 == nil && txhash != "" {
+			return
+		    }
+
+		    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
+		}
+	    }(data)
+	}
+    }
+}
+
 func LockOut(raw string) (string,string,error) {
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
@@ -803,13 +1020,19 @@ func LockOut(raw string) (string,string,error) {
     mode := datas[7]
     Nonce := tx.Nonce() 
 
-    //fmt.Println("========================================dcrm_lockOut,fusion account = %s,dcrm from = %s,dcrm to = %s,value = %s,cointype = %s,groupid = %s,threshold = %s,mode =%s,nonce = %v ====================================",from.Hex(),dcrmaddr,dcrmto,value,cointype,groupid,threshold,mode,Nonce)
     if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" {
 	return "","parameter error from raw data,maybe raw data error",fmt.Errorf("param error.")
     }
 
     ///////bug
     key2 := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
+    data2 := LockOutData{Account:from.Hex(),Nonce:fmt.Sprintf("%v",Nonce),DcrmFrom:dcrmaddr,DcrmTo:dcrmto,Value:value,Cointype:cointype,GroupId:groupid,ThresHold:threshold,Mode:mode,Key:key2}
+    LockOutCh <- data2
+
+    common.Info("=================== LockOut return ","key = ",key2,"","===========================")
+    return key2,"",nil
+    
+    /*
     var da []byte
     datmp,exsit := dev.LdbLockOut.ReadMap(key2)
     if exsit == false {
@@ -838,26 +1061,6 @@ func LockOut(raw string) (string,string,error) {
 	}
     }
 
-    //nonce check
-    /*cur_nonce_str,tip,err := dev.GetLockOutNonce(from.Hex(),cointype,dcrmaddr)
-    if err != nil {
-	return "",tip,err
-    }
-
-    if strings.EqualFold(fmt.Sprintf("%v",Nonce),cur_nonce_str) == false {
-	return "","lockout tx nonce error",fmt.Errorf("nonce error.")
-    }*/
-    
-    _,exsit = dev.LdbLockOut.ReadMap(key2)
-    if exsit == false {
-	da2 := dev.GetLockOutValueFromDb(key2)
-	if da2 == nil {
-	    exsit = false
-	} else {
-	    exsit = true
-	}
-    }
-    
     ///////
     if exsit == true {
 	return "","lockout tx nonce error",fmt.Errorf("nonce error.")
@@ -885,10 +1088,7 @@ func LockOut(raw string) (string,string,error) {
 	    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
 	}
     }()
-    
-    common.Info("=================== LockOut return ","key = ",key2,"","===========================")
-
-    return key2,"",nil
+    */
 }
 
 func GetReqAddrStatus(key string) (string,string,error) {

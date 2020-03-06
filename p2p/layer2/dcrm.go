@@ -307,20 +307,13 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	enode := []*discover.Node{}
 	id := []byte("")
 	for _, un := range enodes {
-		fmt.Printf("for un: %v\n", un)
+		fmt.Printf("for enode: %v\n", un)
 		node, err := discover.ParseNode(un)
 		if err != nil {
 			fmt.Printf("CreateSDKGroup, parse err: %v\n", un)
 			return "", 0, "enode wrong format"
 		}
 		fmt.Printf("for selfid: %v, node.ID: %v\n", selfid, node.ID)
-		if selfid != node.ID {
-			p := emitter.peers[node.ID]
-			if p == nil {
-				fmt.Printf("CreateSDKGroup, peers err: %v\n", un)
-				return "", 0, "enode is not peer"
-			}
-		}
 		n := fmt.Sprintf("%v", node.ID)
 		fmt.Printf("CreateSDKGroup, n: %v\n", n)
 		if len(id) == 0 {
@@ -382,15 +375,6 @@ func CheckAddPeer(mode string, enodes []string) error {
 			continue
 		}
 
-		status, err := GetEnodeStatus(enode)
-		if err != nil {
-			msg := fmt.Sprintf("CheckAddPeer, enode: %v, err: %v", enode, err)
-			return errors.New(msg)
-		}
-		if status == "OffLine" {
-			msg := fmt.Sprintf("CheckAddPeer, enode: %v offline", enode)
-			return errors.New(msg)
-		}
 		go func(node *discover.Node) {
 			wg.Add(1)
 			defer wg.Done()

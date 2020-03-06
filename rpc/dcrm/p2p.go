@@ -69,6 +69,10 @@ type GroupInfo struct {
 	Enodes []string
 }
 
+func (this *Service) CreateGroup(mode string, enodes []string) string {
+	return this.CreateSDKGroup(mode, enodes)
+}
+
 func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
 	fmt.Printf("==== CreateSDKGroup() ====\n")
 	err := layer2.CheckAddPeer(mode, enodes)
@@ -80,14 +84,9 @@ func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
 	gid, count, retErr := layer2.CreateSDKGroup(mode, enodes)
 	if retErr != "" {
 		status := FAIL
-		tip := ""
-		if retErr != "" {
-			tip = "group exist"
-			status = REPEAT
-		}
-		fmt.Printf("==== CreateSDKGroup() ====, CreateSDKGroup tip: %v, err: %v\n", tip, retErr)
+		fmt.Printf("==== CreateSDKGroup() ====, CreateSDKGroup tip: %v, err: %v\n", retErr, retErr)
 		ret := &GroupInfo{Gid: gid, Mode: mode, Count: count, Enodes: enodes}
-		return packageResult(status, tip, retErr, ret)
+		return packageResult(status, retErr, retErr, ret)
 	}
 	fmt.Printf("==== CreateSDKGroup() ====, gid: %v, count: %v\n", gid, count)
 	ret := &GroupInfo{Gid: gid, Mode: mode, Count: count, Enodes: enodes}

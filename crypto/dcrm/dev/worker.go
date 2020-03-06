@@ -36,6 +36,7 @@ import (
     "strconv"
     "math/big"
     //"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+    "github.com/fsn-dev/dcrm-walletService/ethdb"
     "encoding/json"
     "github.com/astaxie/beego/logs"
     "encoding/gob"
@@ -117,29 +118,177 @@ func RegDcrmGetEosAccountCallBack(f func() (string,string,string)) {
     GetEosAccount = f
 }
 
-func InitDev(keyfile string,groupId string) {
-    ////test
-    /*timeout := make(chan bool, 1)
-    go func() {
-	 time.Sleep(time.Duration(20)*time.Second) //1000 == 1s
-	 timeout <- true
-     }()
-     common.Info("=======================InitDev 1111111111111111111========================")
-    <-timeout 
-     common.Info("=======================InitDev 222222222222222222222========================")
-*/
-    /////test
+func PutGroup(groupId string) bool {
+    return true
 
-    cur_enode = GetSelfEnode()
-    common.Info("=========InitDev","groupId=",groupId,"cur_enode=",cur_enode,"","=============")
-    peerscount,_ := GetGroup(groupId)
-    /*if peerscount != 0 && enodes != "" {
-	nodes := strings.Split(enodes,SepSg)
-	for _,node := range nodes {
-	    node2 := ParseNode(node)
-	    fmt.Println("=========InitDev,groupid =%s,node =%s===========",groupId,node2)
+    if groupId == "" {
+	return false
+    }
+
+    lock.Lock()
+    dir := GetGroupDir()
+    //db, err := leveldb.OpenFile(dir, nil)
+
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<100;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil && db != nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
 	}
-    }*/
+    }
+    //
+    
+    if err != nil {
+	lock.Unlock()
+	return false
+    }
+
+    var data string
+    var b bytes.Buffer
+    b.WriteString("")
+    b.WriteByte(0)
+    b.WriteString("")
+    iter := db.NewIterator()
+    for iter.Next() {
+	key := string(iter.Key())
+	value := string(iter.Value())
+	if strings.EqualFold(key,"GroupIds") {
+	    data = value
+	    break
+	}
+    }
+    iter.Release()
+    ///////
+    if data == "" {
+	db.Put([]byte("GroupIds"),[]byte(groupId))
+	db.Close()
+	lock.Unlock()
+	return true
+    }
+
+    m := strings.Split(data,":")
+    for _,v := range m {
+	if strings.EqualFold(v,groupId) {
+	    db.Close()
+	    lock.Unlock()
+	    return true
+	}
+    }
+
+    data += ":" + groupId
+    db.Put([]byte("GroupIds"),[]byte(data))
+
+    db.Close()
+    lock.Unlock()
+    return true
+}
+
+func GetGroupIdByEnode(enode string) string {
+    if enode == "" {
+	return ""
+    }
+
+    lock.Lock()
+    dir := GetGroupDir()
+    //db, err := leveldb.OpenFile(dir, nil)
+
+    db,err := ethdb.NewLDBDatabase(dir, 0, 0)
+    //bug
+    if err != nil {
+	for i:=0;i<100;i++ {
+	    db,err = ethdb.NewLDBDatabase(dir, 0, 0)
+	    if err == nil && db != nil {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1000000))
+	}
+    }
+    //
+    
+    if err != nil {
+	lock.Unlock()
+	return ""
+    }
+
+    var data string
+    var b bytes.Buffer
+    b.WriteString("")
+    b.WriteByte(0)
+    b.WriteString("")
+    iter := db.NewIterator()
+    for iter.Next() {
+	key := string(iter.Key())
+	value := string(iter.Value())
+	if strings.EqualFold(key,"GroupIds") {
+	    data = value
+	    break
+	}
+    }
+    iter.Release()
+    ///////
+    if data == "" {
+	db.Close()
+	lock.Unlock()
+	return ""
+    }
+
+    m := strings.Split(data,":")
+    for _,v := range m {
+	if IsInGroup(enode,v) {
+	    db.Close()
+	    lock.Unlock()
+	    return v
+	}
+    }
+
+    db.Close()
+    lock.Unlock()
+    return ""
+}
+
+func IsInGroup(enode string,groupId string) bool {
+    if groupId == "" || enode == "" {
+	return false
+    }
+
+    cnt,enodes := GetGroup(groupId)
+    if cnt <= 0 || enodes == "" {
+	return false
+    }
+
+    nodes := strings.Split(enodes,SepSg)
+    for _,node := range nodes {
+	node2 := ParseNode(node)
+	if strings.EqualFold(node2,enode) {
+	    return true
+	}
+    }
+
+    return false
+}
+
+func GetEnodesInfo(GroupId string) {
+    if GroupId == "" {
+	return
+    }
+    
+    Enode_cnts,_ = GetGroup(GroupId)
+    NodeCnt = Enode_cnts
+    ThresHold = Enode_cnts
+    cur_enode = GetSelfEnode()
+}
+
+func InitDev(keyfile string,groupId string) {
+    cur_enode = GetSelfEnode()
+    fmt.Printf("%v =========InitDev,groupid = %v,cur_enode =%v=============\n",common.CurrentTime(),groupId,cur_enode)
+
+    peerscount,_ := GetGroup(groupId)
 
    NodeCnt = peerscount
    ThresHold = peerscount
@@ -3152,38 +3301,6 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
     return nil
 }
 
-func IsInGroup(enode string,groupId string) bool {
-    if groupId == "" || enode == "" {
-	return false
-    }
-
-    cnt,enodes := GetGroup(groupId)
-    if cnt <= 0 || enodes == "" {
-	return false
-    }
-
-    nodes := strings.Split(enodes,SepSg)
-    for _,node := range nodes {
-	node2 := ParseNode(node)
-	if strings.EqualFold(node2,enode) {
-	    return true
-	}
-    }
-
-    return false
-}
-
-func GetEnodesInfo(GroupId string) {
-    if GroupId == "" {
-	return
-    }
-    
-    Enode_cnts,_ = GetGroup(GroupId)
-    NodeCnt = Enode_cnts
-    ThresHold = Enode_cnts
-    cur_enode = GetSelfEnode()
-}
-
 func CommitRpcReq() {
     for {
 	select {
@@ -4032,7 +4149,7 @@ func DisMsg(msg string) {
 
 func GetGroupDir() string { //TODO
     dir := DefaultDataDir()
-    dir += "/dcrmdata/dcrmdb" + cur_enode + "group"
+    dir += "/dcrmdata/dcrmdb" + GetSelfEnode() + "group"
     return dir
 }
 

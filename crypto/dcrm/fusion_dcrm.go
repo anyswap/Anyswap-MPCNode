@@ -1313,8 +1313,8 @@ func Call(msg interface{}) {
 }
 
 var parts = make(map[int]string)
-func receiveSplitKey(msg interface{}){
-	fmt.Println("===========receiveSplitKey==============","msg",msg)
+func receiveGroupInfo(msg interface{}){
+	fmt.Println("===========receiveGroupInfo==============","msg",msg)
 	cur_enode = p2pdcrm.GetSelfID()
 	
 	m := strings.Split(msg.(string),"|")
@@ -1346,8 +1346,20 @@ func receiveSplitKey(msg interface{}){
 }
 
 func Init(groupId string) {
-    out := "=============Init================" + " get group id = " + groupId
+    out := "=============Init================" + " get group id = " + groupId + ", init_times = " + strconv.Itoa(init_times)
     fmt.Println(out)
+
+    if !dev.PutGroup(groupId) {
+	out := "=============Init================" + " get group id = " + groupId + ", put group id fail "
+	fmt.Println(out)
+	return
+    }
+
+    if init_times >= 1 {
+	return
+    }
+
+    init_times = 1
     dev.InitDev(KeyFile,groupId)
 }
 
@@ -1355,7 +1367,7 @@ func SetUpMsgList(msg string) {
 
     mm := strings.Split(msg,"dcrmslash")
     if len(mm) >= 2 {
-	receiveSplitKey(msg)
+	receiveGroupInfo(msg)
 	return
     }
 }

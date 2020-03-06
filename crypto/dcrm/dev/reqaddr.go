@@ -43,6 +43,7 @@ func GetReqAddrNonce(account string) (string,string,error) {
     datmp,exsit := LdbPubKeyData.ReadMap(key2)
     if exsit == false {
 	common.Info("==============GetReqAddrNonce,no exsit in memory,so want to read from db,=================","account = ",account,"account hash = ",key2)
+	fmt.Println("%v =========GetReqAddrNonce,no exist in memory,so want to read from db,account = %v,account hash = %v =================",common.CurrentTime(),account,key2)
 	da2 := GetPubKeyDataValueFromDb(key2)
 	if da2 == nil {
 	    exsit = false
@@ -56,6 +57,7 @@ func GetReqAddrNonce(account string) (string,string,error) {
     ///////
     if exsit == false {
 	common.Info("==============GetReqAddrNonce,no exsit ,so return 0,=================","account = ",account,"account hash = ",key2)
+	fmt.Println("%v =========GetReqAddrNonce,no exist ,so return 0,account = %v,account hash = %v =================",common.CurrentTime(),account,key2)
 	//return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("map not found, account = %s",account)
 	return "0","",nil
     }
@@ -73,6 +75,7 @@ func SetReqAddrNonce(account string,nonce string) (string,error) {
     PubKeyDataChan <-kd
 
     common.Info("================SetReqAddrNonce,===============","account = ",account,"nonce = ",nonce,"account hash = ",key)
+    fmt.Println("%v =========SetReqAddrNonce,account = %v,account hash = %v,nonce = %v =================",common.CurrentTime(),account,key,nonce)
     LdbPubKeyData.WriteMap(key,[]byte(nonce))
 
     return "",nil

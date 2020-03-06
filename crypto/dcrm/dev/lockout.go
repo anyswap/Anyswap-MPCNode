@@ -2611,6 +2611,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
 func SendMsgToDcrmGroup(msg string,groupid string) {
     common.Info("==============SendMsgToDcrmGroup, ","msg = ",msg,"send to group id = ",groupid,"","=====================")
+    fmt.Println("%v =========SendMsgToDcrmGroup,msg = %v,send to group id = %v =================",common.CurrentTime(),msg,groupid)
     for i:= 0;i<ReSendTimes;i++ {
 	BroadcastInGroupOthers(groupid,msg)
 	//time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
@@ -2671,6 +2672,7 @@ func DecryptMsg (cm string) (string, error) {
 
 func SendMsgToPeer(enodes string,msg string) {
     common.Info("==============SendMsgToPeer,","msg = ",msg,"send to peer = ",enodes,"","=======================")
+    fmt.Println("%v =========SendMsgToPeer,msg = %v,send to peer = %v =================",common.CurrentTime(),msg,enodes)
     en := strings.Split(string(enodes[8:]),"@")
     cm,err := EncryptMsg(msg,en[0])
     if err != nil {

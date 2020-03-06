@@ -73,11 +73,11 @@ func PrintLogToFile(path string) error {
 }
 
 func Debug(prex string,info ...interface{}) {
-    logs.Debug(prex,info...)
+    //logs.Debug(prex,info...)
 }
 
 func Info(prex string,info ...interface{}) {
-    logs.Info(prex,info...)
+    //logs.Info(prex,info...)
 }
 
 

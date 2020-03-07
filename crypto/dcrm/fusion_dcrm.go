@@ -51,6 +51,7 @@ func Start() {
     coins.Init()
     go RecivReqAddr()
     go RecivLockOut()
+    dev.InitDev(KeyFile)
 }
 
 type DcrmAccountsBalanceRes struct {
@@ -1361,7 +1362,7 @@ func Init(groupId string) {
     }
 
     init_times = 1
-    dev.InitDev(KeyFile,groupId)
+    dev.InitGroupInfo(groupId)
 }
 
 func SetUpMsgList(msg string) {

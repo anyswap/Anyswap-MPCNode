@@ -717,8 +717,8 @@ func GetLockOutValueFromDb(key string) []byte {
 
 func GetAllPubKeyDataFromDb() *common.SafeMap {
     kd := common.NewSafeMap(10)
-    fmt.Println("==============GetAllPubKeyDataFromDb,start read from db===============")
     dir := GetAllAccountsDir()
+    fmt.Printf("%v ==============GetAllPubKeyDataFromDb,start read from db,dir = %v ===============\n",common.CurrentTime(),dir)
     db,err := ethdb.NewLDBDatabase(dir, 0, 0)
     //bug
     if err != nil {
@@ -733,20 +733,20 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
     }
     //
     if db != nil {
-	fmt.Println("==============GetAllPubKeyDataFromDb,open db success===============")
+	fmt.Printf("%v ==============GetAllPubKeyDataFromDb,open db success.dir = %v ===============\n",common.CurrentTime(),dir)
 	index := 0
 	iter := db.NewIterator() 
 	for iter.Next() {
 	    value := string(iter.Value())
 	    ss,err := UnCompress(value)
 	    if err != nil {
-		fmt.Println("==============GetAllPubKeyDataFromDb,1111 err = %v===============",err)
+		fmt.Printf("%v ==============GetAllPubKeyDataFromDb,uncompress fail. err = %v,dir = %v ===============\n",common.CurrentTime(),err,dir)
 		continue
 	    }
 	    
 	    pubs,err := Decode2(ss,"PubKeyData")
 	    if err != nil {
-		fmt.Println("==============GetAllPubKeyDataFromDb,2222 err = %v===============",err)
+		fmt.Printf("%v ==============GetAllPubKeyDataFromDb,decode fail. err = %v,dir = %v ===============\n",common.CurrentTime(),err,dir)
 		continue
 	    }
 	    

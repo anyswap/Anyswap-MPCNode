@@ -284,7 +284,35 @@ func GetEnodesInfo(GroupId string) {
     cur_enode = GetSelfEnode()
 }
 
-func InitDev(keyfile string,groupId string) {
+func InitDev(keyfile string) {
+    cur_enode = GetSelfEnode()
+    KeyFile = keyfile
+    AllAccounts = GetAllPubKeyDataFromDb()
+    //LdbReqAddr = GetAllPendingReqAddrFromDb()
+    //LdbLockOut = GetAllPendingLockOutFromDb()
+    go SavePubKeyDataToDb()
+    go SaveAllAccountsToDb()
+    go SaveReqAddrToDb()
+    go SaveLockOutToDb()
+
+    ReSendTimes = 1
+    
+    go CommitRpcReq()
+    go ec2.GenRandomInt(2048)
+    go ec2.GenRandomSafePrime(2048)
+}
+
+func InitGroupInfo(groupId string) {
+    cur_enode = GetSelfEnode()
+    peerscount,_ := GetGroup(groupId)
+
+   NodeCnt = peerscount
+   ThresHold = peerscount
+   Enode_cnts = peerscount //bug
+    GetEnodesInfo(groupId)
+}
+
+/*func InitDev(keyfile string,groupId string) {
     cur_enode = GetSelfEnode()
     fmt.Printf("%v =========InitDev,groupid = %v,cur_enode =%v=============\n",common.CurrentTime(),groupId,cur_enode)
 
@@ -309,6 +337,7 @@ func InitDev(keyfile string,groupId string) {
     go ec2.GenRandomInt(2048)
     go ec2.GenRandomSafePrime(2048)
 }
+*/
 
 func GenRandomSafePrime(length int) {
     ec2.GenRandomSafePrime(length)
@@ -324,8 +353,8 @@ var (
     //rpc-req
     cur_enode string
     Enode_cnts int
-    NodeCnt = 3
-    ThresHold = 3
+    NodeCnt = 5
+    ThresHold = 5
 )
 
 type RpcDcrmRes struct {
@@ -4218,6 +4247,7 @@ type AccountsList struct {
 
 //////tmp code 
 func CheckAcc(eid string,geter_acc string,rk string) bool {
+
     //fmt.Println("================!!!CheckAcc!!!====================")
     if eid == "" || geter_acc == "" || rk == "" {
 	//fmt.Println("================!!!CheckAcc,param error.!!!====================")
@@ -4282,39 +4312,6 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	if CheckAcc(cur_enode,geter_acc,rk) == false {
 	    continue
 	}
-	/////
-
-	////bug,check valid accepter
-	/*check := false
-	for k,v2 := range vv.NodeSigs {
-	    fmt.Println("=============GetAccounts,check accepter,index =%v=========================",k)
-	    tx2 := new(types.Transaction)
-	    vs := common.FromHex(v2)
-	    if err := rlp.DecodeBytes(vs, tx2); err != nil {
-		continue
-	    }
-
-	    signer := types.NewEIP155Signer(big.NewInt(30400)) //
-	    from2, err := types.Sender(signer, tx2)
-	    if err != nil {
-		signer = types.NewEIP155Signer(big.NewInt(4)) //
-		from2, err = types.Sender(signer, tx2)
-		if err != nil {
-		    continue
-		}
-	    }
-
-	    eid := string(tx2.Data())
-	    fmt.Println("============GetAccounts,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
-	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
-		check = true
-		break
-	    }
-	}
-
-	if check == false {
-	    continue
-	}*/
 	/////
 
 	pb := vv.Pub

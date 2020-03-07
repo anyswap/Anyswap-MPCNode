@@ -1207,7 +1207,7 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 func GetBalance(account string, cointype string,dcrmaddr string) (string,string,error) {
 
     if strings.EqualFold(cointype, "BTC") {  ///tmp code
-	return "0","",nil  //TODO
+	//return "0","",nil  //TODO
     }
 
     if strings.EqualFold(cointype, "BCH") {
@@ -1246,6 +1246,7 @@ func GetBalance(account string, cointype string,dcrmaddr string) (string,string,
     } 
     
     ret := fmt.Sprintf("%v",ba.CoinBalance.Val)
+    fmt.Printf("%v =========GetBalance,dcrmaddr = %v ,cointype = %v ,ret = %v=============\n",common.CurrentTime(),dcrmaddr,cointype,ret)
     return ret,"",nil
 }
 

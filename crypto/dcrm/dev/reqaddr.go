@@ -130,13 +130,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     }
     id := wk.id
     
-    GetEnodesInfo(wk.groupid)
-
-    if int32(Enode_cnts) != int32(NodeCnt) {
-	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:group is not ready",Err:GetRetErr(ErrGroupNotReady)}
-	ch <- res
-	return
-    }
+    cur_enode = GetSelfEnode()
 
     if types.IsDefaultED25519(cointype) {
 	ok2 := KeyGenerate_ed(msgprex,ch,id,cointype)
@@ -936,7 +930,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     }
     
     ns,_ := GetGroup(GroupId)
-    if ns != NodeCnt {
+    if ns != w.NodeCnt {
 	logs.Debug("KeyGenerate_ed,get nodes info error.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
@@ -992,7 +986,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	return false 
     }
 
-    if w.msg_edc11.Len() != (NodeCnt-1) {
+    if w.msg_edc11.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edc11 fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edc11 fail",Err:fmt.Errorf("get all ed c11 fail.")}
 	ch <- res
@@ -1038,7 +1032,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	return false 
     }
 
-    if w.msg_edzk.Len() != (NodeCnt-1) {
+    if w.msg_edzk.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edzk fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get w.msg_edzk fail",Err:fmt.Errorf("get all ed zk fail.")}
 	ch <- res
@@ -1085,7 +1079,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	return false 
     }
 
-    if w.msg_edd11.Len() != (NodeCnt-1) {
+    if w.msg_edd11.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edd11 fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_edd11 fail",Err:fmt.Errorf("get all ed d11 fail.")}
 	ch <- res
@@ -1196,7 +1190,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	inputid = append(inputid,id[:])
     }*/
 
-    _, cfsBBytes, shares := ed.Vss2(ask,ThresHold, NodeCnt,uids)
+    _, cfsBBytes, shares := ed.Vss2(ask,w.ThresHold, w.NodeCnt,uids)
 
     for _,id := range ids {
 	enodes := GetEnodesByUid(id,cointype,GroupId)
@@ -1234,7 +1228,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
     }
     logs.Debug("================kg ed round two,receiv msg,code is EDSHARE1.==================")
 
-    if w.msg_edshare1.Len() != (NodeCnt-1) {
+    if w.msg_edshare1.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edshare1 fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edshare1 fail",Err:fmt.Errorf("get all ed share1 fail.")}
 	ch <- res
@@ -1286,7 +1280,7 @@ func KeyGenerate_ed(msgprex string,ch chan interface{},id int,cointype string) b
 	return false 
     }
 
-    if w.msg_edcfsb.Len() != (NodeCnt-1) {
+    if w.msg_edcfsb.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edcfsb fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edcfsb fail",Err:fmt.Errorf("get all ed cfsb fail.")}
 	ch <- res
@@ -1445,7 +1439,7 @@ func DECDSAGenKeyRoundOne(msgprex string,ch chan interface{},w *RpcReqWorker) (*
 	return nil,nil,nil,nil,nil,nil,false
     }
 
-    u1,u1Poly,u1PolyG,commitU1G,u1PaillierPk, u1PaillierSk := DECDSA_Key_RoundOne(ThresHold,PaillierKeyLength)
+    u1,u1Poly,u1PolyG,commitU1G,u1PaillierPk, u1PaillierSk := DECDSA_Key_RoundOne(w.ThresHold,PaillierKeyLength)
     if u1PaillierPk == nil || u1PaillierSk == nil {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("gen paillier key pair fail")}
 	ch <- res
@@ -1604,8 +1598,8 @@ func DECDSAGenKeyVerifyShareData(msgprex string,cointype string,ch chan interfac
     }
 
     var sstruct = make(map[string]*ec2.ShareStruct2)
-    shares := make([]string,NodeCnt-1)
-    if w.msg_share1.Len() != (NodeCnt-1) {
+    shares := make([]string,w.NodeCnt-1)
+    if w.msg_share1.Len() != (w.NodeCnt-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllSHARE1Fail)}
 	ch <- res
 	return nil,nil,false
@@ -1649,8 +1643,8 @@ func DECDSAGenKeyVerifyShareData(msgprex string,cointype string,ch chan interfac
 	}
     }
 
-    ds := make([]string,NodeCnt-1)
-    if w.msg_d1_1.Len() != (NodeCnt-1) {
+    ds := make([]string,w.NodeCnt-1)
+    if w.msg_d1_1.Len() != (w.NodeCnt-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllD1Fail)}
 	ch <- res
 	return nil,nil,false
@@ -1808,8 +1802,8 @@ func DECDSAGenKeyVerifyCommitment(msgprex string,cointype string,ch chan interfa
  
     // 4.verify and de-commitment to get uG
     // for all nodes, construct the commitment by the receiving C and D
-    cs := make([]string,NodeCnt-1)
-    if w.msg_c1.Len() != (NodeCnt-1) {
+    cs := make([]string,w.NodeCnt-1)
+    if w.msg_c1.Len() != (w.NodeCnt-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllC1Fail)}
 	ch <- res
 	return nil,nil,false
@@ -1973,8 +1967,8 @@ func DECDSAGenKeyVerifyZKU(msgprex string,cointype string,ch chan interface{},w 
     }
 
     // for all nodes, verify zk of u
-    zku := make([]string,NodeCnt-1)
-    if w.msg_zku.Len() != (NodeCnt-1) {
+    zku := make([]string,w.NodeCnt-1)
+    if w.msg_zku.Len() != (w.NodeCnt-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllZKUPROOFFail)}
 	ch <- res
 	return false
@@ -2054,8 +2048,8 @@ func DECDSAGenKeySaveData(cointype string,ids sortableIDSSlice,w *RpcReqWorker,c
 	}
     }
 
-    zkfacts := make([]string,NodeCnt-1)
-    if w.msg_zkfact.Len() != (NodeCnt-1) {
+    zkfacts := make([]string,w.NodeCnt-1)
+    if w.msg_zkfact.Len() != (w.NodeCnt-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllZKFACTPROOFFail)}
 	ch <- res
 	return false
@@ -2116,7 +2110,7 @@ func KeyGenerate_DECDSA(msgprex string,ch chan interface{},id int,cointype strin
     }
     
     ns,_ := GetGroup(w.groupid)
-    if ns != NodeCnt {
+    if ns != w.NodeCnt {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
 	return false 

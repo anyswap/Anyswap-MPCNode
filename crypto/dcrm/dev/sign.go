@@ -63,7 +63,7 @@ func DECDSA_Sign_MtAZK1Verify(zkproof *ec2.MtAZK1Proof_nhh,c *big.Int, publicKey
     return zkproof.MtAZK1Verify_nhh(c,publicKey,ntildeH1H2)
 }
 
-func GetRandomBetaV(PaillierKeyLength int) ([]*big.Int,[]*big.Int,[]*big.Int,[]*big.Int) {
+func GetRandomBetaV(PaillierKeyLength int,ThresHold int) ([]*big.Int,[]*big.Int,[]*big.Int,[]*big.Int) {
     // 2.6
     // select betaStar randomly, and calculate beta, MtA(k, gamma)
     // select betaStar randomly, and calculate beta, MtA(k, w)
@@ -319,7 +319,7 @@ func GetPaillierSk(save string,index int) *ec2.PrivateKey {
 }
 
 //paillier question 2,delete zkfactor,add ntilde h1 h2
-func GetZkFactProof(save string,index int) *ec2.NtildeH1H2 {
+func GetZkFactProof(save string,index int,NodeCnt int) *ec2.NtildeH1H2 {
     if save == "" || index < 0 {
 	fmt.Println("===============GetZkFactProof,get zkfactproof error,save = %s,index = %v ==============",save,index)
 	return nil

@@ -419,15 +419,8 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
     }
     id := w.id
 
-    GetEnodesInfo(w.groupid) 
+    cur_enode = GetSelfEnode()
     
-    if int32(Enode_cnts) != int32(NodeCnt) {
-	fmt.Println("============the net group is not ready.please try again.================")
-	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:fmt.Errorf("group not ready.")}
-	ch <- res
-	return ""
-    }
-
     fmt.Println("===================!!!Start!!!====================")
 
     ///////
@@ -605,7 +598,7 @@ func DECDSASignRoundTwo(msgprex string,cointype string,save string,w *RpcReqWork
 	enodes := GetEnodesByUid(id,cointype,w.groupid)
 	en := strings.Split(string(enodes[8:]),"@")
 
-	u1zkFactProof := GetZkFactProof(save,k)
+	u1zkFactProof := GetZkFactProof(save,k,w.NodeCnt)
 	if u1zkFactProof == nil {
 	    fmt.Println("=================Sign_ec2,u1zkFactProof is nil. Nonce =%s=====================",msgprex)
 	    res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ntildeh1h2 fail")}
@@ -677,8 +670,8 @@ func DECDSASignRoundThree(msgprex string,cointype string,save string,w *RpcReqWo
 	return false
     }
 
-    kcs := make([]string,ThresHold-1)
-    if w.msg_kc.Len() != (ThresHold-1) {
+    kcs := make([]string,w.ThresHold-1)
+    if w.msg_kc.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllKCFail)}
 	ch <- res
 	return false
@@ -729,8 +722,8 @@ func DECDSASignVerifyZKNtilde(msgprex string,cointype string,save string,w *RpcR
     }
 
     // example for u1, receive: u1u1MtAZK1Proof from u1, u2u1MtAZK1Proof from u2, u3u1MtAZK1Proof from u3
-    mtazk1s := make([]string,ThresHold-1)
-    if w.msg_mtazk1proof.Len() != (ThresHold-1) {
+    mtazk1s := make([]string,w.ThresHold-1)
+    if w.msg_mtazk1proof.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllMTAZK1PROOFFail)}
 	ch <- res
 	return false
@@ -1017,8 +1010,8 @@ func DECDSASignVerifyZKGammaW(cointype string,save string,w *RpcReqWorker,idSign
 	return false
     }
 
-    mkgs := make([]string,ThresHold-1)
-    if w.msg_mkg.Len() != (ThresHold-1) {
+    mkgs := make([]string,w.ThresHold-1)
+    if w.msg_mkg.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllMKGFail)}
 	ch <- res
 	return false
@@ -1086,8 +1079,8 @@ func DECDSASignVerifyZKGammaW(cointype string,save string,w *RpcReqWorker,idSign
 	return false
     }
 
-    mkws := make([]string,ThresHold-1)
-    if w.msg_mkw.Len() != (ThresHold-1) {
+    mkws := make([]string,w.ThresHold-1)
+    if w.msg_mkw.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:GetRetErr(ErrGetAllMKWFail)}
 	ch <- res
 	return false
@@ -1235,7 +1228,7 @@ func DecryptCkGamma(cointype string,idSign sortableIDSSlice,w *RpcReqWorker,u1Pa
 	return nil
     }
 
-    alpha1 := make([]*big.Int,ThresHold)
+    alpha1 := make([]*big.Int,w.ThresHold)
     for k,id := range idSign {
 	enodes := GetEnodesByUid(id,cointype,w.groupid)
 	////////bug
@@ -1264,7 +1257,7 @@ func DecryptCkW(cointype string,idSign sortableIDSSlice,w *RpcReqWorker,u1Pailli
     // 2.13
     // decrypt c_kw to get u, MtA(k, w)
     // MtA(k, w)
-    uu1 := make([]*big.Int,ThresHold)
+    uu1 := make([]*big.Int,w.ThresHold)
     for k,id := range idSign {
 	enodes := GetEnodesByUid(id,cointype,w.groupid)
 	////////bug
@@ -1283,7 +1276,7 @@ func DecryptCkW(cointype string,idSign sortableIDSSlice,w *RpcReqWorker,u1Pailli
     return uu1
 }
 
-func CalcDelta(alpha1 []*big.Int,betaU1 []*big.Int,ch chan interface{}) *big.Int {
+func CalcDelta(alpha1 []*big.Int,betaU1 []*big.Int,ch chan interface{},ThresHold int) *big.Int {
     if len(alpha1) == 0 || len(betaU1) == 0 {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1306,7 +1299,7 @@ func CalcDelta(alpha1 []*big.Int,betaU1 []*big.Int,ch chan interface{}) *big.Int
     return delta1
 }
 
-func CalcSigma(uu1 []*big.Int,vU1 []*big.Int,ch chan interface{}) *big.Int {
+func CalcSigma(uu1 []*big.Int,vU1 []*big.Int,ch chan interface{},ThresHold int) *big.Int {
     if len(uu1) == 0 || len(vU1) == 0 {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("param error")}
 	ch <- res
@@ -1365,8 +1358,8 @@ func DECDSASignRoundFive(msgprex string,cointype string,delta1 *big.Int,idSign s
     var delta1s = make(map[string]*big.Int)
     delta1s[cur_enode] = delta1
 
-    dels := make([]string,ThresHold-1)
-    if w.msg_delta1.Len() != (ThresHold-1) {
+    dels := make([]string,w.ThresHold-1)
+    if w.msg_delta1.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all delta fail.")}
 	ch <- res
 	return nil
@@ -1516,8 +1509,8 @@ func DECDSASignVerifyCommitment(cointype string,w *RpcReqWorker,idSign sortableI
 	return nil
     }
 
-    d11s := make([]string,ThresHold-1)
-    if w.msg_d11_1.Len() != (ThresHold-1) {
+    d11s := make([]string,w.ThresHold-1)
+    if w.msg_d11_1.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all d11 fail.")}
 	ch <- res
 	return nil
@@ -1532,8 +1525,8 @@ func DECDSASignVerifyCommitment(cointype string,w *RpcReqWorker,idSign sortableI
 	itmp++
     }
 
-    c11s := make([]string,ThresHold-1)
-    if w.msg_c11.Len() != (ThresHold-1) {
+    c11s := make([]string,w.ThresHold-1)
+    if w.msg_c11.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all c11 fail.")}
 	ch <- res
 	return nil
@@ -1755,8 +1748,8 @@ func DECDSASignRoundSeven(msgprex string,r *big.Int,deltaGammaGy *big.Int,us1 *b
 	return nil,nil,nil,nil
     }
     
-    commitbigvabs := make([]string,ThresHold-1)
-    if w.msg_commitbigvab.Len() != (ThresHold-1) {
+    commitbigvabs := make([]string,w.ThresHold-1)
+    if w.msg_commitbigvab.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all CommitBigVAB fail.")}
 	ch <- res
 	return nil,nil,nil,nil
@@ -1826,8 +1819,8 @@ func DECDSASignRoundEight(msgprex string,r *big.Int,deltaGammaGy *big.Int,us1 *b
 	return nil,nil
     }
     
-    zkabproofs := make([]string,ThresHold-1)
-    if w.msg_zkabproof.Len() != (ThresHold-1) {
+    zkabproofs := make([]string,w.ThresHold-1)
+    if w.msg_zkabproof.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all ZKABPROOF fail.")}
 	ch <- res
 	return nil,nil
@@ -2055,8 +2048,8 @@ func DECDSASignRoundNine(msgprex string,cointype string,w *RpcReqWorker,idSign s
 	return nil,nil
     }
     
-    commitbiguts := make([]string,ThresHold-1)
-    if w.msg_commitbigut.Len() != (ThresHold-1) {
+    commitbiguts := make([]string,w.ThresHold-1)
+    if w.msg_commitbigut.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all CommitBigUT fail.")}
 	ch <- res
 	return nil,nil
@@ -2107,8 +2100,8 @@ func DECDSASignRoundTen(msgprex string,commitBigUT1 *ec2.Commitment,w *RpcReqWor
 	return nil
     }
 
-    commitbigutd11s := make([]string,ThresHold-1)
-    if w.msg_commitbigutd11.Len() != (ThresHold-1) {
+    commitbigutd11s := make([]string,w.ThresHold-1)
+    if w.msg_commitbigutd11.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get all CommitBigUTD11 fail.")}
 	ch <- res
 	return nil
@@ -2253,8 +2246,8 @@ func DECDSASignRoundEleven(msgprex string,cointype string,w *RpcReqWorker,idSign
     var ss1s = make(map[string]*big.Int)
     ss1s[cur_enode] = us1
 
-    uss1s := make([]string,ThresHold-1)
-    if w.msg_ss1.Len() != (ThresHold-1) {
+    uss1s := make([]string,w.ThresHold-1)
+    if w.msg_ss1.Len() != (w.ThresHold-1) {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get ss1 fail.")}
 	ch <- res
 	return nil
@@ -2393,7 +2386,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     // [Notes]
     // 1. assume the nodes who take part in the signature generation as follows
     ids := GetIds(cointype,w.groupid)
-    idSign := ids[:ThresHold]
+    idSign := ids[:w.ThresHold]
     mMtA,_ := new(big.Int).SetString(message,16)
 
     //*******************!!!Distributed ECDSA Sign Start!!!**********************************
@@ -2432,7 +2425,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     }
     common.Info("===================sign,verify zk ntilde finish===========================")
 
-    betaU1Star,betaU1,vU1Star,vU1 := GetRandomBetaV(PaillierKeyLength)
+    betaU1Star,betaU1,vU1Star,vU1 := GetRandomBetaV(PaillierKeyLength,w.ThresHold)
     common.Info("===================sign,get random betaU1Star/vU1Star finish===========================")
 
     mkg,mkg_mtazk2,mkw,mkw_mtazk2,status := DECDSASignRoundFour(msgprex,cointype,save,w,idSign,ukc,ukc3,zkfactproof,u1Gamma,w1,betaU1Star,vU1Star,ch)
@@ -2464,13 +2457,13 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     }
     common.Info("===================sign,decrypt paillier(k)Xw1 finish===========================")
 
-    delta1 := CalcDelta(alpha1,betaU1,ch)
+    delta1 := CalcDelta(alpha1,betaU1,ch,w.ThresHold)
     if delta1 == nil {
 	return ""
     }
     common.Info("===================sign,calc delta finish===========================")
 
-    sigma1 := CalcSigma(uu1,vU1,ch)
+    sigma1 := CalcSigma(uu1,vU1,ch,w.ThresHold)
     if sigma1 == nil {
 	return ""
     }
@@ -2706,15 +2699,8 @@ func dcrm_sign_ed(msgprex string,txhash string,save string,pk string,cointype st
     }
     id := w.id
 
-    GetEnodesInfo(w.groupid) 
+    cur_enode = GetSelfEnode()
     
-    if int32(Enode_cnts) != int32(NodeCnt) {
-	logs.Debug("============the net group is not ready.please try again.================")
-	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:GetRetErr(ErrGroupNotReady)}
-	ch <- res
-	return ""
-    }
-
     logs.Debug("===================!!!Start!!!====================")
 
     bak_sig := Sign_ed(msgprex,save,txhash,cointype,pk,ch,id)
@@ -2748,7 +2734,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     }
     
     ns,_ := GetGroup(GroupId)
-    if ns != NodeCnt {
+    if ns != w.NodeCnt {
 	logs.Debug("Sign_ed,get nodes info error.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:the group is not ready",Err:GetRetErr(ErrGroupNotReady)}
 	ch <- res
@@ -2758,7 +2744,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
     logs.Debug("===========Sign_ed============","save len",len(save),"save",save)
 
     ids := GetIds(cointype,GroupId)
-    idSign := ids[:ThresHold]
+    idSign := ids[:w.ThresHold]
     
     m := strings.Split(save,common.Sep11)
 
@@ -2830,7 +2816,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	return "" 
     }
 
-    if w.msg_edc21.Len() != (NodeCnt-1) {
+    if w.msg_edc21.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edc21 fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_edc21 fail",Err:fmt.Errorf("get all ed c21 fail.")}
 	ch <- res
@@ -2876,7 +2862,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	return ""
     }
 
-    if w.msg_edzkr.Len() != (NodeCnt-1) {
+    if w.msg_edzkr.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edzkr fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edzkr fail",Err:fmt.Errorf("get all ed zkr fail.")}
 	ch <- res
@@ -2923,7 +2909,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	return ""
     }
 
-    if w.msg_edd21.Len() != (NodeCnt-1) {
+    if w.msg_edd21.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edd21 fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edd21 fail",Err:fmt.Errorf("get all ed d21 fail.")}
 	ch <- res
@@ -3061,7 +3047,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	return ""
     }
 
-    if w.msg_edc31.Len() != (NodeCnt-1) {
+    if w.msg_edc31.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edc31 fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_edc31 fail",Err:fmt.Errorf("get all ed c31 fail.")}
 	ch <- res
@@ -3107,7 +3093,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	return "" 
     }
 
-    if w.msg_edd31.Len() != (NodeCnt-1) {
+    if w.msg_edd31.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_edd31 fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get all msg_edd31 fail",Err:fmt.Errorf("get all ed d31 fail.")}
 	ch <- res
@@ -3211,7 +3197,7 @@ func Sign_ed(msgprex string,save string,message string,cointype string,pk string
 	return ""
     }
 
-    if w.msg_eds.Len() != (NodeCnt-1) {
+    if w.msg_eds.Len() != (w.NodeCnt-1) {
 	logs.Debug("get w.msg_eds fail.")
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get msg_eds fail",Err:fmt.Errorf("get all ed s fail.")}
 	ch <- res

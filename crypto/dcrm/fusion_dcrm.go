@@ -52,6 +52,8 @@ func Start() {
     go RecivReqAddr()
     go RecivLockOut()
     dev.InitDev(KeyFile)
+    cur_enode = p2pdcrm.GetSelfID()
+    fmt.Printf("%v ==================dcrm.Start(),cur_enode = %v ====================\n",common.CurrentTime(),cur_enode)
 }
 
 type DcrmAccountsBalanceRes struct {
@@ -701,7 +703,6 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
 
     ac := dss.(*dev.AcceptReqAddrData)
-    //if ac == nil || len(ac.NodeSigs) == 0 {
     if ac == nil {
 	return "","dcrm back-end internal error:decode accept data fail",fmt.Errorf("decode accept data fail")
     }
@@ -711,39 +712,6 @@ func AcceptReqAddr(raw string) (string,string,error) {
 	return "","invalid accepter",fmt.Errorf("invalid accepter")
     }
     /////
-
-    /*check := false
-    for _,v := range ac.NodeSigs {
-	tx2 := new(types.Transaction)
-	vs := common.FromHex(v)
-	if err = rlp.DecodeBytes(vs, tx2); err != nil {
-	    //return "","check accepter fail",err
-	    continue
-	}
-
-	signer = types.NewEIP155Signer(big.NewInt(30400)) //
-	from2, err := types.Sender(signer, tx2)
-	if err != nil {
-	    signer = types.NewEIP155Signer(big.NewInt(4)) //
-	    from2, err = types.Sender(signer, tx2)
-	    if err != nil {
-		//return "","check accepter fail",err
-		continue
-	    }
-	}
-	
-	eid := string(tx2.Data())
-	fmt.Println("==================!!! AcceptReqAddr,eid = %s,cur_enode =%s,from =%s,from2 =%s !!!===============",eid,cur_enode,from.Hex(),from2.Hex())
-	if strings.EqualFold(eid,cur_enode) && strings.EqualFold(from.Hex(),from2.Hex()) {
-	    check = true
-	    break
-	}
-    }
-
-    if check == false {
-	return "","invalid accepter",fmt.Errorf("invalid accepter")
-    }*/
-    ////////////////////////////
 
     tip,err := dev.AcceptReqAddr(datas[1],datas[2],datas[3],datas[4],datas[5],datas[6],false,accept,status,"","","","",ac.WorkId)
     if err != nil {
@@ -759,7 +727,7 @@ func AcceptReqAddr(raw string) (string,string,error) {
     ss := enode + dev.Sep + s0 + dev.Sep + s1
     dev.SendMsgToDcrmGroup(ss,datas[3])
     dev.DisMsg(ss)
-   common.Info("================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes ","key = ",key,"","============================")
+    fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n",common.CurrentTime(),key)
     
    return "","",nil
 }

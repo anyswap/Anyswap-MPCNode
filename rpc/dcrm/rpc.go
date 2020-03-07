@@ -81,11 +81,11 @@ func (this *Service) ReqDcrmAddr(raw string,model string) map[string]interface{}
 }
 
 func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
-    common.Info("==========call rpc AcceptReqAddr from web ==========","raw = ",raw)
+    fmt.Printf("%v ==========call rpc AcceptReqAddr from web,raw = %v==========\n",common.CurrentTime(),raw)
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.AcceptReqAddr(raw)
-    common.Info("==========finish call rpc AcceptReqAddr, ","ret = ",ret,"tip = ",tip,"err = ",err)
+    fmt.Printf("%v ==========call rpc AcceptReqAddr from web,ret = %v,tip = %v,err = %v,raw = %v==========\n",common.CurrentTime(),ret,tip,err,raw)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

@@ -2869,12 +2869,22 @@ type PubKeyData struct {
 func Encode2(obj interface{}) (string,error) {
     switch obj.(type) {
     case *SendMsg:
-	ch := obj.(*SendMsg)
+	/*ch := obj.(*SendMsg)
 	ret,err := json.Marshal(ch)
 	if err != nil {
 	    return "",err
 	}
-	return string(ret),nil
+	return string(ret),nil*/
+	ch := obj.(*SendMsg)
+
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+
+	err1 := enc.Encode(ch)
+	if err1 != nil {
+	    return "",err1
+	}
+	return buff.String(),nil
     case *PubKeyData:
 	ch := obj.(*PubKeyData)
 
@@ -2898,12 +2908,22 @@ func Encode2(obj interface{}) (string,error) {
 	}
 	return buff.String(),nil
     case *AcceptReqAddrData:
-	ch := obj.(*AcceptReqAddrData)
+	/*ch := obj.(*AcceptReqAddrData)
 	ret,err := json.Marshal(ch)
 	if err != nil {
 	    return "",err
 	}
-	return string(ret),nil
+	return string(ret),nil*/
+	ch := obj.(*AcceptReqAddrData)
+
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+
+	err1 := enc.Encode(ch)
+	if err1 != nil {
+	    return "",err1
+	}
+	return buff.String(),nil
     default:
 	return "",fmt.Errorf("encode obj fail.")
     }
@@ -2912,14 +2932,26 @@ func Encode2(obj interface{}) (string,error) {
 func Decode2(s string,datatype string) (interface{},error) {
 
     if datatype == "SendMsg" {
-	var m SendMsg
+	/*var m SendMsg
 	err := json.Unmarshal([]byte(s), &m)
 	if err != nil {
 	    fmt.Println("================Decode2,json Unmarshal err =%v===================",err)
 	    return nil,err
 	}
 
-	return &m,nil
+	return &m,nil*/
+	var data bytes.Buffer
+	data.Write([]byte(s))
+	
+	dec := gob.NewDecoder(&data)
+
+	var res SendMsg 
+	err := dec.Decode(&res)
+	if err != nil {
+	    return nil,err
+	}
+
+	return &res,nil
     }
 
     if datatype == "PubKeyData" {
@@ -2953,13 +2985,25 @@ func Decode2(s string,datatype string) (interface{},error) {
     }
     
     if datatype == "AcceptReqAddrData" {
-	var m AcceptReqAddrData
+	/*var m AcceptReqAddrData
 	err := json.Unmarshal([]byte(s), &m)
 	if err != nil {
 	    return nil,err
 	}
 
-	return &m,nil
+	return &m,nil*/
+	var data bytes.Buffer
+	data.Write([]byte(s))
+	
+	dec := gob.NewDecoder(&data)
+
+	var res  AcceptReqAddrData 
+	err := dec.Decode(&res)
+	if err != nil {
+	    return nil,err
+	}
+
+	return &res,nil
     }
     
     return nil,fmt.Errorf("decode obj fail.")

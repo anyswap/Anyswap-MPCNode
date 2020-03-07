@@ -710,7 +710,7 @@ func pushNode(list []*Node, n *Node, max int) ([]*Node, *Node) {
 	copy(list[1:], list)
 	list[0] = n
 	//TODO: group
-	setGroup(n, "add")
+	//setGroup(n, "add")
 	return list, removed
 }
 
@@ -719,7 +719,7 @@ func deleteNode(list []*Node, n *Node) []*Node {
 	for i := range list {
 		if list[i].ID == n.ID {
 			//TODO: group
-			setGroup(n, "remove")
+			//setGroup(n, "remove")
 			return append(list[:i], list[i+1:]...)
 		}
 	}

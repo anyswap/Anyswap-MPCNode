@@ -580,21 +580,21 @@ func getGroupInfo(gid NodeID, p2pType int) *Group {//nooo
 }
 
 func InitGroup(groupsNum, nodesNum int) error {
-	GroupSDK.Lock()
-	defer GroupSDK.Unlock()
-	setgroup = 1
-	setgroupNumber = groupsNum
+//	GroupSDK.Lock()
+//	defer GroupSDK.Unlock()
+//	setgroup = 1
+//	setgroupNumber = groupsNum
 	SDK_groupNum = nodesNum
-	Dcrm_groupMemNum = nodesNum
-	Xp_groupMemNum   = nodesNum
-	Dcrm_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
-	Xp_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
-	RecoverGroupSDKList()// List
-	RecoverGroupAll(SDK_groupList)// Group
-	for i, g := range SDK_groupList {
-		fmt.Printf("InitGroup, SDK_groupList gid: %v, g: %v\n", i, g)
-		sendGroupInfo(g, int(g.P2pType))
-	}
+//	Dcrm_groupMemNum = nodesNum
+//	Xp_groupMemNum   = nodesNum
+//	Dcrm_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
+//	Xp_groupList = &Group{msg: "dcrm", count: 0, Expiration: ^uint64(0)}
+//	RecoverGroupSDKList()// List
+//	RecoverGroupAll(SDK_groupList)// Group
+//	for i, g := range SDK_groupList {
+//		fmt.Printf("InitGroup, SDK_groupList gid: %v, g: %v\n", i, g)
+//		sendGroupInfo(g, int(g.P2pType))
+//	}
 	return nil
 }
 
@@ -847,6 +847,16 @@ func checkNodeIDExist(n *Node) (bool, bool) {//exist, update //nooo
 		}
 	}
 	return false, true
+}
+
+func UpdateGroupSDKNode(nodeID NodeID, ipport net.Addr) {
+	n, err := ParseNode(fmt.Sprintf("enode://%v@%v", nodeID, ipport))
+	if err == nil {
+		GroupSDK.Lock()
+		defer GroupSDK.Unlock()
+		updateGroupSDKNode(n, Sdkprotocol_type)
+		fmt.Printf("==== UpdateGroupSDKNode() ====, nodeID: %v, ipport: %v\n", nodeID, ipport)
+	}
 }
 
 func updateGroupSDKNode(nd *Node, p2pType int) {//nooo

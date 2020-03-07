@@ -44,13 +44,13 @@ func listUnspent_electrs(addr string) (list []btcjson.ListUnspentResult, balance
 		path = `tx/` + utxo.Txid
 		txret, txerr := rpcutils.HttpGet(config.ApiGateways.BitcoinGateway.ElectrsAddress, path, nil)
 		if txerr != nil {
-			common.Debug("======== get utxo script ========", "error", txerr)
+			fmt.Printf("%v ======== listUnspent_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
 			continue
 		}
 		var tx electrsTx
 		txerr = json.Unmarshal(txret, &tx)
 		if txerr != nil {
-common.Debug("======== get utxo script ========", "error", txerr)
+			fmt.Printf("%v ======== listUnspent_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
 			continue
 		}
 		utxo.Script = tx.Vout[int(utxo.Vout)].Scriptpubkey
@@ -70,7 +70,6 @@ common.Debug("======== get utxo script ========", "error", txerr)
 		list = append(list, res)
 	}
 	sort.Sort(sortableLURSlice(list))
-common.Debug("======== get utxo ========", "utxo list", list)
 	return
 }
 
@@ -78,13 +77,13 @@ func GetTransaction_electrs(hash string) (*electrsTx, error) {
 	path := `tx/` + hash
 	txret, txerr := rpcutils.HttpGet(config.ApiGateways.BitcoinGateway.ElectrsAddress, path, nil)
 	if txerr != nil {
-		common.Debug("======== get utxo script ========", "error", txerr)
+		fmt.Printf("%v ======== GetTransaction_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
 		return nil, txerr
 	}
 	var tx electrsTx
 	txerr = json.Unmarshal(txret, &tx)
 	if txerr != nil {
-		common.Debug("======== get utxo script ========", "error", txerr)
+		fmt.Printf("%v ======== GetTransaction_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
 		return nil, txerr
 	}
 	return &tx, nil

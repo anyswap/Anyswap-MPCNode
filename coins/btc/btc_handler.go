@@ -134,8 +134,9 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 			changeAddress = userChangeAddress.(string)
 		}
 	}
-//unspentOutputs, _, err := listUnspent_electrs(fromAddress)
-	unspentOutputs, _, err := ListUnspent_BTCD(fromAddress)
+	unspentOutputs, _, err := listUnspent_electrs(fromAddress)
+	fmt.Printf("%v ============BuildUnsignedTransaction,list unspent,err = %v ============\n",common.CurrentTime(),err)
+	//unspentOutputs, _, err := ListUnspent_BTCD(fromAddress)
 //unspentOutputs, err := listUnspent_blockchaininfo(fromAddress)
 //unspentOutputs, err := listUnspent(fromAddress)
 	if err != nil {
@@ -477,9 +478,9 @@ func (h *BTCHandler) GetAddressBalance(address string, jsonstring string) (balan
 	addrApiResult := parseAddrApiResult(resstr)
 	balance = big.NewInt(int64(addrApiResult.Balance))
 	return*/
-	//_, bal, err := listUnspent_electrs(address)
-	_, bal, err := ListUnspent_BTCD(address)
-	common.Debug("============btc.GetAddressBalance============","balance",bal,"error",err)
+	_, bal, err := listUnspent_electrs(address)
+	//_, bal, err := ListUnspent_BTCD(address)
+	fmt.Printf("%v ============btc.GetAddressBalance,balance = %v,err = %v ============\n",common.CurrentTime(),bal,err)
 	balance.CoinBalance = types.Value{Cointype:"BTC",Val:bal}
 	return
 }

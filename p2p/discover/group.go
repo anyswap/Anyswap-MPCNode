@@ -754,6 +754,9 @@ func sendGroupInfo(groupList *Group, p2pType int) {//nooo
 			go SendToPeer(groupList.ID, node.ID, ipa, "", p2pType)
 		//}
 	}
+}
+
+func sendGroupInit(groupList *Group, p2pType int) {//nooo
 	//enodes := fmt.Sprintf("%v,%v,%v", groupList.ID, count, enode)
 	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
 		var tmp int = 0
@@ -807,6 +810,7 @@ func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bo
 		}
 		groupTmp.ID = gid
 		SDK_groupList[groupTmp.ID] = groupTmp
+		sendGroupInit(SDK_groupList[gid], Sdkprotocol_type)
 	}
 	sendGroupInfo(SDK_groupList[gid], Sdkprotocol_type)
 }
@@ -818,6 +822,7 @@ func updateGroup(n *Node, p2pType int) {//nooo
 				g.Nodes = append(g.Nodes[:i], g.Nodes[i+1:]...)
 				g.Nodes = append(g.Nodes, RpcNode(nodeToRPC(n)))
 				sendGroupInfo(g, p2pType)
+				sendGroupInit(g, p2pType)
 				StoreGroupToDb(g)
 				break
 			}
@@ -871,6 +876,7 @@ func updateGroupSDKNode(nd *Node, p2pType int) {//nooo
 					g.Nodes[i] = n
 					fmt.Printf("==== updateGroupSDKNode() ====, update group(gid=%v) enode %v -> %v\n", gid, node, n)
 					sendGroupInfo(g, p2pType)
+					sendGroupInit(g, p2pType)
 					StoreGroupToDb(g)
 					break
 				}
@@ -930,6 +936,7 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 			}
 			fmt.Printf("==== setGroupSDK() ====, nodeID: %v, group: %v\n", n.ID, SDK_groupList[n.ID])
 			sendGroupInfo(SDK_groupList[n.ID], p2pType)
+			sendGroupInit(SDK_groupList[n.ID], p2pType)
 			StoreGroupToDb(SDK_groupList[n.ID])
 		} else { // add self node
 			if len(groupSDKList) < SDK_groupNum {

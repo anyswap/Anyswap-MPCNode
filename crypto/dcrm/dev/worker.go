@@ -1535,6 +1535,7 @@ type ReqAddrStatus struct {
     Tip string
     Error string
     AllReply string
+    TimeStamp string
 }
 
 func GetReqAddrStatus(key string) (string,string,error) {
@@ -1571,7 +1572,7 @@ func GetReqAddrStatus(key string) (string,string,error) {
 
     ac := dss.(*AcceptReqAddrData)
     //fmt.Println("==================GetReqAddrStatus,ac.Status=%s,ac.PubKey=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.PubKey,ac.Tip,ac.Error,ac.AllReply,key)
-    los := &ReqAddrStatus{Status:ac.Status,PubKey:ac.PubKey,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
+    los := &ReqAddrStatus{Status:ac.Status,PubKey:ac.PubKey,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply,TimeStamp:ac.TimeStamp}
     ret,err := json.Marshal(los)
     if err != nil {
 //	fmt.Println("==================GetReqAddrStatus,get result fail,err =%v,key =%s ===================",err,key)
@@ -1588,6 +1589,7 @@ type LockOutStatus struct {
     Tip string
     Error string
     AllReply string
+    TimeStamp string
 }
 
 func GetLockOutStatus(key string) (string,string,error) {
@@ -1624,7 +1626,7 @@ func GetLockOutStatus(key string) (string,string,error) {
 
     ac := dss.(*AcceptLockOutData)
     //fmt.Println("==================GetLockOutStatus,ac.Status=%s,ac.OutTxHash=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.OutTxHash,ac.Tip,ac.Error,ac.AllReply,key)
-    los := &LockOutStatus{Status:ac.Status,OutTxHash:ac.OutTxHash,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply}
+    los := &LockOutStatus{Status:ac.Status,OutTxHash:ac.OutTxHash,Tip:ac.Tip,Error:ac.Error,AllReply:ac.AllReply,TimeStamp:ac.TimeStamp}
     ret,err := json.Marshal(los)
     if err != nil {
 //	fmt.Println("==================GetLockOutStatus,get result fail,err =%v,key =%s ===================",err,key)

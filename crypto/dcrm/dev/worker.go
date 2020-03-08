@@ -1652,7 +1652,7 @@ type ReqAddrReply struct {
     Nonce string
     LimitNum string
     Mode string
-    GroupAccounts []EnAcc
+    TimeStamp string
 }
 
 func SortCurNodeInfo(value []interface{}) []interface{} {
@@ -1712,51 +1712,16 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    continue
 	}
 
+	if ac.Mode == "1" {
+	    continue
+	}
+
 	///////
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
-	if CheckAcc(cur_enode,geter_acc,key) == false {
+	if ac.Mode == "0" && CheckAcc(cur_enode,geter_acc,key) == false {
 	    continue
 	}
 	/////
-
-	eaccs := make([]EnAcc,0)
-	/*check := false
-	eaccs := make([]EnAcc,0)
-	////bug,check valid accepter
-	for k,v := range ac.NodeSigs {
-	    fmt.Println("=============GetCurNodeReqAddrInfo,check accepter,index =%v=========================",k)
-	    tx2 := new(types.Transaction)
-	    vs := common.FromHex(v)
-	    if err = rlp.DecodeBytes(vs, tx2); err != nil {
-		continue
-	    }
-
-	    signer := types.NewEIP155Signer(big.NewInt(30400)) //
-	    from2, err := types.Sender(signer, tx2)
-	    if err != nil {
-		signer = types.NewEIP155Signer(big.NewInt(4)) //
-		from2, err = types.Sender(signer, tx2)
-		if err != nil {
-		    continue
-		}
-	    }
-
-	    eid := string(tx2.Data())
-	    accs := make([]string,0)
-	    accs = append(accs,from2.Hex())
-	    ea := EnAcc{Enode:eid,Accounts:accs}
-	    eaccs = append(eaccs,ea)
-	    
-	    fmt.Println("============GetCurNodeReqAddrInfo,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
-	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
-		check = true
-		//break
-	    }
-	}
-
-	if check == false {
-	   continue 
-	}*/
 
 	if ac.Deal == true || ac.Status == "Success" {
 //	    fmt.Println("================GetCurNodeReqAddrInfo,this req addr has handle,nonce =%s===================",ac.Nonce)
@@ -1768,9 +1733,8 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	    continue
 	}
 	
-	los := &ReqAddrReply{Key:key,Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
+	los := &ReqAddrReply{Key:key,Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,TimeStamp:ac.TimeStamp}
 	ret2,err := json.Marshal(los)
-	//fmt.Println("=====================GetCurNodeReqAddrInfo,success get ret =%s,err =%v====================",string(ret2),err)
 	
 	ret = append(ret,string(ret2))
 	////
@@ -1792,7 +1756,6 @@ type LockOutCurNodeInfo struct {
     Cointype string
     LimitNum string
     Mode string
-    GroupAccounts []EnAcc
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
@@ -1866,49 +1829,6 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	    continue
 	}
 
-	//if len(nodesigs) == 0 {
-	//    continue
-//	}
-
-	//check := false
-	eaccs := make([]EnAcc,0)
-	////bug,check valid accepter
-	/*for k,v := range nodesigs {
-	    fmt.Println("=============GetCurNodeLockOutInfo,check accepter,index =%v=========================",k)
-	    tx2 := new(types.Transaction)
-	    vs := common.FromHex(v)
-	    if err = rlp.DecodeBytes(vs, tx2); err != nil {
-		continue
-	    }
-
-	    signer := types.NewEIP155Signer(big.NewInt(30400)) //
-	    from2, err := types.Sender(signer, tx2)
-	    if err != nil {
-		signer = types.NewEIP155Signer(big.NewInt(4)) //
-		from2, err = types.Sender(signer, tx2)
-		if err != nil {
-		    continue
-		}
-	    }
-	    
-	    eid := string(tx2.Data())
-	    fmt.Println("===================GetCurNodeLockOutInfo,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
-	    
-	    accs := make([]string,0)
-	    accs = append(accs,from2.Hex())
-	    ea := EnAcc{Enode:eid,Accounts:accs}
-	    eaccs = append(eaccs,ea)
-	    
-	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
-		check = true
-		//break
-	    }
-	}
-	
-	if check == false {
-	   continue 
-	}*/
-
 	if ac.Deal == true || ac.Status == "Success" {
 //	    fmt.Println("===============GetCurNodeLockOutInfo,ac.Deal is true,nonce =%s===============",ac.Nonce)
 	    continue
@@ -1921,7 +1841,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
 	
-	los := &LockOutCurNodeInfo{Key:key,Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,GroupAccounts:eaccs}
+	los := &LockOutCurNodeInfo{Key:key,Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode}
 	ret2,err := json.Marshal(los)
 	//fmt.Println("======================GetCurNodeLockOutInfo,succss get ret =%s,err =%v=================",string(ret2),err)
 
@@ -3190,7 +3110,6 @@ type GetCurNodeReqAddrInfoSendMsgToDcrm struct {
 }
 
 func (self *GetCurNodeReqAddrInfoSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    //fmt.Println("==============GetCurNodeReqAddrInfoSendMsgToDcrm.Run,workid =%v=================",workid)
     if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
@@ -3383,7 +3302,6 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
 	    req = RpcReq{rpcdata:&v,ch:rch}
 	    break
 	case "rpc_get_cur_node_reqaddr_info":
-	    //fmt.Println("=============SendReqToGroup,type is rpc_get_cur_node_reqaddr_info==============")
 	    v := GetCurNodeReqAddrInfoSendMsgToDcrm{Account:msg}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}

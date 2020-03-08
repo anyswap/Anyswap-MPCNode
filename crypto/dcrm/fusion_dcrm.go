@@ -1227,7 +1227,6 @@ func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,str
 func GetCurNodeReqAddrInfo(geter_acc string) ([]string,string,error) {
     reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_cur_node_reqaddr_info")
     if reply == "" || err != nil {
-	//fmt.Println("===========dcrm.GetCurNodeReqAddrInfo,no get result,err =%v ============",err)
 	return nil,tip,err 
     }
 

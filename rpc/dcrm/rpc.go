@@ -266,11 +266,11 @@ func (this *Service) GetLockOutNonce(account string,cointype string,dcrmaddr str
 }
 
 func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interface{} {
-    //common.Info("==============call rpc GetCurNodeReqAddrInfo from web ================","geter acc = ",geter_acc)
+    fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, get_acc = %v ================\n",common.CurrentTime(),geter_acc)
 
     data := make(map[string]interface{})
     s,tip,err := dcrm.GetCurNodeReqAddrInfo(geter_acc)
-    //fmt.Println("==============rpc.GetCurNodeReqAddrInfo,geter acc =%s,ret =%s,tip =%s,err =%v================",geter_acc,s,tip,err)
+    fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, get_acc = %v,ret = %v,err = %v ================\n",common.CurrentTime(),geter_acc,s,err)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

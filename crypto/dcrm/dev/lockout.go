@@ -47,7 +47,6 @@ import (
 
 func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,string,error) {
     key2 := Keccak256Hash([]byte(strings.ToLower(account+":"+"LOCKOUT"))).Hex()
-    //fmt.Println("===============GetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,key =%s===================",account,cointype,dcrmaddr,key2)
     var da []byte
     datmp,exsit := LdbPubKeyData.ReadMap(key2)
     if exsit == false {
@@ -63,7 +62,6 @@ func GetLockOutNonce(account string,cointype string,dcrmaddr string) (string,str
     }
     ///////
     if exsit == false {
-//	fmt.Println("===============GetLockOutNonce,no exsit,so return 0,key =%s===================",key2)
 	return "0","",nil
     }
 
@@ -156,10 +154,9 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
         return
     }
     
-    amount,has := new(big.Int).SetString(value,10)
-    fmt.Println("=============validate_lockout,11111,get amount has =%v===============",has)
-    if has == false {
-	fmt.Println("=============validate_lockout,222222,get amount has =%v===============",has)
+    amount,ok := new(big.Int).SetString(value,10)
+    if ok == false {
+	fmt.Printf("%v =============validate_lockout,transfer amount to big.Int fail ===============\n",common.CurrentTime())
 	res := RpcDcrmRes{Ret:"",Tip:"lockout value error",Err:fmt.Errorf("lockout value error")}
 	ch <- res
 	return
@@ -197,9 +194,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     rch := make(chan interface{}, 1)
     var sigs []string
     var bak_sigs []string
-    for k, digest := range digests {
-	    fmt.Printf("============validate_lockout,call dcrm_sign times = %+v,cointype = %+v ==============\n",k,cointype)
-
+    for _, digest := range digests {
 	    if types.IsDefaultED25519(cointype) {
 		bak_sig := dcrm_sign_ed(wsid,digest,save,dcrmpub,cointype,rch)
 		ret,tip,cherr := GetChannelValue(ch_t,rch)
@@ -247,10 +242,9 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
     }
 
     lockout_tx_hash, err := chandler.SubmitTransaction(signedTx)
-    fmt.Println("==========validate_lockout,send to outside net,nonce =%s,lockout txhash =%s,err = %+v================",nonce,lockout_tx_hash,err)
+    fmt.Printf("%v ==========validate_lockout,send to outside net,nonce =%v,lockout txhash =%v,err = %v================\n",common.CurrentTime(),nonce,lockout_tx_hash,err)
     /////////add for bak sig
     if err != nil && len(bak_sigs) != 0 {
-
 	signedTx, err = chandler.MakeSignedTransaction(bak_sigs, lockouttx)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:new sign transaction fail",Err:err}
@@ -259,13 +253,14 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	}
 	
 	lockout_tx_hash, err = chandler.SubmitTransaction(signedTx)
-	fmt.Println("==========validate_lockout,use bak_sigs,send to outside net,nonce =%s,lockout txhash =%s,err = %+v================",nonce,lockout_tx_hash,err)
+	fmt.Printf("%v ==========validate_lockout,use bak_sigs,send to outside net,nonce =%v,lockout txhash =%v,err = %v================\n",common.CurrentTime(),nonce,lockout_tx_hash,err)
     }
     /////////
     
     if lockout_tx_hash != "" {
 	w,err := FindWorker(wsid)
 	if w == nil || err != nil {
+	    fmt.Printf("%v ==========validate_lockout,no find worker,nonce = %v,err = %v================\n",common.CurrentTime(),nonce,err)
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:fmt.Errorf("get worker error.")}
 	    ch <- res
 	    return
@@ -280,7 +275,6 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	s1 := "Success"
 	s2 := lockout_tx_hash
 	ss := enode + Sep + s0 + Sep + s1 + Sep + s2
-	logs.Debug("================validate_lockout,send msg,code is SendLockOutRes==================")
 	SendMsgToDcrmGroup(ss,w.groupid)
 	///////////////
 
@@ -291,7 +285,7 @@ func validate_lockout(wsid string,account string,dcrmaddr string,cointype string
 	    return
 	}
 
-	fmt.Println("================validate_lockout,the terminal lockout res is success. nonce =%s ==================",nonce)
+	fmt.Printf("%v ================validate_lockout,the terminal lockout res is success. nonce =%v ==================\n",common.CurrentTime(),nonce)
 	res := RpcDcrmRes{Ret:lockout_tx_hash,Tip:tip,Err:err}
 	ch <- res
 	return
@@ -363,7 +357,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 
 	w,err := FindWorker(msgprex)
 	if w == nil || err != nil {
-	    logs.Debug("===========get worker fail.=============")
+	    fmt.Printf("%v ==========dcrm_sign,no find worker,key = %v,err = %v================\n",common.CurrentTime(),msgprex,err)
 	    res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:GetRetErr(ErrNoFindWorker)}
 	    ch <- res
 	    return ""
@@ -412,7 +406,7 @@ func dcrm_sign(msgprex string,txhash string,save string,dcrmpkx *big.Int,dcrmpky
 
     w,err := FindWorker(msgprex)
     if w == nil || err != nil {
-	fmt.Println("===========get worker fail.=============")
+	fmt.Printf("%v ==========dcrm_sign,no find worker,key = %v,err = %v================\n",common.CurrentTime(),msgprex,err)
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:no find worker",Err:fmt.Errorf("no find worker.")}
 	ch <- res
 	return ""
@@ -2361,7 +2355,6 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 	return ""
     }
     w := workers[id]
-    fmt.Println("================ Sign_ec2,Nonce =%s,GroupId = %s =============",msgprex,w.groupid)
     if w.groupid == "" {
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get group id fail.")}
 	ch <- res
@@ -2377,7 +2370,7 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 
     mm := strings.Split(save, SepSave)
     if len(mm) == 0 {
-	fmt.Println("=============Sign_ec2,get save data fail. Nonce =%s,save = %s,sep = %s ================",msgprex,save,SepSave)
+	fmt.Printf("%v =============Sign_ec2,get save data fail. save = %v,key = %v ================\n",common.CurrentTime(),save,msgprex)
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("get save data fail")}
 	ch <- res
 	return ""
@@ -2580,20 +2573,20 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
     signature.SetRecoveryParam(int32(recid))
 
     if DECDSA_Sign_Verify_RSV(signature.GetR(),signature.GetS(),signature.GetRecoveryParam(),message,pkx,pky) == false {
-	common.Info("===================dcrm sign,verify is false=================")
+	fmt.Printf("%v ===================dcrm sign,verify is false,key = %v=================\n",common.CurrentTime(),msgprex)
 	res := RpcDcrmRes{Ret:"",Err:fmt.Errorf("sign verify fail.")}
 	ch <- res
 	return ""
     }
-    common.Info("===================sign,verify (r,s) finish===========================","prex = ",msgprex)
+    fmt.Printf("%v ===================dcrm sign,verify (r,s) pass,key = %v=================\n",common.CurrentTime(),msgprex)
 
     signature2 := GetSignString(signature.GetR(),signature.GetS(),signature.GetRecoveryParam(),int(signature.GetRecoveryParam()))
     rstring := "========================== r = " + fmt.Sprintf("%v",signature.GetR()) + " ========================="
     sstring := "========================== s = " + fmt.Sprintf("%v",signature.GetS()) + " =========================="
     fmt.Println(rstring)
     fmt.Println(sstring)
-    sigstring := "========================== rsv str = " + signature2 + " ==========================="
-    fmt.Println(sigstring)
+    sigstring := common.CurrentTime() + " ========================== rsv str = " + signature2 + " ===========================\n"
+    fmt.Printf(sigstring)
     res := RpcDcrmRes{Ret:signature2,Err:nil}
     ch <- res
     

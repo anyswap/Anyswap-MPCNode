@@ -131,11 +131,11 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
-    common.Info("==========call rpc LockOut from web ===========")
+    fmt.Printf("%v ==========call rpc LockOut from web,raw = %v ===========\n",common.CurrentTime(),raw)
 
     data := make(map[string]interface{})
     txhash,tip,err := dcrm.LockOut(raw)
-    common.Info("==============finish call rpc LockOut,","txhash = ",txhash,"tip = ",tip,"err =",err,"","==============")
+    fmt.Printf("%v ==========finish call rpc LockOut from web,txhash = %v,err = %v,raw = %v ===========\n",common.CurrentTime(),txhash,err,raw)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

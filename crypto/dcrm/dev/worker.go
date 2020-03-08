@@ -1348,19 +1348,17 @@ func DcrmCall(msg interface{},enode string) <-chan string {
     //}
     //if rr.MsgType == "rpc_req_dcrmaddr" {
     //}
-    common.Info("=============DcrmCall, ","get msg len = ",len(s),"sender node =",enode,"key = ",rr.Nonce,"","=======================")
-    ////////
-
     test := Keccak256Hash([]byte(strings.ToLower(s))).Hex()
-    common.Info("===================DcrmCall, ","msg hash =",test,"key = ",rr.Nonce,"","============================")
+    fmt.Printf("%v =============DcrmCall, get msg len = %v,msg hash = %v,sender node = %v,key = %v =======================\n",common.CurrentTime(),len(s),test,enode,rr.Nonce)
+    ////////
 
     v := RecvMsg{msg:s,sender:enode}
     rch := make(chan interface{},1)
     req := RpcReq{rpcdata:&v,ch:rch}
     RpcReqQueue <- req
-    common.Info("===================DcrmCall, finish send req to Queue","msg hash =",test,"key = ",rr.Nonce,"","============================")
+    fmt.Printf("%v =============DcrmCall, finish send req to Queue,msg hash = %v,key = %v =======================\n",common.CurrentTime(),test,rr.Nonce)
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,rch)
-    common.Info("==================DcrmCall, ","ret =",chret,"err = ",cherr,"msg hash =",test,"key = ",rr.Nonce,"","==========================")
+    fmt.Printf("%v =============DcrmCall, ret = %v,err = %v,msg hash = %v,key = %v =======================\n",common.CurrentTime(),chret,cherr,test,rr.Nonce)
     if cherr != nil {
 	////
 	if rr.MsgType == "rpc_lockout" {
@@ -1516,9 +1514,9 @@ func GetGroupRes(wid int) RpcDcrmRes {
 //=========================================
 
 func Call(msg interface{},enode string) {
-    common.Info("==============Call,","get msg = ",msg,"sender node = ",enode,"","====================")
-    fmt.Println("%v =========Call,get msg = %v,sender node = %v =================",common.CurrentTime(),msg,enode)
     s := msg.(string)
+    test := Keccak256Hash([]byte(strings.ToLower(s))).Hex()
+    fmt.Printf("%v =========Call,get msg = %v,msg hash = %v,sender node = %v =================",common.CurrentTime(),msg,test,enode)
     SetUpMsgList(s,enode)
 }
 
@@ -1939,7 +1937,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 
 func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce string,threshold string,mode string) (string,bool) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-    fmt.Println("===================!!!!GetAcceptReqAddrRes,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s!!!!============================",account,cointype,groupid,nonce,threshold,mode,key)
+    fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,acc =%v,cointype =%v,groupid =%v,nonce =%v,threshold =%v,mode =%v,key =%v !!!!============================\n",common.CurrentTime(),account,cointype,groupid,nonce,threshold,mode,key)
     var da []byte
     datmp,exsit := LdbReqAddr.ReadMap(key)
     if exsit == false {
@@ -1955,24 +1953,24 @@ func GetAcceptReqAddrRes(account string,cointype string,groupid string,nonce str
     }
     ///////
     if exsit == false {
-	fmt.Println("===================!!!!GetAcceptReqAddrRes,no exsit key =%s!!!!============================",key)
+	fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,no exsit key =%v !!!!============================\n",common.CurrentTime(),key)
 	return "dcrm back-end internal error:get accept result from db fail",false
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
-	fmt.Println("===================!!!!GetAcceptReqAddrRes,uncompress fail, key =%s!!!!============================",key)
+	fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,uncompress fail,err = %v,key =%v !!!!============================\n",common.CurrentTime(),err,key)
 	return "dcrm back-end internal error:uncompress accept result fail",false
     }
 
     dss,err := Decode2(ds,"AcceptReqAddrData")
     if err != nil {
-	fmt.Println("===================!!!!GetAcceptReqAddrRes,decode fail, key =%s!!!!============================",key)
+	fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,decode fail,err = %v,key =%v !!!!============================\n",common.CurrentTime(),err,key)
 	return "dcrm back-end internal error:decode accept result fail",false
     }
 
     ac := dss.(*AcceptReqAddrData)
-    fmt.Println("===================!!!!GetAcceptReqAddrRes,ac.Accept =%s,key =%s!!!!============================",ac.Accept,key)
+    fmt.Printf("%v ===================!!!! GetAcceptReqAddrRes,ac.Accept =%v,key =%v !!!!============================\n",ac.Accept,key)
 
     var rp bool 
     if strings.EqualFold(ac.Accept,"false") {
@@ -2033,8 +2031,6 @@ func GetAcceptLockOutRes(account string,groupid string,nonce string,dcrmfrom str
 
 func AcceptReqAddr(account string,cointype string,groupid string,nonce string,threshold string,mode string,deal bool,accept string,status string,pubkey string,tip string,errinfo string,allreply string,workid int) (string,error) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-    //fmt.Println("=====================AcceptReqAddr,accept =%s,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s,key =%s======================",accept,account,cointype,groupid,nonce,threshold,mode,key)
-    //fmt.Println("=====================AcceptReqAddr,deal =%v,accept =%s,status =%s,key =%s======================",deal,accept,status,key)
     var da []byte
     datmp,exsit := LdbReqAddr.ReadMap(key)
     if exsit == false {
@@ -2050,24 +2046,23 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
     }
     ///////
     if exsit == false {
-	common.Info("=====================AcceptReqAddr, ======================","no exist key = ",key)
+	fmt.Printf("%v =====================AcceptReqAddr,no exist key, key = %v ======================\n",common.CurrentTime(),key)
 	return "dcrm back-end internal error:get accept data fail from db",fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
     }
 
     ds,err := UnCompress(string(da))
     if err != nil {
-	common.Info("=====================AcceptReqAddr,uncompress fail, ","key = ",key,"","=============================")
+	fmt.Printf("%v =====================AcceptReqAddr,uncompress fail,err = %v,key = %v ======================\n",common.CurrentTime(),err,key)
 	return "dcrm back-end internal error:uncompress accept data fail",err
     }
 
     dss,err := Decode2(ds,"AcceptReqAddrData")
     if err != nil {
-	common.Info("=====================AcceptReqAddr,decode fail, ","key = ",key,"","=========================")
+	fmt.Printf("%v =====================AcceptReqAddr,decode fail,err = %v,key = %v ======================\n",common.CurrentTime(),err,key)
 	return "dcrm back-end internal error:decode accept data fail",err
     }
 
     ac := dss.(*AcceptReqAddrData)
-    //fmt.Println("=====================AcceptReqAddr,ac.Deal = %v,ac.Accept =%s,ac.Status =%s, key =%s======================",ac.Deal,ac.Accept,ac.Status,key)
     
     acp := ac.Accept
     if accept != "" {
@@ -2104,17 +2099,17 @@ func AcceptReqAddr(account string,cointype string,groupid string,nonce string,th
 	wid = workid
     }
 
-    ac2:= &AcceptReqAddrData{Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,Deal:deal,Accept:acp,Status:sts,PubKey:pk,Tip:ttip,Error:eif,AllReply:arl,WorkId:wid}
+    ac2:= &AcceptReqAddrData{Account:ac.Account,Cointype:ac.Cointype,GroupId:ac.GroupId,Nonce:ac.Nonce,LimitNum:ac.LimitNum,Mode:ac.Mode,TimeStamp:ac.TimeStamp,Deal:deal,Accept:acp,Status:sts,PubKey:pk,Tip:ttip,Error:eif,AllReply:arl,WorkId:wid}
     
     e,err := Encode2(ac2)
     if err != nil {
-	common.Info("=====================AcceptReqAddr,encode fail, ","key = ",key,"","=======================")
+	fmt.Printf("%v =====================AcceptReqAddr,encode fail,err = %v,key = %v ======================\n",common.CurrentTime(),err,key)
 	return "dcrm back-end internal error:encode accept data fail",err
     }
 
     es,err := Compress([]byte(e))
     if err != nil {
-	common.Info("=====================AcceptReqAddr,compress fail,","key = ",key,"","======================")
+	fmt.Printf("%v =====================AcceptReqAddr,compress fail,err = %v,key = %v ======================\n",common.CurrentTime(),err,key)
 	return "dcrm back-end internal error:compress accept data fail",err
     }
 
@@ -2262,6 +2257,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     
     res,err := UnCompress(res)
     if err != nil {
+	fmt.Printf("%v ===================RecvMsg.Run,the msg is not hash-enode:C1:X1:X2, uncompress fail,msg hash = %v,err = %v ==============================\n",common.CurrentTime(),test,err)
 	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:uncompress data fail in RecvMsg.Run",Err:fmt.Errorf("uncompress data fail in recvmsg.run")}
 	ch <- res2
 	return false
@@ -2269,6 +2265,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     
     r,err := Decode2(res,"SendMsg")
     if err != nil {
+	fmt.Printf("%v ===================RecvMsg.Run,the msg is not hash-enode:C1:X1:X2, decode fail,msg hash = %v,err = %v ==============================\n",common.CurrentTime(),test,err)
 	res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run",Err:fmt.Errorf("decode data to SendMsg fail in recvmsg.run")}
 	ch <- res2
 	return false
@@ -2278,7 +2275,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
     case *SendMsg:
 	rr := r.(*SendMsg)
 
-	common.Info("===================RecvMsg.Run,the msg is not hash-enode:C1:X1:X2","msg hash =",test,"key = ",rr.Nonce,"","==============================")
 	var wid int
 	if strings.EqualFold(cur_enode,self.sender) { //self send
 	    wid = rr.WorkId
@@ -2286,7 +2282,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	    wid = workid
 	}
 
-	//common.Info("====================RecvMsg.Run,finish set nonce, ","wid = ",wid,"rr.WorkId = ",rr.WorkId,"msg hash = ",test,"key = ",rr.Nonce,"","======================")
+	fmt.Printf("%v ===================RecvMsg.Run,the msg is not hash-enode:C1:X1:X2, msg hash = %v,wid = %v,key = %v ==============================\n",common.CurrentTime(),test,wid,rr.Nonce)
 
 	//rpc_lockout
 	if rr.MsgType == "rpc_lockout" {
@@ -2582,7 +2578,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	
 	//rpc_req_dcrmaddr
 	if rr.MsgType == "rpc_req_dcrmaddr" {
-	    //msg = account:cointype:groupid:nonce:threshold:mode:key
+	    //msg = account:cointype:groupid:nonce:threshold:mode:key:timestamp
 	    rch := make(chan interface{},1)
 	    w := workers[workid]
 	    w.sid = rr.Nonce
@@ -2608,8 +2604,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		}
 
 		if exsit == true {
-		    //common.Info("=======================RecvMsg.Run,req addr nonce error, ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"key = ",rr.Nonce,"","========================")
-		    fmt.Println("%v =======================RecvMsg.Run,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v =========================",common.CurrentTime(),msgs[0],msgs[2],msgs[4],msgs[5],msgs[3],rr.Nonce)
+		    fmt.Printf("%v =======================RecvMsg.Run,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v =========================\n",common.CurrentTime(),msgs[0],msgs[2],msgs[4],msgs[5],msgs[3],rr.Nonce)
 		    //TODO must set acceptreqaddr(.....)
 		    res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:req addr nonce error",Err:fmt.Errorf("req addr nonce error")}
 		    ch <- res2
@@ -2621,7 +2616,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		new_nonce_num,_ := new(big.Int).SetString(msgs[3],10)
 		if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		    _,err = SetReqAddrNonce(msgs[0],msgs[3])
-		    common.Info("=======================RecvMsg.Run,SetReqAddrNonce ","account = ",msgs[0],"group id = ",msgs[2],"threshold = ",msgs[4],"mode = ",msgs[5],"nonce = ",msgs[3],"err = ",err,"key = ",rr.Nonce,"","========================")
+		    fmt.Printf("%v =======================RecvMsg.Run,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v =========================\n",common.CurrentTime(),msgs[0],msgs[2],msgs[4],msgs[5],msgs[3],err,rr.Nonce)
 		    if err != nil {
 			//TODO must set acceptreqaddr(.....)
 			res2 := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run",Err:fmt.Errorf("set req addr nonce fail in recvmsg.run")}
@@ -2630,15 +2625,14 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    }
 		}
 		
-		if msgs[5] == "0" {// self-group
-		    ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
+		//if msgs[5] == "0" {// self-group
+		    ac := &AcceptReqAddrData{Account:msgs[0],Cointype:"ALL",GroupId:msgs[2],Nonce:msgs[3],LimitNum:msgs[4],Mode:msgs[5],TimeStamp:msgs[7],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:wid}
 		    err := SaveAcceptReqAddrData(ac)
-		    //common.Info("===================call SaveAcceptReqAddrData finish, ","wid",wid,"account = ",msgs[0],"cointype = ",msgs[1],"group id = ",msgs[2],"nonce = ",msgs[3],"threshold = ",msgs[4],"mode = ",msgs[5],"err = ",err,"key = ",rr.Nonce,"msg hash = ",test,"","======================")
-		    fmt.Println("%v ===================call SaveAcceptReqAddrData finish, wid = %v,account = %v,cointype = %v,group id = %v,nonce = %v, threshold = %v,mode = %v,err = %v,key = %v,msg hash = %v, ========================",common.CurrentTime(),wid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],err,rr.Nonce,test)
+		    fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, wid = %v,account = %v,cointype = %v,group id = %v,nonce = %v, threshold = %v,mode = %v,err = %v,key = %v,msg hash = %v, ========================\n",common.CurrentTime(),wid,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],err,rr.Nonce,test)
 		    if err != nil {
 			////TODO
 		    }
-		}
+		//}
 		////
 	    }
 	    
@@ -2648,7 +2642,6 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 	        var tip string
 	        timeout := make(chan bool, 1)
 	        go func(wid int) {
-		    //cur_enode = GetSelfEnode()
 		    cur_enode = discover.GetLocalID().String() //GetSelfEnode()
                     agreeWaitTime := 10 * time.Minute
                     agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
@@ -2661,7 +2654,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		    }
 
 		    wtmp2 := workers[wid]
-		   common.Info("================== (self *RecvMsg) Run() ","wid = ",wid,"key = ",rr.Nonce,"","============================")
+		   fmt.Printf("%v ================== (self *RecvMsg) Run(),wid = %v,key = %v ============================\n",common.CurrentTime(),wid,rr.Nonce)
 
                     for {
                        select {
@@ -2708,7 +2701,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 			    }
 			    all += "}"
 			    
-			   common.Info("================== (self *RecvMsg) Run() , get all AcceptReqAddrRes ","result = ",all,"key = ",rr.Nonce,"","============================")
+			   fmt.Printf("%v ================== (self *RecvMsg) Run(),get all AcceptReqAddrRes, result = %v,key = %v ============================\n",common.CurrentTime(),all,rr.Nonce)
 			    if reply == false {
 				tip = "don't accept req addr"
 				AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Failure","","don't accept req addr","don't accept req addr",all,wid) 
@@ -2719,12 +2712,9 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 			   ///////
                            timeout <- true
-			   //common.Info("================== (self *RecvMsg) Run() , get all AcceptReqAddrRes. ","key = ",rr.Nonce,"","============================")
-			   fmt.Println("%v ================== (self *RecvMsg) Run() , get all AcceptReqAddrRes. key = %v,=============",common.CurrentTime(),rr.Nonce)
 	                   return
                        case <-agreeWaitTimeOut.C:
-			   //common.Info("================== (self *RecvMsg) Run() , agree wait timeout. ","key = ",rr.Nonce,"","============================")
-			   fmt.Println("%v ================== (self *RecvMsg) Run() , agree wait timeout. key = %v,========================",common.CurrentTime(),rr.Nonce)
+			   fmt.Printf("%v ================== (self *RecvMsg) Run(), agree wait timeout, key = %v ============================\n",common.CurrentTime(),rr.Nonce)
 			   //bug: if self not accept and timeout
 			    AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Timeout","","get other node accept req addr result timeout","get other node accept req addr result timeout","",wid)
 			    tip = "get other node accept req addr result timeout"
@@ -2743,7 +2733,7 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 
 	        <-timeout
 
-	       common.Info("================== (self *RecvMsg) Run() , ","the terminal accept req addr result = ",reply,"key = ",rr.Nonce,"","============================")
+	       fmt.Printf("%v ================== (self *RecvMsg) Run(), the terminal accept req addr result = %v, key = %v ============================\n",common.CurrentTime(),reply,rr.Nonce)
 	        if reply == false {
 		    if tip == "get other node accept req addr result timeout" {
 			AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Timeout","",tip,"don't accept req addr.","",wid)
@@ -2759,41 +2749,44 @@ func (self *RecvMsg) Run(workid int,ch chan interface{}) bool {
 		if len(workers[wid].acceptWaitReqAddrChan) == 0 {
 		    workers[wid].acceptWaitReqAddrChan <- "go on"
 		}
+		
+		if !strings.EqualFold(cur_enode,self.sender) { //no self send
+		    AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"true","Pending","","","","",wid)
+		}
 	    }
 
 	    ///////////////////////
-	    timeout2 := make(chan bool, 1)
-	    go func(rk string) {
-		 for {
-		    _,exsit := GAccs.ReadMap(rk)
-		    if exsit == false {
-			 time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
-		    } else {
-			 timeout2 <- true
-			 break
-		    }
-		 }
-	     }(rr.Nonce)
+	    if msgs[5] == "0" {
+		timeout2 := make(chan bool, 1)
+		go func(rk string) {
+		     for {
+			_,exsit := GAccs.ReadMap(rk)
+			if exsit == false {
+			     time.Sleep(time.Duration(1)*time.Second) //1000 == 1s
+			} else {
+			     timeout2 <- true
+			     break
+			}
+		     }
+		 }(rr.Nonce)
 
-	   common.Info("================== (self *RecvMsg) Run() , start wait group accounts","key = ",rr.Nonce,"","============================")
-	    _,_,err = GetChannelValue(50,timeout2)
-	   common.Info("================== (self *RecvMsg) Run() , finish wait group accounts","err = ",err,"key = ",rr.Nonce,"","============================")
-	    if err != nil {
-		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Failure","","get group account sigs data timeout","get group account sigs data timeout","",wid)
-		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:"get group account sigs data timeout",Err:fmt.Errorf("get group account sigs data timeout")}
-		ch <- res2
-		return false
+	       fmt.Printf("%v ================== (self *RecvMsg) Run(), start wait group accounts, key = %v ============================\n",common.CurrentTime(),rr.Nonce)
+		_,_,err = GetChannelValue(50,timeout2)
+	       fmt.Printf("%v ================== (self *RecvMsg) Run(), finish wait group accounts, err = %v,key = %v ============================\n",common.CurrentTime(),err,rr.Nonce)
+		if err != nil {
+		    AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"false","Failure","","get group account sigs data timeout","get group account sigs data timeout","",wid)
+		    res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:"get group account sigs data timeout",Err:fmt.Errorf("get group account sigs data timeout")}
+		    ch <- res2
+		    return false
+		}
 	    }
 	    ///////////////////////
 
-	   //common.Info("================== (self *RecvMsg) Run() , start call dcrm_genPubKey","worker id = ",w.id,"w.sid = ",w.sid,"key = ",rr.Nonce,"","============================")
-	   fmt.Println("%v ================== (self *RecvMsg) Run() , start call dcrm_genPubKey,key = %v,=====================",common.CurrentTime(),rr.Nonce)
+	   fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey,key = %v ============================\n",common.CurrentTime(),rr.Nonce)
 	    dcrm_genPubKey(w.sid,msgs[0],msgs[1],rch, msgs[5],msgs[3])
-	   //common.Info("================== (self *RecvMsg) Run() , finish call dcrm_genPubKey","worker id = ",w.id,"w.sid = ",w.sid,"key = ",rr.Nonce,"","============================")
-	   fmt.Println("%v ================== (self *RecvMsg) Run() , finish call dcrm_genPubKey,key = %v,====================",common.CurrentTime(),rr.Nonce)
+	   fmt.Printf("%v ================== (self *RecvMsg) Run(), finish call dcrm_genPubKey,key = %v ============================\n",common.CurrentTime(),rr.Nonce)
 	    chret,tip,cherr := GetChannelValue(ch_t,rch)
-	   //common.Info("================== (self *RecvMsg) Run() , finish get dcrm_genPubKey return value","ret = ",chret,"err = ",cherr,"worker id = ",w.id,"w.sid = ",w.sid,"key = ",rr.Nonce,"","============================")
-	   fmt.Println("%v ================== (self *RecvMsg) Run() , finish get dcrm_genPubKey return value = %v,err = %v,key = %v,=====================",common.CurrentTime(),chret,cherr,rr.Nonce)
+	   fmt.Printf("%v ================== (self *RecvMsg) Run() , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n",common.CurrentTime(),chret,cherr,rr.Nonce)
 	    if cherr != nil {
 		AcceptReqAddr(msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],false,"","Failure","",tip,cherr.Error(),"",wid)
 		res2 := RpcDcrmRes{Ret:strconv.Itoa(rr.WorkId)+Sep+rr.MsgType,Tip:tip,Err:cherr}
@@ -3041,6 +3034,7 @@ type ReqAddrSendMsgToDcrm struct {
     Nonce string
     LimitNum string
     Mode string
+    TimeStamp string
     Key string
 }
 
@@ -3051,14 +3045,9 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 	return false
     }
 
-    //cur_enode = GetSelfEnode()
     cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-    msg := self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode + ":" + self.Key
+    msg := self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode + ":" + self.Key + ":" + self.TimeStamp
 
-//    timestamp := time.Now().Unix()
-//    tt := strconv.Itoa(int(timestamp))
-//    nonce := Keccak256Hash([]byte(msg + ":" + tt + ":" + strconv.Itoa(workid))).Hex()
-   
     sm := &SendMsg{MsgType:"rpc_req_dcrmaddr",Nonce:self.Key,WorkId:workid,Msg:msg}
     res,err := Encode2(sm)
     if err != nil {
@@ -3078,35 +3067,31 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
 
     for i:=0;i<ReSendTimes;i++ {
 	test := Keccak256Hash([]byte(strings.ToLower(res))).Hex()
-	common.Info("===================ReqAddrSendMsgToDcrm.Run, begin send msg to all nodes. ","msg hash = ",test,"key = ",self.Key,"","============================")
-	fmt.Println("%v ===================ReqAddrSendMsgToDcrm.Run, begin send msg to all nodes,msg hash = %v,key = %v ===============",common.CurrentTime(),test,self.Key)
+	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, begin send msg to all nodes. msg hash = %v,key = %v============================\n",common.CurrentTime(),test,self.Key)
 
 	SendToGroupAllNodes(self.GroupId,res)
-	time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
     }
 
-    //common.Info("=============ReqAddrSendMsgToMsg.Run,Waiting For Result, ===========","key = ",self.Key,"","======================")
-    fmt.Println("%v ===================ReqAddrSendMsgToMsg.Run,Waiting For Result,key = %v ===============",common.CurrentTime(),self.Key)
+    fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Waiting For Result.key = %v============================\n",common.CurrentTime(),self.Key)
     <-w.acceptWaitReqAddrChan
     time.Sleep(time.Duration(1) * time.Second)
     AcceptReqAddr(self.Account,self.Cointype,self.GroupId,self.Nonce,self.LimitNum,self.Mode,false,"true","Pending","","","","",workid)
+    fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n",common.CurrentTime(),self.Key)
 
-    common.Info("===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself. ","key = ",self.Key,"","============================")
    ///////
-    mp := []string{self.Key,cur_enode}
-    enode := strings.Join(mp,"-")
-    s0 := "AcceptReqAddrRes"
-    s1 := "true"
-//    s2 := strconv.Itoa(workid)
-    ss := enode + Sep + s0 + Sep + s1
-    SendMsgToDcrmGroup(ss,self.GroupId)
-    DisMsg(ss)
-   common.Info("================== ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes ","key = ",self.Key,"","============================")
-    fmt.Println("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes,key = %v ===============",common.CurrentTime(),self.Key)
-    
+   if self.Mode == "0" {
+	mp := []string{self.Key,cur_enode}
+	enode := strings.Join(mp,"-")
+	s0 := "AcceptReqAddrRes"
+	s1 := "true"
+	ss := enode + Sep + s0 + Sep + s1
+	SendMsgToDcrmGroup(ss,self.GroupId)
+	DisMsg(ss)
+	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes.key = %v============================\n",common.CurrentTime(),self.Key)
+   }
+
     chret,tip,cherr := GetChannelValue(sendtogroup_timeout,w.ch)
-    common.Info("==============ReqAddrSendMsgToDcrm.Run,Get Result","result = ",chret,"err = ",cherr,"key = ",self.Key,"","=================")
-    fmt.Println("%v ===================ReqAddrSendMsgToDcrm.Run,Get Result,result = %v,err = %v,key = %v ===============",common.CurrentTime(),chret,cherr,self.Key)
+    fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Get Result. result = %v,cherr = %v,key = %v============================\n",common.CurrentTime(),chret,cherr,self.Key)
     if cherr != nil {
 	res2 := RpcDcrmRes{Ret:chret,Tip:tip,Err:cherr}
 	ch <- res2
@@ -3257,6 +3242,7 @@ type AcceptReqAddrData struct {
     Nonce string
     LimitNum string
     Mode string
+    TimeStamp string
 
     Deal bool
     Accept string 
@@ -3356,8 +3342,8 @@ func CommitRpcReq() {
     }
 }
 
-func SendReqDcrmAddr(acc string,cointype string,gid string,nonce string,threshold string,mode string,key string) (string,string,error) {
-    v := ReqAddrSendMsgToDcrm{Account:acc,Cointype:cointype,GroupId:gid,Nonce:nonce,LimitNum:threshold, Mode:mode,Key:key}
+func SendReqDcrmAddr(acc string,cointype string,gid string,nonce string,threshold string,mode string,timestamp string,key string) (string,string,error) {
+    v := ReqAddrSendMsgToDcrm{Account:acc,Cointype:cointype,GroupId:gid,Nonce:nonce,LimitNum:threshold, Mode:mode,TimeStamp:timestamp,Key:key}
     rch := make(chan interface{},1)
     req := RpcReq{rpcdata:&v,ch:rch}
     
@@ -3527,7 +3513,7 @@ func Find(l *list.List,msg string) bool {
     return false
 }
 
-//msg:  hash-enode:C1:X1:X2
+//msg: hash-enode:C1:X1:X2
 func DisMsg(msg string) {
 
     if msg == "" {
@@ -3535,6 +3521,7 @@ func DisMsg(msg string) {
     }
 
     test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
+    fmt.Printf("%v ===============DisMsg,get msg = %v,msg hash = %v,=================\n",common.CurrentTime(),msg,test)
 
     //orderbook matchres
     mm := strings.Split(msg, Sep)
@@ -3554,7 +3541,7 @@ func DisMsg(msg string) {
 	kd := KeyData{Key:[]byte(key),Data:msg}
 	GAccsDataChan <-kd
 	GAccs.WriteMap(key,msg)
-	common.Info("==================DisMsg,get group accounts, ","msg hash = ",test,"key = ",key,"","=======================")
+	fmt.Printf("%v ===============DisMsg,get group accounts,msg = %v,msg hash = %v,key = %v=================\n",common.CurrentTime(),msg,test,key)
 	return
     }
     /////////////////
@@ -3562,27 +3549,31 @@ func DisMsg(msg string) {
 	//msg:  hash-enode:C1:X1:X2
 	w,err := FindWorker(prexs[0])
 	if err != nil || w == nil {
+	    fmt.Printf("%v ===============DisMsg,no find worker,msg = %v,msg hash = %v,err = %v,key = %v=================\n",common.CurrentTime(),msg,test,err,prexs[0])
 	    return
 	}
-	common.Info("==================DisMsg,get worker, ","worker id = ",w.id,"w.sid = ",w.sid,"msg hash = ",test,"","=======================")
+
+	fmt.Printf("%v ===============DisMsg,get worker, worker id = %v,msg = %v,msg hash = %v,key = %v=================\n",common.CurrentTime(),msg,test,prexs[0])
 
 	msgCode := mm[1]
 	switch msgCode {
 	case "AcceptReqAddrRes":
 	    ///bug
 	    if w.msg_acceptreqaddrres.Len() >= w.NodeCnt {
+		fmt.Printf("%v ===============DisMsg, w.msg_acceptreqaddrres.Len() = %v,w.NodeCnt = %v,msg = %v,msg hash = %v,key = %v=================\n",common.CurrentTime(),w.msg_acceptreqaddrres.Len(),w.NodeCnt,msg,test,prexs[0])
 		return
 	    }
+	    
 	    ///
 	    if Find(w.msg_acceptreqaddrres,msg) {
+		fmt.Printf("%v ===============DisMsg, msg has exist in w.msg_acceptreqaddrres, w.msg_acceptreqaddrres.Len() = %v,w.NodeCnt = %v,msg = %v,msg hash = %v,key = %v=================\n",common.CurrentTime(),w.msg_acceptreqaddrres.Len(),w.NodeCnt,msg,test,prexs[0])
 		return
 	    }
 
 	    w.msg_acceptreqaddrres.PushBack(msg)
 	    if w.msg_acceptreqaddrres.Len() == w.NodeCnt {
-		common.Info("===================Get All AcceptReqAddrRes ","msg hash = ",test,"key = ",prexs[0],"","====================")
+		fmt.Printf("%v ===============DisMsg, Get All AcceptReqAddrRes, w.msg_acceptreqaddrres.Len() = %v, w.NodeCnt = %v, msg = %v, msg hash = %v, key = %v=================\n",common.CurrentTime(),w.msg_acceptreqaddrres.Len(),w.NodeCnt,msg,test,prexs[0])
 		w.bacceptreqaddrres <- true
-		//wid,_ := strconv.Atoi(mm[3])
 		///////
 		var da []byte
 		datmp,exsit := LdbReqAddr.ReadMap(prexs[0])
@@ -3600,29 +3591,30 @@ func DisMsg(msg string) {
 		}
 
 		if exsit == false {
-		    common.Info("==================DisMsg,no exist reqaddr data, ","worker id = ",w.id,"key = ",w.sid,"","=======================")
+		    fmt.Printf("%v ==================DisMsg,no exist reqaddr data, worker id = %v,key = %v =======================\n",common.CurrentTime(),w.id,prexs[0])
 		    return
 		}
 
 		ds,err := UnCompress(string(da))
 		if err != nil {
-		    common.Info("==================DisMsg,uncompress reqaddr data error, ","err = ",err,"worker id = ",w.id,"key = ",w.sid,"","=======================")
+		    fmt.Printf("%v ==================DisMsg,uncompress reqaddr data fail, err = %v, worker id = %v,key = %v =======================\n",common.CurrentTime(),err,w.id,prexs[0])
 		    return
 		}
 
 		dss,err := Decode2(ds,"AcceptReqAddrData")
 		if err != nil {
-		    common.Info("==================DisMsg,decode reqaddr data error, ","err = ",err,"worker id = ",w.id,"key = ",w.sid,"","=======================")
+		    fmt.Printf("%v ==================DisMsg,decode reqaddr data fail, err = %v, worker id = %v,key = %v =======================\n",common.CurrentTime(),err,w.id,prexs[0])
 		    return
 		}
 
 		ac := dss.(*AcceptReqAddrData)
 		if ac == nil {
-		    common.Info("==================DisMsg,get reqaddr data fail, ","worker id = ",w.id,"key = ",w.sid,"","=======================")
+		    fmt.Printf("%v ==================DisMsg,ac is nil, worker id = %v,key = %v =======================\n",common.CurrentTime(),w.id,prexs[0])
 		    return
 		}
 		///////
-		common.Info("==================DisMsg, ","get wid = ",ac.WorkId,"key = ",w.sid,"","=======================")
+
+		fmt.Printf("%v ==================DisMsg,get wid = %v,key = %v =======================\n",common.CurrentTime(),ac.WorkId,prexs[0])
 		workers[ac.WorkId].acceptReqAddrChan <- "go on" 
 	    }
 	case "AcceptLockOutRes":

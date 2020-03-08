@@ -2603,8 +2603,8 @@ func Sign_ec2(msgprex string,save string,message string,cointype string,pkx *big
 }
 
 func SendMsgToDcrmGroup(msg string,groupid string) {
-    common.Info("==============SendMsgToDcrmGroup, ","msg = ",msg,"send to group id = ",groupid,"","=====================")
-    fmt.Println("%v =========SendMsgToDcrmGroup,msg = %v,send to group id = %v =================",common.CurrentTime(),msg,groupid)
+    test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
+    fmt.Printf("%v =========SendMsgToDcrmGroup,msg = %v,msg hash = %v,send to group id = %v =================\n",common.CurrentTime(),msg,test,groupid)
     for i:= 0;i<ReSendTimes;i++ {
 	BroadcastInGroupOthers(groupid,msg)
 	//time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
@@ -2640,36 +2640,31 @@ func EncryptMsg (msg string,enodeID string) (string, error) {
 
 func DecryptMsg (cm string) (string, error) {
     test := Keccak256Hash([]byte(strings.ToLower(cm))).Hex()
-    common.Info("=============DecryptMsg start, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     nodeKey, errkey := crypto.LoadECDSA(KeyFile)
-    common.Info("=============DecryptMsg finish crypto.LoadECDSA, ","err = ",errkey,"keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     if errkey != nil {
+	fmt.Printf("%v =========DecryptMsg finish crypto.LoadECDSA,err = %v,keyfile = %v,msg hash = %v =================\n",common.CurrentTime(),errkey,KeyFile,test)
 	return "",errkey
     }
 
-    common.Info("=============DecryptMsg start ecies.ImportECDSA, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     prv := ecies.ImportECDSA(nodeKey)
-    common.Info("=============DecryptMsg finish ecies.ImportECDSA, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     var m []byte
-    common.Info("=============DecryptMsg start prv.Decrypt, ","keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     m, err := prv.Decrypt([]byte(cm), nil, nil)
-    common.Info("=============DecryptMsg finish prv.Decrypt, ","err = ",err,"keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     if err != nil {
+	fmt.Printf("%v =========DecryptMsg finish prv.Decrypt,err = %v,keyfile = %v,msg hash = %v =================\n",common.CurrentTime(),err,KeyFile,test)
 	return "",err
     }
 
-    common.Info("=============DecryptMsg finish, ","ret = ",string(m),"keyfile = ",KeyFile,"msg hash = ",test,"","====================")
     return string(m),nil
 }
 ///
 
 func SendMsgToPeer(enodes string,msg string) {
-    common.Info("==============SendMsgToPeer,","msg = ",msg,"send to peer = ",enodes,"","=======================")
-    fmt.Println("%v =========SendMsgToPeer,msg = %v,send to peer = %v =================",common.CurrentTime(),msg,enodes)
+    test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
+    fmt.Printf("%v =========SendMsgToPeer,msg = %v,msg hash = %v,send to peer = %v =================\n",common.CurrentTime(),msg,test,enodes)
     en := strings.Split(string(enodes[8:]),"@")
     cm,err := EncryptMsg(msg,en[0])
     if err != nil {
-	common.Info("==============SendMsgToPeer,encrypt msg fail,","err = ",err,"","========================")
+	fmt.Printf("%v =========SendMsgToPeer,encrypt msg fail,err = %v =================\n",common.CurrentTime(),err)
 	return
     }
 

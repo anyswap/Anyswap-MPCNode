@@ -302,40 +302,19 @@ func RecivReqAddr() {
 	select {
 	case data := <- ReqAddrCh:
 	    ////////bug
-	    var da []byte
-	    datmp,exsit := dev.LdbReqAddr.ReadMap(data.Key)
+	    _,exsit := dev.LdbReqAddr.ReadMap(data.Key)
 	    if exsit == false {
 		da2 := dev.GetReqAddrValueFromDb(data.Key)
 		if da2 == nil {
 		    exsit = false
 		} else {
 		    exsit = true
-		    da = da2
-		}
-	    } else {
-		da = datmp.([]byte)
-	    }
-
-	    if exsit == true {
-		ds,err := dev.UnCompress(string(da))
-		if err == nil {
-		    dss,err := dev.Decode2(ds,"AcceptReqAddrData")
-		    if err == nil {
-			ac := dss.(*dev.AcceptReqAddrData)
-			if ac != nil && strings.EqualFold(ac.Status, "Pending") {
-			    common.Info("===================!!!!RecivReqAddr,this req addr has already handle,!!!!============================","account = ",data.Account,"group id = ",data.GroupId,"nonce = ",data.Nonce,"threshold = ",data.ThresHold,"mode = ",data.Mode,"key = ",data.Key)
-			    return
-			    //AcceptReqAddr(data.Account,data.Cointype,data.GroupId,data.Nonce,data.ThresHold,data.Mode,)
-			    //return "","the req dcrm addr has already handle,status is pending",fmt.Errorf("the req dcrm addr has already handle,status is pending.")
-			}
-		    }
 		}
 	    }
 
 	    //nonce check
 	    if exsit == true {
-		//common.Info("========================================RecivReqAddr,req addr nonce error, ","account = ",data.Account,"group id = ",data.GroupId,"threshold = ",data.ThresHold,"mode = ",data.Mode,"nonce = ",data.Nonce,"key = ",data.Key,"","============================================")
-		fmt.Println("%v ========================================RecivReqAddr,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v, =================================",common.CurrentTime(),data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
+		fmt.Printf("%v =====================================RecivReqAddr,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v, =================================\n",common.CurrentTime(),data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
 		return
 	    }
 
@@ -344,68 +323,71 @@ func RecivReqAddr() {
 	    new_nonce_num,_ := new(big.Int).SetString(data.Nonce,10)
 	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		_,err := dev.SetReqAddrNonce(data.Account,data.Nonce)
-		common.Info("======================RecivReqAddr,SetReqAddrNonce, ","account = ",data.Account,"group id = ",data.GroupId,"threshold = ",data.ThresHold,"mode = ",data.Mode,"nonce = ",data.Nonce,"err = ",err,"key = ",data.Key,"","===========================")
+		fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n",common.CurrentTime(),data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,err,data.Key)
 		if err != nil {
 		    return
 		}
 	    }
 	    
-	    if data.Mode == "0" {// self-group
-		ac := &dev.AcceptReqAddrData{Account:data.Account,Cointype:"ALL",GroupId:data.GroupId,Nonce:data.Nonce,LimitNum:data.ThresHold,Mode:data.Mode,Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
+	    //if data.Mode == "0" {// self-group
+		ac := &dev.AcceptReqAddrData{Account:data.Account,Cointype:"ALL",GroupId:data.GroupId,Nonce:data.Nonce,LimitNum:data.ThresHold,Mode:data.Mode,TimeStamp:data.Datas[3],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
 		err := dev.SaveAcceptReqAddrData(ac)
-		fmt.Println("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================",common.CurrentTime(),data.Account,err,data.Key)
+		fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n",common.CurrentTime(),data.Account,err,data.Key)
 		if err != nil {
 		    return
 		}
-	    }
+	    //}
+	    
 	    ////////bug
 	    go func(d ReqAddrData) {
 		/////////////////////tmp code //////////////////////
-		mp := []string{d.Key,cur_enode}
-		enode := strings.Join(mp,"-")
-		s0 := "GroupAccounts"
-		s1 := d.NodeCnt
-		ss := enode + common.Sep + s0 + common.Sep + s1
-		
-		nodecnt,_ := strconv.Atoi(d.NodeCnt)
-		for j:=0;j<nodecnt;j++ {
-		    tx2 := new(types.Transaction)
-		    vs := common.FromHex(d.Datas[3+j])
-		    if err := rlp.DecodeBytes(vs, tx2); err != nil {
-			return
-		    }
-
-		    signer := types.NewEIP155Signer(big.NewInt(30400)) //
-		    from2, err := types.Sender(signer, tx2)
-		    if err != nil {
-			signer = types.NewEIP155Signer(big.NewInt(4)) //
-			from2, err = types.Sender(signer, tx2)
-			if err != nil {
+		if d.Mode == "0" {
+		    mp := []string{d.Key,cur_enode}
+		    enode := strings.Join(mp,"-")
+		    s0 := "GroupAccounts"
+		    s1 := d.NodeCnt
+		    ss := enode + common.Sep + s0 + common.Sep + s1
+		    
+		    nodecnt,_ := strconv.Atoi(d.NodeCnt)
+		    for j:=0;j<nodecnt;j++ {
+			tx2 := new(types.Transaction)
+			vs := common.FromHex(d.Datas[4+j])
+			if err := rlp.DecodeBytes(vs, tx2); err != nil {
 			    return
 			}
-		    }
 
-		    eid := string(tx2.Data())
-		    acc := from2.Hex()
-		    ss += common.Sep
-		    ss += eid
-		    ss += common.Sep
-		    ss += acc
+			signer := types.NewEIP155Signer(big.NewInt(30400)) //
+			from2, err := types.Sender(signer, tx2)
+			if err != nil {
+			    signer = types.NewEIP155Signer(big.NewInt(4)) //
+			    from2, err = types.Sender(signer, tx2)
+			    if err != nil {
+				return
+			    }
+			}
+
+			eid := string(tx2.Data())
+			acc := from2.Hex()
+			ss += common.Sep
+			ss += eid
+			ss += common.Sep
+			ss += acc
+		    }
+		    
+		    kd := dev.KeyData{Key:[]byte(d.Key),Data:ss}
+		    dev.GAccsDataChan <-kd
+		    dev.GAccs.WriteMap(d.Key,ss)
+		    dev.SendMsgToDcrmGroup(ss,d.GroupId)
+		    fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n",common.CurrentTime(),ss,d.Key)
 		}
-		
-		kd := dev.KeyData{Key:[]byte(d.Key),Data:ss}
-		dev.GAccsDataChan <-kd
-		dev.GAccs.WriteMap(d.Key,ss)
-		dev.SendMsgToDcrmGroup(ss,d.GroupId)
-		common.Info("===============RecivReqAddr,send group accounts to other nodes ","msg = ",ss,"key = ",d.Key,"","===========================")
 		////////////////////////////////////////////////////
 
 		//coin := "ALL"
 		//if !types.IsDefaultED25519(msgs[1]) {  //TODO
 		//}
 
-		addr,_,err := dev.SendReqDcrmAddr(d.Account,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.Key)
-		common.Info("===============RecivReqAddr,finish calc dcrm addrs. ","addr = ",addr,"err = ",err,"key = ",d.Key,"","===========================")
+		addr,_,err := dev.SendReqDcrmAddr(d.Account,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.Datas[3],d.Key)
+		fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n",common.CurrentTime(),addr,err,d.Key)
 		if addr != "" && err == nil {
 		    return
 		}
@@ -432,9 +414,9 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	}
     }
 
-    data := string(tx.Data()) //REQDCRMADDR:gid:threshold:tx1:tx2:tx3...
+    data := string(tx.Data()) //REQDCRMADDR:gid:threshold:timestamp:tx1:tx2:tx3...
     datas := strings.Split(data,":")
-    if len(datas) < 3 {
+    if len(datas) < 4 {
 	return "","transacion data format error",fmt.Errorf("tx.data error.")
     }
 
@@ -452,6 +434,11 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	return "","no threshold value",fmt.Errorf("get threshold fail.")
     }
 
+    timestamp := datas[3]
+    if timestamp == "" {
+	return "","no timestamp value",fmt.Errorf("get timestamp fail.")
+    }
+
     nums := strings.Split(threshold,"/")
     if len(nums) != 2 {
 	return "","transacion data format error,threshold is not right",fmt.Errorf("tx.data error.")
@@ -466,7 +453,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
     
     key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v",Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-    if mode == "1" { //non self-group
+    /*if mode == "1" { //non self-group
 	if da,b := ExsitPubKey(from.Hex(),"ALL"); b == true {
 	    ///
 	    var m interface{}
@@ -493,12 +480,12 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
 	    return string(bb),"",nil
 	    ///
 	}
-    }
+    }*/
 
     data2 := ReqAddrData{Account:from.Hex(),GroupId:groupid,Nonce:fmt.Sprintf("%v",Nonce),ThresHold:threshold,Mode:mode,Cointype:"ALL",NodeCnt:nums[1],Datas:datas,Key:key}
     ReqAddrCh <-data2
     
-    common.Info("===============ReqDcrmAddr finish,return","key = ",key,"","=================================")
+    fmt.Printf("%v ===============ReqDcrmAddr finish,return,key = %v,raw = %v,mode = %v ================================\n",common.CurrentTime(),key,raw,mode)
     return key,"",nil
     
     /*if mode == "1" { //non self-group

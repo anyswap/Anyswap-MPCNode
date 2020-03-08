@@ -212,7 +212,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
 	////////
 
 	pubkeyhex := hex.EncodeToString(sedpk)
-	fmt.Println("===============dcrm_genPubKey,pubkey = %s,nonce =%s ==================",pubkeyhex,nonce)
+	fmt.Printf("%v ===============dcrm_genPubKey,account = %v,pubkey = %v,nonce =%v ==================\n",common.CurrentTime(),account,pubkeyhex,nonce)
 	////save to db
 	////add for req addr
 	//key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
@@ -393,7 +393,7 @@ func dcrm_genPubKey(msgprex string,account string,cointype string,ch chan interf
     ////////
 
     pubkeyhex := hex.EncodeToString(ys)
-    fmt.Println("===============dcrm_genPubKey,pubkey = %s,nonce =%s ==================",pubkeyhex,nonce)
+    fmt.Printf("%v ===============dcrm_genPubKey,account = %v,pubkey = %v,nonce =%v ==================\n",common.CurrentTime(),account,pubkeyhex,nonce)
     
     //key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
     //kd := KeyData{Key:[]byte(key2),Data:nonce}

@@ -156,7 +156,7 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) map[string]interface{} {
-    fmt.Println("==============GetBalance================")
+    fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n",common.CurrentTime(),account,cointype,dcrmaddr)
 
     data := make(map[string]interface{})
     if account == "" || cointype == "" || dcrmaddr == "" {
@@ -170,7 +170,7 @@ func (this *Service) GetBalance(account string,cointype string,dcrmaddr string) 
     }
 
     ret,tip,err := dcrm.GetBalance(account,cointype,dcrmaddr)
-    fmt.Println("==========GetBalance,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
+    fmt.Printf("%v ==========finish call rpc GetBalance ,balance = %v,err = %v,account = %v,cointype  = %v,dcrm from = %v ===========\n",common.CurrentTime(),ret,err,account,cointype,dcrmaddr)
 
     if err != nil {
 	data["result"] = "0" 

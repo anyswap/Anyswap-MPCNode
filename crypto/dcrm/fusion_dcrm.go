@@ -1093,13 +1093,6 @@ func GetBalance(account string, cointype string,dcrmaddr string) (string,string,
 	return "","coin type is not supported",fmt.Errorf("coin type is not supported")
     }
 
-    /*ctaddr, err := h.PublicKeyToAddress(pubkey)
-    if err != nil {
-	fmt.Println("================GetBalance 11111,err =%v =================",err)
-	return err.Error()
-    }*/
-
-    //ba,err := h.GetAddressBalance(ctaddr,"")
     ba,err := h.GetAddressBalance(dcrmaddr,"")
     if err != nil {
 //	fmt.Println("================GetBalance 22222,err =%v =================",err)

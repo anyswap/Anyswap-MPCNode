@@ -510,7 +510,7 @@ func (this *Service) GetAccounts(geter_acc,mode string) map[string]interface{} {
 }
 
 func (this *Service) GetAccountsBalance(pubkey string,geter_acc string) map[string]interface{} {
-	common.Info("==========call rpc GetAccountsBalance from web,","geter acc = ",geter_acc,"pubkey = ",pubkey,"","================")
+	fmt.Printf("%v ==========call rpc GetAccountsBalance from web, geter acc = %v, pubkey = %v,=============\n",common.CurrentTime(),geter_acc,pubkey)
 	data := make(map[string]interface{})
 	if pubkey == "" {
 	    data["result"] = ""
@@ -523,7 +523,7 @@ func (this *Service) GetAccountsBalance(pubkey string,geter_acc string) map[stri
 	}
 
 	ret, tip, err := dcrm.GetAccountsBalance(pubkey,geter_acc)
-	common.Info("==========finish call rpc GetAccountsBalance,","geter acc = ",geter_acc,"ret = ",ret,"tip = ",tip,"err = ",err,"","============================")
+	fmt.Printf("%v ==========finish call rpc GetAccountsBalance from web, ret = %v,err = %v,geter acc = %v, pubkey = %v,=============\n",common.CurrentTime(),ret,err,geter_acc,pubkey)
 	if err != nil {
 	    data["result"] = ""
 	    return map[string]interface{}{

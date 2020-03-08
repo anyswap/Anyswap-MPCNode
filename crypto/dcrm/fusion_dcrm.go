@@ -1081,43 +1081,18 @@ func GetAccountsBalance(pubkey string,geter_acc string) (interface{}, string, er
 	}
 
 	///////
-	rk := dev.Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
-	if dev.CheckAcc(cur_enode,geter_acc,rk) == false {
-	    return "","invalid accepter",fmt.Errorf("invalid accepter")
+	if vv.Mode == "1" {
+	    if !strings.EqualFold(vv.Account,geter_acc) {
+		continue
+	    }
+	} else {
+	    rk := dev.Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
+	    if dev.CheckAcc(cur_enode,geter_acc,rk) == false {
+		return "","invalid accepter",fmt.Errorf("invalid accepter")
+	    }
 	}
 	/////
 
-	////bug,check valid accepter
-	/*check := false
-	for _,v := range vv.NodeSigs {
-	    tx2 := new(types.Transaction)
-	    vs := common.FromHex(v)
-	    if err := rlp.DecodeBytes(vs, tx2); err != nil {
-		continue
-	    }
-
-	    signer := types.NewEIP155Signer(big.NewInt(30400)) //
-	    from2, err := types.Sender(signer, tx2)
-	    if err != nil {
-		signer = types.NewEIP155Signer(big.NewInt(4)) //
-		from2, err = types.Sender(signer, tx2)
-		if err != nil {
-		    continue
-		}
-	    }
-	    
-	    eid := string(tx2.Data())
-	    fmt.Println("============GetAccountsBalance,eid = %s,cur_enode =%s,from =%s,from2 =%s===============",eid,cur_enode,geter_acc,from2.Hex())
-	    if strings.EqualFold(eid,cur_enode) && strings.EqualFold(geter_acc,from2.Hex()) {
-		check = true
-		break
-	    }
-	}
-
-	if check == false {
-	    continue
-	}*/
-	
 	key,err2 := hex.DecodeString(pubkey)
 	if err2 != nil {
 //	    fmt.Printf("==============GetAccountsBalance,decode pubkey string fail,err =%v=============",err2)

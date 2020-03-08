@@ -1332,7 +1332,7 @@ func SetUpMsgList(msg string) {
     }
 }
 
-func GetAccounts(gid,mode string) (interface{}, string, error) {
-    return dev.GetAccounts(gid, mode)
+func GetAccounts(geter_acc,mode string) (interface{}, string, error) {
+    return dev.GetAccounts(geter_acc, mode)
 }
 

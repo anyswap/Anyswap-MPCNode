@@ -486,10 +486,10 @@ func startRpcServer() error {
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
 func (this *Service) GetAccounts(geter_acc,mode string) map[string]interface{} {
-    common.Info("==========call rpc GetAccounts from web,","geter acc = ",geter_acc,"mode = ",mode,"","================")
+    fmt.Printf("%v ==========call rpc GetAccounts from web, get_acc = %v, mode = %v ================\n",common.CurrentTime(),geter_acc,mode)
     data := make(map[string]interface{})
     ret, tip, err := dcrm.GetAccounts(geter_acc,mode)
-    common.Info("==========finish call rpc GetAccounts,","geter acc = ",geter_acc,"mode = ",mode,"ret = ",ret,"tip = ",tip,"err = ",err,"","============================")
+    fmt.Printf("%v ==========finish call rpc GetAccounts ,ret = %v,err = %v,get_acc = %v, mode = %v ================\n",common.CurrentTime(),ret,err,geter_acc,mode)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

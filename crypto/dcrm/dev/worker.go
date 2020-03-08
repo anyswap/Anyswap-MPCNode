@@ -4194,7 +4194,6 @@ func CheckAcc(eid string,geter_acc string,rk string) bool {
 
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
    if AllAccounts.MapLength() != 0 {
-    //fmt.Println("================!!!GetAccounts,get pubkey data from AllAccounts success!!!====================")
     gp := make(map[string][]string)
     _,lmvalue := AllAccounts.ListMap()
     for _,v := range lmvalue {
@@ -4209,9 +4208,15 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	}
 
 	///////
-	rk := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
-	if CheckAcc(cur_enode,geter_acc,rk) == false {
-	    continue
+	if vv.Mode == "1" {
+	    if !strings.EqualFold(vv.Account,geter_acc) {
+		continue
+	    }
+	} else {
+	    rk := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
+	    if CheckAcc(cur_enode,geter_acc,rk) == false {
+		continue
+	    }
 	}
 	/////
 
@@ -4219,7 +4224,6 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	pubkeyhex := hex.EncodeToString([]byte(pb))
 	gid := vv.GroupId
 	md := vv.Mode
-//	fmt.Println("==============GetAccounts,pubkeyhex = %s,gid = %s,get mode =%s,param mode =%s ===============",pubkeyhex,gid,md,mode)
 	if mode == md {
 	    al,exsit := gp[gid]
 	    if exsit == true {
@@ -4235,7 +4239,6 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 
     als := make([]AccountsList, 0)
     for k,v := range gp {
-//	fmt.Println("==============GetAccounts,33333,key =%s,value =%s ===============",k,v)
 	alNew := AccountsList{GroupID: k, Accounts: v}
 	als = append(als, alNew)
     }

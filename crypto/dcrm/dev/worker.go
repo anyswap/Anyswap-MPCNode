@@ -1713,7 +1713,9 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	}
 
 	if ac.Mode == "1" {
-	    continue
+	    if !strings.EqualFold(ac.Account,geter_acc) {
+		continue
+	    }
 	}
 
 	///////
@@ -1756,6 +1758,7 @@ type LockOutCurNodeInfo struct {
     Cointype string
     LimitNum string
     Mode string
+    TimeStamp string
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
@@ -1788,9 +1791,13 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	    continue
 	}
 
-	//nodesigs := make([]string,0)
+	if ac.Mode == "1" {
+	    if !strings.EqualFold(ac.Account,geter_acc) {
+		continue
+	    }
+	}
+
 	rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()
-	//da,exsit := LdbPubKeyData[rk]
 	var da []byte
 	datmp,exsit := LdbPubKeyData.ReadMap(rk)
 	if exsit == false {
@@ -1813,10 +1820,9 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 		if err == nil {
 		    pd := pubs.(*PubKeyData)
 		    if pd != nil {
-	//		nodesigs = pd.NodeSigs
 			///////
 			key := Keccak256Hash([]byte(strings.ToLower(pd.Account + ":" + "ALL" + ":" + pd.GroupId + ":" + pd.Nonce + ":" + pd.LimitNum + ":" + pd.Mode))).Hex()
-			if CheckAcc(cur_enode,geter_acc,key) == false {
+			if pd.Mode == "0" && CheckAcc(cur_enode,geter_acc,key) == false {
 			    continue
 			}
 			/////
@@ -1841,17 +1847,14 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
 	
-	los := &LockOutCurNodeInfo{Key:key,Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode}
+	los := &LockOutCurNodeInfo{Key:key,Account:ac.Account,GroupId:ac.GroupId,Nonce:ac.Nonce,DcrmFrom:ac.DcrmFrom,DcrmTo:ac.DcrmTo,Value:ac.Value,Cointype:ac.Cointype,LimitNum:ac.LimitNum,Mode:ac.Mode,TimeStamp:ac.TimeStamp}
 	ret2,err := json.Marshal(los)
-	//fmt.Println("======================GetCurNodeLockOutInfo,succss get ret =%s,err =%v=================",string(ret2),err)
-
 	ret = append(ret,string(ret2))
 	////
     }
 
     ///////
     ss := strings.Join(ret,"|")
-    //fmt.Println("===============GetCurNodeLockOutInfo,ret=%s===============",ss)
     return ss,"",nil
 }
 
@@ -3130,7 +3133,6 @@ type GetCurNodeLockOutInfoSendMsgToDcrm struct {
 }
 
 func (self *GetCurNodeLockOutInfoSendMsgToDcrm) Run(workid int,ch chan interface{}) bool {
-    //fmt.Println("==============GetCurNodeLockOutInfoSendMsgToDcrm.Run,workid =%v=================",workid)
     if workid < 0 || workid >= RpcMaxWorker {
 	res := RpcDcrmRes{Ret:"",Tip:"dcrm back-end internal error:get worker id fail",Err:GetRetErr(ErrGetWorkerIdError)}
 	ch <- res
@@ -3293,7 +3295,6 @@ func SendReqToGroup(msg string,rpctype string) (string,string,error) {
     var keytest string
     switch rpctype {
 	case "rpc_get_cur_node_lockout_info":
-	    //fmt.Println("=============SendReqToGroup,type is rpc_get_cur_node_lockout_info==============")
 	    v := GetCurNodeLockOutInfoSendMsgToDcrm{Account:msg}
 	    rch := make(chan interface{},1)
 	    req = RpcReq{rpcdata:&v,ch:rch}

@@ -1143,7 +1143,6 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]string,string,error) {
 func GetCurNodeLockOutInfo(geter_acc string) ([]string,string,error) {
     reply,tip,err := SendReqToGroup(geter_acc,"rpc_get_cur_node_lockout_info")
     if reply == "" || err != nil {
-	//fmt.Println("===========dcrm.GetCurNodeLockOutInfo,no get result,err =%v ============",err)
 	return nil,tip,err 
     }
 

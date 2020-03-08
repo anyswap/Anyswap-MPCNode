@@ -743,11 +743,11 @@ func AcceptLockOut(raw string) (string,string,error) {
     data := string(tx.Data())
     datas := strings.Split(data,":")
 
-    if len(datas) < 11 {
+    if len(datas) < 12 {
 	return "","transacion data format error",fmt.Errorf("tx.data error.")
     }
 
-    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept
+    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept:timestamp
     if datas[0] != "ACCEPTLOCKOUT" {
 	return "","transaction data format error,it is not ACCEPTLOCKOUT tx",fmt.Errorf("tx.data error,it is not ACCEPTLOCKOUT tx.")
     }
@@ -807,12 +807,12 @@ func AcceptLockOut(raw string) (string,string,error) {
 
     ///////
     rk := dev.Keccak256Hash([]byte(strings.ToLower(pd.Account + ":" + "ALL" + ":" + pd.GroupId + ":" + pd.Nonce + ":" + pd.LimitNum + ":" + pd.Mode))).Hex()
-    if dev.CheckAcc(cur_enode,from.Hex(),rk) == false {
+    if pd.Mode == "0" && dev.CheckAcc(cur_enode,from.Hex(),rk) == false {
 	return "","invalid accepter",fmt.Errorf("invalid accepter")
     }
     /////
 
-    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept
+    //ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept:timestamp
     key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[8]))).Hex()
     datmp,exsit = dev.LdbLockOut.ReadMap(key)
     if exsit == false {
@@ -844,6 +844,10 @@ func AcceptLockOut(raw string) (string,string,error) {
     ac := dss.(*dev.AcceptLockOutData)
     if ac == nil {
 	return "","dcrm back-end internal error:get accept result from db fail",fmt.Errorf("get accept result from db fail")
+    }
+
+    if ac.Mode == "1" {
+	return "","mode = 1,do not need to accept",fmt.Errorf("mode = 1,do not need to accept")
     }
 
     tip,err = dev.AcceptLockOut(datas[1],datas[2],datas[3],datas[4],datas[8],false,accept,status,"","","","",ac.WorkId)

@@ -106,11 +106,11 @@ func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 }
 
 func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
-    common.Info("==========call rpc AcceptLockOut from web ==========","raw = ",raw)
+    fmt.Printf("%v ==========call rpc AcceptLockOut from web,raw = %v==========\n",common.CurrentTime(),raw)
 
     data := make(map[string]interface{})
     ret,tip,err := dcrm.AcceptLockOut(raw)
-    common.Info("==========finish call rpc AcceptLockOut, ","ret = ",ret,"tip = ",tip,"err = ",err)
+    fmt.Printf("%v ==========call rpc AcceptLockOut from web,ret = %v,tip = %v,err = %v,raw = %v==========\n",common.CurrentTime(),ret,tip,err,raw)
     if err != nil {
 	data["result"] = ""
 	return map[string]interface{}{

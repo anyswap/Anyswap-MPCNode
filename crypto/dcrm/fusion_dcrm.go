@@ -638,11 +638,11 @@ func AcceptReqAddr(raw string) (string,string,error) {
     data := string(tx.Data())
     datas := strings.Split(data,":")
 
-    if len(datas) < 8 {
+    if len(datas) < 9 {
 	return "","transacion data format error",fmt.Errorf("tx.data error.")
     }
 
-    //ACCEPTREQADDR:account:cointype:groupid:nonce:threshold:mode:accept
+    //ACCEPTREQADDR:account:cointype:groupid:nonce:threshold:mode:accept:timestamp
     if datas[0] != "ACCEPTREQADDR" {
 	return "","transaction data format error,it is not ACCEPTREQADDR tx",fmt.Errorf("tx.data error,it is not ACCEPTREQADDR tx.")
     }
@@ -695,7 +695,11 @@ func AcceptReqAddr(raw string) (string,string,error) {
     }
 
     ///////
-    if dev.CheckAcc(cur_enode,from.Hex(),key) == false {
+    if ac.Mode == "1" {
+	return "","mode = 1,do not need to accept",fmt.Errorf("mode = 1,do not need to accept")
+    }
+
+    if ac.Mode == "0" && dev.CheckAcc(cur_enode,from.Hex(),key) == false {
 	return "","invalid accepter",fmt.Errorf("invalid accepter")
     }
     /////

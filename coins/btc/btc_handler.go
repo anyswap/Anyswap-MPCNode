@@ -51,6 +51,12 @@ var feeRate, _ = btcutil.NewAmount(0.0001)
 
 var hashType = txscript.SigHashAll
 
+const (
+        // defaultMaxFeeRate is the default maximum fee rate in sat/KB enforced
+        // by bitcoind v0.19.0 or after for transaction broadcast.
+        defaultMaxFeeRate = btcutil.SatoshiPerBitcoin / 10
+)
+
 type BTCHandler struct{
 	serverHost string
 	serverPort int
@@ -632,13 +638,20 @@ func SendRawTransaction (c *rpcutils.RpcClient, tx *wire.MsgTx, allowHighFees bo
                 }
                 txHex = hex.EncodeToString(buf.Bytes())
         }
-	cmd := btcjson.NewSendRawTransactionCmd(txHex, &allowHighFees)
+
+        var maxFeeRate int32
+        if !allowHighFees {
+                maxFeeRate = defaultMaxFeeRate
+        }
+        // after bitcoind 0.19, use 'NewBitcoindSendRawTransactionCmd'
+        //cmd := btcjson.NewSendRawTransactionCmd(txHex, &allowHighFees)
+        cmd := btcjson.NewBitcoindSendRawTransactionCmd(txHex, maxFeeRate)
 
 	marshalledJSON, err := btcjson.MarshalCmd(1, cmd)
         if err != nil {
 		return "", err
 	}
-	marshalledJSON = []byte(strings.Replace(string(marshalledJSON), "true", "0", -1))
+	//marshalledJSON = []byte(strings.Replace(string(marshalledJSON), "true", "0", -1))
 	fmt.Printf("\n\nreq:\n%+v\n", string(marshalledJSON))
 
 	retJSON, err := c.Send(string(marshalledJSON))

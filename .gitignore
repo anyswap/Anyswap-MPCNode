@@ -13,3 +13,4 @@
 #go.sum
 #go.mod
 vendor
+bin

@@ -435,7 +435,7 @@ func ReqDcrmAddr(raw string,mode string) (string,string,error) {
     }
 
     nodecnt,_ := strconv.Atoi(nums[1])
-    if len(datas) < (3+nodecnt) {
+    if mode == "0" && len(datas) < (4+nodecnt) {
 	return "","transacion data format error",fmt.Errorf("tx.data error.")
     }
 

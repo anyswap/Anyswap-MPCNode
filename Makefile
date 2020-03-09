@@ -2,22 +2,27 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-.PHONY: gdcrm bootnode cfaucet clean fmt
+.PHONY: all gdcrm bootnode cfaucet clean fmt
+
+all:
+	./build.sh gdcrm bootnode
+	cp cmd/conf.toml bin/cmd
+	@echo "Done building."
 
 gdcrm:
-	./build.sh
+	./build.sh gdcrm
+	@echo "Done building."
+
+bootnode:
+	./build.sh bootnode
+	@echo "Done building."
+
+cfaucet:
+	./build.sh cfaucet
 	@echo "Done building."
 
 clean:
 	rm -fr bin/cmd/* 
-	#rm -rf go.mod
-	#rm -rf go.sum
-
-distClean:
-	rm -fr bin/cmd/* 
-	#rm -rf go.mod
-	#rm -rf go.sum
-	rm -rf vendor
 
 fmt:
 	./gofmt.sh

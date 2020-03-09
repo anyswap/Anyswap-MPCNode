@@ -312,87 +312,77 @@ func RecivReqAddr() {
 		}
 	    }
 
-	    //nonce check
-	    if exsit == true {
-		fmt.Printf("%v =====================================RecivReqAddr,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v, =================================\n",common.CurrentTime(),data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
-		return
-	    }
+	    if exsit == false {
+		cur_nonce,_,_ := dev.GetReqAddrNonce(data.Account)
+		cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+		new_nonce_num,_ := new(big.Int).SetString(data.Nonce,10)
+		if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		    _,err := dev.SetReqAddrNonce(data.Account,data.Nonce)
+		    fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n",common.CurrentTime(),data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,err,data.Key)
+		    if err == nil {
+			ac := &dev.AcceptReqAddrData{Account:data.Account,Cointype:"ALL",GroupId:data.GroupId,Nonce:data.Nonce,LimitNum:data.ThresHold,Mode:data.Mode,TimeStamp:data.Datas[3],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
+			err := dev.SaveAcceptReqAddrData(ac)
+			fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n",common.CurrentTime(),data.Account,err,data.Key)
+			if err == nil {
+			    ////////bug
+			    go func(d ReqAddrData) {
+				/////////////////////tmp code //////////////////////
+				if d.Mode == "0" {
+				    mp := []string{d.Key,cur_enode}
+				    enode := strings.Join(mp,"-")
+				    s0 := "GroupAccounts"
+				    s1 := d.NodeCnt
+				    ss := enode + common.Sep + s0 + common.Sep + s1
+				    
+				    nodecnt,_ := strconv.Atoi(d.NodeCnt)
+				    for j:=0;j<nodecnt;j++ {
+					tx2 := new(types.Transaction)
+					vs := common.FromHex(d.Datas[4+j])
+					if err := rlp.DecodeBytes(vs, tx2); err != nil {
+					    return
+					}
 
-	    cur_nonce,_,_ := dev.GetReqAddrNonce(data.Account)
-	    cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
-	    new_nonce_num,_ := new(big.Int).SetString(data.Nonce,10)
-	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-		_,err := dev.SetReqAddrNonce(data.Account,data.Nonce)
-		fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n",common.CurrentTime(),data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,err,data.Key)
-		if err != nil {
-		    return
-		}
-	    }
-	    
-	    //if data.Mode == "0" {// self-group
-		ac := &dev.AcceptReqAddrData{Account:data.Account,Cointype:"ALL",GroupId:data.GroupId,Nonce:data.Nonce,LimitNum:data.ThresHold,Mode:data.Mode,TimeStamp:data.Datas[3],Deal:false,Accept:"false",Status:"Pending",PubKey:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
-		err := dev.SaveAcceptReqAddrData(ac)
-		fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n",common.CurrentTime(),data.Account,err,data.Key)
-		if err != nil {
-		    return
-		}
-	    //}
-	    
-	    ////////bug
-	    go func(d ReqAddrData) {
-		/////////////////////tmp code //////////////////////
-		if d.Mode == "0" {
-		    mp := []string{d.Key,cur_enode}
-		    enode := strings.Join(mp,"-")
-		    s0 := "GroupAccounts"
-		    s1 := d.NodeCnt
-		    ss := enode + common.Sep + s0 + common.Sep + s1
-		    
-		    nodecnt,_ := strconv.Atoi(d.NodeCnt)
-		    for j:=0;j<nodecnt;j++ {
-			tx2 := new(types.Transaction)
-			vs := common.FromHex(d.Datas[4+j])
-			if err := rlp.DecodeBytes(vs, tx2); err != nil {
-			    return
+					signer := types.NewEIP155Signer(big.NewInt(30400)) //
+					from2, err := types.Sender(signer, tx2)
+					if err != nil {
+					    signer = types.NewEIP155Signer(big.NewInt(4)) //
+					    from2, err = types.Sender(signer, tx2)
+					    if err != nil {
+						return
+					    }
+					}
+
+					eid := string(tx2.Data())
+					acc := from2.Hex()
+					ss += common.Sep
+					ss += eid
+					ss += common.Sep
+					ss += acc
+				    }
+				    
+				    kd := dev.KeyData{Key:[]byte(d.Key),Data:ss}
+				    dev.GAccsDataChan <-kd
+				    dev.GAccs.WriteMap(d.Key,ss)
+				    dev.SendMsgToDcrmGroup(ss,d.GroupId)
+				    fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n",common.CurrentTime(),ss,d.Key)
+				}
+				////////////////////////////////////////////////////
+
+				//coin := "ALL"
+				//if !types.IsDefaultED25519(msgs[1]) {  //TODO
+				//}
+
+				addr,_,err := dev.SendReqDcrmAddr(d.Account,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.Datas[3],d.Key)
+				fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n",common.CurrentTime(),addr,err,d.Key)
+				if addr != "" && err == nil {
+				    return
+				}
+			    }(data)
+			    //
 			}
-
-			signer := types.NewEIP155Signer(big.NewInt(30400)) //
-			from2, err := types.Sender(signer, tx2)
-			if err != nil {
-			    signer = types.NewEIP155Signer(big.NewInt(4)) //
-			    from2, err = types.Sender(signer, tx2)
-			    if err != nil {
-				return
-			    }
-			}
-
-			eid := string(tx2.Data())
-			acc := from2.Hex()
-			ss += common.Sep
-			ss += eid
-			ss += common.Sep
-			ss += acc
 		    }
-		    
-		    kd := dev.KeyData{Key:[]byte(d.Key),Data:ss}
-		    dev.GAccsDataChan <-kd
-		    dev.GAccs.WriteMap(d.Key,ss)
-		    dev.SendMsgToDcrmGroup(ss,d.GroupId)
-		    fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n",common.CurrentTime(),ss,d.Key)
 		}
-		////////////////////////////////////////////////////
-
-		//coin := "ALL"
-		//if !types.IsDefaultED25519(msgs[1]) {  //TODO
-		//}
-
-		addr,_,err := dev.SendReqDcrmAddr(d.Account,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.Datas[3],d.Key)
-		fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n",common.CurrentTime(),addr,err,d.Key)
-		if addr != "" && err == nil {
-		    return
-		}
-	    }(data)
-	    //
+	    }
 	}
     }
 }
@@ -896,44 +886,34 @@ func RecivLockOut() {
 		}
 	    }
 
-	    ///////
-	    if exsit == true {
-		fmt.Printf("%v ==============================RecivLockOut,lockout nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n",common.CurrentTime(),data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
-		return
-	    }
-	    //
-	    
-	    cur_nonce,_,_ := dev.GetLockOutNonce(data.Account,data.Cointype,data.DcrmFrom)
-	    cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
-	    new_nonce_num,_ := new(big.Int).SetString(data.Nonce,10)
-	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-		_,err := dev.SetLockOutNonce(data.Account,data.Cointype,data.DcrmFrom,data.Nonce)
-		if err != nil {
-		    fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n",common.CurrentTime(),err,data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
-		    return
-		}
-	    }
+	    if exsit == false {
+		cur_nonce,_,_ := dev.GetLockOutNonce(data.Account,data.Cointype,data.DcrmFrom)
+		cur_nonce_num,_ := new(big.Int).SetString(cur_nonce,10)
+		new_nonce_num,_ := new(big.Int).SetString(data.Nonce,10)
+		if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		    _,err := dev.SetLockOutNonce(data.Account,data.Cointype,data.DcrmFrom,data.Nonce)
+		    if err == nil {
+			fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n",common.CurrentTime(),err,data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
+			
+			ac := &dev.AcceptLockOutData{Account:data.Account,GroupId:data.GroupId,Nonce:data.Nonce,DcrmFrom:data.DcrmFrom,DcrmTo:data.DcrmTo,Value:data.Value,Cointype:data.Cointype,LimitNum:data.ThresHold,Mode:data.Mode,TimeStamp:data.TimeStamp,Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
+			err := dev.SaveAcceptLockOutData(ac)
+			if err == nil {
+			    fmt.Printf("%v ==============================RecivLockOut,finish call SaveAcceptLockOutData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n",common.CurrentTime(),err,data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
+			    
+			    go func(d LockOutData) {
+				for i:=0;i<1;i++ {
+				    txhash,_,err2 := dev.SendLockOut(d.Account,d.DcrmFrom,d.DcrmTo,d.Value,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.TimeStamp,d.Key) 
+				    if err2 == nil && txhash != "" {
+					return
+				    }
 
-	    //if data.Mode == "0" {
-	    ac := &dev.AcceptLockOutData{Account:data.Account,GroupId:data.GroupId,Nonce:data.Nonce,DcrmFrom:data.DcrmFrom,DcrmTo:data.DcrmTo,Value:data.Value,Cointype:data.Cointype,LimitNum:data.ThresHold,Mode:data.Mode,TimeStamp:data.TimeStamp,Deal:false,Accept:"false",Status:"Pending",OutTxHash:"",Tip:"",Error:"",AllReply:"",WorkId:-1}
-		err := dev.SaveAcceptLockOutData(ac)
-		if err != nil {
-		    fmt.Printf("%v ==============================RecivLockOut,finish call SaveAcceptLockOutData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n",common.CurrentTime(),err,data.Account,data.GroupId,data.ThresHold,data.Mode,data.Nonce,data.Key)
-		  return 
-		}
-	    //}
-	    //////////
-	   
-	    go func(d LockOutData) {
-		for i:=0;i<1;i++ {
-		    txhash,_,err2 := dev.SendLockOut(d.Account,d.DcrmFrom,d.DcrmTo,d.Value,d.Cointype,d.GroupId,d.Nonce,d.ThresHold,d.Mode,d.TimeStamp,d.Key) 
-		    if err2 == nil && txhash != "" {
-			return
+				    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
+				}
+			    }(data)
+			}
 		    }
-
-		    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
 		}
-	    }(data)
+	    }
 	}
     }
 }

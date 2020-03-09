@@ -1715,9 +1715,9 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string,string,error) {
 	}
 
 	if ac.Mode == "1" {
-	    if !strings.EqualFold(ac.Account,geter_acc) {
+	//    if !strings.EqualFold(ac.Account,geter_acc) {
 		continue
-	    }
+	//    }
 	}
 
 	///////
@@ -1794,9 +1794,9 @@ func GetCurNodeLockOutInfo(geter_acc string) (string,string,error) {
 	}
 
 	if ac.Mode == "1" {
-	    if !strings.EqualFold(ac.Account,geter_acc) {
+	    //if !strings.EqualFold(ac.Account,geter_acc) {
 		continue
-	    }
+	    //}
 	}
 
 	rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()

@@ -1,9 +1,10 @@
 package examples
 
 import (
+	"log"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evt"
-	"log"
 )
 
 func PrintGetInfo(evt *evt.Instance) {
@@ -84,5 +85,3 @@ func PrintGetTrxIdForLinkId(linkId string, evt *evt.Instance) {
 
 	log.Println(result)
 }
-
-

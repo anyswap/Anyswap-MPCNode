@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -22,10 +22,11 @@ import (
 	"math/big"
 	"runtime/debug"
 	"strings"
+
 	"github.com/binance-chain/go-sdk/client/basic"
 	"github.com/binance-chain/go-sdk/client/query"
 	ctypes "github.com/binance-chain/go-sdk/common/types"
-	bnbtypes  "github.com/binance-chain/go-sdk/types"
+	bnbtypes "github.com/binance-chain/go-sdk/types"
 	"github.com/binance-chain/go-sdk/types/msg"
 	"github.com/binance-chain/go-sdk/types/tx"
 	"github.com/btcsuite/btcd/btcec"
@@ -41,25 +42,25 @@ type BNBHandler struct {
 	Symbol string
 }
 
-func NewBNBHandler () *BNBHandler {
+func NewBNBHandler() *BNBHandler {
 	if Network == "testnet" {
 		ctypes.Network = ctypes.TestNetwork
 	}
 	return &BNBHandler{
-		Symbol:"BNB",
+		Symbol: "BNB",
 	}
 }
 
 var Sep string = "_"
 
-func NewBEP2Handler (symbol string) *BNBHandler {
+func NewBEP2Handler(symbol string) *BNBHandler {
 	if Network == "testnet" {
 		ctypes.Network = ctypes.TestNetwork
 	}
 	symbol = strings.TrimPrefix(symbol, "BEP2")
 	symbol = strings.Replace(symbol, Sep, "-", -1)
 	return &BNBHandler{
-		Symbol:symbol,
+		Symbol: symbol,
 	}
 }
 
@@ -110,12 +111,12 @@ func (h *BNBHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 }
 
 func (h *BNBHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_BuildUnsignedTransaction Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	transaction, hexMsg, err := h.BNB_buildSendTx(fromAddress, fromPublicKey, toAddress, amount)
 	if err != nil {
 		return
@@ -126,12 +127,12 @@ func (h *BNBHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 }
 
 func (h *BNBHandler) BNB_buildSendTx(fromAddress, fromPublicKey, toAddress string, amount *big.Int) (transaction BNBTx, hexMsg []byte, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_BuildSendTx Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	amt := amount.Int64()
 	c := basic.NewClient("testnet-dex.binance.org:443")
 	q := query.NewClient(c)
@@ -158,17 +159,17 @@ func (h *BNBHandler) BNB_buildSendTx(fromAddress, fromPublicKey, toAddress strin
 	sendMsg := msg.CreateSendMsg(fromAddr, fromCoins, to)
 
 	signMsg := tx.StdSignMsg{
-		ChainID:"Binance-Chain-Nile",
-		AccountNumber:acc.Number,
-		Sequence:acc.Sequence,
-		Msgs:[]msg.Msg{sendMsg},
-		Memo:"this is a Dcrm lockout transaction (^_^)",
-		Source:tx.Source,
+		ChainID:       "Binance-Chain-Nile",
+		AccountNumber: acc.Number,
+		Sequence:      acc.Sequence,
+		Msgs:          []msg.Msg{sendMsg},
+		Memo:          "this is a Dcrm lockout transaction (^_^)",
+		Source:        tx.Source,
 	}
 
 	transaction = BNBTx{
 		SignMsg: signMsg,
-		Pubkey: fromPublicKey,
+		Pubkey:  fromPublicKey,
 	}
 	hexMsg = signMsg.Bytes()
 	return
@@ -176,7 +177,7 @@ func (h *BNBHandler) BNB_buildSendTx(fromAddress, fromPublicKey, toAddress strin
 
 type BNBTx struct {
 	SignMsg tx.StdSignMsg
-	Pubkey string
+	Pubkey  string
 }
 
 func (h *BNBHandler) SignTransaction(hexTx []byte, privateKey interface{}) (rsv []string, err error) {
@@ -189,12 +190,12 @@ func (h *BNBHandler) SignTransaction(hexTx []byte, privateKey interface{}) (rsv 
 }
 
 func (h *BNBHandler) MakeSignedTransaction(rsv []string, transaction interface{}) (signedTransaction interface{}, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_MakeSignedTransaction Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	if len(rsv) < 1 {
 		err := fmt.Errorf("no rsv")
 		return nil, err
@@ -243,12 +244,12 @@ func (h *BNBHandler) MakeSignedTransaction(rsv []string, transaction interface{}
 }
 
 func (h *BNBHandler) SubmitTransaction(signedTransaction interface{}) (txhash string, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_SubmitTransaction Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	c := basic.NewClient("testnet-dex.binance.org:443")
 	param := map[string]string{}
 	param["sync"] = "true"
@@ -261,12 +262,12 @@ func (h *BNBHandler) SubmitTransaction(signedTransaction interface{}) (txhash st
 }
 
 func (h *BNBHandler) GetTransactionInfo(txhash string) (fromAddress string, txOutputs []types.TxOutput, jsonstring string, confirmed bool, fee types.Value, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_GetTransactionInfo Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	confirmed = false
 	c := basic.NewClient("testnet-dex.binance.org:443")
 	resp, err := c.GetTx(txhash)
@@ -277,7 +278,7 @@ func (h *BNBHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	confirmed = true
 	fee.Cointype = "BNB"
 	fee.Val = big.NewInt(37500)
-	b, err := hex.DecodeString(resp.Data[3:len(resp.Data)-1])
+	b, err := hex.DecodeString(resp.Data[3 : len(resp.Data)-1])
 	if err != nil {
 		return
 	}
@@ -291,14 +292,14 @@ func (h *BNBHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	for _, m := range msgs {
 		if m.Type() == "send" {
 			sendmsg := m.(msg.SendMsg)
-			if sendmsg.Inputs[0].Coins[0].Denom ==h.Symbol {
+			if sendmsg.Inputs[0].Coins[0].Denom == h.Symbol {
 				fromAddress = sendmsg.Inputs[0].Address.String()
 			}
 			for _, out := range sendmsg.Outputs {
 				if out.Coins[0].Denom == h.Symbol {
 					output := types.TxOutput{
 						ToAddress: out.Address.String(),
-						Amount: big.NewInt(out.Coins[0].Amount),
+						Amount:    big.NewInt(out.Coins[0].Amount),
 					}
 					txOutputs = append(txOutputs, output)
 				}
@@ -310,12 +311,12 @@ func (h *BNBHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 }
 
 func (h *BNBHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_GetAddressBalance Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	c := basic.NewClient("testnet-dex.binance.org:443")
 	q := query.NewClient(c)
 	ba, err := q.GetAccount(address)
@@ -326,7 +327,7 @@ func (h *BNBHandler) GetAddressBalance(address string, jsonstring string) (balan
 		for _, bal := range ba.Balances {
 			var ojbk bool
 			if strings.EqualFold(bal.Symbol, h.Symbol) {
-				str := strings.Replace(bal.Free.String(),".","",-1)
+				str := strings.Replace(bal.Free.String(), ".", "", -1)
 				balance.CoinBalance.Cointype = h.GetSymbol()
 				balance.CoinBalance.Val, ojbk = new(big.Int).SetString(str, 10)
 				if !ojbk {
@@ -338,7 +339,7 @@ func (h *BNBHandler) GetAddressBalance(address string, jsonstring string) (balan
 		for _, bal := range ba.Balances {
 			var ojbk bool
 			if strings.EqualFold(bal.Symbol, h.Symbol) {
-				str := strings.Replace(bal.Free.String(),".","",-1)
+				str := strings.Replace(bal.Free.String(), ".", "", -1)
 				balance.TokenBalance.Cointype = h.GetSymbol()
 				balance.TokenBalance.Val, ojbk = new(big.Int).SetString(str, 10)
 				if !ojbk {
@@ -346,7 +347,7 @@ func (h *BNBHandler) GetAddressBalance(address string, jsonstring string) (balan
 				}
 			}
 			if strings.EqualFold(bal.Symbol, "BNB") {
-				str := strings.Replace(bal.Free.String(),".","",-1)
+				str := strings.Replace(bal.Free.String(), ".", "", -1)
 				balance.CoinBalance.Cointype = h.GetSymbol()
 				balance.CoinBalance.Val, ojbk = new(big.Int).SetString(str, 10)
 				if !ojbk {
@@ -363,4 +364,3 @@ func (h *BNBHandler) GetDefaultFee() (fee types.Value) {
 	fee.Cointype = "BNB"
 	return
 }
-

@@ -1,15 +1,16 @@
 package btc
 
 import (
-	"fmt"
 	"encoding/json"
-	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
+	"fmt"
 	"math/big"
 	"runtime/debug"
+	"sort"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
+	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"sort"
 )
 
 func ListUnspent_electrs(addr string) (list []btcjson.ListUnspentResult, balance *big.Int, err error) {
@@ -17,12 +18,12 @@ func ListUnspent_electrs(addr string) (list []btcjson.ListUnspentResult, balance
 }
 
 func listUnspent_electrs(addr string) (list []btcjson.ListUnspentResult, balance *big.Int, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	path := `address/` + addr + `/utxo`
 	ret, err := rpcutils.HttpGet(config.ApiGateways.BitcoinGateway.ElectrsAddress, path, nil)
 	if err != nil {
@@ -44,23 +45,23 @@ func listUnspent_electrs(addr string) (list []btcjson.ListUnspentResult, balance
 		path = `tx/` + utxo.Txid
 		txret, txerr := rpcutils.HttpGet(config.ApiGateways.BitcoinGateway.ElectrsAddress, path, nil)
 		if txerr != nil {
-			fmt.Printf("%v ======== listUnspent_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
+			fmt.Printf("%v ======== listUnspent_electrs,get utxo script,err = %v ========\n", common.CurrentTime(), txerr)
 			continue
 		}
 		var tx electrsTx
 		txerr = json.Unmarshal(txret, &tx)
 		if txerr != nil {
-			fmt.Printf("%v ======== listUnspent_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
+			fmt.Printf("%v ======== listUnspent_electrs,get utxo script,err = %v ========\n", common.CurrentTime(), txerr)
 			continue
 		}
 		utxo.Script = tx.Vout[int(utxo.Vout)].Scriptpubkey
 		res := btcjson.ListUnspentResult{
-			TxID: utxo.Txid,
-			Vout: uint32(utxo.Vout),
+			TxID:         utxo.Txid,
+			Vout:         uint32(utxo.Vout),
 			ScriptPubKey: utxo.Script,
-			Address: addr,
-			Amount: utxo.Value/1e8,
-			Spendable: true,
+			Address:      addr,
+			Amount:       utxo.Value / 1e8,
+			Spendable:    true,
 		}
 		if utxo.Status.Confirmed {
 			res.Confirmations = 6
@@ -77,13 +78,13 @@ func GetTransaction_electrs(hash string) (*electrsTx, error) {
 	path := `tx/` + hash
 	txret, txerr := rpcutils.HttpGet(config.ApiGateways.BitcoinGateway.ElectrsAddress, path, nil)
 	if txerr != nil {
-		fmt.Printf("%v ======== GetTransaction_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
+		fmt.Printf("%v ======== GetTransaction_electrs,get utxo script,err = %v ========\n", common.CurrentTime(), txerr)
 		return nil, txerr
 	}
 	var tx electrsTx
 	txerr = json.Unmarshal(txret, &tx)
 	if txerr != nil {
-		fmt.Printf("%v ======== GetTransaction_electrs,get utxo script,err = %v ========\n", common.CurrentTime(),txerr)
+		fmt.Printf("%v ======== GetTransaction_electrs,get utxo script,err = %v ========\n", common.CurrentTime(), txerr)
 		return nil, txerr
 	}
 	return &tx, nil
@@ -92,7 +93,7 @@ func GetTransaction_electrs(hash string) (*electrsTx, error) {
 type electrsTx struct {
 	Txid string
 	Vout []electrsTxOut
-	Fee float64
+	Fee  float64
 }
 
 type electrsTxOut struct {
@@ -100,16 +101,16 @@ type electrsTxOut struct {
 }
 
 type electrsUtxo struct {
-	Txid string `json:"txid"`
-	Vout uint32
+	Txid   string `json:"txid"`
+	Vout   uint32
 	Script string
 	Status utxoStatus
-	Value float64
+	Value  float64
 }
 
 type utxoStatus struct {
-	Confirmed bool
+	Confirmed    bool
 	Block_height float64
-	Block_hash string
-	Block_time float64
+	Block_hash   string
+	Block_time   float64
 }

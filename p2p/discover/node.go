@@ -31,9 +31,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 const NodeIDBits = 512

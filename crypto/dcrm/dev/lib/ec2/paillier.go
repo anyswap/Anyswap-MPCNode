@@ -7,27 +7,28 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
  */
 
-package ec2 
+package ec2
 
 import (
 	"errors"
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"math/big"
 	"strconv"
+
+	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 )
 
 var ErrMessageTooLong = errors.New("[ERROR]: message is too long.")
 
 type PublicKey struct {
-	Length string 
+	Length string
 	N      *big.Int // n = p*q, where p and q are prime
 	G      *big.Int // in practical, G = N + 1
 	N2     *big.Int // N2 = N * N
@@ -47,12 +48,12 @@ func GenerateKeyPair(length int) (*PublicKey, *PrivateKey) {
 	q := <-SafePrime //random.GetSafeRandomPrimeInt(length / 2)
 
 	if p == nil || q == nil {
-	    return nil,nil
+		return nil, nil
 	}
 
 	////TODO tmp:1000-->4
-	SafePrime <-p
-	SafePrime <-q
+	SafePrime <- p
+	SafePrime <- q
 	///////
 
 	n := new(big.Int).Mul(p, q)
@@ -72,9 +73,9 @@ func GenerateKeyPair(length int) (*PublicKey, *PrivateKey) {
 }
 
 //func (publicKey *PublicKey) Encrypt(mBigInt *big.Int) (*big.Int, error) {
-func (publicKey *PublicKey) Encrypt(mBigInt *big.Int) (*big.Int,*big.Int, error) {
+func (publicKey *PublicKey) Encrypt(mBigInt *big.Int) (*big.Int, *big.Int, error) {
 	if mBigInt.Cmp(publicKey.N) > 0 {
-		return nil, nil,ErrMessageTooLong
+		return nil, nil, ErrMessageTooLong
 	}
 
 	rndStar := random.GetRandomIntFromZnStar(publicKey.N)
@@ -88,7 +89,7 @@ func (publicKey *PublicKey) Encrypt(mBigInt *big.Int) (*big.Int,*big.Int, error)
 	// G^m * R^n mod N2
 	cipher := new(big.Int).Mod(GmRN, publicKey.N2)
 
-	return cipher, rndStar,nil
+	return cipher, rndStar, nil
 }
 
 func (privateKey *PrivateKey) Decrypt(cipherBigInt *big.Int) (*big.Int, error) {
@@ -154,7 +155,7 @@ func (privateKey *PrivateKey) ZkFactProve() *ZkFactProof {
 	y = new(big.Int).Mul(y, e)
 	y = new(big.Int).Add(y, r)
 
-	zkFactProof := &ZkFactProof{H1: h1, H2: h2, Y: y, E: e,N: privateKey.N}
+	zkFactProof := &ZkFactProof{H1: h1, H2: h2, Y: y, E: e, N: privateKey.N}
 	return zkFactProof
 }
 
@@ -177,4 +178,3 @@ func (publicKey *PublicKey) ZkFactVerify(zkFactProof *ZkFactProof) bool {
 		return false
 	}
 }
-

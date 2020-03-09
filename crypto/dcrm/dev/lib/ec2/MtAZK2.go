@@ -7,21 +7,22 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
  */
 
-package ec2 
+package ec2
 
 import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 	//"github.com/fusion/dcrm-sdk/crypto/dcrm/dev/lib/ec2/paillier"
+	"math/big"
+
 	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"math/big"
 )
 
 type MtAZK2Proof struct {
@@ -104,8 +105,8 @@ func MtAZK2Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *Pub
 
 //func (mtAZK2Proof *MtAZK2Proof) MtAZK2Verify(c1 *big.Int, c2 *big.Int, publicKey *paillier.PublicKey, zkFactProof *paillier.ZkFactProof) bool {
 func (mtAZK2Proof *MtAZK2Proof) MtAZK2Verify(c1 *big.Int, c2 *big.Int, publicKey *PublicKey, zkFactProof *ZkFactProof) bool {
-    if mtAZK2Proof.S1 == nil || s256.S256().N3() == nil { //bug:lockin/lockout fail will crash
-	    return false
+	if mtAZK2Proof.S1 == nil || s256.S256().N3() == nil { //bug:lockin/lockout fail will crash
+		return false
 	}
 
 	if mtAZK2Proof.S1.Cmp(s256.S256().N3()) >= 0 { //MtAZK2 question 1

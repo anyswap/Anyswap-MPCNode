@@ -91,7 +91,7 @@ type pingPongService struct {
 
 func newPingPongService(id discover.NodeID) *pingPongService {
 	return &pingPongService{
-		id:  id,
+		id: id,
 	}
 }
 

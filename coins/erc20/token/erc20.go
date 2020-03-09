@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/fsn-dev/dcrm-walletService/coins/erc20/abi"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 )
 
@@ -54,7 +54,7 @@ type TokenFilterer struct {
 // TokenSession is an auto generated Go abiing around an Ethereum contract,
 // with pre-set call and transact options.
 type TokenSession struct {
-	Contract     *Token            // Generic contract abiing to set the session for
+	Contract     *Token           // Generic contract abiing to set the session for
 	CallOpts     abi.CallOpts     // Call options to use throughout this session
 	TransactOpts abi.TransactOpts // Transaction auth options to use throughout this session
 }
@@ -62,14 +62,14 @@ type TokenSession struct {
 // TokenCallerSession is an auto generated read-only Go abiing around an Ethereum contract,
 // with pre-set call options.
 type TokenCallerSession struct {
-	Contract *TokenCaller  // Generic contract caller abiing to set the session for
+	Contract *TokenCaller // Generic contract caller abiing to set the session for
 	CallOpts abi.CallOpts // Call options to use throughout this session
 }
 
 // TokenTransactorSession is an auto generated write-only Go abiing around an Ethereum contract,
 // with pre-set transact options.
 type TokenTransactorSession struct {
-	Contract     *TokenTransactor  // Generic contract transactor abiing to set the session for
+	Contract     *TokenTransactor // Generic contract transactor abiing to set the session for
 	TransactOpts abi.TransactOpts // Transaction auth options to use throughout this session
 }
 
@@ -395,12 +395,12 @@ type TokenApprovalIterator struct {
 	Event *TokenApproval // Event containing the contract specifics and raw log
 
 	contract *abi.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
+	event    string             // Event name to use for unpacking event data
 
-	logs chan types.Log        // Log channel receiving the found contract events
+	logs chan types.Log     // Log channel receiving the found contract events
 	sub  types.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
+	done bool               // Whether the subscription completed delivering logs
+	fail error              // Occurred error to stop iteration
 }
 
 // Next advances the iterator to the subsequent event, returning whether there
@@ -537,12 +537,12 @@ type TokenTransferIterator struct {
 	Event *TokenTransfer // Event containing the contract specifics and raw log
 
 	contract *abi.BoundContract // Generic contract to use for unpacking event data
-	event    string              // Event name to use for unpacking event data
+	event    string             // Event name to use for unpacking event data
 
-	logs chan types.Log        // Log channel receiving the found contract events
+	logs chan types.Log     // Log channel receiving the found contract events
 	sub  types.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
+	done bool               // Whether the subscription completed delivering logs
+	fail error              // Occurred error to stop iteration
 }
 
 // Next advances the iterator to the subsequent event, returning whether there

@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -15,13 +15,14 @@
  */
 
 package eos
+
 import (
 	//"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -37,7 +38,6 @@ import (
 
 	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
-
 )
 
 func EOSInit() {
@@ -48,14 +48,14 @@ func EOSInit() {
 type EOSHandler struct {
 }
 
-func NewEOSHandler () *EOSHandler {
+func NewEOSHandler() *EOSHandler {
 	return &EOSHandler{}
 }
 
 var EOS_DEFAULT_FEE *big.Int
 
 func (h *EOSHandler) GetDefaultFee() types.Value {
-	return types.Value{Cointype:"EOS",Val:EOS_DEFAULT_FEE}
+	return types.Value{Cointype: "EOS", Val: EOS_DEFAULT_FEE}
 }
 
 func (h *EOSHandler) IsToken() bool {
@@ -67,7 +67,7 @@ func (h *EOSHandler) PublicKeyToAddress(pubKeyHex string) (acctName string, err 
 	if len(pubKeyHex) != 132 && len(pubKeyHex) != 130 {
 		return "", errors.New("invalid public key length")
 	}
-	pubKeyHex = strings.TrimPrefix(pubKeyHex,"0x")
+	pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
 	acctName = GenAccountName(pubKeyHex)
 	return
 }
@@ -117,7 +117,7 @@ func (h *EOSHandler) SubmitTransaction(signedTransaction interface{}) (txhash st
 		return
 	}
 	if resStr.Error != nil {
-		err = fmt.Errorf("%v",resStr.Error)
+		err = fmt.Errorf("%v", resStr.Error)
 		return
 	}
 	if resStr.Transaction_id != "" {
@@ -128,41 +128,41 @@ func (h *EOSHandler) SubmitTransaction(signedTransaction interface{}) (txhash st
 }
 
 type SubmitTxRes struct {
-	Transaction_id string `json:"transaction_id"`
-	Error interface{} `json:"error,omitempty"`
+	Transaction_id string      `json:"transaction_id"`
+	Error          interface{} `json:"error,omitempty"`
 }
 
 func (h *EOSHandler) GetTransactionInfo(txhash string) (fromAddress string, txOutputs []types.TxOutput, jsonstring string, confirmed bool, fee types.Value, err error) {
-/*	api := "v1/history/get_transaction"
-	data := `{"id":"` + txhash + `","block_num_hint":"0"}`
-	ret := rpcutils.DoCurlRequest(nodeos, api, data)
-	var retStruct map[string]interface{}
-	json.Unmarshal([]byte(ret), &retStruct)
-	if retStruct["trx"] == nil {
-		if reterr := retStruct["error"]; reterr != nil {
-			name := reterr.(map[string]interface{})["name"]
-			details := reterr.(map[string]interface{})["details"].([]interface{})
-			var message string
-			if details != nil {
-				message = details[0].(map[string]interface{})["message"].(string)
+	/*	api := "v1/history/get_transaction"
+		data := `{"id":"` + txhash + `","block_num_hint":"0"}`
+		ret := rpcutils.DoCurlRequest(nodeos, api, data)
+		var retStruct map[string]interface{}
+		json.Unmarshal([]byte(ret), &retStruct)
+		if retStruct["trx"] == nil {
+			if reterr := retStruct["error"]; reterr != nil {
+				name := reterr.(map[string]interface{})["name"]
+				details := reterr.(map[string]interface{})["details"].([]interface{})
+				var message string
+				if details != nil {
+					message = details[0].(map[string]interface{})["message"].(string)
+				}
+				err = fmt.Errorf("%v, message: %v", name, message)
+				return
 			}
-			err = fmt.Errorf("%v, message: %v", name, message)
+			err = fmt.Errorf("  %v", ret)
 			return
 		}
-		err = fmt.Errorf("  %v", ret)
+		tfData := retStruct["trx"].(map[string]interface{})["actions"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})
+		fromAddress = tfData["from"].(string)
+		toAddress := tfData["receiver"].(string)
+		transferAmount := big.NewInt(int64(tfData["transfer"].(float64)))
+		txOutput := types.TxOutput{
+			ToAddress: toAddress,
+			Amount: transferAmount,
+		}
+		txOutputs = append(txOutputs, txOutput)
 		return
-	}
-	tfData := retStruct["trx"].(map[string]interface{})["actions"].([]interface{})[0].(map[string]interface{})["data"].(map[string]interface{})
-	fromAddress = tfData["from"].(string)
-	toAddress := tfData["receiver"].(string)
-	transferAmount := big.NewInt(int64(tfData["transfer"].(float64)))
-	txOutput := types.TxOutput{
-		ToAddress: toAddress,
-		Amount: transferAmount,
-	}
-	txOutputs = append(txOutputs, txOutput)
-	return
-*/
+	*/
 	req := BALANCE_SERVER + "get_tx?txhash=" + txhash
 	resp, err1 := http.Get(req)
 	if err1 != nil {
@@ -188,7 +188,7 @@ func (h *EOSHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	txstr := txstrI.(string)
 	txstr = strings.Replace(txstr, "\\", "", -1)
 	var eostx EOSTx
-	err4 := json.Unmarshal([]byte(txstr),&eostx)
+	err4 := json.Unmarshal([]byte(txstr), &eostx)
 	if err4 != nil {
 		err = err4
 		return
@@ -197,7 +197,6 @@ func (h *EOSHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	for _, x := range eostx.TxOutputs {
 		txOutputs = append(txOutputs, *x.ToTxOutput())
 	}
-
 
 	// eos transaction confirmed
 	confirmed = eostx.Confirmed
@@ -209,21 +208,21 @@ func (h *EOSHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 
 type EOSTx struct {
 	FromAddress string
-	TxOutputs []EOSTxOutput
-	Fee int64
-	Confirmed bool
+	TxOutputs   []EOSTxOutput
+	Fee         int64
+	Confirmed   bool
 }
 
 type EOSTxOutput struct {
 	ToAddress string
-	Amount string
+	Amount    string
 }
 
 func (e *EOSTxOutput) ToTxOutput() *types.TxOutput {
 	amt, _ := new(big.Int).SetString(e.Amount, 10)
 	return &types.TxOutput{
 		ToAddress: e.ToAddress,
-		Amount: amt,
+		Amount:    amt,
 	}
 }
 
@@ -307,7 +306,7 @@ func GetHeadBlockID(nodeos string) (chainID string, err error) {
 	var v interface{}
 	json.Unmarshal([]byte(res), &v)
 	m := v.(map[string]interface{})
-	return fmt.Sprintf("%v",m["head_block_id"]), nil
+	return fmt.Sprintf("%v", m["head_block_id"]), nil
 }
 
 func PubKeyToHex(pk string) (pubKeyHex string, _ error) {
@@ -321,7 +320,7 @@ func PubKeyToHex(pk string) (pubKeyHex string, _ error) {
 
 func HexToPubKey(pubKeyHex string) (ecc.PublicKey, error) {
 	fmt.Printf("hex is %v\nlen(hex) is %v\n\n", pubKeyHex, len(pubKeyHex))
-	pubKeyHex = strings.TrimPrefix(pubKeyHex,"0x")
+	pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
 	// TODO 判断长度
 	if len(pubKeyHex) == 130 {
 		uBytes, err := hex.DecodeString(pubKeyHex)
@@ -333,7 +332,7 @@ func HexToPubKey(pubKeyHex string) (ecc.PublicKey, error) {
 			return ecc.PublicKey{}, err
 		}
 		pubkeyBytes := pubkey.SerializeCompressed()
-		pubkeyBytes = append([]byte{0}, pubkeyBytes...)  // byte{0} 表示 curve K1, byte{1} 表示 curve R1
+		pubkeyBytes = append([]byte{0}, pubkeyBytes...) // byte{0} 表示 curve K1, byte{1} 表示 curve R1
 		return ecc.NewPublicKeyFromData(pubkeyBytes)
 	}
 
@@ -349,7 +348,7 @@ func HexToPubKey(pubKeyHex string) (ecc.PublicKey, error) {
 func SignDigestWithPrivKey(hash, wif string) (ecc.Signature, error) {
 	digest := hexToChecksum256(hash)
 	privKey, err := ecc.NewPrivateKey(wif)
-fmt.Printf("private key is %+v\n\n", privKey)
+	fmt.Printf("private key is %+v\n\n", privKey)
 	//checkErr(err)
 	if err != nil {
 		return ecc.Signature{}, err
@@ -376,16 +375,16 @@ func GetAccountNameByPubKey(pubKey string) ([]string, error) {
 }
 
 // dcrm签的rsv转换成eos签名
-func RSVToSignature (rsvStr string) (ecc.Signature, error) {
-fmt.Printf("1111 rsvStr is %v\n\n", rsvStr)
+func RSVToSignature(rsvStr string) (ecc.Signature, error) {
+	fmt.Printf("1111 rsvStr is %v\n\n", rsvStr)
 	rsv, _ := hex.DecodeString(rsvStr)
 	rsv[64] += byte(31)
-fmt.Printf("rsv is %v\n\n", rsv)
+	fmt.Printf("rsv is %v\n\n", rsv)
 	v := rsv[64]
-fmt.Printf("v is %v\n\n", v)
+	fmt.Printf("v is %v\n\n", v)
 	rs := rsv[:64]
 	vrs := append([]byte{v}, rs...)
-fmt.Printf("1111 vrs is %v\n\n", hex.EncodeToString(vrs))
+	fmt.Printf("1111 vrs is %v\n\n", hex.EncodeToString(vrs))
 	data := append([]byte{0}, vrs...)
 	return ecc.NewSignatureFromData(data)
 }
@@ -421,7 +420,7 @@ func EOS_newUnsignedTransaction(fromAcctName, toAcctName string, amount *big.Int
 		Name:    eos.ActN("transfer"),
 		Authorization: []eos.PermissionLevel{
 			{
-				Actor: from,
+				Actor:      from,
 				Permission: eos.PN("active"),
 			},
 		},
@@ -433,8 +432,8 @@ func EOS_newUnsignedTransaction(fromAcctName, toAcctName string, amount *big.Int
 		}),
 	}
 
-        var actions []*eos.Action
-        actions = append(actions, transfer)
+	var actions []*eos.Action
+	actions = append(actions, transfer)
 
 	// 获取 head block id
 	hbid, err := GetHeadBlockID(nodeos)
@@ -442,7 +441,7 @@ func EOS_newUnsignedTransaction(fromAcctName, toAcctName string, amount *big.Int
 		return "", nil, err
 	}
 	opts.HeadBlockID = hexToChecksum256(hbid)
-        tx := eos.NewTransaction(actions, opts)
+	tx := eos.NewTransaction(actions, opts)
 
 	stx := eos.NewSignedTransaction(tx)
 
@@ -461,7 +460,7 @@ func MakeSignedTransaction(stx *eos.SignedTransaction, signature ecc.Signature) 
 	return stx
 }
 
-func SubmitTransaction (stx *eos.SignedTransaction) string {
+func SubmitTransaction(stx *eos.SignedTransaction) string {
 
 	txjson := stx.String()
 
@@ -474,9 +473,9 @@ func SubmitTransaction (stx *eos.SignedTransaction) string {
 // 创建eos账户
 // 需要一个creator账户, creator要有余额用于购买内存
 func CreateNewAccount(creatorName, creatorActivePrivKey, accountName, ownerkey, activekey string, buyram uint32) (bool, error) {
-	defer func () {
+	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("create new account,error = %v\n",r)
+			fmt.Printf("create new account,error = %v\n", r)
 		}
 	}()
 
@@ -502,7 +501,7 @@ func CreateNewAccount(creatorName, creatorActivePrivKey, accountName, ownerkey, 
 			Owner: eos.Authority{
 				Threshold: 1,
 				Keys: []eos.KeyWeight{
-					eos.KeyWeight{
+					{
 						PublicKey: opubKey,
 						Weight:    1,
 					},
@@ -511,7 +510,7 @@ func CreateNewAccount(creatorName, creatorActivePrivKey, accountName, ownerkey, 
 			Active: eos.Authority{
 				Threshold: 1,
 				Keys: []eos.KeyWeight{
-					eos.KeyWeight{
+					{
 						PublicKey: apubKey,
 						Weight:    1,
 					},
@@ -539,25 +538,25 @@ func CreateNewAccount(creatorName, creatorActivePrivKey, accountName, ownerkey, 
 	stx := eos.NewSignedTransaction(tx)
 
 	txdata, cfd, err := stx.PackedTransactionAndCFD()
-        //checkErr(err)
+	//checkErr(err)
 	if err != nil {
 		return false, err
 	}
-        digest := eos.SigDigest(opts.ChainID, txdata, cfd)
-        digestStr := hex.EncodeToString(digest)
+	digest := eos.SigDigest(opts.ChainID, txdata, cfd)
+	digestStr := hex.EncodeToString(digest)
 
-        signature, err := SignDigestWithPrivKey(digestStr, creatorActivePrivKey)
+	signature, err := SignDigestWithPrivKey(digestStr, creatorActivePrivKey)
 	if err != nil {
 		return false, err
 	}
 
-        stx.Signatures = append(stx.Signatures, signature)
+	stx.Signatures = append(stx.Signatures, signature)
 
-        txjson := stx.String()
+	txjson := stx.String()
 
-        b := "{\"signatures\":[\"" + stx.Signatures[0].String() + "\"], \"compression\":\"none\", \"transaction\":" + txjson + "}"
+	b := "{\"signatures\":[\"" + stx.Signatures[0].String() + "\"], \"compression\":\"none\", \"transaction\":" + txjson + "}"
 
-        res := rpcutils.DoPostRequest(nodeos, "v1/chain/push_transaction", b)
+	res := rpcutils.DoPostRequest(nodeos, "v1/chain/push_transaction", b)
 	if err = checkAPIErr(res); err != nil {
 		return false, err
 	}
@@ -565,7 +564,7 @@ func CreateNewAccount(creatorName, creatorActivePrivKey, accountName, ownerkey, 
 }
 
 // 预购cpu和net带宽, 用于帐号执行各种action
-func DelegateBW (fromAcctName, fromActivePrivKey, receiverName string, stakeCPU, stakeNet int64, transfer bool) (bool, error){
+func DelegateBW(fromAcctName, fromActivePrivKey, receiverName string, stakeCPU, stakeNet int64, transfer bool) (bool, error) {
 	from := eos.AccountName(fromAcctName)
 	receiver := eos.AccountName(receiverName)
 	action := system.NewDelegateBW(from, receiver, eos.NewEOSAsset(stakeCPU), eos.NewEOSAsset(stakeNet), transfer)

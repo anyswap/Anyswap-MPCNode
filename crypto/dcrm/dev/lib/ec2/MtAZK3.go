@@ -1,10 +1,11 @@
 package ec2
 
 import (
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"math/big"
+
 	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"math/big"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 )
 
 type MtAZK3Proof struct {

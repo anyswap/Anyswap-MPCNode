@@ -56,11 +56,11 @@ type Action struct {
 }
 
 type Data struct {
-	From string `json:"from,omitempty"`
-	To string `json:"to,omitempty"`
-	Number string `json:"number,omitempty"`
+	From    string `json:"from,omitempty"`
+	To      string `json:"to,omitempty"`
+	Number  string `json:"number,omitempty"`
 	Address string `json:"address,omitempty"`
-	Link Link `json:"link"`
+	Link    Link   `json:"link"`
 }
 
 type Link struct {

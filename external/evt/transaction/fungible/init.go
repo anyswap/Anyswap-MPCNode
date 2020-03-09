@@ -4,8 +4,6 @@ import "github.com/fsn-dev/dcrm-walletService/external/evt/evttypes"
 
 const fungibleDomain = ".fungible"
 
-
-
 func Issue(address string, value string, fungibleId string) *IssueFungibleParams {
 	return &IssueFungibleParams{
 		address,

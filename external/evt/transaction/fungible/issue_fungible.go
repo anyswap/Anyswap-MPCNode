@@ -11,7 +11,6 @@ type IssueFungibleParams struct {
 	memo       string
 }
 
-
 func (it *IssueFungibleParams) SetMemo(memo string) *IssueFungibleParams {
 	it.memo = memo
 	return it

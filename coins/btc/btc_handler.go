@@ -16,10 +16,10 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 
@@ -27,9 +27,9 @@ import (
 	"github.com/btcsuite/btcwallet/wallet/txrules"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto"
-//	"github.com/fsn-dev/dcrm-walletService/log"
-	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
+	//	"github.com/fsn-dev/dcrm-walletService/log"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
+	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
 )
 
@@ -52,46 +52,46 @@ var feeRate, _ = btcutil.NewAmount(0.0001)
 var hashType = txscript.SigHashAll
 
 const (
-        // defaultMaxFeeRate is the default maximum fee rate in sat/KB enforced
-        // by bitcoind v0.19.0 or after for transaction broadcast.
-        defaultMaxFeeRate = btcutil.SatoshiPerBitcoin / 10
+	// defaultMaxFeeRate is the default maximum fee rate in sat/KB enforced
+	// by bitcoind v0.19.0 or after for transaction broadcast.
+	defaultMaxFeeRate = btcutil.SatoshiPerBitcoin / 10
 )
 
-type BTCHandler struct{
+type BTCHandler struct {
 	serverHost string
 	serverPort int
-	rpcuser string
-	passwd string
-	usessl bool
+	rpcuser    string
+	passwd     string
+	usessl     bool
 }
 
-func NewBTCHandler () *BTCHandler {
+func NewBTCHandler() *BTCHandler {
 	return &BTCHandler{
 		serverHost: config.ApiGateways.BitcoinGateway.Host,
 		serverPort: config.ApiGateways.BitcoinGateway.Port,
-		rpcuser: config.ApiGateways.BitcoinGateway.User,
-		passwd: config.ApiGateways.BitcoinGateway.Passwd,
-		usessl: config.ApiGateways.BitcoincashGateway.Usessl,
+		rpcuser:    config.ApiGateways.BitcoinGateway.User,
+		passwd:     config.ApiGateways.BitcoinGateway.Passwd,
+		usessl:     config.ApiGateways.BitcoincashGateway.Usessl,
 	}
 }
 
-func NewBTCHandlerWithConfig (userServerHost string, suserServerPort int, userRpcuser, userPasswd string, userUsessl bool) *BTCHandler {
-		return &BTCHandler{
-			serverHost: userServerHost,
-			serverPort: suserServerPort,
-			rpcuser: userRpcuser,
-			passwd: userPasswd,
-			usessl: userUsessl,
-		}
+func NewBTCHandlerWithConfig(userServerHost string, suserServerPort int, userRpcuser, userPasswd string, userUsessl bool) *BTCHandler {
+	return &BTCHandler{
+		serverHost: userServerHost,
+		serverPort: suserServerPort,
+		rpcuser:    userRpcuser,
+		passwd:     userPasswd,
+		usessl:     userUsessl,
+	}
 }
 
-var BTC_DEFAULT_FEE, _ = new(big.Int).SetString("50000",10)
+var BTC_DEFAULT_FEE, _ = new(big.Int).SetString("50000", 10)
 
 func (h *BTCHandler) GetDefaultFee() types.Value {
-	return types.Value{Cointype:"BTC",Val:BTC_DEFAULT_FEE}
+	return types.Value{Cointype: "BTC", Val: BTC_DEFAULT_FEE}
 }
 
-func (h *BTCHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error){
+func (h *BTCHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error) {
 	if len(pubKeyHex) != 132 && len(pubKeyHex) != 130 {
 		return "", errors.New("invalid public key length")
 	}
@@ -119,12 +119,12 @@ func (h *BTCHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 // jsonstring: '{"feeRate":0.0001,"changAddress":"mtjq9RmBBDVne7YB4AFHYCZFn3P2AXv9D5"}'
 func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
 	fmt.Printf("\nBTC handler: %+v\n\n", h)
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	changeAddress := fromAddress
 	var args interface{}
 	json.Unmarshal([]byte(jsonstring), &args)
@@ -142,10 +142,10 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 		}
 	}
 	unspentOutputs, _, err := listUnspent_electrs(fromAddress)
-//	unspentOutputs, _, err := ListUnspent_BTCD(fromAddress)
+	//	unspentOutputs, _, err := ListUnspent_BTCD(fromAddress)
 	fmt.Printf("utxo: %v\n\n", unspentOutputs)
-//unspentOutputs, err := listUnspent_blockchaininfo(fromAddress)
-//unspentOutputs, err := listUnspent(fromAddress)
+	//unspentOutputs, err := listUnspent_blockchaininfo(fromAddress)
+	//unspentOutputs, err := listUnspent(fromAddress)
 	if err != nil {
 		err = errContext(err, "failed to fetch unspent outputs")
 		return
@@ -176,7 +176,7 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	toAddr, _ := btcutil.DecodeAddress(toAddress, &ChainConfig)
 	pkscript, _ := txscript.PayToAddrScript(toAddr)
 	txOut := wire.NewTxOut(amount.Int64(), pkscript)
-	txOuts = append(txOuts,txOut)
+	txOuts = append(txOuts, txOut)
 	if len(sourceOutputs) < 1 {
 		err = errContext(err, "cannot find p2pkh utxo")
 		return
@@ -187,7 +187,7 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	targetFee := txrules.FeeForSerializeSize(feeRate, estimatedSize)
 	// 选择utxo作为交易输入
 	var inputSource txauthor.InputSource
-	for i, _ := range previousOutputs {
+	for i := range previousOutputs {
 		inputSource = makeInputSource(previousOutputs[:i+1])
 		inputAmount, _, _, _, err1 := inputSource(targetAmount + targetFee)
 		if err1 != nil {
@@ -202,7 +202,7 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	}
 	// 设置找零
 	changeAddr, _ := btcutil.DecodeAddress(changeAddress, &ChainConfig)
-	changeSource := func()([]byte,error){
+	changeSource := func() ([]byte, error) {
 		return txscript.PayToAddrScript(changeAddr)
 	}
 	transaction, err = newUnsignedTransaction(txOuts, feeRate, inputSource, changeSource)
@@ -210,7 +210,7 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 		return
 	}
 
-	for idx, _ := range transaction.(*AuthoredTx).Tx.TxIn {
+	for idx := range transaction.(*AuthoredTx).Tx.TxIn {
 		pkscript, _ := hex.DecodeString(previousOutputs[idx].ScriptPubKey)
 
 		txhashbytes, err1 := txscript.CalcSignatureHash(pkscript, hashType, transaction.(*AuthoredTx).Tx, idx)
@@ -239,8 +239,8 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	return
 }
 
-func (h *BTCHandler) SignTransaction(hash []string, wif interface{}) (rsv []string, err error){
-	pkwif, err :=  btcutil.DecodeWIF(wif.(string))
+func (h *BTCHandler) SignTransaction(hash []string, wif interface{}) (rsv []string, err error) {
+	pkwif, err := btcutil.DecodeWIF(wif.(string))
 	if err != nil {
 		return
 	}
@@ -258,7 +258,7 @@ func (h *BTCHandler) SignTransaction(hash []string, wif interface{}) (rsv []stri
 		}
 		rr := fmt.Sprintf("%X", signature.R)
 		ss := fmt.Sprintf("%X", signature.S)
-fmt.Printf("r, s: %v\n%v\n\n", rr, ss)
+		fmt.Printf("r, s: %v\n%v\n\n", rr, ss)
 		for len(rr) < 64 {
 			rr = "0" + rr
 		}
@@ -271,7 +271,7 @@ fmt.Printf("r, s: %v\n%v\n\n", rr, ss)
 	return
 }
 
-func (h *BTCHandler) MakeSignedTransaction(rsv []string, transaction interface{}) (signedTransaction interface{}, err error){
+func (h *BTCHandler) MakeSignedTransaction(rsv []string, transaction interface{}) (signedTransaction interface{}, err error) {
 	txIn := transaction.(*AuthoredTx).Tx.TxIn
 	if len(txIn) != len(rsv) {
 		err = fmt.Errorf("signatures number does not match transaction inputs number")
@@ -282,14 +282,14 @@ func (h *BTCHandler) MakeSignedTransaction(rsv []string, transaction interface{}
 		return
 	}
 	for i, txin := range txIn {
-		l := len(rsv[i])-2
+		l := len(rsv[i]) - 2
 		rs := rsv[i][0:l]
 
 		r := rs[:64]
 		s := rs[64:]
 
-		rr, _ := new(big.Int).SetString(r,16)
-		ss, _ := new(big.Int).SetString(s,16)
+		rr, _ := new(big.Int).SetString(r, 16)
+		ss, _ := new(big.Int).SetString(s, 16)
 
 		sign := &btcec.Signature{
 			R: rr,
@@ -330,22 +330,22 @@ func (h *BTCHandler) MakeSignedTransaction(rsv []string, transaction interface{}
 }
 
 func (h *BTCHandler) SubmitTransaction(signedTransaction interface{}) (ret string, err error) {
-	c, _ := rpcutils.NewClient(h.serverHost,h.serverPort,h.rpcuser,h.passwd,h.usessl)
-	ret, err = SendRawTransaction (c, signedTransaction.(*AuthoredTx).Tx, allowHighFees)
+	c, _ := rpcutils.NewClient(h.serverHost, h.serverPort, h.rpcuser, h.passwd, h.usessl)
+	ret, err = SendRawTransaction(c, signedTransaction.(*AuthoredTx).Tx, allowHighFees)
 	return
 }
 
 func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOutputs []types.TxOutput, jsonstring string, confirmed bool, fee types.Value, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 
 	fee = h.GetDefaultFee()
 	grtreq := `{"jsonrpc":"1.0","method":"getrawtransaction","params":["` + txhash + `",true],"id":1}`
-	client, _ := rpcutils.NewClient(h.serverHost,h.serverPort,h.rpcuser,h.passwd,h.usessl)
+	client, _ := rpcutils.NewClient(h.serverHost, h.serverPort, h.rpcuser, h.passwd, h.usessl)
 	ret1, err := client.Send(grtreq)
 	if err != nil {
 		return
@@ -357,7 +357,7 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 		if confirmations == nil {
 			confirmed = false
 		} else {
-		//	log.Debug("=================btc.GetTransactionInfo=================","confirmations",confirmations)
+			//	log.Debug("=================btc.GetTransactionInfo=================","confirmations",confirmations)
 			confirmed = (int64(confirmations.(float64)) >= RequiredConfirmations)
 		}
 	}
@@ -371,7 +371,7 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	}
 
 	//log.Debug("==================btc.GetTransactionInfo===============","get raw transaction json 111111",string(marshalledJSON))
-	c, _ := rpcutils.NewClient(h.serverHost,h.serverPort,h.rpcuser,h.passwd,h.usessl)
+	c, _ := rpcutils.NewClient(h.serverHost, h.serverPort, h.rpcuser, h.passwd, h.usessl)
 	retJSON, err := c.Send(string(marshalledJSON))
 	if err != nil {
 		return
@@ -391,10 +391,10 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 		return
 	}
 	//log.Debug("==================btc.GetTransactionInfo===============","get raw transaction json 33333333",string(marshalledJSON2))
-	
+
 	retJSON2, err := c.Send(string(marshalledJSON2))
 	//log.Debug("==================btc.GetTransactionInfo===============","get raw transaction json 44444444",string(retJSON2))
-	
+
 	var tx interface{}
 	json.Unmarshal([]byte(retJSON2), &tx)
 	vouts := tx.(map[string]interface{})["result"].(map[string]interface{})["vout"].([]interface{})
@@ -404,7 +404,7 @@ func (h *BTCHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 		amt, _ := btcutil.NewAmount(flt)
 		transferAmount := big.NewInt(int64(amt.ToUnit(btcutil.AmountSatoshi)))
 		//log.Debug("==================btc.GetTransactionInfo===============","toAddress",toAddress,"transferAmount",transferAmount)
-		txOutputs = append(txOutputs, types.TxOutput{ToAddress:toAddress, Amount:transferAmount})
+		txOutputs = append(txOutputs, types.TxOutput{ToAddress: toAddress, Amount: transferAmount})
 	}
 
 	vins := tx.(map[string]interface{})["result"].(map[string]interface{})["vin"].([]interface{})
@@ -488,7 +488,7 @@ func (h *BTCHandler) GetAddressBalance(address string, jsonstring string) (balan
 	_, bal, err := listUnspent_electrs(address)
 	//_, bal, err := ListUnspent_BTCD(address)
 	//log.Debug("============btc.GetAddressBalance============","balance",bal,"error",err)
-	balance.CoinBalance = types.Value{Cointype:"BTC",Val:bal}
+	balance.CoinBalance = types.Value{Cointype: "BTC", Val: bal}
 	return
 }
 
@@ -511,16 +511,15 @@ func (noInputValue) Error() string {
 }
 
 func errContext(err error, context string) error {
-        return fmt.Errorf("%s: %v", context, err)
+	return fmt.Errorf("%s: %v", context, err)
 }
 
 func pickNoun(n int, singularForm, pluralForm string) string {
-        if n == 1 {
-                return singularForm
-        }
-        return pluralForm
+	if n == 1 {
+		return singularForm
+	}
+	return pluralForm
 }
-
 
 type AuthoredTx struct {
 	Tx              *wire.MsgTx
@@ -528,8 +527,8 @@ type AuthoredTx struct {
 	PrevInputValues []btcutil.Amount
 	TotalInput      btcutil.Amount
 	ChangeIndex     int // negative if no change
-	Digests		[]string
-	PubKeyData	[]byte
+	Digests         []string
+	PubKeyData      []byte
 }
 
 // newUnsignedTransaction creates an unsigned transaction paying to one or more
@@ -622,33 +621,33 @@ func newUnsignedTransaction(outputs []*wire.TxOut, relayFeePerKb btcutil.Amount,
 }
 
 // 发送交易
-func SendRawTransaction (c *rpcutils.RpcClient, tx *wire.MsgTx, allowHighFees bool) (ret string, err error){
-	defer func () {
+func SendRawTransaction(c *rpcutils.RpcClient, tx *wire.MsgTx, allowHighFees bool) (ret string, err error) {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	var txHex string
 	if tx != nil {
-                // Serialize the transaction and convert to hex string.
-                buf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
-	if err := tx.Serialize(buf); err != nil {
-		return "", err
-                }
-                txHex = hex.EncodeToString(buf.Bytes())
-        }
+		// Serialize the transaction and convert to hex string.
+		buf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
+		if err := tx.Serialize(buf); err != nil {
+			return "", err
+		}
+		txHex = hex.EncodeToString(buf.Bytes())
+	}
 
-        var maxFeeRate int32
-        if !allowHighFees {
-                maxFeeRate = defaultMaxFeeRate
-        }
-        // after bitcoind 0.19, use 'NewBitcoindSendRawTransactionCmd'
-        //cmd := btcjson.NewSendRawTransactionCmd(txHex, &allowHighFees)
-        cmd := btcjson.NewBitcoindSendRawTransactionCmd(txHex, maxFeeRate)
+	var maxFeeRate int32
+	if !allowHighFees {
+		maxFeeRate = defaultMaxFeeRate
+	}
+	// after bitcoind 0.19, use 'NewBitcoindSendRawTransactionCmd'
+	//cmd := btcjson.NewSendRawTransactionCmd(txHex, &allowHighFees)
+	cmd := btcjson.NewBitcoindSendRawTransactionCmd(txHex, maxFeeRate)
 
 	marshalledJSON, err := btcjson.MarshalCmd(1, cmd)
-        if err != nil {
+	if err != nil {
 		return "", err
 	}
 	//marshalledJSON = []byte(strings.Replace(string(marshalledJSON), "true", "0", -1))
@@ -661,7 +660,7 @@ func SendRawTransaction (c *rpcutils.RpcClient, tx *wire.MsgTx, allowHighFees bo
 	}
 	fmt.Printf("\nret:\n%v\n\n", retJSON)
 	var res interface{}
-	json.Unmarshal([]byte(retJSON),&res)
+	json.Unmarshal([]byte(retJSON), &res)
 	txhash := res.(map[string]interface{})["result"]
 	if txhash == nil {
 		return "", fmt.Errorf("retJSON")
@@ -727,28 +726,28 @@ func makeInputSource(outputs []btcjson.ListUnspentResult) txauthor.InputSource {
 }
 
 func parseOutPoint(input *btcjson.ListUnspentResult) (wire.OutPoint, error) {
-        txHash, err := chainhash.NewHashFromStr(input.TxID)
-        if err != nil {
-                return wire.OutPoint{}, err
-        }
-        return wire.OutPoint{Hash: *txHash, Index: input.Vout}, nil
+	txHash, err := chainhash.NewHashFromStr(input.TxID)
+	if err != nil {
+		return wire.OutPoint{}, err
+	}
+	return wire.OutPoint{Hash: *txHash, Index: input.Vout}, nil
 }
 
 func saneOutputValue(amount btcutil.Amount) bool {
-        return amount >= 0 && amount <= btcutil.MaxSatoshi
+	return amount >= 0 && amount <= btcutil.MaxSatoshi
 }
 
 type AddrApiResult struct {
-	Address string
-	Total_received float64
-	Balance float64
+	Address             string
+	Total_received      float64
+	Balance             float64
 	Unconfirmed_balance uint64
-	Final_balance float64
-	N_tx int64
-	Unconfirmed_n_tx int64
-	Final_n_tx int64
-	Txrefs []Txref
-	Tx_url string
+	Final_balance       float64
+	N_tx                int64
+	Unconfirmed_n_tx    int64
+	Final_n_tx          int64
+	Txrefs              []Txref
+	Tx_url              string
 }
 
 // Txref 表示一次交易中的第 Tx_input_n 个输入, 或第 Tx_output_n 个输出
@@ -756,36 +755,36 @@ type AddrApiResult struct {
 // 如果是一个输出, Tx_output_n = -1
 // 如果表示交易输出，spent表示是否花出
 type Txref struct {
-	Tx_hash string
-	Block_height int64
-	Tx_input_n int32
-	Tx_output_n int32
-	Value float64
-	Ref_balance float64
-	Spent bool
+	Tx_hash       string
+	Block_height  int64
+	Tx_input_n    int32
+	Tx_output_n   int32
+	Value         float64
+	Ref_balance   float64
+	Spent         bool
 	Confirmations int64
-	Confirmed string
-	Double_spend bool
+	Confirmed     string
+	Double_spend  bool
 }
 
 type TxApiResult struct {
-	TxHash string
+	TxHash  string
 	Outputs []Output
 }
 
 type Output struct {
-	Script string
+	Script    string
 	Addresses []string
 }
 
-func parseAddrApiResult (resstr string) *AddrApiResult {
+func parseAddrApiResult(resstr string) *AddrApiResult {
 	resstr = strings.Replace(resstr, " ", "", -1)
 	resstr = strings.Replace(resstr, "\n", "", -1)
 
-	last_index := len(resstr)-1
+	last_index := len(resstr) - 1
 	for last_index > 0 {
 		if resstr[last_index] != '}' {
-			last_index --
+			last_index--
 		} else {
 			break
 		}
@@ -796,14 +795,14 @@ func parseAddrApiResult (resstr string) *AddrApiResult {
 	return res
 }
 
-func parseTxApiResult (resstr string) *TxApiResult {
+func parseTxApiResult(resstr string) *TxApiResult {
 	resstr = strings.Replace(resstr, " ", "", -1)
 	resstr = strings.Replace(resstr, "\n", "", -1)
 
-	last_index := len(resstr)-1
+	last_index := len(resstr) - 1
 	for last_index > 0 {
 		if resstr[last_index] != '}' {
-			last_index --
+			last_index--
 		} else {
 			break
 		}
@@ -817,7 +816,7 @@ func parseTxApiResult (resstr string) *TxApiResult {
 // 使用 addrs 接口查询属于dcrm地址的交易信息，其中包含dcrm地址的utxo
 func listUnspent(dcrmaddr string) ([]btcjson.ListUnspentResult, error) {
 	addrsUrl := "https://api.blockcypher.com/v1/btc/test3/addrs/" + dcrmaddr
-	resstr := loginPre1("GET",addrsUrl)
+	resstr := loginPre1("GET", addrsUrl)
 	if resstr == "" {
 		return nil, fmt.Errorf("cannont get address's utxo, blockcypher didnt response")
 	}
@@ -826,54 +825,54 @@ func listUnspent(dcrmaddr string) ([]btcjson.ListUnspentResult, error) {
 
 	// addrs 接口查询到的交易信息中不包含上交易输出的锁定脚本
 	// 使用 txs 接口查询交易的详细信息，得到锁定脚本，用于交易签名
-fmt.Println("listUnspent lalala")
+	fmt.Println("listUnspent lalala")
 	return makeListUnspentResult(addrApiResult, dcrmaddr)
 }
 
-func getTxByTxHash (txhash string) (*TxApiResult, error) {
+func getTxByTxHash(txhash string) (*TxApiResult, error) {
 	addrsUrl := "https://api.blockcypher.com/v1/btc/test3/txs/" + txhash
-	resstr := loginPre1("GET",addrsUrl)
+	resstr := loginPre1("GET", addrsUrl)
 	return parseTxApiResult(resstr), nil
 }
 
-func makeListUnspentResult (r *AddrApiResult, dcrmaddr string) ([]btcjson.ListUnspentResult, error) {
+func makeListUnspentResult(r *AddrApiResult, dcrmaddr string) ([]btcjson.ListUnspentResult, error) {
 	//cnt := 0
 	//var list []btcjson.ListUnspentResult
 
-fmt.Println("make list unspent result")
-fmt.Println(r.Txrefs)
-fmt.Printf("length is %v\n\n",len(r.Txrefs))
+	fmt.Println("make list unspent result")
+	fmt.Println(r.Txrefs)
+	fmt.Printf("length is %v\n\n", len(r.Txrefs))
 
 	var list sortableLURSlice
 	for _, txref := range r.Txrefs {
 		// 判断 txref 是否是未花费的交易输出
 		if txref.Tx_output_n >= 0 && !txref.Spent {
 			res := btcjson.ListUnspentResult{
-				TxID: txref.Tx_hash,
-				Vout: uint32(txref.Tx_output_n),
+				TxID:    txref.Tx_hash,
+				Vout:    uint32(txref.Tx_output_n),
 				Address: dcrmaddr,
 				//ScriptPubKey:
 				//RedeemScript:
-				Amount: txref.Value/1e8,
+				Amount:        txref.Value / 1e8,
 				Confirmations: txref.Confirmations,
-				Spendable: !txref.Spent,
+				Spendable:     !txref.Spent,
 			}
 			// 调用 txs 接口，获得上一笔交易输出的锁定脚本
 			txRes, err := getTxByTxHash(txref.Tx_hash)
 			if err != nil {
 				continue
 			}
-if txRes == nil || len(txRes.Outputs) <= 0 {
-	continue
-}
+			if txRes == nil || len(txRes.Outputs) <= 0 {
+				continue
+			}
 
-fmt.Printf("txref.Tx_output_n is %v\n\n", txref.Tx_output_n)
-fmt.Printf("txRes.Outputs is %v\n\n", txRes.Outputs)
+			fmt.Printf("txref.Tx_output_n is %v\n\n", txref.Tx_output_n)
+			fmt.Printf("txRes.Outputs is %v\n\n", txRes.Outputs)
 
 			res.ScriptPubKey = txRes.Outputs[txref.Tx_output_n].Script
 			list = append(list, res)
 		}
-        }
+	}
 	sort.Sort(list)
 	return list, nil
 }
@@ -896,63 +895,63 @@ func (s sortableLURSlice) Swap(i, j int) {
 func loginPre1(method string, url string) string {
 	c := &http.Client{}
 
-        //reqest, err := http.NewRequest("GET", "https://api.blockcypher.com/v1/btc/test3/addrs/" + dcrmaddr, nil)
+	//reqest, err := http.NewRequest("GET", "https://api.blockcypher.com/v1/btc/test3/addrs/" + dcrmaddr, nil)
 
 	reqest, err := http.NewRequest(method, url, nil)
 
-    if err != nil {
-	    fmt.Println("get Fatal error ", err.Error())
-	    return ""
-    }
+	if err != nil {
+		fmt.Println("get Fatal error ", err.Error())
+		return ""
+	}
 
-    reqest.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-    reqest.Header.Add("Accept-Encoding", "gzip, deflate")
-    reqest.Header.Add("Accept-Language", "zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3")
-    reqest.Header.Add("Connection", "keep-alive")
-    reqest.Header.Add("Host", "login.sina.com.cn")
-    reqest.Header.Add("Referer", "http://weibo.com/")
-    reqest.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
-    response, err := c.Do(reqest)
-    if response == nil {
-	    return ""
-    }
-    defer response.Body.Close()
+	reqest.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	reqest.Header.Add("Accept-Encoding", "gzip, deflate")
+	reqest.Header.Add("Accept-Language", "zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3")
+	reqest.Header.Add("Connection", "keep-alive")
+	reqest.Header.Add("Host", "login.sina.com.cn")
+	reqest.Header.Add("Referer", "http://weibo.com/")
+	reqest.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0")
+	response, err := c.Do(reqest)
+	if response == nil {
+		return ""
+	}
+	defer response.Body.Close()
 
-    if err != nil {
-	    fmt.Println("Fatal error ", err.Error())
-	    return ""
-    }
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		return ""
+	}
 
-    if response.StatusCode == 200 {
+	if response.StatusCode == 200 {
 
-	    var body string
+		var body string
 
-	    switch response.Header.Get("Content-Encoding") {
-	    case "gzip":
-		    reader, _ := gzip.NewReader(response.Body)
-		    for {
-			    buf := make([]byte, 1024)
-			    n, err := reader.Read(buf)
+		switch response.Header.Get("Content-Encoding") {
+		case "gzip":
+			reader, _ := gzip.NewReader(response.Body)
+			for {
+				buf := make([]byte, 1024)
+				n, err := reader.Read(buf)
 
-			    if err != nil && err != io.EOF {
-				 panic(err)
-				return ""
-			    }
+				if err != nil && err != io.EOF {
+					panic(err)
+					return ""
+				}
 
-			    if n == 0 {
-				 break
-			    }
-			    body += string(buf)
+				if n == 0 {
+					break
+				}
+				body += string(buf)
 			}
-	    default:
-		    bodyByte, _ := ioutil.ReadAll(response.Body)
-		    body = string(bodyByte)
-	    }
+		default:
+			bodyByte, _ := ioutil.ReadAll(response.Body)
+			body = string(bodyByte)
+		}
 
-	    return body
-    }
+		return body
+	}
 
-    return ""
+	return ""
 }
-//+++++++++++++++++++++end++++++++++++++++++++++
 
+//+++++++++++++++++++++end++++++++++++++++++++++

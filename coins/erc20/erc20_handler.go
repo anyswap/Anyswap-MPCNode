@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -16,9 +16,10 @@
 
 package erc20
 
-import  (
+import (
 	"context"
 	"crypto/ecdsa"
+
 	//"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -29,18 +30,18 @@ import  (
 	"strings"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/params"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/coins/eth/ethclient"
+	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/params"
 
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
 	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 
+	"github.com/fsn-dev/dcrm-walletService/coins/erc20/abi"
+	"github.com/fsn-dev/dcrm-walletService/coins/erc20/token"
 	ethhandler "github.com/fsn-dev/dcrm-walletService/coins/eth"
 	"github.com/fsn-dev/dcrm-walletService/coins/eth/sha3"
-	"github.com/fsn-dev/dcrm-walletService/coins/erc20/token"
-	"github.com/fsn-dev/dcrm-walletService/coins/erc20/abi"
 	ctypes "github.com/fsn-dev/dcrm-walletService/coins/types"
 )
 
@@ -57,37 +58,37 @@ var (
 	//gasLimit uint64 = 30000
 	//url = config.ETH_GATEWAY
 	//url = config.ApiGateways.EthereumGateway.ApiAddress
-	url string
-	err error
+	url         string
+	err         error
 	chainConfig = params.RinkebyChainConfig
 	//chainID = big.NewInt(40400)
 )
 
 // 返回合约地址或空
-var GetToken func (tokentype string) string
+var GetToken func(tokentype string) string
 
-func RegisterTokenGetter(callback func (tokentype string) string) {
+func RegisterTokenGetter(callback func(tokentype string) string) {
 	GetToken = callback
 }
 
 var Tokens map[string]string = map[string]string{
-	"ERC20GUSD":"0x28a79f9b0fe54a39a0ff4c10feeefa832eeceb78",
-	"ERC20BNB":"0x7f30B414A814a6326d38535CA8eb7b9A62Bceae2",
-	"ERC20MKR":"0x2c111ede2538400F39368f3A3F22A9ac90A496c7",
-	"ERC20HT":"0x3C3d51f6BE72B265fe5a5C6326648C4E204c8B9a",
-	"ERC20BNT":"0x14D5913C8396d43aB979D4B29F2102c1C65E18Db",
-	"ERC20RMBT":"0x72778a05fc72dd56d5b5a6bac2f045a2a1eb78f2",
+	"ERC20GUSD": "0x28a79f9b0fe54a39a0ff4c10feeefa832eeceb78",
+	"ERC20BNB":  "0x7f30B414A814a6326d38535CA8eb7b9A62Bceae2",
+	"ERC20MKR":  "0x2c111ede2538400F39368f3A3F22A9ac90A496c7",
+	"ERC20HT":   "0x3C3d51f6BE72B265fe5a5C6326648C4E204c8B9a",
+	"ERC20BNT":  "0x14D5913C8396d43aB979D4B29F2102c1C65E18Db",
+	"ERC20RMBT": "0x72778a05fc72dd56d5b5a6bac2f045a2a1eb78f2",
 }
 
 type ERC20Handler struct {
 	TokenType string
 }
 
-func NewERC20Handler () *ERC20Handler {
+func NewERC20Handler() *ERC20Handler {
 	return &ERC20Handler{}
 }
 
-func NewERC20TokenHandler (tokenType string) *ERC20Handler {
+func NewERC20TokenHandler(tokenType string) *ERC20Handler {
 	if Tokens[tokenType] == "" {
 		return nil
 	}
@@ -96,13 +97,13 @@ func NewERC20TokenHandler (tokenType string) *ERC20Handler {
 	}
 }
 
-var ERC20_DEFAULT_FEE, _ = new(big.Int).SetString("10000000000000000",10)
+var ERC20_DEFAULT_FEE, _ = new(big.Int).SetString("10000000000000000", 10)
 
 func (h *ERC20Handler) GetDefaultFee() ctypes.Value {
-	return ctypes.Value{Cointype:"ETH",Val:ERC20_DEFAULT_FEE}
+	return ctypes.Value{Cointype: "ETH", Val: ERC20_DEFAULT_FEE}
 }
 
-func (h *ERC20Handler)  IsToken() bool {
+func (h *ERC20Handler) IsToken() bool {
 	return true
 }
 
@@ -110,7 +111,7 @@ func (h *ERC20Handler) PublicKeyToAddress(pubKeyHex string) (address string, err
 	if len(pubKeyHex) != 132 && len(pubKeyHex) != 130 {
 		return "", errors.New("invalid public key length")
 	}
-	pubKeyHex = strings.TrimPrefix(pubKeyHex,"0x")
+	pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
 
 	data := hexEncPubkey(pubKeyHex[2:])
 
@@ -122,35 +123,35 @@ func (h *ERC20Handler) PublicKeyToAddress(pubKeyHex string) (address string, err
 
 // jsonstring '{"gasPrice":8000000000,"gasLimit":50000,"tokenType":"BNB"}'
 func (h *ERC20Handler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
-/*	var args interface{}
-	json.Unmarshal([]byte(jsonstring), &args)
-	userGasPrice := args.(map[string]interface{})["gasPrice"]
-	userGasLimit := args.(map[string]interface{})["gasLimit"]
-	userTokenType := args.(map[string]interface{})["tokenType"]
-	var tokenType string
-	if userTokenType == nil {
-		tokenType = h.TokenType
-		if tokenType == "" {
-			err = fmt.Errorf("token type not specified.")
-			return
+	}()
+	/*	var args interface{}
+		json.Unmarshal([]byte(jsonstring), &args)
+		userGasPrice := args.(map[string]interface{})["gasPrice"]
+		userGasLimit := args.(map[string]interface{})["gasLimit"]
+		userTokenType := args.(map[string]interface{})["tokenType"]
+		var tokenType string
+		if userTokenType == nil {
+			tokenType = h.TokenType
+			if tokenType == "" {
+				err = fmt.Errorf("token type not specified.")
+				return
+			}
+			if Tokens[tokenType] == "" {
+				err = fmt.Errorf("token not supported")
+				return
+			}
 		}
-		if Tokens[tokenType] == "" {
-			err = fmt.Errorf("token not supported")
-			return
+		if userGasPrice != nil {
+			gasPrice = big.NewInt(int64(userGasPrice.(float64)))
 		}
-	}
-	if userGasPrice != nil {
-		gasPrice = big.NewInt(int64(userGasPrice.(float64)))
-	}
-	if userGasLimit != nil {
-		gasLimit = uint64(userGasLimit.(float64))
-	}*/
+		if userGasLimit != nil {
+			gasLimit = uint64(userGasLimit.(float64))
+		}*/
 	client, err := ethclient.Dial(url)
 	if err != nil {
 		return
@@ -208,12 +209,12 @@ func (h *ERC20Handler) SubmitTransaction(signedTransaction interface{}) (ret str
 }
 
 func (h *ERC20Handler) GetTransactionInfo(txhash string) (fromAddress string, txOutputs []ctypes.TxOutput, jsonstring string, confirmed bool, fee ctypes.Value, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	var realGasPrice *big.Int
 	realGasPrice = gasPrice
 	client, err := ethclient.Dial(url)
@@ -222,37 +223,37 @@ func (h *ERC20Handler) GetTransactionInfo(txhash string) (fromAddress string, tx
 	}
 	hash := common.HexToHash(txhash)
 	tx, isPending, err1 := client.TransactionByHash(context.Background(), hash)
-	fmt.Printf("erc20.GetTransactionInfo","hash",hash,"tx",tx,"isPending",isPending,"err1",err1)
+	fmt.Printf("erc20.GetTransactionInfo", "hash", hash, "tx", tx, "isPending", isPending, "err1", err1)
 	confirmed = !isPending
 	if err1 == nil && isPending == false && tx != nil {
 		msg, err2 := tx.AsMessage(ctypes.MakeSigner(chainConfig, GetLastBlock()))
 		realGasPrice = msg.GasPrice()
 		err = err2
-		fmt.Printf("========ERC20 GetTransactionInfo========","msg",msg)
+		fmt.Printf("========ERC20 GetTransactionInfo========", "msg", msg)
 		contractAddress := msg.To().Hex()
 		for token, addr := range Tokens {
-		    fmt.Printf("=========ERC20 GetTransactionInfo===============","contractAddress",contractAddress,"addr",addr)
-			if strings.EqualFold(contractAddress,addr) {
-				jsonstring = `{"tokenType":"`+token+`"}`
+			fmt.Printf("=========ERC20 GetTransactionInfo===============", "contractAddress", contractAddress, "addr", addr)
+			if strings.EqualFold(contractAddress, addr) {
+				jsonstring = `{"tokenType":"` + token + `"}`
 				break
 			}
 		}
-		fmt.Printf("========ERC20 GetTransactionInfo========","token type",jsonstring)
+		fmt.Printf("========ERC20 GetTransactionInfo========", "token type", jsonstring)
 		//bug
-		if  jsonstring == "" {
-		    err = errors.New("get token type fail.")
-		    return
+		if jsonstring == "" {
+			err = errors.New("get token type fail.")
+			return
 		}
 		//
 
 		fromAddress = msg.From().Hex()
 		data := msg.Data()
 
-		fmt.Printf("========ERC20 GetTransactionInfo========","data",data)
+		fmt.Printf("========ERC20 GetTransactionInfo========", "data", data)
 		toAddress, transferAmount, decodeErr := DecodeTransferData(data)
 		txOutput := ctypes.TxOutput{
 			ToAddress: toAddress,
-			Amount: transferAmount,
+			Amount:    transferAmount,
 		}
 		txOutputs = append(txOutputs, txOutput)
 		if decodeErr != nil {
@@ -262,11 +263,10 @@ func (h *ERC20Handler) GetTransactionInfo(txhash string) (fromAddress string, tx
 	} else if err1 != nil {
 		err = err1
 	} else if isPending {
-		err = nil//fmt.Errorf("Transaction is pending")
+		err = nil //fmt.Errorf("Transaction is pending")
 	} else {
 		err = fmt.Errorf("Unknown error")
 	}
-
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -275,7 +275,7 @@ func (h *ERC20Handler) GetTransactionInfo(txhash string) (fromAddress string, tx
 		err = fmt.Errorf("get transaction receipt fail " + receipterr.Error())
 		return
 	}
-		fmt.Printf("===============erc20.GetTransactionInfo,","receipt",r,"","=================")
+	fmt.Printf("===============erc20.GetTransactionInfo,", "receipt", r, "", "=================")
 	if r == nil {
 		err = fmt.Errorf("get transaction receipt fail")
 		return
@@ -289,14 +289,14 @@ func (h *ERC20Handler) GetTransactionInfo(txhash string) (fromAddress string, tx
 	var flag = false
 	for _, logs := range r.Logs {
 		ercdata := new(big.Int).SetBytes(logs.Data)
-		ercdatanum := fmt.Sprintf("%v",ercdata)
-		fmt.Printf("===============erc20.GetTransactionInfo check logs","logs",logs,"ercdatanum",ercdatanum,"topics",logs.Topics,"","===============")
+		ercdatanum := fmt.Sprintf("%v", ercdata)
+		fmt.Printf("===============erc20.GetTransactionInfo check logs", "logs", logs, "ercdatanum", ercdatanum, "topics", logs.Topics, "", "===============")
 		for _, out := range txOutputs {
 			if ercdatanum == out.Amount.String() {
 				for _, top := range logs.Topics {
-					aa, _ := new(big.Int).SetString(top.Hex(),0)
-					bb,_ := new(big.Int).SetString(out.ToAddress,0)
-					fmt.Printf("===============erc20.GetTransactionInfo check logs","aa",aa,"out.ToAddress",out.ToAddress,"","===============")
+					aa, _ := new(big.Int).SetString(top.Hex(), 0)
+					bb, _ := new(big.Int).SetString(out.ToAddress, 0)
+					fmt.Printf("===============erc20.GetTransactionInfo check logs", "aa", aa, "out.ToAddress", out.ToAddress, "", "===============")
 					if aa.Cmp(bb) == 0 {
 						flag = true
 					}
@@ -315,32 +315,30 @@ func (h *ERC20Handler) GetTransactionInfo(txhash string) (fromAddress string, tx
 	fee.Cointype = h.TokenType
 	fee.Val = new(big.Int).Mul(realGasPrice, big.NewInt(int64(r.GasUsed)))
 
-
-
 	return
 }
 
 // jsonstring:'{"tokenType":"BNB"}'
 func (h *ERC20Handler) GetAddressBalance(address string, jsonstring string) (balance ctypes.Balance, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
-/*	var args interface{}
-	json.Unmarshal([]byte(jsonstring), &args)
-	tokenType := args.(map[string]interface{})["tokenType"]
-	log.Debug("=============GetAddressBalance=============","tokenType",tokenType)
-	if tokenType == nil {
-		log.Debug("=============GetAddressBalance,token type not specified.=============")
-		err = fmt.Errorf("token type not specified")
-		return
-	}*/
+	}()
+	/*	var args interface{}
+		json.Unmarshal([]byte(jsonstring), &args)
+		tokenType := args.(map[string]interface{})["tokenType"]
+		log.Debug("=============GetAddressBalance=============","tokenType",tokenType)
+		if tokenType == nil {
+			log.Debug("=============GetAddressBalance,token type not specified.=============")
+			err = fmt.Errorf("token type not specified")
+			return
+		}*/
 
 	//tokenAddr := Tokens[tokenType.(string)]
 	tokenAddr := Tokens[h.TokenType]
-	fmt.Printf("=============GetAddressBalance=============","tokenType.(string)",h.TokenType,"tokenAddr",tokenAddr)
+	fmt.Printf("=============GetAddressBalance=============", "tokenType.(string)", h.TokenType, "tokenAddr", tokenAddr)
 	if tokenAddr == "" {
 		err = fmt.Errorf("Token not supported")
 		return
@@ -354,7 +352,7 @@ func (h *ERC20Handler) GetAddressBalance(address string, jsonstring string) (bal
 
 	data, err := myABI.Pack("balanceOf", common.HexToAddress(address))
 	if err != nil {
-		fmt.Printf("==========GetAddressBalance,3333333========================","err",err.Error())
+		fmt.Printf("==========GetAddressBalance,3333333========================", "err", err.Error())
 		return
 	}
 	dataHex := "0x" + hex.EncodeToString(data)
@@ -374,24 +372,24 @@ func (h *ERC20Handler) GetAddressBalance(address string, jsonstring string) (bal
 			return
 		}
 		err = fmt.Errorf(ret)
-		fmt.Printf("==========GetAddressBalance,44444========================","err",err.Error())
+		fmt.Printf("==========GetAddressBalance,44444========================", "err", err.Error())
 		return
 	}
 	balanceStr := retStruct["result"].(string)[2:]
 	balanceHex, _ := new(big.Int).SetString(balanceStr, 16)
-	balance.TokenBalance.Val, _ = new(big.Int).SetString(fmt.Sprintf("%d",balanceHex), 10)
+	balance.TokenBalance.Val, _ = new(big.Int).SetString(fmt.Sprintf("%d", balanceHex), 10)
 	balance.TokenBalance.Cointype = h.TokenType
 
 	client, err := ethclient.Dial(url)
 	if err != nil {
-		fmt.Printf("============ERC20 GetAddressBalance 111111============","Error",err)
+		fmt.Printf("============ERC20 GetAddressBalance 111111============", "Error", err)
 		return
 	}
 
 	tokenAddress := common.HexToAddress(tokenAddr)
 	instance, err := token.NewToken(tokenAddress, client)
 	if err != nil {
-		fmt.Printf("===============ERC20 GetAddressBalance 222222222==========","Error",err)
+		fmt.Printf("===============ERC20 GetAddressBalance 222222222==========", "Error", err)
 		return
 	}
 
@@ -409,15 +407,15 @@ func (h *ERC20Handler) GetAddressBalance(address string, jsonstring string) (bal
 }
 
 func GetLastBlock() *big.Int {
-    last,_ := new(big.Int).SetString("10000",10)
-    return last
-    /*
-	client, err := ethclient.Dial(url)
-	if err != nil {
-		return nil
-	}
-	blk, _ := client.BlockByNumber(context.Background(), nil)
-	return blk.Number()*/
+	last, _ := new(big.Int).SetString("10000", 10)
+	return last
+	/*
+		client, err := ethclient.Dial(url)
+		if err != nil {
+			return nil
+		}
+		blk, _ := client.BlockByNumber(context.Background(), nil)
+		return blk.Number()*/
 }
 
 func hexEncPubkey(h string) (ret [64]byte) {
@@ -431,7 +429,6 @@ func hexEncPubkey(h string) (ret [64]byte) {
 	copy(ret[:], b)
 	return ret
 }
-
 
 func decodePubkey(e [64]byte) (*ecdsa.PublicKey, error) {
 	p := &ecdsa.PublicKey{Curve: ethcrypto.S256(), X: new(big.Int), Y: new(big.Int)}
@@ -460,7 +457,7 @@ func DecodeTransferData(data []byte) (toAddress string, transferAmount *big.Int,
 	return
 }
 
-func erc20_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, toAddressHex string, amount *big.Int, gasPrice *big.Int, gasLimit uint64, tokenType string) (*ctypes.Transaction, *common.Hash, error) {
+func erc20_newUnsignedTransaction(client *ethclient.Client, dcrmAddress string, toAddressHex string, amount *big.Int, gasPrice *big.Int, gasLimit uint64, tokenType string) (*ctypes.Transaction, *common.Hash, error) {
 
 	chainID, err := client.NetworkID(context.Background())
 
@@ -483,9 +480,9 @@ func erc20_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string,
 	}
 
 	fromAddress := common.HexToAddress(dcrmAddress)
-/*
-	nonce or pending nonce
-*/
+	/*
+		nonce or pending nonce
+	*/
 	//nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	nonce, err := client.NonceAt(context.Background(), fromAddress, nil)
 	if err != nil {
@@ -535,7 +532,7 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("=============makeSignedTransaction,chain id = %v ============",chainID)
+	fmt.Println("=============makeSignedTransaction,chain id = %v ============", chainID)
 	message, err := hex.DecodeString(rsv)
 	if err != nil {
 		return nil, err
@@ -549,16 +546,16 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	//////
 	from, err2 := ctypes.Sender(signer, signedtx)
 	if err2 != nil {
-	    fmt.Println("===================makeSignedTransaction,err = %v ==================",err2)
-	    return nil,err2
+		fmt.Println("===================makeSignedTransaction,err = %v ==================", err2)
+		return nil, err2
 	}
-	fmt.Println("===================makeSignedTransaction,from = %v ==================",from.Hex())
+	fmt.Println("===================makeSignedTransaction,from = %v ==================", from.Hex())
 	////
 
 	return signedtx, nil
 }
 
-func erc20_sendTx (client *ethclient.Client, signedTx *ctypes.Transaction) (string, error) {
+func erc20_sendTx(client *ethclient.Client, signedTx *ctypes.Transaction) (string, error) {
 	err := client.SendTransaction(context.Background(), signedTx)
 	if err != nil {
 		return "", err

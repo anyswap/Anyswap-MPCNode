@@ -46,7 +46,7 @@ var (
 		Clique: &CliqueConfig{
 			Period: 5,
 			//Period: 1, //mine-fast
-			Epoch:  30000,
+			Epoch: 30000,
 		},
 	}
 
@@ -76,19 +76,19 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Ropsten test network.
 	TestnetChainConfig = &ChainConfig{
-	    ChainID: big.NewInt(46688), //46688
-	    HomesteadBlock:      big.NewInt(0),
-	    DAOForkBlock:        big.NewInt(0),
-	    DAOForkSupport:      false,
-	    EIP150Block:         big.NewInt(0),
-	    EIP150Hash:          common.HexToHash("0x0"),
-	    EIP155Block:         big.NewInt(0),
-	    EIP158Block:         big.NewInt(0),
-	    ByzantiumBlock:      big.NewInt(0),
-	    ConstantinopleBlock: nil,
-	    DaTong: &DaTongConfig{
-		Period: 15,
-	    },
+		ChainID:             big.NewInt(46688), //46688
+		HomesteadBlock:      big.NewInt(0),
+		DAOForkBlock:        big.NewInt(0),
+		DAOForkSupport:      false,
+		EIP150Block:         big.NewInt(0),
+		EIP150Hash:          common.HexToHash("0x0"),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: nil,
+		DaTong: &DaTongConfig{
+			Period: 15,
+		},
 	}
 
 	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.
@@ -132,16 +132,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil,&DaTongConfig{Period: 15,}}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, &DaTongConfig{Period: 15}}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000},&DaTongConfig{Period: 15,}}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, &DaTongConfig{Period: 15}}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil,&DaTongConfig{Period: 15,}}
+	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, &DaTongConfig{Period: 15}}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 )
 
@@ -427,11 +427,10 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 
 // DaTongConfig is the consensus engine configs for proof-of-stake based sealing.
 type DaTongConfig struct {
-    Period uint64 `json:"period"`
+	Period uint64 `json:"period"`
 }
 
 // String implements the stringer interface, returning the consensus engine details.
 func (c *DaTongConfig) String() string {
-    return "datong"
+	return "datong"
 }
-

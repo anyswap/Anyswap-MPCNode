@@ -7,14 +7,14 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
  */
 
-package ed 
+package ed
 
 import (
 	"bytes"
@@ -63,7 +63,7 @@ func Vss(secret [32]byte, ids [][32]byte, t int, n int) ([][32]byte, [][32]byte,
 }
 
 //////
-func Vss2(secret [32]byte, t int, n int,uids map[string][32]byte) ([][32]byte, [][32]byte, map[string][32]byte) {
+func Vss2(secret [32]byte, t int, n int, uids map[string][32]byte) ([][32]byte, [][32]byte, map[string][32]byte) {
 
 	var cfs, cfsBBytes [][32]byte
 	var shares = make(map[string][32]byte)
@@ -95,13 +95,14 @@ func Vss2(secret [32]byte, t int, n int,uids map[string][32]byte) ([][32]byte, [
 		cfsBBytes = append(cfsBBytes, cfBBytes)
 	}
 
-	for k,v := range uids {
-	    share := calculatePolynomial(cfs,v)
-	    shares[k] = share
+	for k, v := range uids {
+		share := calculatePolynomial(cfs, v)
+		shares[k] = share
 	}
 
 	return cfs, cfsBBytes, shares
 }
+
 //////
 
 func Verify_vss(share [32]byte, id [32]byte, cfsBBytes [][32]byte) bool {

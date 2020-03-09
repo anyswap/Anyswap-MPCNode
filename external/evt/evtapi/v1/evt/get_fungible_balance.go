@@ -5,7 +5,7 @@ import (
 )
 
 type GetFungibleBalanceRequest struct {
-	SymId uint `json:"sym_id"`
+	SymId   uint   `json:"sym_id"`
 	Address string `json:"address"`
 }
 
@@ -15,7 +15,7 @@ func (it *Instance) GetFungibleBalance(symid uint, address string) (*GetFungible
 	response := &GetFungibleBalanceResult{}
 
 	err := it.client.Post(it.path("get_fungible_balance"), &GetFungibleBalanceRequest{
-		SymId: symid,
+		SymId:   symid,
 		Address: address,
 	}, response)
 

@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -17,18 +17,20 @@
 package evt
 
 import (
-	"fmt"
-	"math/big"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/fsn-dev/dcrm-walletService/coins/config"
 	"github.com/fsn-dev/dcrm-walletService/coins/eos"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
-	"github.com/fsn-dev/dcrm-walletService/coins/config"
-	"github.com/btcsuite/btcd/btcec"
+
 	//"github.com/ellsol/evt/ecc"
 	//"github.com/ellsol/evt/evtapi/client"
 	//"github.com/ellsol/evt/evtapi/v1/evt"
@@ -37,11 +39,10 @@ import (
 	//"github.com/ellsol/evt/evtconfig"
 	//"github.com/ellsol/evt/evttypes"
 
-
 	"github.com/fsn-dev/dcrm-walletService/external/evt/ecc"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/client"
-	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/evt"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/chain"
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/evt"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/history"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evtconfig"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evttypes"
@@ -60,16 +61,16 @@ type ActionType struct {
 }
 
 type Args struct {
-	Name        string         `json:"name,omitempty"`
-	Creator     string         `json:"creator,omitempty"`
-	Issue       ActionType     `json:"issue,omitempty"`
-	Transfer    ActionType     `json:"transfer,omitempty"`
-	Manage      ActionType     `json:"manage,omitempty"`
-	TotalSupply int64          `json:"total_supply,omitempty"`
-	From        string         `json:"from,omitempty"`
-	To          string         `json:"to,omitempty"`
-	Number      string         `json:"number,omitempty"`
-	Memo        string         `json:"memo,omitempty"`
+	Name        string     `json:"name,omitempty"`
+	Creator     string     `json:"creator,omitempty"`
+	Issue       ActionType `json:"issue,omitempty"`
+	Transfer    ActionType `json:"transfer,omitempty"`
+	Manage      ActionType `json:"manage,omitempty"`
+	TotalSupply int64      `json:"total_supply,omitempty"`
+	From        string     `json:"from,omitempty"`
+	To          string     `json:"to,omitempty"`
+	Number      string     `json:"number,omitempty"`
+	Memo        string     `json:"memo,omitempty"`
 }
 
 func EVTInit() {
@@ -81,8 +82,8 @@ type EvtHandler struct {
 
 // 只支持fungible token
 // EVT币是id=1的token, 用EVT1表示, 其他token表示成EVTid, 比如: EVT2, EVT3
-func NewEvtHandler (tokenId string) *EvtHandler {
-	tid, err := strconv.Atoi(strings.TrimPrefix(tokenId,"EVT"))
+func NewEvtHandler(tokenId string) *EvtHandler {
+	tid, err := strconv.Atoi(strings.TrimPrefix(tokenId, "EVT"))
 	if err != nil {
 		return nil
 	}
@@ -92,7 +93,7 @@ func NewEvtHandler (tokenId string) *EvtHandler {
 }
 
 // EVT地址就是EVT格式的pubkey
-func (h *EvtHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error){
+func (h *EvtHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error) {
 	pk, err := HexToPubKey(pubKeyHex)
 	if err != nil {
 		return
@@ -109,22 +110,22 @@ func (h *EvtHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 
 	// 1. abi_json_to_bin https://www.everitoken.io/developers/apis,_sdks_and_tools/abi_reference
 	args := chain.Args{
-		Transfer:chain.ActionType{
-			Name:"transfer",
-			Threshold:1,
-			Authorizers:[]chain.Authorizers{chain.Authorizers{Ref:"[A] "+fromAddress,Weight:1}},
+		Transfer: chain.ActionType{
+			Name:        "transfer",
+			Threshold:   1,
+			Authorizers: []chain.Authorizers{{Ref: "[A] " + fromAddress, Weight: 1}},
 		},
-		From:fromAddress,
-		To:toAddress,
-		Number:number,
-		Memo:"this is a dcrm lockout (^_^)",
+		From:   fromAddress,
+		To:     toAddress,
+		Number: number,
+		Memo:   "this is a dcrm lockout (^_^)",
 	}
 	actarg := chain.ActionArguments{
-		Action:"transferft",
-		Args:args,
+		Action: "transferft",
+		Args:   args,
 	}
 	bb, _ := json.Marshal(actarg)
-	fmt.Printf("\n%+v\n",string(bb))
+	fmt.Printf("\n%+v\n", string(bb))
 
 	evtcfg := evtconfig.New(config.ApiGateways.EvtGateway.ApiAddress)
 	//evtcfg := evtconfig.New("https://testnet1.everitoken.io")
@@ -139,15 +140,15 @@ func (h *EvtHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 
 	// 2. evttypes.Trxjson
 	action := evttypes.Action{
-		Name:"transferft",
-		Domain:".fungible",
-		Key:key,
+		Name:   "transferft",
+		Domain: ".fungible",
+		Key:    key,
 	}
 	trx := &evttypes.TRXJson{
 		MaxCharge: 10000,
-		Actions: []evttypes.SimpleAction{evttypes.SimpleAction{Action:action,Data:res.Binargs}},
-		Payer: fromAddress,
-		TransactionExtensions: make([]interface{},0),
+		Actions:   []evttypes.SimpleAction{{Action: action, Data: res.Binargs}},
+		Payer:     fromAddress,
+		TransactionExtensions: make([]interface{}, 0),
 	}
 
 	// 3. chain/trx_json_to_digest expiration??? ref_block_num??? ref_block_prefix??? ...
@@ -158,17 +159,17 @@ func (h *EvtHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 		err = apierr.Error()
 		return
 	}
-	fmt.Printf("\n\ncnm\ngetinfo result\n%+v\nmsln\n\n",res2)
+	fmt.Printf("\n\ncnm\ngetinfo result\n%+v\nmsln\n\n", res2)
 
-	headtime, _ := time.Parse(layout,res2.HeadBlockTime)
-	exptime := headtime.Add(time.Duration(60)*time.Minute)
+	headtime, _ := time.Parse(layout, res2.HeadBlockTime)
+	exptime := headtime.Add(time.Duration(60) * time.Minute)
 
 	trx.Expiration = exptime.Format(layout)
 
 	trx.RefBlockNum = res2.LastIrreversibleBlockNum
 	//trx.RefBlockNum = res2.HeadBlockNum
 
-	res3, apierr := apichain.GetBlock (strconv.Itoa(trx.RefBlockNum))
+	res3, apierr := apichain.GetBlock(strconv.Itoa(trx.RefBlockNum))
 	if apierr != nil {
 		err = apierr.Error()
 		return
@@ -176,7 +177,7 @@ func (h *EvtHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	trx.RefBlockPrefix = res3.RefBlockPrefix
 
 	b, _ := json.Marshal(trx)
-	fmt.Printf("\ncnm\ntrx is \n%+v\n\n%v\nnmsl\n\n",trx,string(b))
+	fmt.Printf("\ncnm\ntrx is \n%+v\n\n%v\nnmsl\n\n", trx, string(b))
 
 	// 4. TRXJsonToDigest
 	res4, apierr := apichain.TRXJsonToDigest(trx)
@@ -184,12 +185,12 @@ func (h *EvtHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 		err = apierr.Error()
 		return
 	}
-	fmt.Printf("\ncnm\nnmsl\nres is \n%+v\n\n",res4)
+	fmt.Printf("\ncnm\nnmsl\nres is \n%+v\n\n", res4)
 
 	trx.Id = res4.Id
 
 	transaction = trx
-	digests = append(digests,res4.Digest)
+	digests = append(digests, res4.Digest)
 	fmt.Println("EVT Unsigned Transaction Is Conformed")
 	return
 }
@@ -202,7 +203,7 @@ func (h *EvtHandler) MakeSignedTransaction(rsv []string, transaction interface{}
 	}
 	// evttypes.SignedTRXJson
 	signedTransaction = &evttypes.SignedTRXJson{
-		Signatures: []string{sig.String()},
+		Signatures:  []string{sig.String()},
 		Compression: "none",
 		Transaction: transaction.(*evttypes.TRXJson),
 	}
@@ -210,7 +211,7 @@ func (h *EvtHandler) MakeSignedTransaction(rsv []string, transaction interface{}
 }
 
 func (h *EvtHandler) SubmitTransaction(signedTransaction interface{}) (txhash string, err error) {
-        txhash = signedTransaction.(*evttypes.SignedTRXJson).Transaction.Id
+	txhash = signedTransaction.(*evttypes.SignedTRXJson).Transaction.Id
 
 	fmt.Println("======== EVT Submit Transaction ========")
 	// chain/push_transaction
@@ -230,12 +231,12 @@ func (h *EvtHandler) SubmitTransaction(signedTransaction interface{}) (txhash st
 }
 
 func (h *EvtHandler) GetTransactionInfo(txhash string) (fromAddress string, txOutputs []types.TxOutput, jsonstring string, confirmed bool, fee types.Value, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 
 	fee = h.GetDefaultFee()
 	// TODO 获取真实fee
@@ -268,44 +269,44 @@ func (h *EvtHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	return
 }
 
-func parseAction (tarid uint, transfer *chain.Action) (*types.TxOutput, error) {
+func parseAction(tarid uint, transfer *chain.Action) (*types.TxOutput, error) {
 	if transfer.Name == "transferft" {
-		tmp := strings.Split(transfer.Data.Number,"#")[1]
+		tmp := strings.Split(transfer.Data.Number, "#")[1]
 		symid, _ := strconv.Atoi(tmp)
 		if uint(symid) != tarid {
 			return nil, fmt.Errorf("sym id is %v, want %v", symid, tarid)
 		}
-		amtstr := strings.Replace(strings.Split(transfer.Data.Number," ")[0],".","",-1)
+		amtstr := strings.Replace(strings.Split(transfer.Data.Number, " ")[0], ".", "", -1)
 		fmt.Printf("amtstr is %s\n", amtstr)
 		amt, ok := new(big.Int).SetString(amtstr, 10)
 		if !ok {
 			err := fmt.Errorf("transfer amount error: %s", transfer.Data.Number)
 			return nil, err
 		}
-		txout := &types.TxOutput{ToAddress:transfer.Data.To,Amount:amt}
+		txout := &types.TxOutput{ToAddress: transfer.Data.To, Amount: amt}
 		fmt.Printf("txout is %+v\n", txout)
 		return txout, nil
 	}
 	if transfer.Name == "issuefungible" {
-		amtstr := strings.Replace(strings.Split(transfer.Data.Number," ")[0],".","",-1)
-                amt, ok := new(big.Int).SetString(amtstr, 10)
-                if !ok {
+		amtstr := strings.Replace(strings.Split(transfer.Data.Number, " ")[0], ".", "", -1)
+		amt, ok := new(big.Int).SetString(amtstr, 10)
+		if !ok {
 			err := fmt.Errorf("transfer amount error: %s", transfer.Data.Number)
-                        return nil, err
-                }
-		txout := &types.TxOutput{ToAddress:transfer.Data.Address,Amount:amt}
+			return nil, err
+		}
+		txout := &types.TxOutput{ToAddress: transfer.Data.Address, Amount: amt}
 		return txout, nil
 	}
 	return nil, fmt.Errorf("evt parse action: unknown error.")
 }
 
 func (h *EvtHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 
 	evtcfg := evtconfig.New(config.ApiGateways.EvtGateway.ApiAddress)
 	//evtcfg := evtconfig.New("https://testnet1.everitoken.io")
@@ -316,7 +317,7 @@ func (h *EvtHandler) GetAddressBalance(address string, jsonstring string) (balan
 		err = apierr.Error()
 		return
 	}
-	amtstr := strings.Replace(strings.Split((*res)[0]," ")[0],".","",-1)
+	amtstr := strings.Replace(strings.Split((*res)[0], " ")[0], ".", "", -1)
 	bal, ok := new(big.Int).SetString(amtstr, 10)
 	if !ok {
 		err = fmt.Errorf("balance amount error: %s", (*res)[0])
@@ -336,7 +337,7 @@ func (h *EvtHandler) GetAddressBalance(address string, jsonstring string) (balan
 			err = apierr.Error()
 			return
 		}
-		amtstr1 := strings.Replace(strings.Split((*res1)[0]," ")[0],".","",-1)
+		amtstr1 := strings.Replace(strings.Split((*res1)[0], " ")[0], ".", "", -1)
 		bal1, ok := new(big.Int).SetString(amtstr1, 10)
 		if !ok {
 			err = fmt.Errorf("balance amount error: %s", (*res1)[0])
@@ -347,9 +348,9 @@ func (h *EvtHandler) GetAddressBalance(address string, jsonstring string) (balan
 	return
 }
 
-func (h *EvtHandler) GetDefaultFee () types.Value{
+func (h *EvtHandler) GetDefaultFee() types.Value {
 	// TODO EVT链上所有的操作都用EVT1支付手续费
-	return types.Value{Cointype:"EVT1",Val:big.NewInt(1)}
+	return types.Value{Cointype: "EVT1", Val: big.NewInt(1)}
 }
 
 func (h *EvtHandler) IsToken() bool {
@@ -360,8 +361,8 @@ func (h *EvtHandler) IsToken() bool {
 	return true
 }
 
-func makeEVTFTNumber (amt *big.Int, tokenid string) string {
-	return strconv.FormatFloat(float64(amt.Int64()) / 100000, 'f', 5, 64) + " S#" + tokenid
+func makeEVTFTNumber(amt *big.Int, tokenid string) string {
+	return strconv.FormatFloat(float64(amt.Int64())/100000, 'f', 5, 64) + " S#" + tokenid
 }
 
 func PubKeyToHex(pk string) (pubKeyHex string, _ error) {
@@ -389,7 +390,7 @@ func HexToPubKey(pubKeyHex string) (ecc.PublicKey, error) {
 			return ecc.PublicKey{}, err
 		}
 		pubkeyBytes := pubkey.SerializeCompressed()
-		pubkeyBytes = append([]byte{0}, pubkeyBytes...)  // byte{0} 表示 curve K1, byte{1} 表示 curve R1
+		pubkeyBytes = append([]byte{0}, pubkeyBytes...) // byte{0} 表示 curve K1, byte{1} 表示 curve R1
 		return ecc.NewPublicKeyFromData(pubkeyBytes)
 	}
 

@@ -2,8 +2,6 @@ package evttypes
 
 import "fmt"
 
-
-
 func GroupOwnedAuthorizer() *AuthorizerWeight {
 	return &AuthorizerWeight{
 		Ref:    "[G] Owner",

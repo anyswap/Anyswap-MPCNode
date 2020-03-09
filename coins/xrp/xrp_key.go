@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -15,7 +15,8 @@
  */
 
 package xrp
-import(
+
+import (
 	"encoding/hex"
 	"math/big"
 
@@ -50,15 +51,15 @@ func XRP_importKeyFromSeed(seed string, cryptoType string) crypto.Key {
 
 //////////ed
 func XRP_importPublicKey_ed(pubkey []byte) crypto.Key {
-	return &ed25519key{pub:pubkey,}
+	return &ed25519key{pub: pubkey}
 }
 
 func XRP_publicKeyToAddress_ed(pubkey []byte) string {
-    ed := &ed25519key{pub:pubkey,}
-    prefix := []byte{0}
-    address := crypto.Base58Encode(append(prefix, ed.Id(nil)...), crypto.ALPHABET)
-    //log.Info("===========XRP_publicKeyToAddress_ed============","address",address)
-    return address
+	ed := &ed25519key{pub: pubkey}
+	prefix := []byte{0}
+	address := crypto.Base58Encode(append(prefix, ed.Id(nil)...), crypto.ALPHABET)
+	//log.Info("===========XRP_publicKeyToAddress_ed============","address",address)
+	return address
 }
 
 type ed25519key struct {
@@ -67,7 +68,7 @@ type ed25519key struct {
 
 func checkSequenceIsNil(seq *uint32) {
 	if seq != nil {
-	    panic("Ed25519 keys do not support account families")
+		panic("Ed25519 keys do not support account families")
 	}
 }
 
@@ -85,15 +86,15 @@ func (e *ed25519key) Private(seq *uint32) []byte {
 	checkSequenceIsNil(seq)
 	return nil
 }
-///////////
 
+///////////
 
 func XRP_publicKeyToAddress(pubkey []byte) string {
 	return XRP_getAddress(XRP_importPublicKey(pubkey), nil)
 }
 
 func XRP_importPublicKey(pubkey []byte) crypto.Key {
-	return &EcdsaPublic{pub:pubkey,}
+	return &EcdsaPublic{pub: pubkey}
 }
 
 type EcdsaPublic struct {
@@ -103,7 +104,7 @@ type EcdsaPublic struct {
 func XRP_getAddress(k crypto.Key, sequence *uint32) string {
 	prefix := []byte{0}
 	address := crypto.Base58Encode(append(prefix, k.Id(sequence)...), crypto.ALPHABET)
-        return address
+	return address
 }
 
 func (k *EcdsaPublic) Id(sequence *uint32) []byte {
@@ -120,8 +121,8 @@ func (k *EcdsaPublic) Public(sequence *uint32) []byte {
 	} else {
 		xs := hex.EncodeToString(k.pub[1:33])
 		ys := hex.EncodeToString(k.pub[33:])
-		x, _ := new(big.Int).SetString(xs,16)
-		y, _ := new(big.Int).SetString(ys,16)
+		x, _ := new(big.Int).SetString(xs, 16)
+		y, _ := new(big.Int).SetString(ys, 16)
 		b := make([]byte, 0, PubKeyBytesLenCompressed)
 		format := pubkeyCompressed
 		if isOdd(y) {

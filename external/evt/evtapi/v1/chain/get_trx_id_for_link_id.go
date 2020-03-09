@@ -14,7 +14,7 @@ type GetTrxIdForLinkIdResult struct {
 func (it *Instance) GetTrxIdForLinkId(linkId string) (*GetTrxIdForLinkIdResult, *client.ApiError) {
 	response := &GetTrxIdForLinkIdResult{}
 
-	err := it.Client.Post(it.Path("get_trx_id_for_link_id"), &GetTrxIdForLinkIdRequest{linkId},response)
+	err := it.Client.Post(it.Path("get_trx_id_for_link_id"), &GetTrxIdForLinkIdRequest{linkId}, response)
 
 	if err != nil {
 		return nil, err

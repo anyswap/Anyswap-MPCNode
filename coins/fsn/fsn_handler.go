@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -16,7 +16,7 @@
 
 package fsn
 
-import  (
+import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
@@ -26,13 +26,14 @@ import  (
 	"math/big"
 	"runtime/debug"
 	"strings"
-	"github.com/fsn-dev/dcrm-walletService/internal/params"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/coins/eth/sha3"
-	"github.com/fsn-dev/dcrm-walletService/coins/eth/ethclient"
+
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
+	"github.com/fsn-dev/dcrm-walletService/coins/eth/ethclient"
+	"github.com/fsn-dev/dcrm-walletService/coins/eth/sha3"
 	ctypes "github.com/fsn-dev/dcrm-walletService/coins/types"
+	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/params"
 )
 
 func FSNInit() {
@@ -40,9 +41,9 @@ func FSNInit() {
 	gasLimit = 40000
 
 	if config.ApiGateways != nil && config.ApiGateways.FusionGateway != nil {
-	    url = config.ApiGateways.FusionGateway.ApiAddress
+		url = config.ApiGateways.FusionGateway.ApiAddress
 	}
-	
+
 	//chainConfig = params.FsnChainConfig
 	chainConfig = params.TestnetChainConfig
 }
@@ -50,8 +51,8 @@ func FSNInit() {
 var (
 	gasPrice *big.Int
 	gasLimit uint64
-	url string
-	err error
+	url      string
+	err      error
 	//chainConfig = params.FsnChainConfig
 	chainConfig = params.TestnetChainConfig
 )
@@ -60,24 +61,24 @@ type FSNHandler struct {
 }
 
 func NewFSNHandler() *FSNHandler {
-    return &FSNHandler{}
+	return &FSNHandler{}
 }
 
-var FSN_DEFAULT_FEE, _ = new(big.Int).SetString("10000000000000000",10)
+var FSN_DEFAULT_FEE, _ = new(big.Int).SetString("10000000000000000", 10)
 
 func (h *FSNHandler) GetDefaultFee() ctypes.Value {
-	return ctypes.Value{Cointype:"FSN",Val:FSN_DEFAULT_FEE}
+	return ctypes.Value{Cointype: "FSN", Val: FSN_DEFAULT_FEE}
 }
 
 func (h *FSNHandler) IsToken() bool {
 	return false
 }
 
-func (h *FSNHandler) PublicKeyToAddress (pubKeyHex string) (address string, err error) {
+func (h *FSNHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error) {
 	if len(pubKeyHex) != 132 && len(pubKeyHex) != 130 {
 		return "", errors.New("invalid public key length")
 	}
-        pubKeyHex = strings.TrimPrefix(pubKeyHex,"0x")
+	pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
 	data := hexEncPubkey(pubKeyHex[2:])
 
 	pub, err := decodePubkey(data)
@@ -91,17 +92,17 @@ func (h *FSNHandler) PublicKeyToAddress (pubKeyHex string) (address string, err 
 
 // jsonstring '{"gasPrice":8000000000,"gasLimit":50000}'
 func (h *FSNHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 
-	fmt.Println("==================fsn.BuildUnsignedTransaction,url =%s===================",url)
+	fmt.Println("==================fsn.BuildUnsignedTransaction,url =%s===================", url)
 	client, err := ethclient.Dial(url)
 	if err != nil {
-		fmt.Println("==================fsn.BuildUnsignedTransaction,url =%s,err =%v===================",url,err)
+		fmt.Println("==================fsn.BuildUnsignedTransaction,url =%s,err =%v===================", url, err)
 		return
 	}
 	var args interface{}
@@ -118,8 +119,8 @@ func (h *FSNHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	}
 	transaction, hash, err := fsn_newUnsignedTransaction(client, fromAddress, toAddress, amount, gasPrice, gasLimit)
 	if transaction == nil || hash == nil || err != nil {
-	    fmt.Println("================fsn_newUnsignedTransaction,new unsigned tx fail================",)
-	    return
+		fmt.Println("================fsn_newUnsignedTransaction,new unsigned tx fail================")
+		return
 	}
 
 	hashStr := hash.Hex()
@@ -186,7 +187,7 @@ func (h *FSNHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 		transferAmount := msg.Value()
 		txOutput := ctypes.TxOutput{
 			ToAddress: toAddress,
-			Amount: transferAmount,
+			Amount:    transferAmount,
 		}
 		txOutputs = append(txOutputs, txOutput)
 	} else if err1 != nil {
@@ -200,7 +201,7 @@ func (h *FSNHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 		err = fmt.Errorf("get transaction receipt fail " + receipterr.Error())
 		return
 	}
-		fmt.Printf("===============fsn.GetTransactionInfo,receipt = %v=================\n",r)
+	fmt.Printf("===============fsn.GetTransactionInfo,receipt = %v=================\n", r)
 	if r == nil {
 		err = fmt.Errorf("get transaction receipt fail")
 		return
@@ -222,19 +223,19 @@ func (h *FSNHandler) GetAddressBalance(address string, jsonstring string) (balan
 	if err != nil {
 		return
 	}
-	balance.CoinBalance = ctypes.Value{Cointype:"FSN",Val:bal}
+	balance.CoinBalance = ctypes.Value{Cointype: "FSN", Val: bal}
 	return
 }
 
 func GetLastBlock() *big.Int {
-	last,_ := new(big.Int).SetString("100000",10)
+	last, _ := new(big.Int).SetString("100000", 10)
 	return last
-/*	client, err := ethclient.Dial(url)
-	if err != nil {
-		return nil
-	}
-	blk, _ := client.BlockByNumber(context.Background(), nil)
-	return blk.Number()
+	/*	client, err := ethclient.Dial(url)
+		if err != nil {
+			return nil
+		}
+		blk, _ := client.BlockByNumber(context.Background(), nil)
+		return blk.Number()
 	*/
 }
 
@@ -242,7 +243,7 @@ func hexEncPubkey(h string) (ret [64]byte) {
 	b, err := hex.DecodeString(h)
 	if err != nil {
 		//panic(err)
-		fmt.Printf("=============== parse pubkey error = %v ==============\n",err)
+		fmt.Printf("=============== parse pubkey error = %v ==============\n", err)
 		return ret
 	}
 	if len(b) != len(ret) {
@@ -253,7 +254,6 @@ func hexEncPubkey(h string) (ret [64]byte) {
 	copy(ret[:], b)
 	return ret
 }
-
 
 func decodePubkey(e [64]byte) (*ecdsa.PublicKey, error) {
 	p := &ecdsa.PublicKey{Curve: ethcrypto.S256(), X: new(big.Int), Y: new(big.Int)}
@@ -266,9 +266,9 @@ func decodePubkey(e [64]byte) (*ecdsa.PublicKey, error) {
 	return p, nil
 }
 
-func fsn_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, toAddressHex string, amount *big.Int, gasPrice *big.Int, gasLimit uint64) (*ctypes.Transaction, *common.Hash, error) {
+func fsn_newUnsignedTransaction(client *ethclient.Client, dcrmAddress string, toAddressHex string, amount *big.Int, gasPrice *big.Int, gasLimit uint64) (*ctypes.Transaction, *common.Hash, error) {
 
-        fmt.Printf("================ amount = %v ================\n", amount)
+	fmt.Printf("================ amount = %v ================\n", amount)
 	fmt.Printf("================ gasPrice = %v ================\n", gasPrice)
 	fmt.Printf("================ gasLimit = %v ================\n", gasLimit)
 	chainID := chainConfig.ChainID
@@ -303,7 +303,7 @@ func fsn_newUnsignedTransaction (client *ethclient.Client, dcrmAddress string, t
 
 	if gasLimit <= 0 {
 		gasLimit, err = client.EstimateGas(context.Background(), ctypes.CallMsg{
-			To:   &toAddress,
+			To: &toAddress,
 		})
 		gasLimit = gasLimit * 4
 		if err != nil {
@@ -326,8 +326,8 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	//if err != nil {
 	//	return nil, err
 	//}
-	chainID := chainConfig.ChainID 
-	fmt.Println("=============== makeSignedTransaction,chain id = %v ===============",chainID)
+	chainID := chainConfig.ChainID
+	fmt.Println("=============== makeSignedTransaction,chain id = %v ===============", chainID)
 
 	message, err := hex.DecodeString(rsv)
 	if err != nil {
@@ -343,31 +343,31 @@ func makeSignedTransaction(client *ethclient.Client, tx *ctypes.Transaction, rsv
 	//////
 	from, err2 := ctypes.Sender(signer, signedtx)
 	if err2 != nil {
-	    fmt.Println("===================makeSignedTransaction,err = %v ==================",err2)
-	    return nil,err2
+		fmt.Println("===================makeSignedTransaction,err = %v ==================", err2)
+		return nil, err2
 	}
-	fmt.Println("===================makeSignedTransaction,from = %v ==================",from.Hex())
+	fmt.Println("===================makeSignedTransaction,from = %v ==================", from.Hex())
 	////
 
 	return signedtx, nil
 }
 
-func fsn_sendTx (client *ethclient.Client, signedTx *ctypes.Transaction) (string, error) {
+func fsn_sendTx(client *ethclient.Client, signedTx *ctypes.Transaction) (string, error) {
 	//data, _:= rlp.EncodeToBytes(signedTx)
 
-	signer:= ctypes.NewEIP155Signer(signedTx.ChainId())
-	fmt.Println("===================!!! fsn_sendTx,chain id =%v !!!================================",signedTx.ChainId())
+	signer := ctypes.NewEIP155Signer(signedTx.ChainId())
+	fmt.Println("===================!!! fsn_sendTx,chain id =%v !!!================================", signedTx.ChainId())
 	from, err2 := ctypes.Sender(signer, signedTx)
 	if err2 != nil {
-	    fmt.Println("===================!!! fsn_sendTx,get sender err =%v !!!================================",err2)
-	    return "",err2
+		fmt.Println("===================!!! fsn_sendTx,get sender err =%v !!!================================", err2)
+		return "", err2
 	}
-	fmt.Println("===================!!! fsn_sendTx,from =%s !!!================================",from.Hex())
+	fmt.Println("===================!!! fsn_sendTx,from =%s !!!================================", from.Hex())
 
 	err := client.SendTransaction(context.Background(), signedTx)
 	if err != nil {
-		if strings.Contains(err.Error(),"known transaction") {
-			txhash := strings.Split(err.Error(),":")[1]
+		if strings.Contains(err.Error(), "known transaction") {
+			txhash := strings.Split(err.Error(), ":")[1]
 			txhash = strings.TrimSpace(txhash)
 			return txhash, nil
 		}

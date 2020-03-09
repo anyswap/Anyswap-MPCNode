@@ -82,8 +82,8 @@ func NewLDBDatabase(file string, cache int, handles int) (*LDBDatabase, error) {
 		return nil, err
 	}
 	return &LDBDatabase{
-		fn:  file,
-		db:  db,
+		fn: file,
+		db: db,
 	}, nil
 }
 

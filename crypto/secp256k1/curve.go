@@ -121,8 +121,8 @@ func (BitCurve *BitCurve) affineFromJacobian(x, y, z *big.Int) (xOut, yOut *big.
 	zinv := new(big.Int).ModInverse(z, BitCurve.P)
 	//+++++++++++caihaijun+++++++++++++++
 	if zinv == nil {
-		zero,_ := new(big.Int).SetString("0",10)
-		return zero,zero
+		zero, _ := new(big.Int).SetString("0", 10)
+		return zero, zero
 	}
 	//++++++++++++++end++++++++++++++++++
 	zinvsq := new(big.Int).Mul(zinv, zinv)
@@ -337,4 +337,3 @@ func (bitCurve *BitCurve) N3() *big.Int {
 	N3 = new(big.Int).Mul(N3, bitCurve.N)
 	return N3
 }
-

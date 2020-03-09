@@ -35,16 +35,16 @@ import (
 
 func main() {
 	var (
-		groupNum    = flag.Uint("group", uint(0), "group Number")//0:sdk, 1:one group, 2:two groups dcrm xp
-		groupNodesNum    = flag.Uint("nodes", uint(0), "nodes Number in some group, must > 0")
-		listenAddr  = flag.String("addr", "", "listen address")
-		genKey      = flag.String("genkey", "", "generate a node key")
-		writeAddr   = flag.Bool("writeaddress", false, "write out the node's pubkey hash and quit")
-		nodeKeyFile = flag.String("nodekey", "", "private key filename")
-		nodeKeyHex  = flag.String("nodekeyhex", "", "private key as hex (for testing)")
-		natdesc     = flag.String("nat", "none", "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)")
-		netrestrict = flag.String("netrestrict", "", "restrict network communication to the given IP networks (CIDR masks)")
-		runv5       = flag.Bool("v5", false, "run a v5 topic discovery bootnode")
+		groupNum      = flag.Uint("group", uint(0), "group Number") //0:sdk, 1:one group, 2:two groups dcrm xp
+		groupNodesNum = flag.Uint("nodes", uint(0), "nodes Number in some group, must > 0")
+		listenAddr    = flag.String("addr", "", "listen address")
+		genKey        = flag.String("genkey", "", "generate a node key")
+		writeAddr     = flag.Bool("writeaddress", false, "write out the node's pubkey hash and quit")
+		nodeKeyFile   = flag.String("nodekey", "", "private key filename")
+		nodeKeyHex    = flag.String("nodekeyhex", "", "private key as hex (for testing)")
+		natdesc       = flag.String("nat", "none", "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)")
+		netrestrict   = flag.String("netrestrict", "", "restrict network communication to the given IP networks (CIDR masks)")
+		runv5         = flag.Bool("v5", false, "run a v5 topic discovery bootnode")
 
 		nodeKey *ecdsa.PrivateKey
 		err     error
@@ -156,9 +156,9 @@ type conf struct {
 
 type bootnodeConf struct {
 	Nodekey string
-	Addr uint
-	Group uint
-	Nodes uint
+	Addr    uint
+	Group   uint
+	Nodes   uint
 }
 
 func getConfig(groupNum, groupNodesNum *uint, listenAddr, nodeKeyFile *string) error {
@@ -186,4 +186,3 @@ func getConfig(groupNum, groupNodesNum *uint, listenAddr, nodeKeyFile *string) e
 	}
 	return nil
 }
-

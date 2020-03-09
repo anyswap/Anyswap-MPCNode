@@ -1,9 +1,10 @@
 package examples
 
 import (
+	"log"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evt"
-	"log"
 )
 
 func PrintgetSuspend(id string, evt *evt.Instance) {

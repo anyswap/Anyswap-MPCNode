@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -22,6 +22,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"runtime/debug"
+	"strings"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
@@ -29,15 +33,12 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	atypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	ecrypto "github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
+	ecrypto "github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/gorilla/mux"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	"math/big"
-	"runtime/debug"
-	"strings"
 )
 
 func ATOMInit() {

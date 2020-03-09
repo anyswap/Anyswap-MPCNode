@@ -19,6 +19,7 @@ package dcrm
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
 )
 
@@ -65,7 +66,7 @@ func (this *Service) GetEnode() string {
 type GroupInfo struct {
 	Gid    string
 	Mode   string
-	Count int
+	Count  int
 	Enodes []string
 }
 
@@ -162,14 +163,18 @@ func (this *Service) GetEnodeStatus(enode string) string {
 
 // TEST
 func (this *Service) GetSDKGroupAll() string {
-if RPCTEST == false { return "" }
+	if RPCTEST == false {
+		return ""
+	}
 	retMsg := layer2.GetGroupSDKAll()
 	fmt.Printf("==== GetSDKGroupAll() ====, ret: %v\n", retMsg)
 	return packageResult(SUCCESS, "", "", retMsg)
 }
 
 func (this *Service) BroadcastInSDKGroupAll(gid, msg string) string {
-if RPCTEST == false { return "" }
+	if RPCTEST == false {
+		return ""
+	}
 	retMsg, err := layer2.SdkProtocol_broadcastInGroupAll(gid, msg)
 	status := SUCCESS
 	if err != nil {
@@ -180,7 +185,9 @@ if RPCTEST == false { return "" }
 }
 
 func (this *Service) SendToGroupAllNodes(gid, msg string) string {
-if RPCTEST == false { return "" }
+	if RPCTEST == false {
+		return ""
+	}
 	retMsg, err := layer2.SdkProtocol_SendToGroupAllNodes(gid, msg)
 	status := SUCCESS
 	if err != nil {
@@ -189,4 +196,3 @@ if RPCTEST == false { return "" }
 	fmt.Printf("==== SendToGroupAllNodes() ====, ret: %v\n", retMsg)
 	return packageResult(status, "", retMsg, msg)
 }
-

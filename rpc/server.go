@@ -148,7 +148,7 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 	s.codecsMu.Lock()
 	if atomic.LoadInt32(&s.run) != 1 { // server stopped
 		s.codecsMu.Unlock()
-		fmt.Println("================================!!!dcrmwalletrpclog,Server.serveRequest,err =%v!!!!===========================================",fmt.Errorf("server stopped"))
+		fmt.Println("================================!!!dcrmwalletrpclog,Server.serveRequest,err =%v!!!!===========================================", fmt.Errorf("server stopped"))
 		return &shutdownError{}
 	}
 	s.codecs.Add(codec)
@@ -158,7 +158,7 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 	for atomic.LoadInt32(&s.run) == 1 {
 		reqs, batch, err := s.readRequest(codec)
 		if err != nil {
-			fmt.Println("================================!!!dcrmwalletrpclog,Server.serveRequest,err =%v!!!!===========================================",err)
+			fmt.Println("================================!!!dcrmwalletrpclog,Server.serveRequest,err =%v!!!!===========================================", err)
 			// If a parsing error occurred, send an error
 			if err.Error() != "EOF" {
 				codec.Write(codec.CreateErrorResponse(nil, err))
@@ -171,7 +171,7 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 		// check if server is ordered to shutdown and return an error
 		// telling the client that his request failed.
 		if atomic.LoadInt32(&s.run) != 1 {
-			fmt.Println("================================!!!dcrmwalletrpclog,Server.serveRequest,err =%v!!!!===========================================",fmt.Errorf("server stopped"))
+			fmt.Println("================================!!!dcrmwalletrpclog,Server.serveRequest,err =%v!!!!===========================================", fmt.Errorf("server stopped"))
 			err = &shutdownError{}
 			if batch {
 				resps := make([]interface{}, len(reqs))
@@ -253,7 +253,7 @@ func (s *Server) createSubscription(ctx context.Context, c ServerCodec, req *ser
 // handle executes a request and returns the response from the callback.
 func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverRequest) (interface{}, func()) {
 	if req.err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,Server.handle,err =%v!!!!===========================================",req.err)
+		fmt.Println("================================!!!dcrmwalletrpclog,Server.handle,err =%v!!!!===========================================", req.err)
 		return codec.CreateErrorResponse(&req.id, req.err), nil
 	}
 
@@ -266,7 +266,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 
 			subid := ID(req.args[0].String())
 			if err := notifier.unsubscribe(subid); err != nil {
-				fmt.Println("================================!!!dcrmwalletrpclog,Server.handle,err =%v!!!!===========================================",err)
+				fmt.Println("================================!!!dcrmwalletrpclog,Server.handle,err =%v!!!!===========================================", err)
 				return codec.CreateErrorResponse(&req.id, &callbackError{err.Error()}), nil
 			}
 
@@ -278,7 +278,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 	if req.callb.isSubscribe {
 		subid, err := s.createSubscription(ctx, codec, req)
 		if err != nil {
-			fmt.Println("================================!!!dcrmwalletrpclog,Server.handle,err =%v!!!!===========================================",err)
+			fmt.Println("================================!!!dcrmwalletrpclog,Server.handle,err =%v!!!!===========================================", err)
 			return codec.CreateErrorResponse(&req.id, &callbackError{err.Error()}), nil
 		}
 
@@ -327,7 +327,7 @@ func (s *Server) exec(ctx context.Context, codec ServerCodec, req *serverRequest
 	var response interface{}
 	var callback func()
 	if req.err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,Server.exec,err =%v!!!!===========================================",req.err)
+		fmt.Println("================================!!!dcrmwalletrpclog,Server.exec,err =%v!!!!===========================================", req.err)
 		response = codec.CreateErrorResponse(&req.id, req.err)
 	} else {
 		response, callback = s.handle(ctx, codec, req)
@@ -350,7 +350,7 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 	var callbacks []func()
 	for i, req := range requests {
 		if req.err != nil {
-			fmt.Println("================================!!!dcrmwalletrpclog,Server.execBatch,err =%v!!!!===========================================",req.err)
+			fmt.Println("================================!!!dcrmwalletrpclog,Server.execBatch,err =%v!!!!===========================================", req.err)
 			responses[i] = codec.CreateErrorResponse(&req.id, req.err)
 		} else {
 			var callback func()
@@ -361,7 +361,7 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 	}
 
 	if err := codec.Write(responses); err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,Server.execBatch,22222,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,Server.execBatch,22222,err =%v!!!!===========================================", err)
 		codec.Close()
 	}
 
@@ -377,7 +377,7 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) {
 	reqs, batch, err := codec.ReadRequestHeaders()
 	if err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,err =%v!!!!===========================================", err)
 		return nil, batch, err
 	}
 
@@ -399,7 +399,7 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 			if args, err := codec.ParseRequestArguments(argTypes, r.params); err == nil {
 				requests[i].args = args
 			} else {
-				fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,err =%v!!!!===========================================",err)
+				fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,err =%v!!!!===========================================", err)
 				requests[i].err = &invalidParamsError{err.Error()}
 			}
 			continue
@@ -419,7 +419,7 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 					if args, err := codec.ParseRequestArguments(argTypes, r.params); err == nil {
 						requests[i].args = args[1:] // first one is service.method name which isn't an actual argument
 					} else {
-						fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,22222,err =%v!!!!===========================================",err)
+						fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,22222,err =%v!!!!===========================================", err)
 						requests[i].err = &invalidParamsError{err.Error()}
 					}
 				}
@@ -435,14 +435,14 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 				if args, err := codec.ParseRequestArguments(callb.argTypes, r.params); err == nil {
 					requests[i].args = args
 				} else {
-					fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,3333,err =%v!!!!===========================================",err)
+					fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,3333,err =%v!!!!===========================================", err)
 					requests[i].err = &invalidParamsError{err.Error()}
 				}
 			}
 			continue
 		}
 
-		fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,44444,err =%v!!!!===========================================",fmt.Errorf("method not found"))
+		fmt.Println("================================!!!dcrmwalletrpclog,Server.readRequest,44444,err =%v!!!!===========================================", fmt.Errorf("method not found"))
 		requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.service, r.method}}
 	}
 

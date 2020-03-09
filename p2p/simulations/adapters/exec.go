@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/fsn-dev/dcrm-walletService/node"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/rpc"

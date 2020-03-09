@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -27,6 +27,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/rubblelabs/ripple/crypto"
 	"github.com/rubblelabs/ripple/data"
@@ -55,32 +56,32 @@ func checkErr(err error) {
 	}
 }
 
-type XRPHandler struct {}
+type XRPHandler struct{}
 
-func NewXRPHandler () *XRPHandler {
+func NewXRPHandler() *XRPHandler {
 	return &XRPHandler{}
 }
 
-var XRP_DEFAULT_FEE, _ = new(big.Int).SetString("10",10)
+var XRP_DEFAULT_FEE, _ = new(big.Int).SetString("10", 10)
 
 func (h *XRPHandler) GetDefaultFee() types.Value {
-	return types.Value{Cointype:"XRP",Val:XRP_DEFAULT_FEE}
+	return types.Value{Cointype: "XRP", Val: XRP_DEFAULT_FEE}
 }
 
 func (h *XRPHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error) {
-    ////
-    if types.IsDefaultED25519("XRP") {
-	pubKeyHex = strings.TrimPrefix(pubKeyHex,"0x")
- 	pub, err := hex.DecodeString(pubKeyHex)
-	address = XRP_publicKeyToAddress_ed(pub)
-	return address,err
-    }
-    /////
+	////
+	if types.IsDefaultED25519("XRP") {
+		pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
+		pub, err := hex.DecodeString(pubKeyHex)
+		address = XRP_publicKeyToAddress_ed(pub)
+		return address, err
+	}
+	/////
 
 	if len(pubKeyHex) != 132 && len(pubKeyHex) != 130 {
 		return "", errors.New("invalid public key length")
 	}
-        pubKeyHex = strings.TrimPrefix(pubKeyHex,"0x")
+	pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
 	pub, err := hex.DecodeString(pubKeyHex)
 	address = XRP_publicKeyToAddress(pub)
 	return
@@ -88,12 +89,12 @@ func (h *XRPHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 
 // jsonstring:'{"fee":1}'
 func (h *XRPHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	var args interface{}
 	json.Unmarshal([]byte(jsonstring), &args)
 	if args != nil {
@@ -112,20 +113,20 @@ func (h *XRPHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 
 	var xrp_pubKey crypto.Key
 	if types.IsDefaultED25519("XRP") {
-	    xrp_pubKey = XRP_importPublicKey_ed(pub)
+		xrp_pubKey = XRP_importPublicKey_ed(pub)
 	} else {
-	    xrp_pubKey = XRP_importPublicKey(pub)
+		xrp_pubKey = XRP_importPublicKey(pub)
 	}
 
-	fmt.Printf("!!! XRP Handler BuildUnsignedTransaction,xrp_pubKey=%v\n",xrp_pubKey)
+	fmt.Printf("!!! XRP Handler BuildUnsignedTransaction,xrp_pubKey=%v\n", xrp_pubKey)
 	amt := amount.String()
 	txseq := getSeq(fromAddress)
-	fmt.Printf("!!! XRP Handler BuildUnsignedTransaction,txseq = %v\n",txseq)
+	fmt.Printf("!!! XRP Handler BuildUnsignedTransaction,txseq = %v\n", txseq)
 
 	if types.IsDefaultED25519("XRP") {
-	    transaction, _,msg := XRP_newUnsignedPaymentTransaction(xrp_pubKey, nil, txseq, toAddress, amt, fee, "", false, false, false)
-	    digests = append(digests, string(msg))
-	    return transaction,digests,err
+		transaction, _, msg := XRP_newUnsignedPaymentTransaction(xrp_pubKey, nil, txseq, toAddress, amt, fee, "", false, false, false)
+		digests = append(digests, string(msg))
+		return transaction, digests, err
 	}
 
 	transaction, hash, _ := XRP_newUnsignedPaymentTransaction(xrp_pubKey, nil, txseq, toAddress, amt, fee, "", false, false, false)
@@ -162,7 +163,7 @@ func (h *XRPHandler) SignTransaction(hash []string, privateKey interface{}) (rsv
 	rx = make64(rx)
 	sx := fmt.Sprintf("%X", signature.S)
 	sx = make64(sx)
-	rsv = append(rsv, rx + sx + "00")
+	rsv = append(rsv, rx+sx+"00")
 	return
 }
 
@@ -184,7 +185,7 @@ func (h *XRPHandler) SubmitTransaction(signedTransaction interface{}) (txhash st
 		err = fmt.Errorf("%v, %v Error message: %v", result["error"], result["error_exception"], result["error_message"])
 		return
 	}
-	
+
 	if result["engine_result_message"].(string) == "The transaction was applied. Only final in a validated ledger." {
 		txhash = result["tx_json"].(map[string]interface{})["hash"].(string)
 	}
@@ -193,12 +194,12 @@ func (h *XRPHandler) SubmitTransaction(signedTransaction interface{}) (txhash st
 }
 
 func (h *XRPHandler) GetTransactionInfo(txhash string) (fromAddress string, txOutputs []types.TxOutput, jsonstring string, confirmed bool, fee types.Value, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	data := "{\"method\":\"tx\", \"params\":[{\"transaction\":\"" + txhash + "\", \"binary\":false}]}"
 	ret := rpcutils.DoPostRequest(url, "", data)
 
@@ -217,7 +218,7 @@ func (h *XRPHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	transferAmount, _ := new(big.Int).SetString(amt, 10)
 	txOutputs = append(txOutputs, types.TxOutput{
 		ToAddress: toAddress,
-		Amount: transferAmount,
+		Amount:    transferAmount,
 	})
 
 	feestr := result["Fee"].(string)
@@ -237,12 +238,12 @@ func (h *XRPHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 }
 
 func (h *XRPHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	account := getAccount(address)
 	balance.CoinBalance.Cointype = "XRP"
 	balance.CoinBalance.Val, _ = new(big.Int).SetString(account.Balance, 10)
@@ -280,14 +281,14 @@ type JsonRet struct {
 }
 
 func rsvToSig(rsv string) []byte {
-        if types.IsDefaultED25519("XRP") {
-	    m := strings.Split(rsv,":")
-	    rb, _ := hex.DecodeString(m[0])
-	    sb, _ := hex.DecodeString(m[1])
-	    signature2 := new([64]byte)
-	    copy(signature2[:], rb[:])
-	    copy(signature2[32:], sb[:])
-	    return signature2[:]
+	if types.IsDefaultED25519("XRP") {
+		m := strings.Split(rsv, ":")
+		rb, _ := hex.DecodeString(m[0])
+		sb, _ := hex.DecodeString(m[1])
+		signature2 := new([64]byte)
+		copy(signature2[:], rb[:])
+		copy(signature2[32:], sb[:])
+		return signature2[:]
 	}
 
 	b, _ := hex.DecodeString(rsv)
@@ -307,27 +308,27 @@ type Account_info_Res struct {
 }
 
 type Account struct {
-	Balance string
+	Balance  string
 	Sequence uint32
 }
 
-func make64 (str string) string {
+func make64(str string) string {
 	for l := len(str); l < 64; l++ {
 		str = "0" + str
 	}
 	return str
 }
 
-func getAccount (address string) (Account) {
+func getAccount(address string) Account {
 	// TODO
 	reader := strings.NewReader("{\"method\":\"account_info\",\"params\":[{\"account\":\"" + address + "\"}]}")
-        request, err := http.NewRequest("POST", url, reader)
-        checkErr(err)
-        client := &http.Client{}
-        resp, err := client.Do(request)
-        checkErr(err)
-        defer resp.Body.Close()
-        body, err := ioutil.ReadAll(resp.Body)
+	request, err := http.NewRequest("POST", url, reader)
+	checkErr(err)
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	checkErr(err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
 	jsonRet := new(JsonRet)
 	err = json.Unmarshal(body, jsonRet)
 	checkErr(err)
@@ -343,31 +344,31 @@ func getSeq(address string) uint32 {
 func XRP_newUnsignedSimplePaymentTransaction(fromAddress string, publicKey []byte, toAddress string, amount *big.Int, fee int64) (data.Transaction, data.Hash256, []byte) {
 	var dcrm_key crypto.Key
 	if types.IsDefaultED25519("XRP") {
-	    dcrm_key = XRP_importPublicKey_ed(publicKey)
+		dcrm_key = XRP_importPublicKey_ed(publicKey)
 	} else {
-	    dcrm_key = XRP_importPublicKey(publicKey)
+		dcrm_key = XRP_importPublicKey(publicKey)
 	}
 
 	z := new(big.Int).Div(amount, big.NewInt(1000000))
 	d := new(big.Int).Sub(amount, new(big.Int).Mul(amount, big.NewInt(1000000)))
 	amt := z.String() + "." + d.String() + "/XRP/" + fromAddress
-	dcrm_txseq := getSeq(fromAddress)  // 一般是1
+	dcrm_txseq := getSeq(fromAddress) // 一般是1
 	return XRP_newUnsignedPaymentTransaction(dcrm_key, nil, dcrm_txseq, toAddress, amt, fee, "", false, false, false)
 }
 
 // 普通xrp转账
 func XRP_Remit(seed string, cryptoType string, keyseq *uint32, toaddress string, amount *big.Int, fee int64) {
-        key := XRP_importKeyFromSeed(seed, cryptoType)
-        fromaddress := XRP_getAddress(key, keyseq)
-        txseq := getSeq(fromaddress)
+	key := XRP_importKeyFromSeed(seed, cryptoType)
+	fromaddress := XRP_getAddress(key, keyseq)
+	txseq := getSeq(fromaddress)
 	z := new(big.Int).Div(amount, big.NewInt(1000000))
 	d := new(big.Int).Sub(amount, new(big.Int).Mul(z, big.NewInt(1000000)))
 	amt := z.String() + "." + d.String() + "/XRP/" + fromaddress
-        tx, hash, _ := XRP_newUnsignedPaymentTransaction(key, keyseq, txseq, toaddress, amt, fee, "", false, false, false)
-        sig := XRP_getSig(tx, key, keyseq, hash, nil)
-        signedTx := XRP_makeSignedTx(tx, sig)
-        res := XRP_submitTx(signedTx)
-        fmt.Println(res)
+	tx, hash, _ := XRP_newUnsignedPaymentTransaction(key, keyseq, txseq, toaddress, amt, fee, "", false, false, false)
+	sig := XRP_getSig(tx, key, keyseq, hash, nil)
+	signedTx := XRP_makeSignedTx(tx, sig)
+	res := XRP_submitTx(signedTx)
+	fmt.Println(res)
 }
 
 // 给一个地址打10000块钱激活, 需要一个有足够钱的大帐户
@@ -375,23 +376,23 @@ func XRP_Remit(seed string, cryptoType string, keyseq *uint32, toaddress string,
 // 大帐户seed: ssfL5tmpTTqCw5sHjnRHQ4yyUCQKf
 // 大帐户密钥类型: ecdsa  keysequence: 0
 func XRP_FundAddress(toaddress string) {
-        key := XRP_importKeyFromSeed("ssfL5tmpTTqCw5sHjnRHQ4yyUCQKf","ecdsa")
-        keyseq := uint32(0)
-        txseq := uint32(1)  // 新帐户是1
-        tx, hash, msg := XRP_newUnsignedPaymentTransaction(key, &keyseq, txseq, toaddress, "10000/XRP/rwLc28nRV7WZiBv6vsHnpxUGAVcj8qpAtE", int64(10), "", false, false, false)
+	key := XRP_importKeyFromSeed("ssfL5tmpTTqCw5sHjnRHQ4yyUCQKf", "ecdsa")
+	keyseq := uint32(0)
+	txseq := uint32(1) // 新帐户是1
+	tx, hash, msg := XRP_newUnsignedPaymentTransaction(key, &keyseq, txseq, toaddress, "10000/XRP/rwLc28nRV7WZiBv6vsHnpxUGAVcj8qpAtE", int64(10), "", false, false, false)
 
-        // 签名
-        sig := XRP_getSig(tx, key, &keyseq, hash, msg)
+	// 签名
+	sig := XRP_getSig(tx, key, &keyseq, hash, msg)
 
-        // 构造交易结构, 发送交易
-        XRP_makeSignedTx(tx, sig)
-        res := XRP_submitTx(tx)
-        fmt.Printf("%v\n",res)
+	// 构造交易结构, 发送交易
+	XRP_makeSignedTx(tx, sig)
+	res := XRP_submitTx(tx)
+	fmt.Printf("%v\n", res)
 }
 
 // keyseq is only supported by ecdsa, leave nil when key crypto type is ed25519
 // amt format: "value/currency/issuer"
-func XRP_newUnsignedPaymentTransaction (key crypto.Key, keyseq *uint32, txseq uint32, dest string, amt string, fee int64, path string, nodirect bool, partial bool, limit bool) (data.Transaction, data.Hash256, []byte) {
+func XRP_newUnsignedPaymentTransaction(key crypto.Key, keyseq *uint32, txseq uint32, dest string, amt string, fee int64, path string, nodirect bool, partial bool, limit bool) (data.Transaction, data.Hash256, []byte) {
 
 	destination, amount := parseAccount(dest), parseAmount(amt)
 	payment := &data.Payment{
@@ -424,9 +425,9 @@ func XRP_newUnsignedPaymentTransaction (key crypto.Key, keyseq *uint32, txseq ui
 
 	//TODO Set Account
 	if types.IsDefaultED25519("XRP") {
-	    copy(base.Account[:], key.Id(nil))
+		copy(base.Account[:], key.Id(nil))
 	} else {
-	    copy(base.Account[:], key.Id(keyseq))
+		copy(base.Account[:], key.Id(keyseq))
 	}
 
 	payment.InitialiseForSigning()
@@ -435,9 +436,9 @@ func XRP_newUnsignedPaymentTransaction (key crypto.Key, keyseq *uint32, txseq ui
 	checkErr(err)
 
 	if types.IsDefaultED25519("XRP") {
-	    return payment,hash,append(payment.SigningPrefix().Bytes(), msg...)
+		return payment, hash, append(payment.SigningPrefix().Bytes(), msg...)
 	}
-	
+
 	return payment, hash, msg
 }
 

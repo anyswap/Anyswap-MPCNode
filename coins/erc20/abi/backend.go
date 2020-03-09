@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package abi 
+package abi
 
 import (
 	"context"
 	"errors"
 	"math/big"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 var (

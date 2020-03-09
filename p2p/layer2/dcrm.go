@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -19,11 +19,11 @@ package layer2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"sort"
-	"strings"
 	"strconv"
-	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto"
@@ -170,7 +170,6 @@ func DcrmProtocol_getEnodes() (int, string) {
 	return getGroup(discover.NodeID{}, DcrmProtocol_type)
 }
 
-
 //=============================== DCRM =================================
 func SendMsg(msg string) {
 	//BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type)
@@ -291,10 +290,12 @@ func checkExistGroup(gid discover.NodeID) bool {
 func SdkProtocol_registerBroadcastInGroupCallback(recvSdkFunc func(interface{}, string)) {
 	Sdk_callback = recvSdkFunc
 }
+
 // recv from sendToGroup...
 func SdkProtocol_registerSendToGroupCallback(sdkcallback func(interface{}, string) <-chan string) {
 	discover.RegisterSdkMsgCallback(sdkcallback)
 }
+
 // recv return from sendToGroup...
 func SdkProtocol_registerSendToGroupReturnCallback(sdkcallback func(interface{}, string)) {
 	discover.RegisterSdkMsgRetCallback(sdkcallback)
@@ -327,7 +328,7 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
 	discover.GroupSDK.Lock()
 	exist := false
-	for i, _ := range SdkGroup {
+	for i := range SdkGroup {
 		if i == gid {
 			exist = true
 			break
@@ -385,4 +386,3 @@ func CheckAddPeer(mode string, enodes []string) error {
 	wg.Wait()
 	return nil
 }
-

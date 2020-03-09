@@ -19,8 +19,8 @@ package node
 import (
 	"reflect"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
 
@@ -28,9 +28,9 @@ import (
 // the protocol stack, that is passed to all constructors to be optionally used;
 // as well as utility methods to operate on the service environment.
 type ServiceContext struct {
-	config         *Config
-	services       map[reflect.Type]Service // Index of the already constructed services
-	EventMux       *event.TypeMux           // Event multiplexer used for decoupled notifications
+	config   *Config
+	services map[reflect.Type]Service // Index of the already constructed services
+	EventMux *event.TypeMux           // Event multiplexer used for decoupled notifications
 	//AccountManager *accounts.Manager        // Account manager created by the node.
 }
 

@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -24,12 +24,12 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
 )
 
 func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool) (string, error) {
@@ -105,7 +105,7 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 			fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, peer not exist p2perror\n", common.CurrentTime(), node.ID)
 			return errors.New("peer not exist")
 		}
-		break//TODO: for test
+		break //TODO: for test
 
 		countSendFail += 1
 		if countSendFail > 300 {
@@ -113,7 +113,7 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 			fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v, msg: %v timeout fail\n", node.ID, msg)
 			break
 		}
-		if countSendFail <= 1 || countSendFail % 10 == 0 {
+		if countSendFail <= 1 || countSendFail%10 == 0 {
 			fmt.Printf("==== p2pBroatcast p2pSendMsg() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
 		}
 		time.Sleep(time.Duration(1) * time.Second)
@@ -151,7 +151,7 @@ func getGroupAndCode(gid discover.NodeID, p2pType int) (*discover.Group, int) {
 	return xvcGroup, msgCode
 }
 
-func GetGroupSDKAll() ([]*discover.Group) {//nooo
+func GetGroupSDKAll() []*discover.Group { //nooo
 	var groupTmp []*discover.Group
 	for _, g := range SdkGroup {
 		if g.Type != "1+1+1" && g.Type != "1+2" {
@@ -162,7 +162,7 @@ func GetGroupSDKAll() ([]*discover.Group) {//nooo
 	return groupTmp
 }
 
-func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) {//nooo
+func getGroupSDK(gid discover.NodeID) (discover.NodeID, *discover.Group) { //nooo
 	for id, g := range SdkGroup {
 		if g.Type != "1+1+1" && g.Type != "1+2" {
 			continue
@@ -314,7 +314,7 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	discover.GroupSDK.Lock()
 	defer discover.GroupSDK.Unlock()
 	var xvcGroup *discover.Group
-	switch (p2pType) {
+	switch p2pType {
 	case Sdkprotocol_type:
 		if SdkGroup[gid] != nil {
 			////TODO: check IP,UDP
@@ -338,8 +338,8 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 			//	}
 			//}
 			//if flag != false {
-				fmt.Printf("==== recvGroupInfo() ====, gid: %v exist\n", gid)
-				return
+			fmt.Printf("==== recvGroupInfo() ====, gid: %v exist\n", gid)
+			return
 			//}
 		}
 		keyString := ""
@@ -393,7 +393,7 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	for i, g := range SdkGroup {
 		fmt.Printf("SdkGroup, i: %v, g: %v\n", i, g)
 	}
-	discover.RecoverGroupAll(discover.SDK_groupList)// Group
+	discover.RecoverGroupAll(discover.SDK_groupList) // Group
 }
 
 func Broadcast(msg string) {
@@ -433,7 +433,7 @@ func SendMsgToPeer(enode string, msg string) error {
 			fmt.Printf("==== SendMsgToPeer() ====, send to node: %v, msg: %v timeout fail\n", node.ID, msg)
 			break
 		}
-		if countSendFail <= 1 || countSendFail % 100 == 0 {
+		if countSendFail <= 1 || countSendFail%100 == 0 {
 			fmt.Printf("==== SendMsgToPeer() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
 			fmt.Printf("==== SendMsgToPeer() ====, send to node: %v fail, countSend : %v, continue\n", node.ID, countSendFail)
 		}
@@ -556,6 +556,5 @@ func InitServer(nodeserv interface{}) {
 		}
 		fmt.Printf("discover.GetGroupFromDb, gid: %v, g: %v\n", i, g)
 	}
-	discover.RecoverGroupAll(discover.SDK_groupList)// Group
+	discover.RecoverGroupAll(discover.SDK_groupList) // Group
 }
-

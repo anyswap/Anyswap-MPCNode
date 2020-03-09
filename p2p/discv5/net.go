@@ -24,10 +24,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/internal/common/mclock"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/mclock"
 	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 )
@@ -473,7 +473,7 @@ loop:
 			// determination for new topics.
 			// if topicRegisterLookupDone == nil {
 			if topicRegisterLookupTarget.target == (common.Hash{}) {
-			//	log.Trace("topicRegisterLookupTarget == null")
+				//	log.Trace("topicRegisterLookupTarget == null")
 				if topicRegisterLookupTick.Stop() {
 					<-topicRegisterLookupTick.C
 				}
@@ -514,7 +514,7 @@ loop:
 
 		case req := <-net.topicSearchReq:
 			if refreshDone == nil {
-			//	log.Trace("<-net.topicSearchReq")
+				//	log.Trace("<-net.topicSearchReq")
 				info, ok := searchInfo[req.topic]
 				if ok {
 					if req.delay == time.Duration(0) {

@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -43,7 +43,7 @@ func main() {
 
 func StartDcrm(c *cli.Context) {
 	startP2pNode(nil)
-	time.Sleep(time.Duration(5)*time.Second)
+	time.Sleep(time.Duration(5) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
 	dcrm.Start()
 	select {} // note for server, or for client
@@ -57,7 +57,7 @@ var (
 	bootnodes string
 	keyfile   string
 	genKey    string
-	app = cli.NewApp()
+	app       = cli.NewApp()
 )
 
 type conf struct {
@@ -65,10 +65,10 @@ type conf struct {
 }
 
 type gdcrmConf struct {
-	Nodekey string
+	Nodekey   string
 	Bootnodes string
-	Port int
-	Rpcport int
+	Port      int
+	Rpcport   int
 }
 
 var count int = 0
@@ -183,4 +183,3 @@ func startP2pNode(c *cli.Context) error {
 	}()
 	return nil
 }
-

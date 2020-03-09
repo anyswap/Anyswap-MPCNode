@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evtconfig"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/utils"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
-	"net/http"
 )
 
 type Instance struct {
@@ -39,8 +40,8 @@ func (it *Instance) Post(path string, body interface{}, response interface{}) *A
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
-// gaozhengxin 619
-fmt.Printf("============ EVT client ============\nPost result: %v\n====================================\n",string(b))
+	// gaozhengxin 619
+	fmt.Printf("============ EVT client ============\nPost result: %v\n====================================\n", string(b))
 
 	if err != nil {
 		return NewApiError(fmt.Errorf("post parsing response error %v", err))

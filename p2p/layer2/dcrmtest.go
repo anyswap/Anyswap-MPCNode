@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -56,11 +56,10 @@ func main() {
 		fmt.Printf("\nSendToDcrmGroup ...\n")
 		num += 1
 		msg := fmt.Sprintf("%+v test SendToDcrmGroup ...", num)
-		DcrmProtocol_sendToGroupOneNode(msg)// -> Handle: DcrmProtocol_registerCallback(call)
-					           // -> *msg Handle: DcrmProtocol_registerMsgRecvCallback(dcrmcall)
-					           //    DcrmProtocol_registerMsgRetCallback(dcrmcallret) <- DcrmProtocol_registerMsgRecvCallback(dcrmcall)
+		DcrmProtocol_sendToGroupOneNode(msg) // -> Handle: DcrmProtocol_registerCallback(call)
+		// -> *msg Handle: DcrmProtocol_registerMsgRecvCallback(dcrmcall)
+		//    DcrmProtocol_registerMsgRetCallback(dcrmcallret) <- DcrmProtocol_registerMsgRecvCallback(dcrmcall)
 		time.Sleep(time.Duration(2) * time.Second)
 	}
 	select {}
 }
-

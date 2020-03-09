@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package abi 
+package abi
 
 import (
 	"errors"
@@ -22,8 +22,8 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 // makeTopics converts a filter query argument list into a filter topic set.

@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -18,8 +18,8 @@ package layer2
 
 import (
 	"context"
-	"net"
 	"fmt"
+	"net"
 
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -111,7 +111,6 @@ func Xprotocol_getEnodes() (int, string) {
 	return Xprotocol_getGroup()
 }
 
-
 // Protocols returns the whisper sub-protocols ran by this particular client.
 func (xp *Xp) Protocols() []p2p.Protocol {
 	return []p2p.Protocol{xp.protocol}
@@ -143,13 +142,13 @@ func (xp *Xp) APIs() []rpc.API {
 }
 
 func (xp *XpAPI) Version(ctx context.Context) (v string) {
-        return ProtocolVersionStr
+	return ProtocolVersionStr
 }
 func (xp *XpAPI) Peers(ctx context.Context) []*p2p.PeerInfo {
-        var ps []*p2p.PeerInfo
-        for _, p := range xp.xp.peers {
-                ps = append(ps, p.peer.Info())
-        }
+	var ps []*p2p.PeerInfo
+	for _, p := range xp.xp.peers {
+		ps = append(ps, p.peer.Info())
+	}
 
-        return ps
+	return ps
 }

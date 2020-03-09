@@ -25,10 +25,10 @@ package build
 // Note, this method assumes a single key will be container in the pgpkey arg,
 // furthermore that it is in armored format.
 func PGPSignFile(input string, output string, pgpkey string) error {
-    return nil
+	return nil
 }
 
 // PGPKeyID parses an armored key and returns the key ID.
 func PGPKeyID(pgpkey string) (string, error) {
-		return "",nil 
+	return "", nil
 }

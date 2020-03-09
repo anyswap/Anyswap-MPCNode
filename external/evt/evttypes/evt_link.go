@@ -10,7 +10,6 @@ type EvtLink struct {
 	Signatures []string `json:"signatures"`
 }
 
-
 func ParseEvtLink(evtLink string) (*EvtLink, error) {
 	result := &EvtLink{}
 	return result, nil

@@ -23,10 +23,10 @@ import (
 	"net"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/node"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/pipes"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
@@ -94,7 +94,7 @@ func (s *SimAdapter) NewNode(config *NodeConfig) (Node, error) {
 			Dialer:          s,
 			EnableMsgEvents: config.EnableMsgEvents,
 		},
-		NoUSB:  true,
+		NoUSB: true,
 	})
 	if err != nil {
 		return nil, err

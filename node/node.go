@@ -26,8 +26,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
+
 	//"github.com/fsn-dev/dcrm-walletService/p2p/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
@@ -37,7 +38,7 @@ type Node struct {
 	eventmux *event.TypeMux // Event multiplexer used between the services of a stack
 	config   *Config
 
-	ephemeralKeystore string         // if non-empty, the key directory that will be removed by Stop
+	ephemeralKeystore string // if non-empty, the key directory that will be removed by Stop
 
 	serverConfig p2p.Config
 	server       *p2p.Server // Currently running P2P networking layer
@@ -63,7 +64,6 @@ type Node struct {
 
 	stop chan struct{} // Channel to wait for termination notifications
 	lock sync.RWMutex
-
 }
 
 // New creates a new P2P node, ready for protocol registration.
@@ -93,12 +93,12 @@ func New(conf *Config) (*Node, error) {
 	// Note: any interaction with Config that would create/touch files
 	// in the data directory or instance directory is delayed until Start.
 	return &Node{
-		config:            conf,
-		serviceFuncs:      []ServiceConstructor{},
-		ipcEndpoint:       conf.IPCEndpoint(),
-		httpEndpoint:      conf.HTTPEndpoint(),
-		wsEndpoint:        conf.WSEndpoint(),
-		eventmux:          new(event.TypeMux),
+		config:       conf,
+		serviceFuncs: []ServiceConstructor{},
+		ipcEndpoint:  conf.IPCEndpoint(),
+		httpEndpoint: conf.HTTPEndpoint(),
+		wsEndpoint:   conf.WSEndpoint(),
+		eventmux:     new(event.TypeMux),
 	}, nil
 }
 
@@ -149,9 +149,9 @@ func (n *Node) Start() error {
 	for _, constructor := range n.serviceFuncs {
 		// Create a new context for the particular service
 		ctx := &ServiceContext{
-			config:         n.config,
-			services:       make(map[reflect.Type]Service),
-			EventMux:       n.eventmux,
+			config:   n.config,
+			services: make(map[reflect.Type]Service),
+			EventMux: n.eventmux,
 		}
 		for kind, s := range services { // copy needed for threaded access
 			ctx.services[kind] = s
@@ -445,4 +445,3 @@ func (n *Node) EventMux() *event.TypeMux {
 func (n *Node) ResolvePath(x string) string {
 	return n.config.ResolvePath(x)
 }
-

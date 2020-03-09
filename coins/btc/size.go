@@ -7,7 +7,6 @@ package btc
 import (
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/wire"
-
 )
 
 // Worst case script and input/output size estimates.

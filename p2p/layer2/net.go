@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -29,11 +29,11 @@ import (
 //TODO
 const (
 	DcrmProtocol_type = discover.Dcrmprotocol_type
-	Xprotocol_type   = discover.Xprotocol_type
-	Sdkprotocol_type   = discover.Sdkprotocol_type
-	ProtocolName     = "dcrm"
-	Xp_ProtocolName  = "xp"
-	peerMsgCode      = iota
+	Xprotocol_type    = discover.Xprotocol_type
+	Sdkprotocol_type  = discover.Sdkprotocol_type
+	ProtocolName      = "dcrm"
+	Xp_ProtocolName   = "xp"
+	peerMsgCode       = iota
 	Dcrm_msgCode
 	Sdk_msgCode
 	Xp_msgCode
@@ -49,24 +49,24 @@ const (
 )
 
 var (
-	p2pServer p2p.Server
-	bootNodeIP *net.UDPAddr
-	callback   func(interface{}, string)
-	Dcrm_callback   func(interface{}) <-chan string
-	Sdk_callback   func(interface{}, string)
+	p2pServer     p2p.Server
+	bootNodeIP    *net.UDPAddr
+	callback      func(interface{}, string)
+	Dcrm_callback func(interface{}) <-chan string
+	Sdk_callback  func(interface{}, string)
 	Xp_callback   func(interface{})
-	emitter    *Emitter
-	selfid     discover.NodeID
-	recvKey1   string
-	recvKey2   string
+	emitter       *Emitter
+	selfid        discover.NodeID
+	recvKey1      string
+	recvKey2      string
 
-	dccpGroup  *discover.Group
-	xpGroup    *discover.Group
-	SdkGroup   map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
+	dccpGroup *discover.Group
+	xpGroup   *discover.Group
+	SdkGroup  map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
 )
 
 type Dcrm struct {
-	protocol p2p.Protocol
+	protocol  p2p.Protocol
 	peers     map[discover.NodeID]*peer
 	dccpPeers map[discover.NodeID]bool
 	peerMu    sync.Mutex    // Mutex to sync the active peer set
@@ -75,7 +75,7 @@ type Dcrm struct {
 }
 
 type Xp struct {
-	protocol p2p.Protocol
+	protocol  p2p.Protocol
 	peers     map[discover.NodeID]*peer
 	dccpPeers map[discover.NodeID]bool
 	peerMu    sync.Mutex    // Mutex to sync the active peer set
@@ -126,4 +126,3 @@ type Transaction struct {
 	Payload []byte
 	Hash    atomic.Value
 }
-

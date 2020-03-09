@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package abi 
+package abi
 
 import (
 	"context"
@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 )
 
@@ -75,7 +75,7 @@ type WatchOpts struct {
 // higher level contract bindings to operate.
 type BoundContract struct {
 	address    common.Address     // Deployment address of the contract on the Ethereum blockchain
-	abi        ABI            // Reflect based ABI to access the correct Ethereum methods
+	abi        ABI                // Reflect based ABI to access the correct Ethereum methods
 	caller     ContractCaller     // Read interface to interact with the blockchain
 	transactor ContractTransactor // Write interface to interact with the blockchain
 	filterer   ContractFilterer   // Event filtering to interact with the blockchain

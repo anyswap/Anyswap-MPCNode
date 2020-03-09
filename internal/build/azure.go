@@ -31,16 +31,16 @@ type AzureBlobstoreConfig struct {
 //
 // See: https://msdn.microsoft.com/en-us/library/azure/dd179451.aspx#Anchor_3
 func AzureBlobstoreUpload(path string, name string, config AzureBlobstoreConfig) error {
-		return nil
+	return nil
 }
 
 // AzureBlobstoreList lists all the files contained within an azure blobstore.
-func AzureBlobstoreList(config AzureBlobstoreConfig) (error) {
-		return nil
+func AzureBlobstoreList(config AzureBlobstoreConfig) error {
+	return nil
 }
 
 // AzureBlobstoreDelete iterates over a list of files to delete and removes them
 // from the blobstore.
 func AzureBlobstoreDelete(config AzureBlobstoreConfig) error {
-		return nil
+	return nil
 }

@@ -8,7 +8,7 @@ import (
 type TRXJsonToDigestRequest = evttypes.TRXJson
 
 type TRXJsonToDigestResult struct {
-        Id string `json:"id"`
+	Id     string `json:"id"`
 	Digest string `json:"digest"`
 }
 

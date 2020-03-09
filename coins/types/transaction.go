@@ -19,233 +19,234 @@
 package types
 
 import (
+	"bytes"
 	"container/heap"
 	"errors"
 	"io"
 	"math/big"
-	"sync/atomic"
 	"strings"
 	"sync"
-	"bytes"
+	"sync/atomic"
 
+	"encoding/json"
+
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
-	"encoding/json"
 )
 
 //go:generate gencodec -type txdata -field-override txdataMarshaling -out gen_tx_json.go
 
 var (
-    EosPrecompileAddr = common.BytesToAddress([]byte{0xe}) 
-    DcrmPrecompileAddr  = common.BytesToAddress([]byte{0xdc})
-    XvcPrecompileAddr  = common.BytesToAddress([]byte{0xec})
-    
-    DcrmValidateData = NewSafeMapDcrmValidateData(0)
-    DcrmLockoutFeeData = NewSafeMapDcrmLockoutFeeData(0)
-    
-    validatedcrmcallback   func(interface{}) bool
-    //AllSupportedCointypes = []string{"ALL","FSN","BTC","ETH","XRP","EOS","ERC20GUSD","ERC20BNB","ERC20MKR","ERC20HT","ERC20BNT","USDT","ATOM","BCH","TRX","EVT1","EVT1001"}
-    AllSupportedCointypes = []string{"ALL","FSN","BTC","ETH","XRP","EOS","USDT","ATOM","BCH","TRX","EVT1","BNB"}
-    //AllSupportedTrades = []string{"ETH/BTC","FSN/BTC","FSN/ETH"}
-    AllSupportedTrades []string
+	EosPrecompileAddr  = common.BytesToAddress([]byte{0xe})
+	DcrmPrecompileAddr = common.BytesToAddress([]byte{0xdc})
+	XvcPrecompileAddr  = common.BytesToAddress([]byte{0xec})
+
+	DcrmValidateData   = NewSafeMapDcrmValidateData(0)
+	DcrmLockoutFeeData = NewSafeMapDcrmLockoutFeeData(0)
+
+	validatedcrmcallback func(interface{}) bool
+	//AllSupportedCointypes = []string{"ALL","FSN","BTC","ETH","XRP","EOS","ERC20GUSD","ERC20BNB","ERC20MKR","ERC20HT","ERC20BNT","USDT","ATOM","BCH","TRX","EVT1","EVT1001"}
+	AllSupportedCointypes = []string{"ALL", "FSN", "BTC", "ETH", "XRP", "EOS", "USDT", "ATOM", "BCH", "TRX", "EVT1", "BNB"}
+	//AllSupportedTrades = []string{"ETH/BTC","FSN/BTC","FSN/ETH"}
+	AllSupportedTrades []string
 )
 
 type writeCounter common.StorageSize
 
 func (c *writeCounter) Write(b []byte) (int, error) {
-    *c += writeCounter(len(b))
-    return len(b), nil
+	*c += writeCounter(len(b))
+	return len(b), nil
 }
 
 //=========================================================
 
 //DcrmValidateData
 type SafeMapDcrmValidateData struct {
-    sync.RWMutex
-    Map map[string]string
+	sync.RWMutex
+	Map map[string]string
 }
 
 func NewSafeMapDcrmValidateData(size int) *SafeMapDcrmValidateData {
-    sm := new(SafeMapDcrmValidateData)
-    if size <= 0 {
-	sm.Map = make(map[string]string)
-    } else {
-	sm.Map = make(map[string]string,size)
-    }
-    return sm
+	sm := new(SafeMapDcrmValidateData)
+	if size <= 0 {
+		sm.Map = make(map[string]string)
+	} else {
+		sm.Map = make(map[string]string, size)
+	}
+	return sm
 }
 
-func (sm *SafeMapDcrmValidateData) ReadMap(key string) (string,bool) {
-    sm.RLock()
-    value,ok := sm.Map[key]
-    sm.RUnlock()
-    return value,ok
+func (sm *SafeMapDcrmValidateData) ReadMap(key string) (string, bool) {
+	sm.RLock()
+	value, ok := sm.Map[key]
+	sm.RUnlock()
+	return value, ok
 }
 
 func (sm *SafeMapDcrmValidateData) WriteMap(key string, value string) {
-    sm.Lock()
-    sm.Map[key] = value
-    sm.Unlock()
+	sm.Lock()
+	sm.Map[key] = value
+	sm.Unlock()
 }
 
 func (sm *SafeMapDcrmValidateData) DeleteMap(key string) {
-    sm.Lock()
-    delete(sm.Map,key)
-    sm.Unlock()
+	sm.Lock()
+	delete(sm.Map, key)
+	sm.Unlock()
 }
 
-func (sm *SafeMapDcrmValidateData) ListMap() ([]string,[]string) {
-    sm.RLock()
-    key := make([]string,len(sm.Map))
-    value := make([]string,len(sm.Map))
-    i := 0
-    for k,v := range sm.Map {
-	key[i] = k
-	value[i] = v
-	i++
-    }
-    sm.RUnlock()
-    return key,value
+func (sm *SafeMapDcrmValidateData) ListMap() ([]string, []string) {
+	sm.RLock()
+	key := make([]string, len(sm.Map))
+	value := make([]string, len(sm.Map))
+	i := 0
+	for k, v := range sm.Map {
+		key[i] = k
+		value[i] = v
+		i++
+	}
+	sm.RUnlock()
+	return key, value
 }
 
 func (sm *SafeMapDcrmValidateData) MapLength() int {
-    sm.RLock()
-    l := len(sm.Map)
-    sm.RUnlock()
-    return l
+	sm.RLock()
+	l := len(sm.Map)
+	sm.RUnlock()
+	return l
 }
 
 func GetDcrmValidateData(k string) string {
-    if DcrmValidateData == nil {
+	if DcrmValidateData == nil {
+		return ""
+	}
+
+	ret, ok := DcrmValidateData.ReadMap(strings.ToLower(k))
+	if ok {
+		return ret
+	}
+
 	return ""
-    }
-
-    ret,ok := DcrmValidateData.ReadMap(strings.ToLower(k))
-    if ok {
-	return ret
-    }
-
-    return ""
 }
 
-func SetDcrmValidateData(k,v string) {
-    if DcrmValidateData == nil {
-	return
-    }
-    
-    DcrmValidateData.WriteMap(strings.ToLower(k),v)
+func SetDcrmValidateData(k, v string) {
+	if DcrmValidateData == nil {
+		return
+	}
+
+	DcrmValidateData.WriteMap(strings.ToLower(k), v)
 }
 
-func GetDcrmValidateDataKReady(k string) (string,bool) {
-    if DcrmValidateData == nil {
-	return "",false
-    }
+func GetDcrmValidateDataKReady(k string) (string, bool) {
+	if DcrmValidateData == nil {
+		return "", false
+	}
 
-    return DcrmValidateData.ReadMap(strings.ToLower(k))
+	return DcrmValidateData.ReadMap(strings.ToLower(k))
 }
 
 func DeleteDcrmValidateData(k string) {
-    if DcrmValidateData == nil {
-	return
-    }
-    
-    DcrmValidateData.DeleteMap(strings.ToLower(k))
+	if DcrmValidateData == nil {
+		return
+	}
+
+	DcrmValidateData.DeleteMap(strings.ToLower(k))
 }
 
 //DcrmLockoutFeeData
 type SafeMapDcrmLockoutFeeData struct {
-    sync.RWMutex
-    Map map[string]string
+	sync.RWMutex
+	Map map[string]string
 }
 
 func NewSafeMapDcrmLockoutFeeData(size int) *SafeMapDcrmLockoutFeeData {
-    sm := new(SafeMapDcrmLockoutFeeData)
-    if size <= 0 {
-	sm.Map = make(map[string]string)
-    } else {
-	sm.Map = make(map[string]string,size)
-    }
-    return sm
+	sm := new(SafeMapDcrmLockoutFeeData)
+	if size <= 0 {
+		sm.Map = make(map[string]string)
+	} else {
+		sm.Map = make(map[string]string, size)
+	}
+	return sm
 }
 
-func (sm *SafeMapDcrmLockoutFeeData) ReadMap(key string) (string,bool) {
-    sm.RLock()
-    value,ok := sm.Map[key]
-    sm.RUnlock()
-    return value,ok
+func (sm *SafeMapDcrmLockoutFeeData) ReadMap(key string) (string, bool) {
+	sm.RLock()
+	value, ok := sm.Map[key]
+	sm.RUnlock()
+	return value, ok
 }
 
 func (sm *SafeMapDcrmLockoutFeeData) WriteMap(key string, value string) {
-    sm.Lock()
-    sm.Map[key] = value
-    sm.Unlock()
+	sm.Lock()
+	sm.Map[key] = value
+	sm.Unlock()
 }
 
 func (sm *SafeMapDcrmLockoutFeeData) DeleteMap(key string) {
-    sm.Lock()
-    delete(sm.Map,key)
-    sm.Unlock()
+	sm.Lock()
+	delete(sm.Map, key)
+	sm.Unlock()
 }
 
-func (sm *SafeMapDcrmLockoutFeeData) ListMap() ([]string,[]string) {
-    sm.RLock()
-    key := make([]string,len(sm.Map))
-    value := make([]string,len(sm.Map))
-    i := 0
-    for k,v := range sm.Map {
-	key[i] = k
-	value[i] = v
-	i++
-    }
-    sm.RUnlock()
-    return key,value
+func (sm *SafeMapDcrmLockoutFeeData) ListMap() ([]string, []string) {
+	sm.RLock()
+	key := make([]string, len(sm.Map))
+	value := make([]string, len(sm.Map))
+	i := 0
+	for k, v := range sm.Map {
+		key[i] = k
+		value[i] = v
+		i++
+	}
+	sm.RUnlock()
+	return key, value
 }
 
 func (sm *SafeMapDcrmLockoutFeeData) MapLength() int {
-    sm.RLock()
-    l := len(sm.Map)
-    sm.RUnlock()
-    return l
+	sm.RLock()
+	l := len(sm.Map)
+	sm.RUnlock()
+	return l
 }
 
 func GetDcrmLockoutFeeData(k string) string {
-    if DcrmLockoutFeeData == nil {
+	if DcrmLockoutFeeData == nil {
+		return ""
+	}
+
+	ret, ok := DcrmLockoutFeeData.ReadMap(strings.ToLower(k))
+	if ok {
+		return ret
+	}
+
 	return ""
-    }
-
-    ret,ok := DcrmLockoutFeeData.ReadMap(strings.ToLower(k))
-    if ok {
-	return ret
-    }
-
-    return ""
 }
 
-func SetDcrmLockoutFeeData(k,v string) {
-    if DcrmLockoutFeeData == nil {
-	return
-    }
-    
-    DcrmLockoutFeeData.WriteMap(strings.ToLower(k),v)
+func SetDcrmLockoutFeeData(k, v string) {
+	if DcrmLockoutFeeData == nil {
+		return
+	}
+
+	DcrmLockoutFeeData.WriteMap(strings.ToLower(k), v)
 }
 
-func GetDcrmLockoutFeeDataKReady(k string) (string,bool) {
-    if DcrmLockoutFeeData == nil {
-	return "",false
-    }
+func GetDcrmLockoutFeeDataKReady(k string) (string, bool) {
+	if DcrmLockoutFeeData == nil {
+		return "", false
+	}
 
-    return DcrmLockoutFeeData.ReadMap(strings.ToLower(k))
+	return DcrmLockoutFeeData.ReadMap(strings.ToLower(k))
 }
 
 func DeleteDcrmLockoutFeeData(k string) {
-    if DcrmLockoutFeeData == nil {
-	return
-    }
-    
-    DcrmLockoutFeeData.DeleteMap(strings.ToLower(k))
+	if DcrmLockoutFeeData == nil {
+		return
+	}
+
+	DcrmLockoutFeeData.DeleteMap(strings.ToLower(k))
 }
 
 //==============================================================
@@ -291,425 +292,425 @@ type txdataMarshaling struct {
 }
 
 type DcrmLockOutData struct {
-    From common.Address
-    Tx Transaction
+	From common.Address
+	Tx   Transaction
 }
 
 func IsAddNewTradeTx(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "ADDNEWTRADE" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "ADDNEWTRADE" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsXvcCreateOrderTx(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "ORDER" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "ORDER" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsXvcCancelOrderTx(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "CANCELORDER" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "CANCELORDER" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsXvcTx(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, common.SepOB)
+	if m[0] == "ODB" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,common.SepOB)
-    if m[0] == "ODB" && bytes.Equal(tx.To().Bytes(), XvcPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsDcrmLockOut(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "LOCKOUT" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-    
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "LOCKOUT" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsDcrmLockIn(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "LOCKIN" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-    
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "LOCKIN" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsDcrmTransaction(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "TRANSACTION" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-    
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "TRANSACTION" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsDcrmConfirmAddr(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "DCRMCONFIRMADDR" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-    
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "DCRMCONFIRMADDR" && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsDcrmLockInTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsDcrmLockInTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, ":")
+	if mm[0] == "LOCKIN" && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,":")
-    if mm[0] == "LOCKIN" && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsDcrmConfirmAddrTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsDcrmConfirmAddrTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, ":")
+	if mm[0] == "DCRMCONFIRMADDR" && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,":")
-    if mm[0] == "DCRMCONFIRMADDR" && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsXvcMatchResTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsXvcMatchResTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, common.SepOB)
+	if mm[0] == "ODB" && bytes.Equal(to.Bytes(), XvcPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,common.SepOB)
-    if mm[0] == "ODB" && bytes.Equal(to.Bytes(), XvcPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsDcrmLockInBtcTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsDcrmLockInBtcTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, ":")
+	if mm[0] == "LOCKIN" && strings.EqualFold(mm[3], "BTC") && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,":")
-    if mm[0] == "LOCKIN" && strings.EqualFold(mm[3], "BTC") && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsDcrmLockOutBtcTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsDcrmLockOutBtcTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, ":")
+	if mm[0] == "LOCKOUT" && strings.EqualFold(mm[3], "BTC") && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,":")
-    if mm[0] == "LOCKOUT" && strings.EqualFold(mm[3], "BTC") && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsDcrmLockOutTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsDcrmLockOutTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, ":")
+	if mm[0] == "LOCKOUT" && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,":")
-    if mm[0] == "LOCKOUT" && bytes.Equal(to.Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsXvcNewOrderTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsXvcNewOrderTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, ":")
+	if mm[0] == "ORDER" && bytes.Equal(to.Bytes(), XvcPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,":")
-    if mm[0] == "ORDER" && bytes.Equal(to.Bytes(), XvcPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
-func IsXvcDelOrderTx(input []byte,to common.Address) bool {
-    if input == nil {
+func IsXvcDelOrderTx(input []byte, to common.Address) bool {
+	if input == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(input))
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	mm := strings.Split(str, ":")
+	if mm[0] == "CANCELORDER" && bytes.Equal(to.Bytes(), XvcPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(input))
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    mm := strings.Split(str,":")
-    if mm[0] == "CANCELORDER" && bytes.Equal(to.Bytes(), XvcPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 func IsDcrmLockOutBtc(tx *Transaction) bool {
-    if tx == nil || tx.To() == nil {
+	if tx == nil || tx.To() == nil {
+		return false
+	}
+
+	data, _ := GetRealTxData(string(tx.Data()))
+
+	str := string(data)
+	if len(str) == 0 {
+		return false
+	}
+
+	m := strings.Split(str, ":")
+	if m[0] == "LOCKOUT" && strings.EqualFold(m[3], "BTC") == true && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return true
+	}
+
 	return false
-    }
-
-    data,_ := GetRealTxData(string(tx.Data()))
-
-    str := string(data)
-    if len(str) == 0 {
-	return false
-    }
-
-    m := strings.Split(str,":")
-    if m[0] == "LOCKOUT" && strings.EqualFold(m[3],"BTC") == true && bytes.Equal(tx.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return true
-    }
-
-    return false
 }
 
 //====================================================
 
 func IsValideTrade(trade string) bool {
-    for _,tr := range AllSupportedTrades {
-	if trade == tr {
-	    return true
+	for _, tr := range AllSupportedTrades {
+		if trade == tr {
+			return true
+		}
 	}
-    }
 
-    return false
+	return false
 }
 
-func GetRealTxData(s string) (string,error) {
-    if s == "" {
-	return s,nil
-    }
-    
-    inputs := strings.Split(s,":")
-    if len(inputs) >= 2 {
-	if inputs[0] == "DCRMCONFIRMADDR" {
-	    return s,nil
+func GetRealTxData(s string) (string, error) {
+	if s == "" {
+		return s, nil
 	}
-	if inputs[0] == "LOCKIN" {
-	    return s,nil
-	}
-	if inputs[0] == "LOCKOUT" {
-	    return s,nil
-	}
-	if inputs[0] == "TRANSACTION" {
-	    return s,nil
-	}
-	if inputs[0] == "ORDER" {
-	    return s,nil
-	}
-	if inputs[0] == "CANCELORDER" {
-	    return s,nil
-	}
-    }
-    inputs = strings.Split(s,common.SepOB)
-    if len(inputs) >= 2 {
-	if inputs[0] == "ODB" {
-	    return s,nil
-	}
-    }
 
-    dd,ok := new(big.Int).SetString(s,16)
-    if !ok {
-	return s,nil
-    }
+	inputs := strings.Split(s, ":")
+	if len(inputs) >= 2 {
+		if inputs[0] == "DCRMCONFIRMADDR" {
+			return s, nil
+		}
+		if inputs[0] == "LOCKIN" {
+			return s, nil
+		}
+		if inputs[0] == "LOCKOUT" {
+			return s, nil
+		}
+		if inputs[0] == "TRANSACTION" {
+			return s, nil
+		}
+		if inputs[0] == "ORDER" {
+			return s, nil
+		}
+		if inputs[0] == "CANCELORDER" {
+			return s, nil
+		}
+	}
+	inputs = strings.Split(s, common.SepOB)
+	if len(inputs) >= 2 {
+		if inputs[0] == "ODB" {
+			return s, nil
+		}
+	}
 
-    ss := string(dd.Bytes())
-    inputs = strings.Split(ss,":")
-    if len(inputs) >= 2 {
-	if inputs[0] == "DCRMCONFIRMADDR" {
-	    return ss,nil
+	dd, ok := new(big.Int).SetString(s, 16)
+	if !ok {
+		return s, nil
 	}
-	if inputs[0] == "LOCKIN" {
-	    return ss,nil
-	}
-	if inputs[0] == "LOCKOUT" {
-	    return ss,nil
-	}
-	if inputs[0] == "TRANSACTION" {
-	    return ss,nil
-	}
-	if inputs[0] == "ORDER" {
-	    return ss,nil
-	}
-	if inputs[0] == "CANCELORDER" {
-	    return ss,nil
-	}
-	if inputs[0] == "ODB" {
-	    return ss,nil
-	}
-    }
-    inputs = strings.Split(ss,common.SepOB)
-    if len(inputs) >= 2 {
-	if inputs[0] == "ODB" {
-	    return ss,nil
-	}
-    }
 
-    return s,nil
+	ss := string(dd.Bytes())
+	inputs = strings.Split(ss, ":")
+	if len(inputs) >= 2 {
+		if inputs[0] == "DCRMCONFIRMADDR" {
+			return ss, nil
+		}
+		if inputs[0] == "LOCKIN" {
+			return ss, nil
+		}
+		if inputs[0] == "LOCKOUT" {
+			return ss, nil
+		}
+		if inputs[0] == "TRANSACTION" {
+			return ss, nil
+		}
+		if inputs[0] == "ORDER" {
+			return ss, nil
+		}
+		if inputs[0] == "CANCELORDER" {
+			return ss, nil
+		}
+		if inputs[0] == "ODB" {
+			return ss, nil
+		}
+	}
+	inputs = strings.Split(ss, common.SepOB)
+	if len(inputs) >= 2 {
+		if inputs[0] == "ODB" {
+			return ss, nil
+		}
+	}
+
+	return s, nil
 }
 
 func NewTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *Transaction {
@@ -808,22 +809,22 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
-func (tx *Transaction) Data() []byte       { return common.CopyBytes(tx.data.Payload) }
-func (tx *Transaction) Gas() uint64        {
+func (tx *Transaction) Data() []byte { return common.CopyBytes(tx.data.Payload) }
+func (tx *Transaction) Gas() uint64 {
 
-    if !IsDcrmLockIn(tx) && !IsDcrmConfirmAddr(tx) {
-	return tx.data.GasLimit
-    }  else {
-	return 0
-    }
+	if !IsDcrmLockIn(tx) && !IsDcrmConfirmAddr(tx) {
+		return tx.data.GasLimit
+	} else {
+		return 0
+	}
 
-    //TODO
-    //if !IsDcrmLockIn(tx) && !IsDcrmConfirmAddr(tx) && !IsXvcTx(tx) {
-//	return tx.data.GasLimit
-  //  }  else {
-//	return 0
-  //  }
-    //
+	//TODO
+	//if !IsDcrmLockIn(tx) && !IsDcrmConfirmAddr(tx) && !IsXvcTx(tx) {
+	//	return tx.data.GasLimit
+	//  }  else {
+	//	return 0
+	//  }
+	//
 }
 
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Price) }
@@ -899,16 +900,16 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 
 // Cost returns amount + gasprice * gaslimit.
 func (tx *Transaction) Cost() *big.Int {
-    if !IsXvcTx(tx) {
-	total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
-	total.Add(total, tx.data.Amount)
-	return total
-    } 
-    return new(big.Int)
+	if !IsXvcTx(tx) {
+		total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
+		total.Add(total, tx.data.Amount)
+		return total
+	}
+	return new(big.Int)
 
-    //total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
-    //total.Add(total, tx.data.Amount)
-    //return total
+	//total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
+	//total.Add(total, tx.data.Amount)
+	//return total
 }
 
 func (tx *Transaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
@@ -1070,41 +1071,41 @@ func (m Message) From() common.Address { return m.from }
 func (m Message) To() *common.Address  { return m.to }
 func (m Message) GasPrice() *big.Int   { return m.gasPrice }
 func (m Message) Value() *big.Int      { return m.amount }
-func (m Message) Gas() uint64          {
-    data,_ := GetRealTxData(string(m.Data()))
-    str := string(data)
-    if len(str) == 0 {
-	return m.gasLimit
-    }
+func (m Message) Gas() uint64 {
+	data, _ := GetRealTxData(string(m.Data()))
+	str := string(data)
+	if len(str) == 0 {
+		return m.gasLimit
+	}
 
-    mm := strings.Split(str,":")
-    if mm[0] == "LOCKIN" && bytes.Equal(m.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return 0
-    }
-    if mm[0] == "DCRMCONFIRMADDR" && bytes.Equal(m.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
-	return 0
-    }
-    mm = strings.Split(str,common.SepOB)
-    if mm[0] == "ODB" && bytes.Equal(m.To().Bytes(), XvcPrecompileAddr.Bytes()) {
-	return 0
-    }
-    
-    return m.gasLimit 
+	mm := strings.Split(str, ":")
+	if mm[0] == "LOCKIN" && bytes.Equal(m.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return 0
+	}
+	if mm[0] == "DCRMCONFIRMADDR" && bytes.Equal(m.To().Bytes(), DcrmPrecompileAddr.Bytes()) {
+		return 0
+	}
+	mm = strings.Split(str, common.SepOB)
+	if mm[0] == "ODB" && bytes.Equal(m.To().Bytes(), XvcPrecompileAddr.Bytes()) {
+		return 0
+	}
+
+	return m.gasLimit
 }
-func (m Message) Nonce() uint64        { return m.nonce }
-func (m Message) Data() []byte         { return m.data }
-func (m Message) CheckNonce() bool     { return m.checkNonce }
+func (m Message) Nonce() uint64    { return m.nonce }
+func (m Message) Data() []byte     { return m.data }
+func (m Message) CheckNonce() bool { return m.checkNonce }
 
 type CoinInfo struct {
-    COIN string
-    DEPOSIT string
-    WITHDRAW string
-    UNIT string
-    KEYTYPE string
+	COIN     string
+	DEPOSIT  string
+	WITHDRAW string
+	UNIT     string
+	KEYTYPE  string
 }
 
 type CoinSupport struct {
-    COINS []CoinInfo
+	COINS []CoinInfo
 }
 
 const CoinStatus = `{
@@ -1130,46 +1131,45 @@ const CoinStatus = `{
 }`
 
 func IsSupportED25519(cointype string) bool {
-    var dat CoinSupport
-    if err := json.Unmarshal([]byte(CoinStatus), &dat); err == nil {
-	for _, coin := range dat.COINS {
-	    if strings.EqualFold(coin.COIN,cointype) {
-		pos := strings.Index(coin.KEYTYPE,"ED25519")
-		if pos >= 0 {
-		    return true
+	var dat CoinSupport
+	if err := json.Unmarshal([]byte(CoinStatus), &dat); err == nil {
+		for _, coin := range dat.COINS {
+			if strings.EqualFold(coin.COIN, cointype) {
+				pos := strings.Index(coin.KEYTYPE, "ED25519")
+				if pos >= 0 {
+					return true
+				}
+				break
+			}
 		}
-		break
-	    }
 	}
-    }
 
-    return false
+	return false
 }
 
 func IsDefaultED25519(cointype string) bool {
-    var dat CoinSupport
-    if err := json.Unmarshal([]byte(CoinStatus), &dat); err == nil {
-	for _, coin := range dat.COINS {
-	    if strings.EqualFold(coin.COIN,cointype) {
-		pos := strings.Index(coin.KEYTYPE,"ED25519")
-		if pos >= 0 {
-		    m := strings.Split(coin.KEYTYPE,"/")
-		    if strings.EqualFold(m[0],"ED25519") {
-			return true
-		    }
+	var dat CoinSupport
+	if err := json.Unmarshal([]byte(CoinStatus), &dat); err == nil {
+		for _, coin := range dat.COINS {
+			if strings.EqualFold(coin.COIN, cointype) {
+				pos := strings.Index(coin.KEYTYPE, "ED25519")
+				if pos >= 0 {
+					m := strings.Split(coin.KEYTYPE, "/")
+					if strings.EqualFold(m[0], "ED25519") {
+						return true
+					}
+				}
+				break
+			}
 		}
-		break
-	    }
 	}
-    }
 
-    return false
+	return false
 }
 
 func rlpHash(x interface{}) (h common.Hash) {
-    hw := sha3.NewKeccak256()
-    rlp.Encode(hw, x)
-    hw.Sum(h[:0])
-    return h
+	hw := sha3.NewKeccak256()
+	rlp.Encode(hw, x)
+	hw.Sum(h[:0])
+	return h
 }
-

@@ -17,13 +17,14 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"runtime"
 	"runtime/debug"
 	"strings"
+
 	"github.com/astaxie/beego/logs"
-	"encoding/json"
 )
 
 // Report gives off a warning requesting the user to submit an issue to the github tracker.
@@ -54,32 +55,28 @@ func PrintDepricationWarning(str string) {
 }
 
 func PrintLogToFile(path string) error {
-    if path == "" {
-	return fmt.Errorf("path is empty")
-    }
+	if path == "" {
+		return fmt.Errorf("path is empty")
+	}
 
-    config:=make(map[string]interface{})
-    config["fileName"]= path
-    //输出文件路径,不存在  默认创建
-    config["level"]=logs.LevelDebug
-    //设置日志级别
-    configStr,err:=json.Marshal(config)
-    if err != nil {
-	    return err
-    }
+	config := make(map[string]interface{})
+	config["fileName"] = path
+	//输出文件路径,不存在  默认创建
+	config["level"] = logs.LevelDebug
+	//设置日志级别
+	configStr, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
 
-    logs.SetLogger("file",string(configStr))
-    return nil
+	logs.SetLogger("file", string(configStr))
+	return nil
 }
 
-func Debug(prex string,info ...interface{}) {
-    //logs.Debug(prex,info...)
+func Debug(prex string, info ...interface{}) {
+	//logs.Debug(prex,info...)
 }
 
-func Info(prex string,info ...interface{}) {
-    //logs.Info(prex,info...)
+func Info(prex string, info ...interface{}) {
+	//logs.Info(prex,info...)
 }
-
-
-
-

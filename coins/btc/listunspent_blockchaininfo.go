@@ -37,14 +37,14 @@ func listUnspent_blockchaininfo(addr string) ([]btcjson.ListUnspentResult, error
 	var list sortableLURSlice
 	for _, utxo := range utxoLsRes.Unspent_outputs {
 		res := btcjson.ListUnspentResult{
-			TxID: utxo.Tx_hash_big_endian,
-			Vout: uint32(utxo.Tx_output_n),
-			Address: addr,
+			TxID:         utxo.Tx_hash_big_endian,
+			Vout:         uint32(utxo.Tx_output_n),
+			Address:      addr,
 			ScriptPubKey: utxo.Script,
 			//RedeemScript:
-			Amount: utxo.Value/1e8,
+			Amount:        utxo.Value / 1e8,
 			Confirmations: utxo.Confirmations,
-			Spendable: true,
+			Spendable:     true,
 		}
 		list = append(list, res)
 	}
@@ -56,10 +56,10 @@ func parseUnspent(resstr string) (UtxoLsRes, error) {
 	resstr = strings.Replace(resstr, " ", "", -1)
 	resstr = strings.Replace(resstr, "\n", "", -1)
 
-	last_index := len(resstr)-1
+	last_index := len(resstr) - 1
 	for last_index > 0 {
 		if resstr[last_index] != '}' {
-			last_index --
+			last_index--
 		} else {
 			break
 		}
@@ -74,16 +74,15 @@ type UtxoLsRes struct {
 }
 
 type UtxoRes struct {
-	Tx_hash_big_endian	string
-	Script			string
-	Tx_output_n		uint32
-	Value			float64
-	Confirmations		int64
+	Tx_hash_big_endian string
+	Script             string
+	Tx_output_n        uint32
+	Value              float64
+	Confirmations      int64
 }
 
-func getUTXO_BlockChainInfo (addr string) string {
+func getUTXO_BlockChainInfo(addr string) string {
 	addrReceivedUrl := "https://testnet.blockchain.info/unspent?active=" + addr
-	blockchaininfores := loginPre1("GET",addrReceivedUrl)
+	blockchaininfores := loginPre1("GET", addrReceivedUrl)
 	return blockchaininfores
 }
-

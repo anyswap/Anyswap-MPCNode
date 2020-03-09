@@ -26,8 +26,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 )
 
 // Lengths of hashes and addresses in bytes.

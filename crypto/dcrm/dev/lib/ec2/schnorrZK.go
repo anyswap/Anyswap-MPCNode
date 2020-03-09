@@ -7,20 +7,21 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
  */
 
-package ec2 
+package ec2
 
 import (
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"math/big"
+
 	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"math/big"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 )
 
 type ZkUProof struct {
@@ -29,10 +30,10 @@ type ZkUProof struct {
 }
 
 type ZkABProof struct {
-    Alpha []*big.Int
-    Beta  []*big.Int
-    T *big.Int
-    U *big.Int
+	Alpha []*big.Int
+	Beta  []*big.Int
+	T     *big.Int
+	U     *big.Int
 }
 
 func ZkUProve(u *big.Int) *ZkUProof {
@@ -221,4 +222,3 @@ func ZkABVerify(A []*big.Int, B []*big.Int, V []*big.Int, R []*big.Int, zkABProo
 
 	return true
 }
-

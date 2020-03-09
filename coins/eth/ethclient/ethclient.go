@@ -25,11 +25,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/fsn-dev/dcrm-walletService/coins/types"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
-	"github.com/fsn-dev/dcrm-walletService/coins/types"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.
@@ -60,14 +60,14 @@ func (ec *Client) Close() {
 }
 
 type rpcTransaction struct {
-    tx *types.Transaction
-    txExtraInfo
+	tx *types.Transaction
+	txExtraInfo
 }
 
 type txExtraInfo struct {
-    BlockNumber *string         `json:"blockNumber,omitempty"`
-    BlockHash   *common.Hash    `json:"blockHash,omitempty"`
-    From        *common.Address `json:"from,omitempty"`
+	BlockNumber *string         `json:"blockNumber,omitempty"`
+	BlockHash   *common.Hash    `json:"blockHash,omitempty"`
+	From        *common.Address `json:"from,omitempty"`
 }
 
 func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
@@ -84,7 +84,7 @@ func (ec *Client) TransactionByHash(ctx context.Context, hash common.Hash) (tx *
 	if err != nil {
 		return nil, false, err
 	} else if json == nil {
-		return nil, false, fmt.Errorf("Not Found.") 
+		return nil, false, fmt.Errorf("Not Found.")
 	} else if _, r, _ := json.tx.RawSignatureValues(); r == nil {
 		return nil, false, fmt.Errorf("server returned transaction without signature")
 	}
@@ -132,7 +132,7 @@ func (ec *Client) TransactionInBlock(ctx context.Context, blockHash common.Hash,
 	err := ec.c.CallContext(ctx, &json, "eth_getTransactionByBlockHashAndIndex", blockHash, hexutil.Uint64(index))
 	if err == nil {
 		if json == nil {
-			return nil,fmt.Errorf("Not Found.") 
+			return nil, fmt.Errorf("Not Found.")
 		} else if _, r, _ := json.tx.RawSignatureValues(); r == nil {
 			return nil, fmt.Errorf("server returned transaction without signature")
 		}
@@ -150,7 +150,7 @@ func (ec *Client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*
 	err := ec.c.CallContext(ctx, &r, "eth_getTransactionReceipt", txHash)
 	if err == nil {
 		if r == nil {
-			return nil,fmt.Errorf("Not Found.") 
+			return nil, fmt.Errorf("Not Found.")
 		}
 	}
 	return r, err

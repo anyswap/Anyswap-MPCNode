@@ -58,7 +58,7 @@ func (hc *httpConn) Write([]byte) (int, error)        { panic("Write called") }
 
 func (hc *httpConn) Read(b []byte) (int, error) {
 	<-hc.closed
-	fmt.Println("================================!!!dcrmwalletrpclog,httpConn.Read,err =%v!!!!===========================================",io.EOF)
+	fmt.Println("================================!!!dcrmwalletrpclog,httpConn.Read,err =%v!!!!===========================================", io.EOF)
 	return 0, io.EOF
 }
 
@@ -104,7 +104,7 @@ var DefaultHTTPTimeouts = HTTPTimeouts{
 func DialHTTPWithClient(endpoint string, client *http.Client) (*Client, error) {
 	req, err := http.NewRequest(http.MethodPost, endpoint, nil)
 	if err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,DialHTTPWithClient,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,DialHTTPWithClient,err =%v!!!!===========================================", err)
 		return nil, err
 	}
 	req.Header.Set("Content-Type", contentType)
@@ -132,16 +132,16 @@ func (c *Client) sendHTTP(ctx context.Context, op *requestOp, msg interface{}) e
 		if respBody != nil {
 			buf := new(bytes.Buffer)
 			if _, err2 := buf.ReadFrom(respBody); err2 == nil {
-				fmt.Println("================================!!!dcrmwalletrpclog,client.sendHTTP,err =%v!!!!===========================================",fmt.Errorf("%v %v", err, buf.String()))
+				fmt.Println("================================!!!dcrmwalletrpclog,client.sendHTTP,err =%v!!!!===========================================", fmt.Errorf("%v %v", err, buf.String()))
 				return fmt.Errorf("%v %v", err, buf.String())
 			}
 		}
-		fmt.Println("================================!!!dcrmwalletrpclog,client.sendHTTP,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,client.sendHTTP,err =%v!!!!===========================================", err)
 		return err
 	}
 	var respmsg jsonrpcMessage
 	if err := json.NewDecoder(respBody).Decode(&respmsg); err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,client.sendHTTP,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,client.sendHTTP,err =%v!!!!===========================================", err)
 		return err
 	}
 	op.resp <- &respmsg
@@ -152,13 +152,13 @@ func (c *Client) sendBatchHTTP(ctx context.Context, op *requestOp, msgs []*jsonr
 	hc := c.writeConn.(*httpConn)
 	respBody, err := hc.doRequest(ctx, msgs)
 	if err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,client.sendBatchHTTP,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,client.sendBatchHTTP,err =%v!!!!===========================================", err)
 		return err
 	}
 	defer respBody.Close()
 	var respmsgs []jsonrpcMessage
 	if err := json.NewDecoder(respBody).Decode(&respmsgs); err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,client.sendBatchHTTP,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,client.sendBatchHTTP,err =%v!!!!===========================================", err)
 		return err
 	}
 	for i := 0; i < len(respmsgs); i++ {
@@ -170,7 +170,7 @@ func (c *Client) sendBatchHTTP(ctx context.Context, op *requestOp, msgs []*jsonr
 func (hc *httpConn) doRequest(ctx context.Context, msg interface{}) (io.ReadCloser, error) {
 	body, err := json.Marshal(msg)
 	if err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,client.doRequest,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,client.doRequest,err =%v!!!!===========================================", err)
 		return nil, err
 	}
 	req := hc.req.WithContext(ctx)
@@ -179,11 +179,11 @@ func (hc *httpConn) doRequest(ctx context.Context, msg interface{}) (io.ReadClos
 
 	resp, err := hc.client.Do(req)
 	if err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,client.doRequest,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,client.doRequest,err =%v!!!!===========================================", err)
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		fmt.Println("================================!!!dcrmwalletrpclog,client.doRequest,err =%v!!!!===========================================",errors.New(resp.Status))
+		fmt.Println("================================!!!dcrmwalletrpclog,client.doRequest,err =%v!!!!===========================================", errors.New(resp.Status))
 		return resp.Body, errors.New(resp.Status)
 	}
 	return resp.Body, nil
@@ -236,7 +236,7 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if code, err := validateRequest(r); err != nil {
 		http.Error(w, err.Error(), code)
-		fmt.Println("================================!!!dcrmwalletrpclog,server.ServeHTTP,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,server.ServeHTTP,err =%v!!!!===========================================", err)
 		return
 	}
 	// All checks passed, create a codec that reads direct from the request body
@@ -259,18 +259,18 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // request is invalid.
 func validateRequest(r *http.Request) (int, error) {
 	if r.Method == http.MethodPut || r.Method == http.MethodDelete {
-		fmt.Println("================================!!!dcrmwalletrpclog,server.validateRequest,err =%v!!!!===========================================",errors.New("method not allowed"))
+		fmt.Println("================================!!!dcrmwalletrpclog,server.validateRequest,err =%v!!!!===========================================", errors.New("method not allowed"))
 		return http.StatusMethodNotAllowed, errors.New("method not allowed")
 	}
 	if r.ContentLength > maxRequestContentLength {
 		err := fmt.Errorf("content length too large (%d>%d)", r.ContentLength, maxRequestContentLength)
-		fmt.Println("================================!!!dcrmwalletrpclog,server.validateRequest,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,server.validateRequest,err =%v!!!!===========================================", err)
 		return http.StatusRequestEntityTooLarge, err
 	}
 	mt, _, err := mime.ParseMediaType(r.Header.Get("content-type"))
 	if r.Method != http.MethodOptions && (err != nil || mt != contentType) {
 		err := fmt.Errorf("invalid content type, only %s is supported", contentType)
-		fmt.Println("================================!!!dcrmwalletrpclog,server.validateRequest,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,server.validateRequest,err =%v!!!!===========================================", err)
 		return http.StatusUnsupportedMediaType, err
 	}
 	return 0, nil
@@ -308,7 +308,7 @@ func (h *virtualHostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	host, _, err := net.SplitHostPort(r.Host)
 	if err != nil {
-		fmt.Println("================================!!!dcrmwalletrpclog,virtualHostHandler.ServeHTTP,err =%v!!!!===========================================",err)
+		fmt.Println("================================!!!dcrmwalletrpclog,virtualHostHandler.ServeHTTP,err =%v!!!!===========================================", err)
 		// Either invalid (too many colons) or no port specified
 		host = r.Host
 	}
@@ -327,7 +327,7 @@ func (h *virtualHostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.next.ServeHTTP(w, r)
 		return
 	}
-	fmt.Println("================================!!!dcrmwalletrpclog,virtualHostHandler.ServeHTTP,err =%v!!!!===========================================",fmt.Errorf("invalid host specified"))
+	fmt.Println("================================!!!dcrmwalletrpclog,virtualHostHandler.ServeHTTP,err =%v!!!!===========================================", fmt.Errorf("invalid host specified"))
 	http.Error(w, "invalid host specified", http.StatusForbidden)
 }
 

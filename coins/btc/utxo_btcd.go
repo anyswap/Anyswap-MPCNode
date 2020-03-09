@@ -2,14 +2,15 @@ package btc
 
 import (
 	"fmt"
+	"log"
 	"math/big"
+	"sync"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcrpcclient "github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcutil"
-	"log"
-	"sync"
 )
 
 var ChainConfig2 = chaincfg.TestNet3Params
@@ -95,7 +96,7 @@ func ListUnspent_BTCD(address string) (utxos []btcjson.ListUnspentResult, balanc
 }
 
 func SearchRawTransaction(do func([]*btcjson.SearchRawTransactionsResult, btcutil.Address) []interface{}) func(btcutil.Address) interface{} {
-	return func(addr btcutil.Address) (interface{}) {
+	return func(addr btcutil.Address) interface{} {
 		type ft func(skip int)
 		count := 50
 		var finish bool = false

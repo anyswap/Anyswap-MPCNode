@@ -22,7 +22,7 @@ func NewApiError(err error) *ApiError {
 	}
 }
 
-func parseError(b []byte) (*ApiError) {
+func parseError(b []byte) *ApiError {
 	e := &ServerError{}
 
 	err := json.Unmarshal(b, e)
@@ -69,7 +69,7 @@ func (it *ApiError) String() string {
 
 			bb.WriteString("\n")
 			bb.WriteString(".......................\n")
-			bb.WriteString(fmt.Sprintf("Method: %v \nMessage: %v\n", v.Method, v.Message, ))
+			bb.WriteString(fmt.Sprintf("Method: %v \nMessage: %v\n", v.Method, v.Message))
 		}
 
 	} else {

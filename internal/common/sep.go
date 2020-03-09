@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -17,39 +17,38 @@
 package common
 
 const (
-    //exchange.go
-    Sep9 = "dcrmsep9"
-    Sep = "dcrmparm"
+	//exchange.go
+	Sep9 = "dcrmsep9"
+	Sep  = "dcrmparm"
 
-    //fusion_gdcrm.go
-    //sep = "dcrmparm"
-    Sep2 = "dcrmmsg"
-    //sep9 = "dcrmsep9" //valatetx
-    Sep10 = "dcrmsep10" //valatetx
-    Sep11 = "dcrmsep11"
-    Sep12 = "dcrmsep12"
-    MsgTypeSep = "caihaijundcrm"
-    SepOB = "dccpmatchxvc"
+	//fusion_gdcrm.go
+	//sep = "dcrmparm"
+	Sep2 = "dcrmmsg"
+	//sep9 = "dcrmsep9" //valatetx
+	Sep10      = "dcrmsep10" //valatetx
+	Sep11      = "dcrmsep11"
+	Sep12      = "dcrmsep12"
+	MsgTypeSep = "caihaijundcrm"
+	SepOB      = "dccpmatchxvc"
 
-    //api.go
-    //sep9 = "dcrmsep9" 
-   
-    //txpool.go
-    //sep9 = "dcrmsep9"
-    //sep10 = "dcrmsep10"
-    //sepob = "dccpmatchxvc"
+	//api.go
+	//sep9 = "dcrmsep9"
 
-    //contracts.go
-    //sepob = "dccpmatchxvc"
-    //sep10 = "dcrmsep10"
+	//txpool.go
+	//sep9 = "dcrmsep9"
+	//sep10 = "dcrmsep10"
+	//sepob = "dccpmatchxvc"
 
-    //transaction.go
-    //sepob = "dccpmatchxvc"
+	//contracts.go
+	//sepob = "dccpmatchxvc"
+	//sep10 = "dcrmsep10"
 
-    //accessors_indexes.go
-    //sepob = "dccpmatchxvc"
+	//transaction.go
+	//sepob = "dccpmatchxvc"
 
-    //match.go
-    //sepob = "dccpmatchxvc"
+	//accessors_indexes.go
+	//sepob = "dccpmatchxvc"
+
+	//match.go
+	//sepob = "dccpmatchxvc"
 )
-

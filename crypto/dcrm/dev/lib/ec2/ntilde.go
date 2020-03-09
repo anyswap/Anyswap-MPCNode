@@ -1,8 +1,9 @@
-package ec2 
+package ec2
 
 import (
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 	"math/big"
+
+	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 )
 
 type NtildeH1H2 struct {
@@ -17,12 +18,12 @@ func GenerateNtildeH1H2(length int) *NtildeH1H2 {
 	q := <-SafePrime //random.GetSafeRandomPrimeInt(length / 2)
 
 	if p == nil || q == nil {
-	    return nil
+		return nil
 	}
 
 	////TODO tmp:1000-->4
-	SafePrime <-p
-	SafePrime <-q
+	SafePrime <- p
+	SafePrime <- q
 	///////
 
 	ntilde := new(big.Int).Mul(p, q)

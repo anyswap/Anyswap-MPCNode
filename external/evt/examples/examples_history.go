@@ -2,13 +2,14 @@ package examples
 
 import (
 	"fmt"
-	"github.com/fsn-dev/dcrm-walletService/external/evt/evt"
 	"log"
+
+	"github.com/fsn-dev/dcrm-walletService/external/evt/evt"
 )
 
 func SearchForBlockWithTransaction(startBlock int, evt *evt.Instance) {
 
-	for i := 0; i < 1000; i ++ {
+	for i := 0; i < 1000; i++ {
 		block, err := evt.Api.V1.Chain.GetBlock(fmt.Sprintf("%v", startBlock+i))
 		if err != nil {
 			log.Println(err)
@@ -42,4 +43,3 @@ func PrintTransactionActions(transactionId string, evt *evt.Instance) {
 
 	log.Println(result)
 }
-

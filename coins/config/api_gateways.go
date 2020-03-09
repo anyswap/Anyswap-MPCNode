@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -18,13 +18,15 @@
 package config
 
 import (
-	"github.com/BurntSushi/toml"
-	"io"
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+
+	"github.com/BurntSushi/toml"
+
 	//"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
@@ -35,31 +37,31 @@ type SimpleApiConfig struct {
 
 type RpcClientConfig struct {
 	ElectrsAddress string
-	Host string
-	Port int
-	User string
-	Passwd string
-	Usessl bool
+	Host           string
+	Port           int
+	User           string
+	Passwd         string
+	Usessl         bool
 }
 
 type EosConfig struct {
-	Nodeos string
-	ChainID string
+	Nodeos         string
+	ChainID        string
 	BalanceTracker string
 }
 
 type ApiGatewayConfigs struct {
-	RPCCLIENT_TIMEOUT int
-	CosmosGateway *SimpleApiConfig
-	TronGateway *SimpleApiConfig
-	BitcoinGateway *RpcClientConfig
-	OmniGateway *RpcClientConfig
+	RPCCLIENT_TIMEOUT  int
+	CosmosGateway      *SimpleApiConfig
+	TronGateway        *SimpleApiConfig
+	BitcoinGateway     *RpcClientConfig
+	OmniGateway        *RpcClientConfig
 	BitcoincashGateway *RpcClientConfig
-	EthereumGateway *SimpleApiConfig
-	EosGateway *EosConfig
-	EvtGateway *SimpleApiConfig
-	RippleGateway *SimpleApiConfig
-	FusionGateway *SimpleApiConfig
+	EthereumGateway    *SimpleApiConfig
+	EosGateway         *EosConfig
+	EvtGateway         *SimpleApiConfig
+	RippleGateway      *SimpleApiConfig
+	FusionGateway      *SimpleApiConfig
 }
 
 var ApiGateways *ApiGatewayConfigs
@@ -80,18 +82,18 @@ var Loaded bool = false
 	}
 }*/
 
-func Init () {
-    err := LoadApiGateways()
-    if err != nil {
-	    fmt.Println(err.Error())
-    }
+func Init() {
+	err := LoadApiGateways()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
 
-func LoadApiGateways () error {
+func LoadApiGateways() error {
 	if datadir == "" {
 		datadir = DefaultDataDir()
 	}
-	
+
 	//path := "/work/logcoolect.log"
 	//err := common.PrintLogToFile(path)
 	//if err != nil {
@@ -102,27 +104,27 @@ func LoadApiGateways () error {
 	if ApiGateways == nil {
 		ApiGateways = new(ApiGatewayConfigs)
 	}
-	common.Debug("========LoadApiGateways===========","ApiGateways",ApiGateways)
+	common.Debug("========LoadApiGateways===========", "ApiGateways", ApiGateways)
 
 	configfilepath := filepath.Join(datadir, "gateways.toml")
 
-	common.Debug("========LoadApiGateways===========","configfilepath",configfilepath)
+	common.Debug("========LoadApiGateways===========", "configfilepath", configfilepath)
 
 	if exists, _ := PathExists(configfilepath); exists {
 		common.Debug("========LoadApiGateways,exist===========")
 		_, err := toml.DecodeFile(configfilepath, ApiGateways)
 		if err == nil {
-			common.Debug("========LoadApiGateways,toml decodefile===========","ApiGateways",ApiGateways)
+			common.Debug("========LoadApiGateways,toml decodefile===========", "ApiGateways", ApiGateways)
 			Loaded = true
 		}
-		common.Debug("========LoadApiGateways,toml decodefile===========","ApiGateways",ApiGateways,"err",err)
+		common.Debug("========LoadApiGateways,toml decodefile===========", "ApiGateways", ApiGateways, "err", err)
 		return err
 	} else {
 		toml.Decode(defaultConfig, ApiGateways)
-		common.Debug("========LoadApiGateways,toml decode===========","ApiGateways",ApiGateways,"defaultConfig",defaultConfig)
+		common.Debug("========LoadApiGateways,toml decode===========", "ApiGateways", ApiGateways, "defaultConfig", defaultConfig)
 		f, e1 := os.Create(configfilepath)
 		if f == nil {
-			common.Debug("cannot create config file.","error",e1)
+			common.Debug("cannot create config file.", "error", e1)
 			return nil
 		}
 		_, e2 := io.WriteString(f, defaultConfig)
@@ -174,4 +176,3 @@ func homeDir() string {
 	}
 	return ""
 }
-

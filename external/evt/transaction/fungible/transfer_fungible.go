@@ -12,7 +12,6 @@ type TransferFungibleParams struct {
 	memo       string
 }
 
-
 func (it *TransferFungibleParams) SetMemo(memo string) *TransferFungibleParams {
 	it.memo = memo
 	return it

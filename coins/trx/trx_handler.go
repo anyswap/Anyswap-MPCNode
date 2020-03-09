@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -27,11 +27,11 @@ import (
 	"math/big"
 	"runtime/debug"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
 	tcrypto "github.com/fsn-dev/dcrm-walletService/coins/trx/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 
-	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
+	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
 )
 
@@ -40,20 +40,20 @@ func TRXInit() {
 	ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 	prefix = byte(0x41)
 	TRANSFER_CONTRACT = "TransferContract"
-	TRX_DEFAULT_FEE, _ = new(big.Int).SetString("50000",10)
+	TRX_DEFAULT_FEE, _ = new(big.Int).SetString("50000", 10)
 }
 
 var (
 	//URL = config.TRON_SOLIDITY_NODE_HTTP
 	//URL = config.ApiGateways.TronGateway.ApiAddress
-	URL string
+	URL      string
 	ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-	prefix = byte(0x41)  // MainNet
+	prefix   = byte(0x41) // MainNet
 	//prefix = byte(0xA0)
 	TRANSFER_CONTRACT = "TransferContract"
 )
 
-type TRXHandler struct {}
+type TRXHandler struct{}
 
 func NewTRXHandler() *TRXHandler {
 	return &TRXHandler{}
@@ -62,7 +62,7 @@ func NewTRXHandler() *TRXHandler {
 var TRX_DEFAULT_FEE *big.Int
 
 func (h *TRXHandler) GetDefaultFee() types.Value {
-	return types.Value{Cointype:"TRX",Val:TRX_DEFAULT_FEE}
+	return types.Value{Cointype: "TRX", Val: TRX_DEFAULT_FEE}
 }
 
 func (h *TRXHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error) {
@@ -78,12 +78,12 @@ func (h *TRXHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 }
 
 func (h *TRXHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	if len(fromAddress) != 42 {
 		b, err1 := tcrypto.Base58Decode(fromAddress, ALPHABET)
 		if err1 != nil {
@@ -103,9 +103,9 @@ func (h *TRXHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	}
 
 	tf := &Transfer{
-		Amount: amount,
+		Amount:        amount,
 		Owner_address: fromAddress,
-		To_address: toAddress,
+		To_address:    toAddress,
 	}
 
 	tfJson, err := tf.MarshalJSON()
@@ -137,7 +137,7 @@ func (h *TRXHandler) SignTransaction(hash []string, privateKey interface{}) (rsv
 		rx := fmt.Sprintf("%x", r)
 		sx := fmt.Sprintf("%x", s)
 		if isCanonical(&privateKey.(*ecdsa.PrivateKey).PublicKey, s) {
-			rsv = append(rsv, rx + sx + "00")
+			rsv = append(rsv, rx+sx+"00")
 			break
 		}
 		if i == 24 {
@@ -148,7 +148,7 @@ func (h *TRXHandler) SignTransaction(hash []string, privateKey interface{}) (rsv
 	return
 }
 
-func (h *TRXHandler) MakeSignedTransaction (rsv []string, transaction interface{}) (signedTransaction interface{}, err error) {
+func (h *TRXHandler) MakeSignedTransaction(rsv []string, transaction interface{}) (signedTransaction interface{}, err error) {
 	signedTransaction = transaction
 	signedTransaction.(*Transaction).Signature = rsv[0]
 	return
@@ -170,15 +170,15 @@ func (h *TRXHandler) SubmitTransaction(signedTransaction interface{}) (txhash st
 }
 
 func (h *TRXHandler) GetTransactionInfo(txhash string) (fromAddress string, txOutputs []types.TxOutput, jsonstring string, confirmed bool, fee types.Value, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	fee = h.GetDefaultFee()
 	confirmed = false
-	data, err := json.Marshal(struct{
+	data, err := json.Marshal(struct {
 		Value string `json:"value"`
 	}{
 		Value: txhash,
@@ -200,10 +200,9 @@ func (h *TRXHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	transferAmount := big.NewInt(int64(tf["amount"].(float64)))
 	txOutput := types.TxOutput{
 		ToAddress: toAddress,
-		Amount: transferAmount,
+		Amount:    transferAmount,
 	}
 	txOutputs = append(txOutputs, txOutput)
-
 
 	ret2 := rpcutils.DoPostRequest(URL, "walletsolidity/gettransactioninfobyid", reqData)
 	//fmt.Printf("\n\nret:\n%v\n\n\n\n", ret2)
@@ -226,12 +225,12 @@ func (h *TRXHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 }
 
 func (h *TRXHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error) {
-	defer func () {
+	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))
 			return
 		}
-	} ()
+	}()
 	reqData := `{"address":"` + address + `"}`
 	ret := rpcutils.DoPostRequest(URL, "walletsolidity/getaccount", reqData)
 	var retStruct map[string]interface{}
@@ -243,7 +242,7 @@ func (h *TRXHandler) GetAddressBalance(address string, jsonstring string) (balan
 		err = fmt.Errorf(ret)
 		return
 	}
-	balance.CoinBalance = types.Value{Cointype:"XRP",Val:big.NewInt(int64(retStruct["balance"].(float64)))}
+	balance.CoinBalance = types.Value{Cointype: "XRP", Val: big.NewInt(int64(retStruct["balance"].(float64)))}
 	return
 }
 
@@ -255,7 +254,7 @@ type PublicKey struct {
 	*ecdsa.PublicKey
 }
 
-func PublicKeyToHex (pk *PublicKey) (ret string) {
+func PublicKeyToHex(pk *PublicKey) (ret string) {
 	b := elliptic.Marshal(crypto.S256(), pk.X, pk.Y)
 	ret = hex.EncodeToString(b)
 	return
@@ -268,16 +267,16 @@ func HexToPublicKey(pubKeyHex string) (pk *PublicKey, err error) {
 		y := new(big.Int).SetBytes(pub[33:])
 		pk = &PublicKey{&ecdsa.PublicKey{
 			Curve: crypto.S256(),
-			X: x,
-			Y: y,
+			X:     x,
+			Y:     y,
 		}}
 	} else if len(pub) == 64 {
 		x := new(big.Int).SetBytes(pub[:32])
 		y := new(big.Int).SetBytes(pub[32:])
 		pk = &PublicKey{&ecdsa.PublicKey{
 			Curve: crypto.S256(),
-			X: x,
-			Y: y,
+			X:     x,
+			Y:     y,
 		}}
 	} else {
 		err = fmt.Errorf("Invalid public key length %v", len(pub))
@@ -311,18 +310,18 @@ func AddressToAddressHR(address string) (string, error) {
 }
 
 type Transaction struct {
-	Signature string `json:"signature"`
-	TxID string `json:"txID"`
-	Raw_data RawData `json:"raw_data"`
-	Error string `json:"Error,omitempty"`
+	Signature string  `json:"signature"`
+	TxID      string  `json:"txID"`
+	Raw_data  RawData `json:"raw_data"`
+	Error     string  `json:"Error,omitempty"`
 }
 
 type TransactionInfo struct {
-	Id string `json:"id"`
-	BlockNumber int64 `json:"blockNumber"`
-	Fee int64 `json:"fee"`
-	Receipt TxReceipt `json:"receipt"`
-	BlockTimeStamp int64 `json:"blockTimeStamp"`
+	Id             string    `json:"id"`
+	BlockNumber    int64     `json:"blockNumber"`
+	Fee            int64     `json:"fee"`
+	Receipt        TxReceipt `json:"receipt"`
+	BlockTimeStamp int64     `json:"blockTimeStamp"`
 }
 
 type TxReceipt struct {
@@ -348,20 +347,20 @@ func (tx *Transaction) UnmarshalJson(txjson string) (err error) {
 }
 
 type RawData struct {
-	Contract []Contract `json:"contract"`
-	Ref_block_bytes string `json:"ref_block_bytes"`
-	Ref_block_hash string `json:"ref_block_hash"`
-	Expiration int64 `json:"expiration"`
-	Timestamp int64 `json:"timestamp"`
+	Contract        []Contract `json:"contract"`
+	Ref_block_bytes string     `json:"ref_block_bytes"`
+	Ref_block_hash  string     `json:"ref_block_hash"`
+	Expiration      int64      `json:"expiration"`
+	Timestamp       int64      `json:"timestamp"`
 }
 
 type Contract interface {
 }
 
 type Transfer struct {
-	Amount *big.Int `json:"amount"`
-	Owner_address string `json:"owner_address"`
-	To_address string `json:"to_address"`
+	Amount        *big.Int `json:"amount"`
+	Owner_address string   `json:"owner_address"`
+	To_address    string   `json:"to_address"`
 }
 
 func (tf *Transfer) MarshalJSON() (ret string, err error) {
@@ -379,4 +378,3 @@ func isCanonical(pk *ecdsa.PublicKey, s *big.Int) bool {
 	}
 	return false
 }
-

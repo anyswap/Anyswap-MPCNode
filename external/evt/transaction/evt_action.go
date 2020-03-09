@@ -7,7 +7,6 @@ type EvtActionParam interface {
 	Action(binargs string) *evttypes.SimpleAction
 }
 
-
 /*
 ActionName	Domain	Key
 
@@ -43,4 +42,3 @@ newlock	.lock	name of lock assets proposal
 aprvlock	.lock	name of lock assets proposal
 tryunlock	.lock	name of lock assets proposal
 */
-

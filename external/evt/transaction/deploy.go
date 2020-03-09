@@ -3,6 +3,7 @@ package transaction
 import (
 	"encoding/binary"
 	"encoding/hex"
+
 	"github.com/fsn-dev/dcrm-walletService/external/evt/ecc"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evt"
 	"github.com/fsn-dev/dcrm-walletService/external/evt/evtapi/v1/chain"

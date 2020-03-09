@@ -21,21 +21,21 @@ type AbiJsonToBinResult struct {
 }*/
 
 type Args struct {
-	Name        string         `json:"name,omitempty"`
-	Creator     string         `json:"creator,omitempty"`
-	Issue       ActionType     `json:"issue,omitempty"`
-	Transfer    ActionType     `json:"transfer,omitempty"`
-	Manage      ActionType     `json:"manage,omitempty"`
-	TotalSupply int64          `json:"total_supply,omitempty"`
-	From        string         `json:"from,omitempty"`
-	To          string         `json:"to,omitempty"`
-	Number      string         `json:"number,omitempty"`
-	Memo        string         `json:"memo,omitempty"`
+	Name        string     `json:"name,omitempty"`
+	Creator     string     `json:"creator,omitempty"`
+	Issue       ActionType `json:"issue,omitempty"`
+	Transfer    ActionType `json:"transfer,omitempty"`
+	Manage      ActionType `json:"manage,omitempty"`
+	TotalSupply int64      `json:"total_supply,omitempty"`
+	From        string     `json:"from,omitempty"`
+	To          string     `json:"to,omitempty"`
+	Number      string     `json:"number,omitempty"`
+	Memo        string     `json:"memo,omitempty"`
 }
 
 type ActionArguments struct {
-	Action      string         `json:"action"`
-	Args        Args           `json:"args"`
+	Action string `json:"action"`
+	Args   Args   `json:"args"`
 }
 
 type Authorizers struct {

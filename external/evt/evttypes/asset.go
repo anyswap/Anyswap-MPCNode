@@ -41,8 +41,8 @@ type Symbol struct {
 
 func NewSymbol(precision int, id string) *Symbol {
 	return &Symbol{
-		precision:      precision,
-		id: id,
+		precision: precision,
+		id:        id,
 	}
 }
 

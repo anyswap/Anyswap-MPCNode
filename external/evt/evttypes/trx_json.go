@@ -1,7 +1,7 @@
 package evttypes
 
 type TRXJson struct {
-        Id                    string         `json:"-"`
+	Id                    string         `json:"-"`
 	Expiration            string         `json:"expiration"`
 	RefBlockNum           int            `json:"ref_block_num"`
 	RefBlockPrefix        int            `json:"ref_block_prefix"`

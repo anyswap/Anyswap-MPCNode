@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -35,13 +35,13 @@ func HttpGet(host string, path string, params map[string][]string) ([]byte, erro
 	path = strings.Trim(path, "/")
 	url := neturl.URL{
 		Scheme: scheme,
-		Host: host,
-		Path: path,
+		Host:   host,
+		Path:   path,
 	}
 	requrl := url.String()
 	values := neturl.Values(params)
 	if params != nil {
-		requrl = requrl+"?"+values.Encode()
+		requrl = requrl + "?" + values.Encode()
 	}
 
 	tr := &http.Transport{

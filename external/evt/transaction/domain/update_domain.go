@@ -15,7 +15,7 @@ type UpdateDomain struct {
 
 func CreateUpdateDomain(name string) *UpdateDomain {
 	return &UpdateDomain{
-		Name:     name,
+		Name: name,
 	}
 }
 

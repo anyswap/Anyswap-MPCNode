@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/adapters"
 )
 
@@ -238,7 +238,7 @@ func (net *Network) watchPeerEvents(id discover.NodeID, events chan *p2p.PeerEve
 
 		case err := <-sub.Err():
 			if err != nil {
-				fmt.Sprintf("error getting peer events for node %v", id), "err", err
+				fmt.Sprintf("error getting peer events for node %v, err %v", id, err)
 			}
 			return
 		}

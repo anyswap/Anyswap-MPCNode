@@ -29,9 +29,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/fsn-dev/dcrm-walletService/p2p/event"
 	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/adapters"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
 	"github.com/julienschmidt/httprouter"

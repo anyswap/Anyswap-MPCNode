@@ -7,7 +7,7 @@
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
@@ -18,17 +18,18 @@ package bch
 
 import (
 	"encoding/hex"
-	"fmt"
 	"errors"
+	"fmt"
 	"math/big"
+	"strings"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
 	"github.com/fsn-dev/dcrm-walletService/coins/btc"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
-	addrconv "github.com/schancel/cashaddr-converter/address"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
-	"strings"
+	addrconv "github.com/schancel/cashaddr-converter/address"
 )
 
 func BCHInit() {
@@ -43,23 +44,23 @@ type BCHHandler struct {
 	btcHandler *btc.BTCHandler
 }
 
-func NewBCHHandler () *BCHHandler {
+func NewBCHHandler() *BCHHandler {
 	return &BCHHandler{
-		btcHandler: btc.NewBTCHandlerWithConfig(config.ApiGateways.BitcoincashGateway.Host,config.ApiGateways.BitcoincashGateway.Port,config.ApiGateways.BitcoincashGateway.User,config.ApiGateways.BitcoincashGateway.Passwd,config.ApiGateways.BitcoincashGateway.Usessl),
+		btcHandler: btc.NewBTCHandlerWithConfig(config.ApiGateways.BitcoincashGateway.Host, config.ApiGateways.BitcoincashGateway.Port, config.ApiGateways.BitcoincashGateway.User, config.ApiGateways.BitcoincashGateway.Passwd, config.ApiGateways.BitcoincashGateway.Usessl),
 	}
 }
 
-var BCH_DEFAULT_FEE, _ = new(big.Int).SetString("50000",10)
+var BCH_DEFAULT_FEE, _ = new(big.Int).SetString("50000", 10)
 
 func (h *BCHHandler) GetDefaultFee() types.Value {
-	return types.Value{Cointype:"BCH",Val:BCH_DEFAULT_FEE}
+	return types.Value{Cointype: "BCH", Val: BCH_DEFAULT_FEE}
 }
 
 func (h *BCHHandler) IsToken() bool {
 	return false
 }
 
-func (h *BCHHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error){
+func (h *BCHHandler) PublicKeyToAddress(pubKeyHex string) (address string, err error) {
 	if len(pubKeyHex) != 132 && len(pubKeyHex) != 130 {
 		return "", errors.New("invalid public key length")
 	}
@@ -80,20 +81,20 @@ func (h *BCHHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 	if err != nil {
 		return
 	}
-	legaddr := addressPubKeyHash.EncodeAddress()  // legacy format
+	legaddr := addressPubKeyHash.EncodeAddress() // legacy format
 	addr, err := addrconv.NewFromString(legaddr)
 	if err != nil {
 		return
 	}
-	cashAddress, _ := addr.CashAddress()  // bitcoin cash
+	cashAddress, _ := addr.CashAddress() // bitcoin cash
 	address, err = cashAddress.Encode()
 	address = CovertToCashAddress(address)
-// for lockin test
-//************
-//	address = "qrky8lzm3kjv40e8sx0wve03rm6em3kmss8qnjv0aa"
-// Lockin txhash: 91287ee8bc9b8e5392f8ee2bd3a6f7aef0912508fbd398f4d3755aff4c8d1ee3
-// Lockin amount: 10000
-//************
+	// for lockin test
+	//************
+	//	address = "qrky8lzm3kjv40e8sx0wve03rm6em3kmss8qnjv0aa"
+	// Lockin txhash: 91287ee8bc9b8e5392f8ee2bd3a6f7aef0912508fbd398f4d3755aff4c8d1ee3
+	// Lockin amount: 10000
+	//************
 	return
 }
 
@@ -104,12 +105,12 @@ func (h *BCHHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 }
 
 // NOT completed, may or not work
-func (h *BCHHandler) SignTransaction(hash []string, wif interface{}) (rsv []string, err error){
+func (h *BCHHandler) SignTransaction(hash []string, wif interface{}) (rsv []string, err error) {
 	return h.btcHandler.SignTransaction(hash, wif)
 }
 
 // NOT completed, may or not work
-func (h *BCHHandler) MakeSignedTransaction(rsv []string, transaction interface{}) (signedTransaction interface{}, err error){
+func (h *BCHHandler) MakeSignedTransaction(rsv []string, transaction interface{}) (signedTransaction interface{}, err error) {
 	return h.btcHandler.MakeSignedTransaction(rsv, transaction)
 }
 
@@ -128,9 +129,9 @@ func (h *BCHHandler) GetTransactionInfo(txhash string) (fromAddress string, txOu
 	return
 }
 
-func CovertToCashAddress (btcaddrAddress string) (cashAddress string) {
+func CovertToCashAddress(btcaddrAddress string) (cashAddress string) {
 	if strings.HasPrefix(btcaddrAddress, "bchtest") {
-		cashAddress = strings.Split(btcaddrAddress,":")[1]
+		cashAddress = strings.Split(btcaddrAddress, ":")[1]
 		return
 	}
 	if strings.HasPrefix(btcaddrAddress, "q") || strings.HasPrefix(btcaddrAddress, "p") {
@@ -142,14 +143,14 @@ func CovertToCashAddress (btcaddrAddress string) (cashAddress string) {
 		cashAddr, _ := btcaddr.CashAddress()
 		if cashAddr != nil {
 			cashAddress, _ = cashAddr.Encode()
-			cashAddress = strings.Split(cashAddress,":")[1]
+			cashAddress = strings.Split(cashAddress, ":")[1]
 		}
 	}
 	return
 }
 
 // TODO
-func (h *BCHHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error){
+func (h *BCHHandler) GetAddressBalance(address string, jsonstring string) (balance types.Balance, err error) {
 	err = fmt.Errorf("function currently not available")
 	return types.Balance{}, err
 }

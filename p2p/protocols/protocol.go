@@ -29,7 +29,6 @@ devp2p subprotocols by abstracting away code standardly shared by protocols.
 package protocols
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -38,12 +37,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/metrics"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
+	"github.com/fsn-dev/dcrm-walletService/p2p/metrics"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 	//"github.com/fsn-dev/dcrm-walletService/swarm/spancontext"
 	//"github.com/fsn-dev/dcrm-walletService/swarm/tracing"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // error codes used by this  protocol scheme
@@ -242,26 +240,26 @@ func (p *Peer) Send(ctx context.Context, msg interface{}) error {
 	metrics.GetOrRegisterCounter("peer.send", nil).Inc(1)
 
 	var b bytes.Buffer
-/*	if tracing.Enabled {
-		writer := bufio.NewWriter(&b)
+	/*	if tracing.Enabled {
+			writer := bufio.NewWriter(&b)
 
-		tracer := opentracing.GlobalTracer()
+			tracer := opentracing.GlobalTracer()
 
-		sctx := spancontext.FromContext(ctx)
+			sctx := spancontext.FromContext(ctx)
 
-		if sctx != nil {
-			err := tracer.Inject(
-				sctx,
-				opentracing.Binary,
-				writer)
-			if err != nil {
-				return err
+			if sctx != nil {
+				err := tracer.Inject(
+					sctx,
+					opentracing.Binary,
+					writer)
+				if err != nil {
+					return err
+				}
 			}
-		}
 
-		writer.Flush()
-	}
-*/
+			writer.Flush()
+		}
+	*/
 	r, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return err
@@ -312,21 +310,21 @@ func (p *Peer) handleIncoming(handle func(ctx context.Context, msg interface{}) 
 
 	// if tracing is enabled and the context coming within the request is
 	// not empty, try to unmarshal it
-/*	if tracing.Enabled && len(wmsg.Context) > 0 {
-		var sctx opentracing.SpanContext
+	/*	if tracing.Enabled && len(wmsg.Context) > 0 {
+			var sctx opentracing.SpanContext
 
-		tracer := opentracing.GlobalTracer()
-		sctx, err = tracer.Extract(
-			opentracing.Binary,
-			bytes.NewReader(wmsg.Context))
-		if err != nil {
-			fmt.Errorf(err.Error())
-			return err
+			tracer := opentracing.GlobalTracer()
+			sctx, err = tracer.Extract(
+				opentracing.Binary,
+				bytes.NewReader(wmsg.Context))
+			if err != nil {
+				fmt.Errorf(err.Error())
+				return err
+			}
+
+			ctx = spancontext.WithContext(ctx, sctx)
 		}
-
-		ctx = spancontext.WithContext(ctx, sctx)
-	}
-*/
+	*/
 	val, ok := p.spec.NewMsg(msg.Code)
 	if !ok {
 		return errorf(ErrInvalidMsgCode, "%v", msg.Code)

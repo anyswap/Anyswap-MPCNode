@@ -156,37 +156,25 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		sedsave := itertmp.Value.(string)
 		////////
 		rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-		var da []byte
-		datmp, exsit := LdbReqAddr.ReadMap(rk)
+		_, exsit := LdbReqAddr.ReadMap(rk)
 		if exsit == false {
 			da2 := GetReqAddrValueFromDb(rk)
 			if da2 == nil {
 				exsit = false
 			} else {
 				exsit = true
-				da = da2
 			}
 		} else {
-			da = []byte(fmt.Sprintf("%v", datmp))
+			//da = []byte(fmt.Sprintf("%v", datmp))
 			exsit = true
 		}
 
-		if exsit == true {
-			ds, err := UnCompress(string(da))
-			if err == nil {
-				dss, err := Decode2(ds, "AcceptReqAddrData")
-				if err == nil {
-					ac := dss.(*AcceptReqAddrData)
-					if ac != nil {
-						//nodesigs = ac.NodeSigs
-					}
-				}
-			}
-		}
-		////////
+		pubkeyhex := hex.EncodeToString(sedpk)
+		
 		pubs := &PubKeyData{Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
 		epubs, err := Encode2(pubs)
 		if err != nil {
+			fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ed pubkey", Err: err}
 			ch <- res
 			return
@@ -194,6 +182,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		ss, err := Compress([]byte(epubs))
 		if err != nil {
+			fmt.Printf("%v ===============dcrm_genPubKey,compress fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ed pubkey", Err: err}
 			ch <- res
 			return
@@ -205,24 +194,13 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		kdtmp := KeyData{Key: []byte(keytmp), Data: ss}
 		AllAccountsChan <- kdtmp
 		////TODO
-		//AllAccounts = append(AllAccounts,pubs)
 		AllAccounts.WriteMap(index, pubs)
 		////////
 
-		pubkeyhex := hex.EncodeToString(sedpk)
-		fmt.Printf("%v ===============dcrm_genPubKey,account = %v,pubkey = %v,nonce =%v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce)
-		////save to db
-		////add for req addr
-		//key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-		//kd := KeyData{Key:[]byte(key2),Data:nonce}
-		//PubKeyDataChan <-kd
-
-		/////
-		//LdbPubKeyData.WriteMap(key2,[]byte(nonce))
-		////
-
+		fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
 		tip, reply := AcceptReqAddr(account, cointype, wk.groupid, nonce, wk.limitnum, mode, true, "true", "Success", pubkeyhex, "", "", "", id)
 		if reply != nil {
+			fmt.Printf("%v ===============dcrm_genPubKey,update reqaddr status,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), reply,account, pubkeyhex, nonce,rk)
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
 			ch <- res
 			return
@@ -337,37 +315,25 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	save := iter.Value.(string)
 	////////
 	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-	var da []byte
-	datmp, exsit := LdbReqAddr.ReadMap(rk)
+	_, exsit := LdbReqAddr.ReadMap(rk)
 	if exsit == false {
 		da2 := GetReqAddrValueFromDb(rk)
 		if da2 == nil {
 			exsit = false
 		} else {
 			exsit = true
-			da = da2
 		}
 	} else {
-		da = []byte(fmt.Sprintf("%v", datmp))
+		//da = []byte(fmt.Sprintf("%v", datmp))
 		exsit = true
 	}
 
-	if exsit == true {
-		ds, err := UnCompress(string(da))
-		if err == nil {
-			dss, err := Decode2(ds, "AcceptReqAddrData")
-			if err == nil {
-				ac := dss.(*AcceptReqAddrData)
-				if ac != nil {
-					//nodesigs = ac.NodeSigs
-				}
-			}
-		}
-	}
-	////////
+	pubkeyhex := hex.EncodeToString(ys)
+	
 	pubs := &PubKeyData{Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
 	epubs, err := Encode2(pubs)
 	if err != nil {
+		fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
 		ch <- res
 		return
@@ -375,11 +341,14 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	ss, err := Compress([]byte(epubs))
 	if err != nil {
+		fmt.Printf("%v ===============dcrm_genPubKey,compress fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
 		ch <- res
 		return
 	}
 
+	fmt.Printf("%v ===============dcrm_genPubKey,success encode and compress pubkey,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
+	
 	count := AllAccounts.MapLength()
 	index := strconv.Itoa(count)
 	keytmp := Keccak256Hash([]byte(strings.ToLower(index))).Hex()
@@ -390,18 +359,11 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	AllAccounts.WriteMap(index, pubs)
 	////////
 
-	pubkeyhex := hex.EncodeToString(ys)
-	fmt.Printf("%v ===============dcrm_genPubKey,account = %v,pubkey = %v,nonce =%v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce)
-
-	//key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-	//kd := KeyData{Key:[]byte(key2),Data:nonce}
-	//PubKeyDataChan <-kd
-	/////
-	//LdbPubKeyData.WriteMap(key2,[]byte(nonce))
-	////
+	fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
 
 	tip, reply := AcceptReqAddr(account, cointype, wk.groupid, nonce, wk.limitnum, mode, true, "true", "Success", pubkeyhex, "", "", "", id)
 	if reply != nil {
+		fmt.Printf("%v ===============dcrm_genPubKey,update reqaddr status,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), reply,account, pubkeyhex, nonce,rk)
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
 		ch <- res
 		return

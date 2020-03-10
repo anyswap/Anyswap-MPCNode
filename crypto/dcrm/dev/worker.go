@@ -1559,32 +1559,26 @@ func GetReqAddrStatus(key string) (string, string, error) {
 	}
 	///////
 	if exsit == false {
-		//	fmt.Println("==================GetReqAddrStatus,get accept data fail from db,key =%s ===================",key)
+		fmt.Printf("%v =====================GetReqAddrStatus,no exist key, key = %v ======================\n", common.CurrentTime(), key)
 		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ds, err := UnCompress(string(da))
 	if err != nil {
-		//	fmt.Println("==================GetReqAddrStatus,uncompress accept data fail,key =%s ===================",key)
+		fmt.Printf("%v =====================GetReqAddrStatus,uncompress fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
 		return "", "dcrm back-end internal error:uncompress accept data fail", err
 	}
 
 	dss, err := Decode2(ds, "AcceptReqAddrData")
 	if err != nil {
-		//	fmt.Println("==================GetReqAddrStatus,decode accept data fail,key =%s ===================",key)
+		fmt.Printf("%v =====================GetReqAddrStatus,decode fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
 		return "", "dcrm back-end internal error:decode accept data fail", err
 	}
 
 	ac := dss.(*AcceptReqAddrData)
-	//fmt.Println("==================GetReqAddrStatus,ac.Status=%s,ac.PubKey=%s,ac.Tip=%s,ac.Error=%s,ac.AllReply=%s,key =%s ===================",ac.Status,ac.PubKey,ac.Tip,ac.Error,ac.AllReply,key)
 	los := &ReqAddrStatus{Status: ac.Status, PubKey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
 	ret, err := json.Marshal(los)
-	if err != nil {
-		//	fmt.Println("==================GetReqAddrStatus,get result fail,err =%v,key =%s ===================",err,key)
-	} else {
-		//	fmt.Println("==================GetReqAddrStatus,get result success,ret =%s,key =%s ===================",string(ret),key)
-	}
-
+	fmt.Printf("%v =====================GetReqAddrStatus,status = %v,ret = %v,err = %v,key = %v ======================\n", common.CurrentTime(),ac.Status,ret,err, key)
 	return string(ret), "", nil
 }
 

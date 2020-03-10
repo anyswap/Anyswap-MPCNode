@@ -2802,13 +2802,13 @@ func Encode2(obj interface{}) (string, error) {
 		}
 		return buff.String(), nil
 	case *AcceptReqAddrData:
-		/*ch := obj.(*AcceptReqAddrData)
+		ch := obj.(*AcceptReqAddrData)
 		ret,err := json.Marshal(ch)
 		if err != nil {
 		    return "",err
 		}
-		return string(ret),nil*/
-		ch := obj.(*AcceptReqAddrData)
+		return string(ret),nil
+		/*ch := obj.(*AcceptReqAddrData)
 
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
@@ -2817,7 +2817,7 @@ func Encode2(obj interface{}) (string, error) {
 		if err1 != nil {
 			return "", err1
 		}
-		return buff.String(), nil
+		return buff.String(), nil*/
 	default:
 		return "", fmt.Errorf("encode obj fail.")
 	}
@@ -2879,14 +2879,14 @@ func Decode2(s string, datatype string) (interface{}, error) {
 	}
 
 	if datatype == "AcceptReqAddrData" {
-		/*var m AcceptReqAddrData
+		var m AcceptReqAddrData
 		err := json.Unmarshal([]byte(s), &m)
 		if err != nil {
 		    return nil,err
 		}
 
-		return &m,nil*/
-		var data bytes.Buffer
+		return &m,nil
+		/*var data bytes.Buffer
 		data.Write([]byte(s))
 
 		dec := gob.NewDecoder(&data)
@@ -2897,7 +2897,7 @@ func Decode2(s string, datatype string) (interface{}, error) {
 			return nil, err
 		}
 
-		return &res, nil
+		return &res, nil*/
 	}
 
 	return nil, fmt.Errorf("decode obj fail.")

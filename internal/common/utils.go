@@ -15,18 +15,55 @@ var (
 	termTimeFormat  = "01-02|15:04:05.000"
 )
 
-func encode(v interface{}) interface{} {
-	switch v.(type) {
+func encode(value interface{}) interface{} {
+	if value == nil {
+		return "nil"
+	}
+	switch v := value.(type) {
+	case time.Time:
+		return v.Format(termTimeFormat)
+
+	case error:
+		return v.Error()
+
+	case fmt.Stringer:
+		return v.String()
+
+	case []string:
+		return fmt.Sprintf("%+q", v)
+
 	case []byte:
-		return hex.EncodeToString(v.([]byte))
-	}
-	vv := reflect.ValueOf(v)
-	if method, ok := vv.Type().MethodByName("String"); ok {
-		if method.Func.Type().NumIn() == 1 && method.Func.Type().NumOut() > 0 {
-			return method.Func.Call([]reflect.Value{vv})[0]
+		return hex.EncodeToString(v)
+
+	case [][]byte:
+		str := "[ "
+		for _, item := range v {
+			str += hex.EncodeToString(item) + " "
 		}
+		str += "]"
+		return str
+
+	default:
+		t := reflect.TypeOf(v)
+		if t.Kind() != reflect.Slice {
+			return v
+		}
+		s := reflect.ValueOf(v)
+		if s.Len() == 0 || !s.Index(0).CanInterface() {
+			return v
+		}
+		switch s.Index(0).Interface().(type) {
+		case fmt.Stringer:
+			str := "[ "
+			for i := 0; i < s.Len(); i++ {
+				elem := s.Index(i).Interface()
+				str += elem.(fmt.Stringer).String() + " "
+			}
+			str += "]"
+			return str
+		}
+		return v
 	}
-	return v
 }
 
 func subject(msg string) string {

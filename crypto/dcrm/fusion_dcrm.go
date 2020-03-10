@@ -321,7 +321,9 @@ func RecivReqAddr() {
 					_, err := dev.SetReqAddrNonce(data.Account, data.Nonce)
 					fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n", common.CurrentTime(), data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, err, data.Key)
 					if err == nil {
-						ac := &dev.AcceptReqAddrData{Account: data.Account, Cointype: "ALL", GroupId: data.GroupId, Nonce: data.Nonce, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.Datas[3], Deal: false, Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: "", WorkId: -1}
+					    ars := dev.GetAllReplyFromGroup(-1,data.GroupId,false)
+
+						ac := &dev.AcceptReqAddrData{Account: data.Account, Cointype: "ALL", GroupId: data.GroupId, Nonce: data.Nonce, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.Datas[3], Deal: false, Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := dev.SaveAcceptReqAddrData(ac)
 						fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n", common.CurrentTime(), data.Account, err, data.Key)
 						if err == nil {
@@ -695,21 +697,29 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	}
 	/////
 
-	tip, err := dev.AcceptReqAddr(datas[1], datas[2], datas[3], datas[4], datas[5], datas[6], false, accept, status, "", "", "", "", ac.WorkId)
-	if err != nil {
-		return "", tip, err
-	}
-
 	///////
 	mp := []string{key, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "AcceptReqAddrRes"
 	s1 := accept
+	s2 := datas[8]
 	//s2 := strconv.Itoa(ac.WorkId)
-	ss := enode + dev.Sep + s0 + dev.Sep + s1
+	ss := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
 	dev.SendMsgToDcrmGroup(ss, datas[3])
 	dev.DisMsg(ss)
 	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), key)
+	
+	w, err := dev.FindWorker(key)
+	if err != nil {
+	    return "",err.Error(),err
+	}
+
+	id,_ := dev.GetWorkerId(w)
+	ars := dev.GetAllReplyFromGroup(id,datas[3],false)
+	tip, err := dev.AcceptReqAddr(datas[1], datas[2], datas[3], datas[4], datas[5], datas[6], false, accept, status, "", "", "", ars, ac.WorkId)
+	if err != nil {
+		return "", tip, err
+	}
 
 	return "", "", nil
 }
@@ -841,20 +851,28 @@ func AcceptLockOut(raw string) (string, string, error) {
 		return "", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
 	}
 
-	tip, err = dev.AcceptLockOut(datas[1], datas[2], datas[3], datas[4], datas[8], false, accept, status, "", "", "", "", ac.WorkId)
-	if err != nil {
-		return "", tip, err
-	}
-
 	///////
 	mp := []string{key, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "AcceptLockOutRes"
 	s1 := accept
-	ss2 := enode + dev.Sep + s0 + dev.Sep + s1
+	s2 := datas[11]
+	ss2 := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
 	dev.SendMsgToDcrmGroup(ss2, datas[2])
 	dev.DisMsg(ss2)
 	fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), key)
+
+	w, err := dev.FindWorker(key)
+	if err != nil {
+	    return "",err.Error(),err
+	}
+
+	id,_ := dev.GetWorkerId(w)
+	ars := dev.GetAllReplyFromGroup(id,datas[2],true)
+	tip, err = dev.AcceptLockOut(datas[1], datas[2], datas[3], datas[4], datas[8], false, accept, status, "", "", "", ars, ac.WorkId)
+	if err != nil {
+		return "", tip, err
+	}
 
 	return pubdata, "", nil
 }
@@ -895,8 +913,9 @@ func RecivLockOut() {
 					_, err := dev.SetLockOutNonce(data.Account, data.Cointype, data.DcrmFrom, data.Nonce)
 					if err == nil {
 						fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, data.Key)
+					    ars := dev.GetAllReplyFromGroup(-1,data.GroupId,true)
 
-						ac := &dev.AcceptLockOutData{Account: data.Account, GroupId: data.GroupId, Nonce: data.Nonce, DcrmFrom: data.DcrmFrom, DcrmTo: data.DcrmTo, Value: data.Value, Cointype: data.Cointype, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.TimeStamp, Deal: false, Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: "", WorkId: -1}
+						ac := &dev.AcceptLockOutData{Account: data.Account, GroupId: data.GroupId, Nonce: data.Nonce, DcrmFrom: data.DcrmFrom, DcrmTo: data.DcrmTo, Value: data.Value, Cointype: data.Cointype, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.TimeStamp, Deal: false, Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := dev.SaveAcceptLockOutData(ac)
 						if err == nil {
 							fmt.Printf("%v ==============================RecivLockOut,finish call SaveAcceptLockOutData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, data.Key)

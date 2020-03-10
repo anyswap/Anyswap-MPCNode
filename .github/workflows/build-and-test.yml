@@ -1,0 +1,14 @@
+name: Build-And-Test
+on: [push, pull_request]
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build
+      uses: cedrickring/golang-action/go1.13@1.4.1
+      with:
+        args: make all

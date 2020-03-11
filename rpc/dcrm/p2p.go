@@ -70,8 +70,8 @@ type GroupInfo struct {
 	Enodes []string
 }
 
-func (this *Service) CreateGroup(mode string, enodes []string) string {
-	return this.CreateSDKGroup(mode, enodes)
+func (this *Service) CreateGroup(threshold string, enodes []string) string {
+	return this.CreateSDKGroup(threshold, enodes)
 }
 
 func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
@@ -99,6 +99,10 @@ type sdkGroupInfo struct {
 	GroupList []GroupInfo
 }
 
+func (this *Service) GetGroupByID(gid string) string {
+	return getGroupByID(gid)
+}
+
 func (this *Service) GetSDKGroup(enode string) string {
 	return getSDKGroup(enode, "1+1+1")
 }
@@ -110,6 +114,33 @@ func (this *Service) GetSDKGroup4Dcrm() string {
 
 func (this *Service) GetSDKGroupPerson(enode string) string {
 	return getSDKGroup(enode, "1+2")
+}
+
+func getGroupByID(gID string) string {
+	gid, _ := layer2.HexID(gID)
+	stat := SUCCESS
+	tip := ""
+	addGroupChanged := false
+	for id, g := range layer2.SdkGroup {
+		fmt.Printf("g: %v\n", id, g)
+		enodes := make([]string, 0)
+		if id == gid {
+			for _, en := range g.Nodes {
+				enode := fmt.Sprintf("enode://%v@%v:%v", en.ID, en.IP, en.UDP)
+				enodes = append(enodes, enode)
+				fmt.Printf("==== getGroupByID() ====, gid: %v, enode: %v\n", gid, enode)
+				addGroupChanged = true
+			}
+			ret := &GroupInfo{Gid: gID, Mode: g.Mode, Count: len(g.Nodes), Enodes: enodes}
+			return packageResult(stat, tip, tip, ret)
+		}
+	}
+	if !addGroupChanged {
+		stat = NULLRET
+		tip = "group is null"
+	}
+	ret := &GroupInfo{Gid: gID}
+	return packageResult(stat, tip, tip, ret)
 }
 
 func getSDKGroup(enode, groupType string) string {

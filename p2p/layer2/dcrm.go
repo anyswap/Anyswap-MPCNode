@@ -210,6 +210,10 @@ func ParseNodeID(enode string) string {
 	return node.ID.String()
 }
 
+func HexID(gID string) (discover.NodeID, error) {
+	return discover.HexID(gID)
+}
+
 //================   API   SDK    =====================
 func SdkProtocol_sendToGroupOneNode(gID, msg string) (string, error) {
 	gid, _ := discover.HexID(gID)

@@ -206,7 +206,11 @@ func RegisterSendCallback(callbackfunc func(interface{})) {
 }
 
 func ParseNodeID(enode string) string {
-	node, _ := discover.ParseNode(enode)
+	node, err := discover.ParseNode(enode)
+	if err != nil {
+		fmt.Printf("==== ParseNodeID() ====, enode: %v, error: %v\n", enode, err.Error())
+		return ""
+	}
 	return node.ID.String()
 }
 

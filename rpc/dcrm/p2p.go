@@ -80,7 +80,7 @@ func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
 	if err != nil {
 		ret := &GroupInfo{Mode: mode}
 		fmt.Printf("==== CreateSDKGroup() ====, CheckAddPeer err: %v\n", err)
-		return packageResult(FAIL, "add peer failed", err.Error(), ret)
+		return packageResult(FAIL, err.Error(), err.Error(), ret)
 	}
 	gid, count, retErr := layer2.CreateSDKGroup(mode, enodes)
 	if retErr != "" {
@@ -100,6 +100,7 @@ type sdkGroupInfo struct {
 }
 
 func (this *Service) GetGroupByID(gid string) string {
+	fmt.Printf("==== GetGroupByID() ====, gid: %v\n", gid)
 	return getGroupByID(gid)
 }
 
@@ -177,9 +178,11 @@ func getSDKGroup(enode, groupType string) string {
 }
 
 func (this *Service) GetEnodeStatus(enode string) string {
+	fmt.Printf("==== GetEnodeStatus() ====, enode: %v\n", enode)
 	es := &EnodeStatus{Enode: enode}
 	status := SUCCESS
 	stat, err := layer2.GetEnodeStatus(enode)
+	fmt.Printf("==== GetEnodeStatus() ====, enode: %v, stat: %v\n", enode, stat)
 	if stat == "" {
 		status = FAIL
 	}

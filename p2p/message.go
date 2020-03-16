@@ -94,9 +94,6 @@ func Send(w MsgWriter, msgcode uint64, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	if uint32(size) > uint32(1) {
-		fmt.Printf("==== p2p.Send() ====, size: %v\n", uint32(size))
-	}
 	return w.WriteMsg(Msg{Code: msgcode, Size: uint32(size), Payload: r})
 }
 
@@ -295,7 +292,6 @@ func (ev *msgEventer) ReadMsg() (Msg, error) {
 // WriteMsg writes a message to the underlying MsgReadWriter and emits a
 // "message sent" event
 func (ev *msgEventer) WriteMsg(msg Msg) error {
-	fmt.Printf("==== (ev *msgEventer) WriteMsg() ====\n")
 	err := ev.MsgReadWriter.WriteMsg(msg)
 	if err != nil {
 		return err

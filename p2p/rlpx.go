@@ -600,9 +600,6 @@ func newRLPXFrameRW(conn io.ReadWriter, s secrets) *rlpxFrameRW {
 }
 
 func (rw *rlpxFrameRW) WriteMsg(msg Msg) error {
-	if uint32(msg.Size) > uint32(1) {
-		fmt.Printf("==== (rw *rlpxFrameRW) WriteMsg() ====\n")
-	}
 	ptype, _ := rlp.EncodeToBytes(msg.Code)
 
 	// if snappy is enabled, compress message now

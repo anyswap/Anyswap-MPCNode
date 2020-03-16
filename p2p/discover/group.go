@@ -756,18 +756,20 @@ func sendGroupInfo(groupList *Group, p2pType int) { //nooo
 	}
 }
 
+func sendGroupInit2Node(gid NodeID, node RpcNode, i int) {
+	cDgid := fmt.Sprintf("%v", gid) + "|" + "1dcrmslash1:" + strconv.Itoa(i) + "#" + "Init"
+	ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+	SendMsgToNode(node.ID, ipa, cDgid)
+}
+
 func sendGroupInit(groupList *Group, p2pType int) { //nooo
 	//enodes := fmt.Sprintf("%v,%v,%v", groupList.ID, count, enode)
 	if p2pType == Dcrmprotocol_type || p2pType == Sdkprotocol_type {
-		var tmp int = 0
 		for i := 0; i < groupList.count; i++ {
 			node := groupList.Nodes[i]
-			cDgid := fmt.Sprintf("%v", groupList.ID) + "|" + "1dcrmslash1:" + strconv.Itoa(tmp) + "#" + "Init"
-			tmp++
-			go func(node RpcNode, msg string) {
-				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
-				SendMsgToNode(node.ID, ipa, msg)
-			}(node, cDgid)
+			gid := groupList.ID
+			tmpi := i
+			go sendGroupInit2Node(gid, node, tmpi)
 		}
 	}
 }
@@ -880,6 +882,11 @@ func updateGroupSDKNode(nd *Node, p2pType int) { //nooo
 					StoreGroupToDb(g)
 					break
 				}
+				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+				go SendToPeer(gid, node.ID, ipa, "", Sdkprotocol_type)
+				tmpi := i
+				go sendGroupInit2Node(gid, node, tmpi)
+				break
 			}
 		}
 	}

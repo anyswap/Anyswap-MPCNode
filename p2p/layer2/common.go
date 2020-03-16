@@ -199,7 +199,7 @@ func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
 func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	emitter.addPeer(peer, rw)
 	go discover.UpdateOnLine(peer.ID(), true)
-	//go discover.UpdateGroupSDKNode(peer.ID(), peer.RemoteAddr())
+	go discover.UpdateGroupSDKNode(peer.ID(), peer.RemoteAddr())
 	for {
 		msg, err := rw.ReadMsg()
 		if err != nil {

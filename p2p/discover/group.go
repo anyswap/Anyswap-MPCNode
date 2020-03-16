@@ -1124,8 +1124,10 @@ func RegisterGroupCallback(callbackfunc func(NodeID, string, interface{}, int, s
 }
 
 func callGroupEvent(gid NodeID, mode string, n []*Node, p2pType int, Type string) {
-	fmt.Printf("callGroupEvent\n")
-	groupcallback(gid, mode, n, p2pType, Type)
+	if groupcallback != nil {
+		fmt.Printf("==== callGroupEvent() ====, gid: %v, mode: %v, n: %v, p2pType: %v, Type: %v\n", gid, mode, n, p2pType, Type)
+		groupcallback(gid, mode, n, p2pType, Type)
+	}
 }
 
 var prikeycallback func(interface{})

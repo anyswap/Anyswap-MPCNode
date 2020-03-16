@@ -146,6 +146,7 @@ func getGroupByID(gID string) string {
 
 func getSDKGroup(enode, groupType string) string {
 	group := make([]GroupInfo, 0)
+	fmt.Printf("==== getSDKGroup() ====, call layer2.ParseNodeID() args enode: %v\n", enode)
 	nodeid := layer2.ParseNodeID(enode)
 	stat := SUCCESS
 	tip := ""

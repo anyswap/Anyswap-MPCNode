@@ -267,8 +267,11 @@ func IsInGroup(enode string, groupId string) bool {
 		return false
 	}
 
+	fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v\n", groupId, enodes)
 	nodes := strings.Split(enodes, SepSg)
+	fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v, split: %v, nodes: %v\n", groupId, enodes, SepSg, nodes)
 	for _, node := range nodes {
+		fmt.Printf("==== dev.IsInGroup() ====, call ParseNode enode: %v\n", node)
 		node2 := ParseNode(node)
 		if strings.EqualFold(node2, enode) {
 			return true
@@ -3182,10 +3185,13 @@ func GetAllReplyFromGroup(wid int,gid string,lockout bool) []NodeReply {
 
     var ars []NodeReply
     _, enodes := GetGroup(gid)
+	fmt.Printf("==== dev.GetAllReplyFromGroup() ====, gid: %v, enodes: %v\n", gid, enodes)
     nodes := strings.Split(enodes, SepSg)
+	fmt.Printf("==== dev.GetAllReplyFromGroup() ====, gid: %v, enodes: %v, split: %v, nodes: %v\n", gid, enodes, SepSg, nodes)
     
     if wid < 0 || wid >= len(workers) {
 	for _, node := range nodes {
+		fmt.Printf("==== dev.GetAllReplyFromGroup() ====, call ParseNode enode: %v\n", node)
 		node2 := ParseNode(node)
 		sta := "Pending"
 		ts := ""
@@ -3203,6 +3209,7 @@ func GetAllReplyFromGroup(wid int,gid string,lockout bool) []NodeReply {
 
     if lockout == true {
 	for _, node := range nodes {
+		fmt.Printf("==== dev.GetAllReplyFromGroup() ==== 2 , call ParseNode enode: %v\n", node)
 		node2 := ParseNode(node)
 		sta := "Pending"
 		ts := ""
@@ -3231,6 +3238,7 @@ func GetAllReplyFromGroup(wid int,gid string,lockout bool) []NodeReply {
 	}
     } else {
 	for _, node := range nodes {
+		fmt.Printf("==== dev.GetAllReplyFromGroup() ==== 3 , call ParseNode enode: %v\n", node)
 	    node2 := ParseNode(node)
 	    sta := "Pending"
 	    ts := ""

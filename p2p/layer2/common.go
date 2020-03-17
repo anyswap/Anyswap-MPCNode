@@ -90,21 +90,20 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	err := errors.New("p2pSendMsg err")
 	countSendFail := 0
 	for {
+		emitter.Lock()
 		p := emitter.peers[node.ID]
 		if p != nil {
-			p.Lock()
 			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
 				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, countSend: %v, msg: %v, send fail p2perror\n", common.CurrentTime(), node.ID, countSendFail, msg)
 			} else {
-				p.Unlock()
 				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, countSend: %v, msg: %v, send success\n", common.CurrentTime(), node.ID, countSendFail, msg)
 				return nil
 			}
-			p.Unlock()
 		} else {
 			fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, peer not exist p2perror\n", common.CurrentTime(), node.ID)
 			return errors.New("peer not exist")
 		}
+		emitter.Unlock()
 		break //TODO: for test
 
 		countSendFail += 1
@@ -186,24 +185,20 @@ func NewEmitter() *Emitter {
 
 // update p2p
 func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
+	e.Lock()
+	defer e.Unlock()
 	fmt.Printf("==== addPeer() ====, id: %v\n", p.ID().String()[:8])
 	discover.RemoveSequenceDoneRecv(p.ID().String())
-	pe := e.peers[p.ID()]
-	if pe != nil {
-		pe.Lock()
-		defer pe.Lock()
-	}
 	e.peers[p.ID()] = &peer{ws: ws, peer: p, peerInfo: &peerInfo{int(ProtocolVersion)}, knownTxs: mapset.NewSet()}
 }
 
 func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	emitter.addPeer(peer, rw)
 	go discover.UpdateOnLine(peer.ID(), true)
-	go discover.UpdateGroupSDKNode(peer.ID(), peer.RemoteAddr())
+	//go discover.UpdateGroupSDKNode(peer.ID(), peer.RemoteAddr())
 	for {
 		msg, err := rw.ReadMsg()
 		if err != nil {
-			fmt.Printf("==== HandlePeer() ====, rw.ReadMsg, peerid: %v, err: %v\n", peer.ID().String(), err)
 			continue
 		}
 		switch msg.Code {

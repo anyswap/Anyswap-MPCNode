@@ -106,7 +106,6 @@ type peerInfo struct {
 }
 
 type peer struct {
-	sync.Mutex
 	peer     *p2p.Peer
 	ws       p2p.MsgReadWriter
 	peerInfo *peerInfo

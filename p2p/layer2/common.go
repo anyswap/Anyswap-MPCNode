@@ -203,8 +203,8 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	for {
 		msg, err := rw.ReadMsg()
 		if err != nil {
-			discover.UpdateOnLine(peer.ID(), false)
-			return err
+			fmt.Printf("==== HandlePeer() ====, rw.ReadMsg, peerid: %v, err: %v\n", peer.ID().String(), err)
+			continue
 		}
 		switch msg.Code {
 		case peerMsgCode:

@@ -96,10 +96,12 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
 				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, countSend: %v, msg: %v, send fail p2perror\n", common.CurrentTime(), node.ID, countSendFail, msg)
 			} else {
+				emitter.Unlock()
 				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, countSend: %v, msg: %v, send success\n", common.CurrentTime(), node.ID, countSendFail, msg)
 				return nil
 			}
 		} else {
+			emitter.Unlock()
 			fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, peer not exist p2perror\n", common.CurrentTime(), node.ID)
 			return errors.New("peer not exist")
 		}
@@ -199,6 +201,7 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	for {
 		msg, err := rw.ReadMsg()
 		if err != nil {
+			time.Sleep(time.Duration(1) * time.Second)
 			continue
 		}
 		switch msg.Code {

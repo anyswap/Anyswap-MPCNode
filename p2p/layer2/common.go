@@ -201,8 +201,8 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	for {
 		msg, err := rw.ReadMsg()
 		if err != nil {
-			time.Sleep(time.Duration(1) * time.Second)
-			continue
+			fmt.Printf("==== handle() ====, ip %v, rw.ReadMsg err: %v\n", peer.RemoteAddr(), err)
+			return err
 		}
 		switch msg.Code {
 		case peerMsgCode:

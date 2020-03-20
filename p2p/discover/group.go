@@ -489,7 +489,7 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
 		sequenceLock.Unlock()
 		return nil
 	}
-	sequenceDoneRecv.Store(ss, 1)
+	sequenceDoneRecv.Store(ss, 1)//TODO bug: restart self node
 	sequenceLock.Unlock()
 
 	msgp := req.Msg
@@ -1716,3 +1716,10 @@ func PrintBucketNodeInfo(id NodeID) {
 		fmt.Printf("==== PrintfBucketNodeInfo() ====, %v, not exist int bucket fail\n", id)
 	}
 }
+
+
+func Remove(n *Node) {
+	fmt.Printf("==== remove() ====, n: %v\n", n)
+	Table4group.delete(n)
+}
+

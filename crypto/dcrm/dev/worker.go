@@ -1895,7 +1895,7 @@ func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce 
 	}
 
 	ac := dss.(*AcceptReqAddrData)
-	fmt.Printf("%v ===================!!!! GetAcceptReqAddrRes,ac.Accept =%v,key =%v !!!!============================\n", ac.Accept, key)
+	fmt.Printf("%v ===================!!!! GetAcceptReqAddrRes,ac.Accept =%v,key =%v !!!!============================\n", common.CurrentTime(),ac.Accept, key)
 
 	var rp bool
 	if strings.EqualFold(ac.Accept, "false") {
@@ -2288,35 +2288,20 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						select {
 						case account := <-wtmp2.acceptLockOutChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
-							tip, reply = GetAcceptLockOutRes(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7])
-							/*var lo_res string
-							if reply == false {
-								lo_res = "false"
-							} else {
-								lo_res = "true"
-							}
-
-							rs := make([]LockOutReply, 0)
-							cur := LockOutReply{Enode: cur_enode, Reply: lo_res}
-							rs = append(rs, cur)
-							iter := w.msg_acceptlockoutres.Front()
-							for iter != nil {
-								mdss := iter.Value.(string)
-								ms := strings.Split(mdss, Sep)
-								prexs := strings.Split(ms[0], "-")
-								node := prexs[1]
-								if strings.EqualFold(ms[2], "false") {
-									reply = false
-								}
-								cur2 := LockOutReply{Enode: node, Reply: ms[2]}
-								rs = append(rs, cur2)
-								iter = iter.Next()
-							}
-
-							lors := &LockOutReplys{Replys: rs}*/
+							//tip, reply = GetAcceptLockOutRes(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7])
 							ars := GetAllReplyFromGroup(w.id,msgs[5],true)
-							//all, err := json.Marshal(lors)
-							fmt.Printf("%v ================== (self *RecvMsg) Run() , get all AcceptLockOutRes ,result = %v,err = %v,key = %v ============================\n", common.CurrentTime(), ars, err, rr.Nonce)
+							fmt.Printf("%v ================== (self *RecvMsg) Run() , get all AcceptLockOutRes ,result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
+							
+							//bug
+							reply = true
+							for _,nr := range ars {
+							    if !strings.EqualFold(nr.Status,"Agree") {
+								reply = false
+								break
+							    }
+							}
+							//
+
 							if reply == false {
 								tip = "don't accept lockout"
 								AcceptLockOut(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], false, "false", "Failure", "", "don't accept lockout", "don't accept lockout", ars, wid)
@@ -2589,48 +2574,20 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						select {
 						case account := <-wtmp2.acceptReqAddrChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
-							tip, reply = GetAcceptReqAddrRes(msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5])
-
-							/*var req_res string
-							if reply == false {
-								req_res = "false"
-							} else {
-								req_res = "true"
-							}
-
-							all := "{"
-							all += "\""
-							all += cur_enode
-							all += "\""
-							all += ":"
-							all += "\""
-							all += req_res
-							all += "\""
-							all += ","
-							iter := w.msg_acceptreqaddrres.Front()
-							for iter != nil {
-								mdss := iter.Value.(string)
-								ms := strings.Split(mdss, Sep)
-								prexs := strings.Split(ms[0], "-")
-								node := prexs[1]
-								if strings.EqualFold(ms[2], "false") {
-									reply = false
-								}
-								all += "\""
-								all += node
-								all += "\""
-								all += ":"
-								all += "\""
-								all += ms[2]
-								all += "\""
-								if iter.Next() != nil {
-									all += ","
-								}
-								iter = iter.Next()
-							}
-							all += "}"*/
+							//tip, reply = GetAcceptReqAddrRes(msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5])
 							ars := GetAllReplyFromGroup(w.id,msgs[2],false)	
 							fmt.Printf("%v ================== (self *RecvMsg) Run(),get all AcceptReqAddrRes, result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
+							
+							//bug
+							reply = true
+							for _,nr := range ars {
+							    if !strings.EqualFold(nr.Status,"Agree") {
+								reply = false
+								break
+							    }
+							}
+							//
+
 							if reply == false {
 								tip = "don't accept req addr"
 								AcceptReqAddr(msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], false, "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid)

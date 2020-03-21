@@ -557,6 +557,12 @@ func updateGroupNodesNumber(number, p2pType int) {
 	discover.UpdateGroupNodesNumber(number, p2pType)
 }
 
+func InitSelfNodeID(nodeid string) {
+	sid, _ := HexID(nodeid)
+	discover.SelfNodeID = sid
+	fmt.Printf("==== InitSelfNodeID() ====, SelfNodeID: %v\n", sid)
+}
+
 func InitServer(nodeserv interface{}) {
 	discover.GroupSDK.Lock()
 	defer discover.GroupSDK.Unlock()

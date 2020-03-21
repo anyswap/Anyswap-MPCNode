@@ -66,6 +66,7 @@ var (
 	sequenceDoneRecv sync.Map
 	Sequence                                  = uint64(1)
 	SelfID                                    = ""
+	SelfNodeID NodeID
 	groupSuffix                               = "p2p-"
 	groupDir                                  = ""
 	nodeOnline       map[NodeID]*OnLineStatus = make(map[NodeID]*OnLineStatus)
@@ -1282,7 +1283,7 @@ func GetRemotePort() uint16 {
 }
 
 func GetLocalID() NodeID {
-	return Table4group.self.ID
+	return SelfNodeID
 }
 
 func GetEnode() string {

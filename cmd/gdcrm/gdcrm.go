@@ -114,64 +114,65 @@ func getConfig() error {
 }
 
 func startP2pNode(c *cli.Context) error {
-	go func() error {
-		getConfig()
-		if port == 0 {
-			port = 4441
-		}
-		if rpcport == 0 {
-			rpcport = 4449
-		}
-		if bootnodes == "" {
-			bootnodes = "enode://a794694a2596d371efe7aecd9608583fd38b20e452aa1ccc0e079f395b3bd8aa468fd35482c2104fdc8787d622029d2f5dd8375a4b0aba5c1c49b4240e043273@139.196.26.212:17883"
-		}
-		if genKey != "" {
-			nodeKey, err := crypto.GenerateKey()
-			if err != nil {
-				fmt.Printf("could not generate key: %v\n", err)
-			}
-			if err = crypto.SaveECDSA(genKey, nodeKey); err != nil {
-				fmt.Printf("could not save key: %v\n", err)
-			}
-			os.Exit(1)
-		}
-		if keyfile == "" {
-			keyfile = fmt.Sprintf("node.key")
-		}
-		fmt.Printf("keyfile: %v, bootnodes: %v, port: %v, rpcport: %v\n", keyfile, bootnodes, port, rpcport)
-		dcrm.KeyFile = keyfile
-		nodeKey, errkey := crypto.LoadECDSA(keyfile)
-		if errkey != nil {
-			nodeKey, _ = crypto.GenerateKey()
-			crypto.SaveECDSA(keyfile, nodeKey)
-			var kfd *os.File
-			kfd, _ = os.OpenFile(keyfile, os.O_WRONLY|os.O_APPEND, 0600)
-			kfd.WriteString(fmt.Sprintf("\nenode://%v\n", discover.PubkeyID(&nodeKey.PublicKey)))
-			kfd.Close()
-		}
-
-		dcrm := layer2.DcrmNew(nil)
-		nodeserv := p2p.Server{
-			Config: p2p.Config{
-				MaxPeers:        100,
-				MaxPendingPeers: 100,
-				NoDiscovery:     false,
-				PrivateKey:      nodeKey,
-				Name:            "p2p layer2",
-				ListenAddr:      fmt.Sprintf(":%d", port),
-				Protocols:       dcrm.Protocols(),
-				NAT:             nat.Any(),
-				//Logger:     logger,
-			},
-		}
-
-		bootNodes, err := discover.ParseNode(bootnodes)
+	getConfig()
+	if port == 0 {
+		port = 4441
+	}
+	if rpcport == 0 {
+		rpcport = 4449
+	}
+	if bootnodes == "" {
+		bootnodes = "enode://a794694a2596d371efe7aecd9608583fd38b20e452aa1ccc0e079f395b3bd8aa468fd35482c2104fdc8787d622029d2f5dd8375a4b0aba5c1c49b4240e043273@139.196.26.212:17883"
+	}
+	if genKey != "" {
+		nodeKey, err := crypto.GenerateKey()
 		if err != nil {
-			return err
+			fmt.Printf("could not generate key: %v\n", err)
 		}
-		fmt.Printf("==== startP2pNode() ====, bootnodes = %v\n", bootNodes)
-		nodeserv.Config.BootstrapNodes = []*discover.Node{bootNodes}
+		if err = crypto.SaveECDSA(genKey, nodeKey); err != nil {
+			fmt.Printf("could not save key: %v\n", err)
+		}
+		os.Exit(1)
+	}
+	if keyfile == "" {
+		keyfile = fmt.Sprintf("node.key")
+	}
+	fmt.Printf("keyfile: %v, bootnodes: %v, port: %v, rpcport: %v\n", keyfile, bootnodes, port, rpcport)
+	dcrm.KeyFile = keyfile
+	nodeKey, errkey := crypto.LoadECDSA(keyfile)
+	if errkey != nil {
+		nodeKey, _ = crypto.GenerateKey()
+		crypto.SaveECDSA(keyfile, nodeKey)
+		var kfd *os.File
+		kfd, _ = os.OpenFile(keyfile, os.O_WRONLY|os.O_APPEND, 0600)
+		kfd.WriteString(fmt.Sprintf("\nenode://%v\n", discover.PubkeyID(&nodeKey.PublicKey)))
+		kfd.Close()
+	}
+	layer2.InitSelfNodeID(discover.PubkeyID(&nodeKey.PublicKey).String())
 
+	dcrm := layer2.DcrmNew(nil)
+	nodeserv := p2p.Server{
+		Config: p2p.Config{
+			MaxPeers:        100,
+			MaxPendingPeers: 100,
+			NoDiscovery:     false,
+			PrivateKey:      nodeKey,
+			Name:            "p2p layer2",
+			ListenAddr:      fmt.Sprintf(":%d", port),
+			Protocols:       dcrm.Protocols(),
+			NAT:             nat.Any(),
+			//Logger:     logger,
+		},
+	}
+
+	bootNodes, err := discover.ParseNode(bootnodes)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("==== startP2pNode() ====, bootnodes = %v\n", bootNodes)
+	nodeserv.Config.BootstrapNodes = []*discover.Node{bootNodes}
+
+	go func() error {
 		if err := nodeserv.Start(); err != nil {
 			return err
 		}

@@ -871,6 +871,39 @@ func GetGAccsValueFromDb(key string) []byte {
 	return da
 }
 
+func GetAllGAccsValueFromDb() *common.SafeMap {
+	kd := common.NewSafeMap(10)
+	dir := GetGAccsDir()
+	fmt.Printf("%v ==============GetAllGAccsValueFromDb,start read from db,dir = %v ===============\n", common.CurrentTime(), dir)
+	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
+	//bug
+	if err != nil {
+		for i := 0; i < 100; i++ {
+			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
+			if err == nil && db != nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+
+	//
+	if db != nil {
+		fmt.Printf("%v ==============GetAllGAccsValueFromDb,open db success.dir = %v ===============\n", common.CurrentTime(), dir)
+		iter := db.NewIterator()
+		for iter.Next() {
+			key := string(iter.Key())
+			value := string(iter.Value())
+			kd.WriteMap(key, value)
+		}
+		iter.Release()
+		db.Close()
+	}
+
+	return kd
+}
+
 //ed
 //msgprex = hash
 func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string) bool {

@@ -287,12 +287,14 @@ func InitDev(keyfile string) {
 	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
 	fmt.Printf("%v ==================InitDev,cur_enode = %v ====================\n", common.CurrentTime(), cur_enode)
 	AllAccounts = GetAllPubKeyDataFromDb()
+	GAccs = GetAllGAccsValueFromDb()
 	//LdbReqAddr = GetAllPendingReqAddrFromDb()
 	//LdbLockOut = GetAllPendingLockOutFromDb()
 	go SavePubKeyDataToDb()
 	go SaveAllAccountsToDb()
 	go SaveReqAddrToDb()
 	go SaveLockOutToDb()
+	go SaveGAccsDataToDb()
 	go CommitRpcReq()
 	go ec2.GenRandomInt(2048)
 	go ec2.GenRandomSafePrime(2048)
@@ -4287,6 +4289,7 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 				continue
 			}
 
+			//fmt.Printf("%v===========GetAccounts, vv = %v=========\n",common.CurrentTime(),vv)
 			///////
 			if vv.Mode == "1" {
 				if !strings.EqualFold(vv.Account, geter_acc) {

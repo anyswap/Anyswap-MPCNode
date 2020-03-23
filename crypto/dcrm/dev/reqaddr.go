@@ -1456,9 +1456,9 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	// 1. Receive Broadcast
 	// commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
 	// u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk
-	common.Info("===================send C1 finish, ", "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================DECDSAGenKeyRoundOne,send C1 finish, key = %v====================\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bc1)
-	common.Info("===================finish get C1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================DECDSAGenKeyRoundOne,finish get C1,key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC1Timeout)}
 		ch <- res
@@ -1563,9 +1563,9 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	// 1. Receive Broadcast
 	// commitU1G.D, commitU2G.D, commitU3G.D, commitU4G.D, commitU5G.D
 	// u1PolyG, u2PolyG, u3PolyG, u4PolyG, u5PolyG
-	common.Info("===================send D1 finish, ", "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================send D1 finish, key = %v====================\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bd1_1)
-	common.Info("===================finish get D1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================finish get D1, key = %v,err = %v====================\n",common.CurrentTime(),msgprex,cherr)
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetD1Timeout)}
 		ch <- res
@@ -1906,9 +1906,9 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 
 	// 1. Receive Broadcast zk
 	// u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
-	common.Info("===================send NTILDEH1H2 finish, ", "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================send NTILDEH1H2 finish,key = %v===============\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
-	common.Info("===================finish get NTILDEH1H2, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================finish get NTILDEH1H2, key = %v,err = %v====================\n",common.CurrentTime(),cherr)
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetZKFACTPROOFTimeout)}
 		ch <- res
@@ -1940,9 +1940,9 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 
 	// 9. Receive Broadcast zk
 	// u1zkUProof, u2zkUProof, u3zkUProof, u4zkUProof, u5zkUProof
-	common.Info("===================send ZKUPROOF finish, ", "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================send ZKUPROOF finish, key = %v===================\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzku)
-	common.Info("===================finish get ZKUPROOF, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	fmt.Printf("%v===================finish get ZKUPROOF, key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetZKUPROOFTimeout)}
 		ch <- res

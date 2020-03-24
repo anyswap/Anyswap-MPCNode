@@ -33,6 +33,7 @@ import (
 )
 
 func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool) (string, error) {
+	fmt.Printf("%v ==== BroadcastToGroup() ====, gid: %v, msg: %v\n", common.CurrentTime(), gid, msg)
 	xvcGroup, msgCode := getGroupAndCode(gid, p2pType)
 	if xvcGroup == nil {
 		e := fmt.Sprintf("BroadcastToGroup p2pType=%v is not exist", p2pType)
@@ -190,7 +191,7 @@ func NewEmitter() *Emitter {
 func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
 	e.Lock()
 	defer e.Unlock()
-	fmt.Printf("==== addPeer() ====, id: %v\n", p.ID().String()[:8])
+	fmt.Printf("%v ==== addPeer() ====, id: %v\n", common.CurrentTime(), p.ID().String()[:8])
 	e.peers[p.ID()] = &peer{ws: ws, peer: p, peerInfo: &peerInfo{int(ProtocolVersion)}, knownTxs: mapset.NewSet()}
 	fmt.Printf("==== addPeer() ====, e.peers[p.ID()]: %v\n", e.peers[p.ID()])
 	enode := fmt.Sprintf("enode://%v@%v", p.ID().String(), p.RemoteAddr())
@@ -203,7 +204,7 @@ func (e *Emitter) removePeer(p *p2p.Peer) {
 	e.Lock()
 	defer e.Unlock()
 	//discover.UpdateOnLine(p.ID(), false)
-	fmt.Printf("==== removePeer() ====, id: %v\n", p.ID().String()[:8])
+	fmt.Printf("%v ==== removePeer() ====, id: %v\n", common.CurrentTime(), p.ID().String()[:8])
 	return
 	enode := fmt.Sprintf("enode://%v@%v", p.ID().String(), p.RemoteAddr())
 	node, _ := discover.ParseNode(enode)
@@ -220,8 +221,8 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	for {
 		msg, err := rw.ReadMsg()
 		if err != nil {
+			fmt.Printf("%v ==== handle() ====, %v, rw.ReadMsg err: %v\n", common.CurrentTime(), peer.ID(), err)
 			emitter.removePeer(peer)
-			fmt.Printf("==== handle() ====, %v, rw.ReadMsg err: %v\n", peer.ID(), err)
 			return err
 		}
 		switch msg.Code {
@@ -276,7 +277,7 @@ func RegisterCallback(recvFunc func(interface{}, string)) {
 	callback = recvFunc
 }
 func callEvent(msg, fromID string) {
-	fmt.Printf("callEvent\n")
+	fmt.Printf("%v ==== callEvent() ====, fromID: %v, msg: %v\n", common.CurrentTime(), fromID, msg)
 	callback(msg, fromID)
 }
 
@@ -329,6 +330,7 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 }
 
 func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType int, Type string) {
+	fmt.Printf("%v ==== recvGroupInfo() ====, gid: %v\n", common.CurrentTime(), gid)
 	discover.GroupSDK.Lock()
 	defer discover.GroupSDK.Unlock()
 	var xvcGroup *discover.Group
@@ -405,12 +407,12 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 			go p2pServer.AddTrustedPeer(node)
 		}
 	}
-	fmt.Printf("==== recvGroupInfo() ====, Group: %v\n", xvcGroup)
+	fmt.Printf("%v ==== recvGroupInfo() ====, Group: %v\n", common.CurrentTime(), xvcGroup)
 	discover.StoreGroupToDb(xvcGroup)
 	discover.RecoverGroupAll(SdkGroup)
-	for i, g := range SdkGroup {
-		fmt.Printf("SdkGroup, i: %v, g: %v\n", i, g)
-	}
+	//for i, g := range SdkGroup {
+	//	fmt.Printf("SdkGroup, i: %v, g: %v\n", i, g)
+	//}
 	discover.RecoverGroupAll(discover.SDK_groupList) // Group
 }
 
@@ -437,8 +439,9 @@ func SendMsgToPeer(enode string, msg string) error {
 		p := emitter.peers[node.ID]
 		if p != nil {
 			if err := p2p.Send(p.ws, peerMsgCode, msg); err != nil {
+				fmt.Printf("%v ==== SendMsgToPeer() ====, send to node: %v, msg: %v, p2perror: %v, countSend : %v\n", common.CurrentTime(), node.ID, msg, err, countSendFail)
 			} else {
-				fmt.Printf("==== SendMsgToPeer() ====, send to node: %v, msg: %v, SUCCESS, countSend : %v\n", node.ID, msg, countSendFail)
+				fmt.Printf("%v ==== SendMsgToPeer() ====, send to node: %v, msg: %v, SUCCESS, countSend : %v\n", common.CurrentTime(), node.ID, msg, countSendFail)
 				emitter.Unlock()
 				return nil
 			}

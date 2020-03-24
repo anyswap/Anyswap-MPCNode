@@ -3511,6 +3511,25 @@ func Find(l *list.List, msg string) bool {
 	return false
 }
 
+func testEq(a, b []string) bool {
+    // If one is nil, the other must also be nil.
+    if (a == nil) != (b == nil) {
+        return false;
+    }
+
+    if len(a) != len(b) {
+        return false
+    }
+
+    for i := range a {
+	if !strings.EqualFold(a[i],b[i]) {
+            return false
+        }
+    }
+
+    return true
+}
+
 //msg: hash-enode:C1:X1:X2
 func DisMsg(msg string) {
 
@@ -3567,6 +3586,32 @@ func DisMsg(msg string) {
 			fmt.Printf("%v ===============DisMsg, msg has exist in w.msg_acceptreqaddrres, w.msg_acceptreqaddrres.Len() = %v,w.NodeCnt = %v,msg = %v,msg hash = %v,key = %v=================\n", common.CurrentTime(), w.msg_acceptreqaddrres.Len(), w.NodeCnt, msg, test, prexs[0])
 			return
 		}
+
+		///bug
+		mm2 := mm[0:3]
+		var next *list.Element
+		for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
+			next = e.Next()
+
+			if e.Value == nil {
+				continue
+			}
+
+			s := e.Value.(string)
+
+			if s == "" {
+				continue
+			}
+
+			tmp := strings.Split(s, Sep)
+			tmp2 := tmp[0:3]
+			fmt.Printf("%v ===============DisMsg, msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+			if testEq(mm2, tmp2) {
+				fmt.Printf("%v ===============DisMsg, test eq return true,msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+				return
+			}
+		}
+		//////
 
 		w.msg_acceptreqaddrres.PushBack(msg)
 		if w.msg_acceptreqaddrres.Len() == w.NodeCnt {

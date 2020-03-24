@@ -2117,63 +2117,63 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 	if status != true {
 		return status
 	}
-	common.Info("=================generate key,round one finish===================")
+	fmt.Printf("%v=================generate key,round one finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	u1Shares, status := DECDSAGenKeyRoundTwo(msgprex, cointype, ch, w, u1Poly, ids)
 	if status != true {
 		return status
 	}
-	common.Info("=================generate key,round two finish===================")
+	fmt.Printf("%v=================generate key,round two finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, ids) == false {
 		return false
 	}
-	common.Info("=================generate key,round three finish===================")
+	fmt.Printf("%v=================generate key,round three finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	sstruct, ds, status := DECDSAGenKeyVerifyShareData(msgprex, cointype, ch, w, u1PolyG, u1Shares, ids)
 	if status != true {
 		return status
 	}
-	common.Info("=================generate key,verify share data finish===================")
+	fmt.Printf("%v=================generate key,verify share data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	cs, udecom, status := DECDSAGenKeyVerifyCommitment(msgprex, cointype, ch, w, ds, commitU1G, ids)
 	if status != true {
 		return false
 	}
-	common.Info("=================generate key,verify commitment finish===================")
+	fmt.Printf("%v=================generate key,verify commitment finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	ug, status := DECDSAGenKeyCalcPubKey(msgprex, cointype, ch, w, udecom, ids)
 	if status != true {
 		return false
 	}
-	common.Info("=================generate key,calc pubkey finish===================")
+	fmt.Printf("%v=================generate key,calc pubkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	skU1, status := DECDSAGenKeyCalcPrivKey(msgprex, cointype, ch, w, sstruct, ids)
 	if status != true {
 		return false
 	}
-	common.Info("=================generate key,calc privkey finish===================")
+	fmt.Printf("%v=================generate key,calc privkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	u1NtildeH1H2, status := DECDSAGenKeyRoundFour(msgprex, ch, w)
 	if status != true {
 		return false
 	}
-	common.Info("=================generate key,round four finish===================")
+	fmt.Printf("%v=================generate key,round four finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeyRoundFive(msgprex, ch, w, u1) != true {
 		return false
 	}
-	common.Info("=================generate key,round five finish===================")
+	fmt.Printf("%v=================generate key,round five finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeyVerifyZKU(msgprex, cointype, ch, w, ids, ug) != true {
 		return false
 	}
-	common.Info("=================generate key,verify zk of u1 finish===================")
+	fmt.Printf("%v=================generate key,verify zk of u1 finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeySaveData(cointype, ids, w, ch, skU1, u1PaillierPk, u1PaillierSk, cs, u1NtildeH1H2) != true {
 		return false
 	}
-	common.Info("=================generate key,save data finish===================")
+	fmt.Printf("%v=================generate key,save data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	//*******************!!!Distributed ECDSA End!!!**********************************
 	return true

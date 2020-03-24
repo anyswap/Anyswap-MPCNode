@@ -1460,6 +1460,35 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	_, tip, cherr := GetChannelValue(ch_t, w.bc1)
 	fmt.Printf("%v===================DECDSAGenKeyRoundOne,finish get C1,key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
 	if cherr != nil {
+	    /////check
+	    _, enodes := GetGroup(w.groupid)
+	    nodes := strings.Split(enodes, SepSg)
+	    for _, node := range nodes {
+		    found := false
+		    node2 := ParseNode(node)
+		    if strings.EqualFold(cur_enode,node2) {
+			continue
+		    }
+
+		    iter := w.msg_c1.Front()
+		    for iter != nil {
+			mdss := iter.Value.(string)
+			ms := strings.Split(mdss, Sep)
+			prexs := strings.Split(ms[0], "-")
+			node3 := prexs[1]
+			if strings.EqualFold(node3,node2) {
+			    found = true
+			    break
+			}
+			iter = iter.Next()
+		    }
+
+		    if !found {
+			c1data := msgprex + "-" + node2 + Sep + "C1"
+			fmt.Printf("%v=================== DECDSAGenKeyRoundOne,get C1 timeout, !!!!!!!!! No Reciv The C1 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),c1data,node,msgprex)
+		    }
+	    }
+	    /////////
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC1Timeout)}
 		ch <- res
 		return nil, nil, nil, nil, nil, nil, false
@@ -1567,6 +1596,35 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	_, tip, cherr := GetChannelValue(ch_t, w.bd1_1)
 	fmt.Printf("%v===================finish get D1, key = %v,err = %v====================\n",common.CurrentTime(),msgprex,cherr)
 	if cherr != nil {
+	    /////check
+	    _, enodes := GetGroup(w.groupid)
+	    nodes := strings.Split(enodes, SepSg)
+	    for _, node := range nodes {
+		    found := false
+		    node2 := ParseNode(node)
+		    if strings.EqualFold(cur_enode,node2) {
+			continue
+		    }
+
+		    iter := w.msg_d1_1.Front()
+		    for iter != nil {
+			mdss := iter.Value.(string)
+			ms := strings.Split(mdss, Sep)
+			prexs := strings.Split(ms[0], "-")
+			node3 := prexs[1]
+			if strings.EqualFold(node3,node2) {
+			    found = true
+			    break
+			}
+			iter = iter.Next()
+		    }
+
+		    if !found {
+			d1data := msgprex + "-" + node2 + Sep + "D1"
+			fmt.Printf("%v=================== DECDSAGenKeyRoundThree,get D1 timeout, !!!!!!!!! No Reciv The D1 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),d1data,node,msgprex)
+		    }
+	    }
+	    /////////
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetD1Timeout)}
 		ch <- res
 		return false
@@ -1910,6 +1968,35 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
 	fmt.Printf("%v===================finish get NTILDEH1H2, key = %v,err = %v====================\n",common.CurrentTime(),cherr)
 	if cherr != nil {
+	    /////check
+	    _, enodes := GetGroup(w.groupid)
+	    nodes := strings.Split(enodes, SepSg)
+	    for _, node := range nodes {
+		    found := false
+		    node2 := ParseNode(node)
+		    if strings.EqualFold(cur_enode,node2) {
+			continue
+		    }
+
+		    iter := w.msg_zkfact.Front()
+		    for iter != nil {
+			mdss := iter.Value.(string)
+			ms := strings.Split(mdss, Sep)
+			prexs := strings.Split(ms[0], "-")
+			node3 := prexs[1]
+			if strings.EqualFold(node3,node2) {
+			    found = true
+			    break
+			}
+			iter = iter.Next()
+		    }
+
+		    if !found {
+			zkfactdata := msgprex + "-" + node2 + Sep + "NTILDEH1H2"
+			fmt.Printf("%v=================== DECDSAGenKeyRoundFour,get NTILDEH1H2 timeout, !!!!!!!!! No Reciv The NTILDEH1H2 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),zkfactdata,node,msgprex)
+		    }
+	    }
+	    /////////
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetZKFACTPROOFTimeout)}
 		ch <- res
 		return nil, false
@@ -1944,6 +2031,35 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	_, tip, cherr := GetChannelValue(ch_t, w.bzku)
 	fmt.Printf("%v===================finish get ZKUPROOF, key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
 	if cherr != nil {
+	    /////check
+	    _, enodes := GetGroup(w.groupid)
+	    nodes := strings.Split(enodes, SepSg)
+	    for _, node := range nodes {
+		    found := false
+		    node2 := ParseNode(node)
+		    if strings.EqualFold(cur_enode,node2) {
+			continue
+		    }
+
+		    iter := w.msg_zku.Front()
+		    for iter != nil {
+			mdss := iter.Value.(string)
+			ms := strings.Split(mdss, Sep)
+			prexs := strings.Split(ms[0], "-")
+			node3 := prexs[1]
+			if strings.EqualFold(node3,node2) {
+			    found = true
+			    break
+			}
+			iter = iter.Next()
+		    }
+
+		    if !found {
+			zkudata := msgprex + "-" + node2 + Sep + "ZKUPROOF"
+			fmt.Printf("%v=================== DECDSAGenKeyRoundFive,get ZKUPROOF timeout, !!!!!!!!! No Reciv The ZKUPROOF Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),zkudata,node,msgprex)
+		    }
+	    }
+	    /////////
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetZKUPROOFTimeout)}
 		ch <- res
 		return false

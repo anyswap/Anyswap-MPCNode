@@ -1532,6 +1532,7 @@ func GetGroupRes(wid int) RpcDcrmRes {
 //=========================================
 
 func Call(msg interface{}, enode string) {
+	fmt.Printf("%v =========Call,get msg = %v,sender node = %v =================", common.CurrentTime(), msg, enode)
 	s := msg.(string)
 	test := Keccak256Hash([]byte(strings.ToLower(s))).Hex()
 	fmt.Printf("%v =========Call,get msg = %v,msg hash = %v,sender node = %v =================", common.CurrentTime(), msg, test, enode)

@@ -2971,8 +2971,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Waiting For Result.key = %v============================\n", common.CurrentTime(), self.Key)
 	<-w.acceptWaitReqAddrChan
 
-	ts2 := time.Now().Unix()
-	tt := strconv.Itoa(int(ts2))
+	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	///////
 	if self.Mode == "0" {
 		mp := []string{self.Key, cur_enode}
@@ -2982,7 +2981,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
 		SendMsgToDcrmGroup(ss, self.GroupId)
 		DisMsg(ss)
-		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes.key = %v============================\n", common.CurrentTime(), self.Key)
+		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
@@ -3057,8 +3056,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	var tip string
 
 	///////
-	ts2 := time.Now().Unix()
-	tt := strconv.Itoa(int(ts2))
+	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	if self.Mode == "0" {
 		mp := []string{self.Key, cur_enode}
 		enode := strings.Join(mp, "-")
@@ -3552,7 +3550,7 @@ func DisMsg(msg string) {
 		return
 	}
 
-	fmt.Printf("%v ===============DisMsg,get worker, worker id = %v,msg = %v,msg hash = %v,key = %v=================\n", common.CurrentTime(), msg, test, prexs[0])
+	fmt.Printf("%v ===============DisMsg,get worker, worker id = %v,msg = %v,msg hash = %v,key = %v=================\n", common.CurrentTime(), w.id,msg, test, prexs[0])
 
 	msgCode := mm[1]
 	switch msgCode {

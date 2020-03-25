@@ -357,12 +357,13 @@ func CheckAddPeer(mode string, enodes []string) error {
 		msg := fmt.Sprintf("args mode format is wrong")
 		return errors.New(msg)
 	}
-	nodeNum, _ := strconv.Atoi(es[1])
-	if len(enodes) != nodeNum {
+	nodeNum0, _ := strconv.Atoi(es[0])
+	nodeNum1, _ := strconv.Atoi(es[1])
+	if len(enodes) < nodeNum0 || len(enodes) > nodeNum1 {
 		msg := fmt.Sprintf("args mode and enodes not match")
 		return errors.New(msg)
 	}
-	var nodeid map[discover.NodeID]int = make(map[discover.NodeID]int, nodeNum)
+	var nodeid map[discover.NodeID]int = make(map[discover.NodeID]int, len(enodes))
 	defer func() {
 		for k := range nodeid {
 			delete(nodeid, k)

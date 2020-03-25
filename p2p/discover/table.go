@@ -452,6 +452,7 @@ func (tab *Table) loadSeedNodes() {
 		//log.Debug("Found seed node in database", "id", seed.ID, "addr", seed.addr(), "age", age)
 		tab.add(seed)
 	}
+	loadedSeed(seeds)
 }
 
 // doRevalidate checks that the last node in a random bucket is still live
@@ -658,6 +659,7 @@ func (tab *Table) replace(b *bucket, last *Node) *Node {
 		return nil
 	}
 	r := b.replacements[tab.rand.Intn(len(b.replacements))]
+	setGroup(r, "remove")
 	b.replacements = deleteNode(b.replacements, r)
 	b.entries[len(b.entries)-1] = r
 	tab.removeIP(b, last.IP)
@@ -693,6 +695,8 @@ func (tab *Table) bumpOrAdd(b *bucket, n *Node) bool {
 	if tab.nodeAddedHook != nil {
 		tab.nodeAddedHook(n)
 	}
+	//TODO: group
+	go checkUpdateNode(n)
 	return true
 }
 
@@ -709,8 +713,6 @@ func pushNode(list []*Node, n *Node, max int) ([]*Node, *Node) {
 	removed := list[len(list)-1]
 	copy(list[1:], list)
 	list[0] = n
-	//TODO: group
-	//setGroup(n, "add")
 	return list, removed
 }
 

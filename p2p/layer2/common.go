@@ -24,7 +24,6 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
@@ -198,12 +197,13 @@ func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
 	node, _ := discover.ParseNode(enode)
 	p2pServer.AddTrustedPeer(node)
 	discover.UpdateOnLine(p.ID(), true)
+	discover.AddNodes(p.ID())
 }
 
 func (e *Emitter) removePeer(p *p2p.Peer) {
 	e.Lock()
 	defer e.Unlock()
-	//discover.UpdateOnLine(p.ID(), false)
+	discover.UpdateOnLine(p.ID(), false)
 	fmt.Printf("%v ==== removePeer() ====, id: %v\n", common.CurrentTime(), p.ID().String()[:8])
 	return
 	enode := fmt.Sprintf("enode://%v@%v", p.ID().String(), p.RemoteAddr())
@@ -337,46 +337,32 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 	switch p2pType {
 	case Sdkprotocol_type:
 		if SdkGroup[gid] != nil {
-			////TODO: check IP,UDP
-			//_, groupTmp := getGroupSDK(gid)
-			//flag := false
-			//for _, enode := range req.([]*discover.Node) {
-			//	node, _ := discover.ParseNode(enode.String())
-			//	flag = false
-			//	for _, n := range groupTmp.Nodes {
-			//		if node.ID == n.ID {
-			//			ip1 := fmt.Sprintf("%v", node.IP)
-			//			ip2 := fmt.Sprintf("%v", n.IP)
-			//			if ip1 == ip2 && node.UDP == node.UDP {
-			//				flag = true
-			//				break
-			//			}
-			//		}
-			//	}
-			//	if flag == false {
-			//		break
-			//	}
-			//}
-			//if flag != false {
-			fmt.Printf("==== recvGroupInfo() ====, gid: %v exist\n", gid)
-			return
-			//}
-		}
-		keyString := ""
-		for _, enode := range req.([]*discover.Node) {
-			keyString = fmt.Sprintf("%v%v%v%v", keyString, enode.ID, enode.IP, enode.UDP)
-		}
-		key := crypto.Keccak256Hash([]byte(keyString)).Hex()
-		if mode == "1+1+1" {
-			if recvKey1 == key {
+			//TODO: check IP,UDP
+			_, groupTmp := getGroupSDK(gid)
+			update := true
+			existID := false
+			for _, enode := range req.([]*discover.Node) {
+				node, _ := discover.ParseNode(enode.String())
+				for _, n := range groupTmp.Nodes {
+					if node.ID == n.ID {
+						existID = true
+						ipp1 := fmt.Sprintf("%v:%v", node.IP, node.UDP)
+						ipp2 := fmt.Sprintf("%v:%v", n.IP, n.UDP)
+						if ipp1 == ipp2 {
+							update = false
+							break
+						}
+						break
+					}
+				}
+				if existID == true {
+					break
+				}
+			}
+			if update != true {
+				fmt.Printf("==== recvGroupInfo() ====, gid: %v exist\n", gid)
 				return
 			}
-			recvKey1 = key
-		} else {
-			if recvKey2 == key {
-				return
-			}
-			recvKey2 = key
 		}
 		groupTmp := discover.NewGroup()
 		groupTmp.ID = gid

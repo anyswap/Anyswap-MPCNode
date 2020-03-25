@@ -57,8 +57,6 @@ var (
 	Xp_callback   func(interface{})
 	emitter       *Emitter
 	selfid        discover.NodeID
-	recvKey1      string
-	recvKey2      string
 
 	dccpGroup *discover.Group
 	xpGroup   *discover.Group

@@ -70,6 +70,12 @@ var (
 	groupSuffix                               = "p2p-"
 	groupDir                                  = ""
 	nodeOnline       map[NodeID]*OnLineStatus = make(map[NodeID]*OnLineStatus)
+
+	updateGroupsNode bool = false// update node dynamically
+	addNodes map[NodeID]int = make(map[NodeID]int)
+	addNodesLock sync.Mutex
+	loadedSeeds map[NodeID]int = make(map[NodeID]int)
+	loadedDone bool = false
 )
 var (
 	Dcrm_groupMemNum = 0
@@ -583,7 +589,7 @@ func getGroupInfo(gid NodeID, p2pType int) *Group { //nooo
 func InitGroup(groupsNum, nodesNum int) error {
 	//	GroupSDK.Lock()
 	//	defer GroupSDK.Unlock()
-	//	setgroup = 1
+	setgroup = 1
 	//	setgroupNumber = groupsNum
 	SDK_groupNum = nodesNum
 	//	Dcrm_groupMemNum = nodesNum
@@ -872,10 +878,11 @@ func updateGroupSDKNode(nd *Node, p2pType int) { //nooo
 	for gid, g := range SDK_groupList {
 		for i, node := range g.Nodes {
 			if node.ID == n.ID {
-				ip1 := fmt.Sprintf("%v", node.IP)
-				ip2 := fmt.Sprintf("%v", n.IP)
-				if ip1 != ip2 || node.UDP != n.UDP {
-					fmt.Printf("%v ==== updateGroupSDKNode() ====, node.IP:%v, n.IP:%v, node.UDP:%v, n.UDP:%v\n", common.CurrentTime(), ip1, ip2, node.UDP, n.UDP)
+				ipp1 := fmt.Sprintf("%v:%v", node.IP, node.UDP)
+				ipp2 := fmt.Sprintf("%v:%v", n.IP, n.UDP)
+				fmt.Printf("%v ==== updateGroupSDKNode() ====, nodeID: %v, %v vs %v\n", common.CurrentTime(), n.ID, ipp2, ipp1)
+				if ipp1 != ipp2 {
+					fmt.Printf("%v ==== updateGroupSDKNode() ====, %v vs %v\n", common.CurrentTime(), ipp2, ipp1)
 					g.Nodes[i] = n
 					fmt.Printf("%v ==== updateGroupSDKNode() ====, update group(gid=%v) enode %v -> %v\n", common.CurrentTime(), gid, node, n)
 					sendGroupInfo(g, p2pType)
@@ -913,13 +920,15 @@ func checkGroupSDKListExist(n *Node) (bool, bool) { //return: exist, update //no
 func setGroupSDK(n *Node, replace string, p2pType int) {
 	GroupSDK.Lock()
 	defer GroupSDK.Unlock()
+	fmt.Printf("==== setGroupSDK() ====, node: %v, add/replace: %v\n", n, replace)
 	if replace == "add" {
 		if setgroup == 0 {
 			//check 1+1+1 group
 			updateGroupSDKNode(n, p2pType)
 			return
+		} else {
+			return// not auto create group for bootnode
 		}
-		fmt.Printf("==== setGroupSDK() ====, node: %v, add/replace: %v\n", n, replace)
 		et, ut := checkGroupSDKListExist(n)
 		if et == true {
 			if ut == true {
@@ -1094,7 +1103,7 @@ func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) e
 		nodes = append(nodes, n)
 	}
 
-	fmt.Printf("group msg handle, callGroupEvent(), req.Nodes: %v\n", nodes)
+	fmt.Printf("%v ==== (req *Group) handle() ====, callGroupEvent, from: %v, gid: %v, req.Nodes: %v\n", common.CurrentTime(), from, req.ID, nodes)
 	go callGroupEvent(req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
 	return nil
 }
@@ -1291,7 +1300,7 @@ func GetEnode() string {
 }
 
 func updateRemoteIP(ip net.IP, port uint16) {
-	if RemoteUpdate == false && RemoteIP == nil {
+	if setgroup == 0 && RemoteUpdate == false && RemoteIP == nil {
 		RemoteUpdate = true
 		fmt.Printf("updateRemoteIP, IP:port = %v:%v\n\n", ip, port)
 		RemoteIP = ip
@@ -1722,5 +1731,53 @@ func PrintBucketNodeInfo(id NodeID) {
 func Remove(n *Node) {
 	fmt.Printf("==== remove() ====, n: %v\n", n)
 	Table4group.delete(n)
+}
+
+func checkUpdateNode(n *Node) {
+	if setgroup == 1 {
+		return
+	}
+	if updateGroupsNode == true {
+		return
+	}
+	updateGroupsNode = true
+	if setgroup == 0 && n.ID != Table4group.self.ID && checkAddNodes(n.ID) == true {
+		if ok := checkSeeds(n.ID); ok == false {
+			setGroup(n, "add")
+		}
+	}
+	updateGroupsNode = false
+}
+
+func loadedSeed(seeds []*Node) {
+	if loadedDone == false {
+		loadedDone = true
+		for i := range seeds {
+			loadedSeeds[seeds[i].ID] = 1
+		}
+	}
+}
+
+func AddNodes(nid NodeID) {
+	addNodesLock.Lock()
+	defer addNodesLock.Unlock()
+	addNodes[nid] = 1
+}
+
+func checkAddNodes(nid NodeID) bool {
+	addNodesLock.Lock()
+	defer addNodesLock.Unlock()
+	if addNodes[nid] == 1 {
+		delete(addNodes, nid)
+		return true
+	}
+	return false
+}
+
+func checkSeeds(nid NodeID) bool {
+	if loadedSeeds[nid] == 1 {
+		return true
+	}
+	return false
 }
 

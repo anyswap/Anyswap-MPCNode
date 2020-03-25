@@ -2172,10 +2172,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	test := Keccak256Hash([]byte(strings.ToLower(res))).Hex()
 
 	////
-	msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
+	/*msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
 	if errdec == nil {
 		res = msgdata
-	}
+	}*///---tmp---
 	////
 	mm := strings.Split(res, Sep)
 	if len(mm) >= 2 {

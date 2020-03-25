@@ -4268,7 +4268,7 @@ type PubAccounts struct {
 }
 type AccountsList struct {
 	GroupID  string
-	Accounts []string
+	Accounts []PubKeyInfo
 }
 
 //////tmp code
@@ -4318,9 +4318,15 @@ func CheckAcc(eid string, geter_acc string, rk string) bool {
 
 /////////////
 
+type PubKeyInfo struct {
+    PubKey string
+    ThresHold string
+    TimeStamp string
+}
+
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	if AllAccounts.MapLength() != 0 {
-		gp := make(map[string][]string)
+		gp := make(map[string][]PubKeyInfo)
 		_, lmvalue := AllAccounts.ListMap()
 		for _, v := range lmvalue {
 			if v == nil {
@@ -4351,14 +4357,17 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 			pubkeyhex := hex.EncodeToString([]byte(pb))
 			gid := vv.GroupId
 			md := vv.Mode
+			limit := vv.LimitNum
 			if mode == md {
 				al, exsit := gp[gid]
 				if exsit == true {
-					al = append(al, pubkeyhex)
+					tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
+					al = append(al, tmp)
 					gp[gid] = al
 				} else {
-					a := make([]string, 0)
-					a = append(a, pubkeyhex)
+					a := make([]PubKeyInfo, 0)
+					tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
+					a = append(a, tmp)
 					gp[gid] = a
 				}
 			}

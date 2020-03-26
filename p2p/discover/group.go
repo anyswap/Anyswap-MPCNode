@@ -1742,7 +1742,7 @@ func checkUpdateNode(n *Node) {
 		return
 	}
 	updateGroupsNode = true
-	if setgroup == 0 && n.ID != Table4group.self.ID && checkAddNodes(n.ID) == true {
+	if setgroup == 0 && n.ID != SelfNodeID && checkAddNodes(n.ID) == true {
 		if ok := checkSeeds(n.ID); ok == false {
 			setGroup(n, "add")
 		}

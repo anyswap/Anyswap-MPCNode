@@ -497,7 +497,7 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
 		sequenceLock.Unlock()
 		return nil
 	}
-	sequenceDoneRecv.Store(ss, 1)//TODO bug: restart self node
+	sequenceDoneRecv.Store(ss, 1)
 	sequenceLock.Unlock()
 
 	msgp := req.Msg

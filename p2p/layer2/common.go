@@ -191,6 +191,7 @@ func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
 	e.Lock()
 	defer e.Unlock()
 	fmt.Printf("%v ==== addPeer() ====, id: %v\n", common.CurrentTime(), p.ID().String()[:8])
+	discover.RemoveSequenceDoneRecv(p.ID().String())
 	e.peers[p.ID()] = &peer{ws: ws, peer: p, peerInfo: &peerInfo{int(ProtocolVersion)}, knownTxs: mapset.NewSet()}
 	fmt.Printf("==== addPeer() ====, e.peers[p.ID()]: %v\n", e.peers[p.ID()])
 	enode := fmt.Sprintf("enode://%v@%v", p.ID().String(), p.RemoteAddr())

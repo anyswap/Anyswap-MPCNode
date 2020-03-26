@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set"

@@ -89,7 +89,7 @@ type OnLineStatus struct {
 }
 
 const (
-	SendWaitTime = 10 * time.Minute
+	SendWaitTime = 1 * time.Minute
 	pingCount    = 10
 
 	Dcrmprotocol_type = iota + 1
@@ -372,7 +372,6 @@ func (t *udp) udpSendMsg(toid NodeID, toaddr *net.UDPAddr, msg string, number [3
 		P2pType:    byte(p2pType),
 		Msg:        msg,
 		Sequence:   s,
-		Expiration: uint64(time.Now().Add(expiration).Unix()),
 	}
 	req := &dcrmmessage{
 		Target:     toid,
@@ -403,9 +402,11 @@ func (t *udp) udpSendMsg(toid NodeID, toaddr *net.UDPAddr, msg string, number [3
 			})
 			var errs error
 			if ret == true {
+				req.Expiration = uint64(time.Now().Add(expiration).Unix())
 				_, errs = t.send(toaddr, byte(getPacket), req)
 				fmt.Printf("%v ==== (t *udp) udpSendMsg()  ==== p2pBroatcast, send toaddr: %v, sequence: %v, errs: %v, msgHash: %v, dcrmmessage\n", common.CurrentTime(), toaddr, s, errs, msgHash)
 			} else {
+				reqGet.Expiration = uint64(time.Now().Add(expiration).Unix())
 				_, errs = t.send(toaddr, byte(getPacket), reqGet)
 				fmt.Printf("%v ==== (t *udp) udpSendMsg()  ==== p2pBroatcast, send toaddr: %v, sequence: %v, errs: %v, msgHash: %v, getdcrmmessage\n", common.CurrentTime(), toaddr, s, errs, msgHash)
 			}
@@ -470,9 +471,9 @@ func (t *udp) sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pTyp
 }
 
 func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-	if expired(req.Expiration) {
-		return errExpired
-	}
+	//if expired(req.Expiration) {
+	//	return errExpired
+	//}
 	if !t.db.hasBond(fromID) {
 		// No bond exists, we don't process the packet. This prevents
 		// an attack vector where the discovery protocol could be used
@@ -483,7 +484,7 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
 		// (which is a much bigger packet than findnode) to the victim.
 		return errUnknownNode
 	}
-	fmt.Printf("%v send ack ==== (req *getdcrmmessage) handle() ====, to: %v, mac: %v\n", common.CurrentTime(), from, mac)
+	fmt.Printf("%v send ack ==== (req *getdcrmmessage) handle() ====, to: %v, squence: %v\n", common.CurrentTime(), from, req.Sequence)
 	t.send(from, byte(Ack_Packet), &Ack{
 		Sequence:   req.Sequence,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),

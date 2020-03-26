@@ -44,11 +44,8 @@ func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool)
 	return "BroadcastToGroup send end", nil
 }
 
-var broadcastLock sync.Mutex
 
 func p2pBroatcast(dccpGroup *discover.Group, msg string, msgCode int, myself bool) int {
-	broadcastLock.Lock()
-	broadcastLock.Unlock()
 	fmt.Printf("%v ==== p2pBroatcast() ====, group: %v, msg: %v\n", common.CurrentTime(), dccpGroup, msg)
 	if dccpGroup == nil {
 		fmt.Printf("==== p2pBroatcast() ====, group nil, msg: %v\n", msg)

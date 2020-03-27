@@ -53,6 +53,7 @@ var (
 	RemotePort     = uint16(0)
 	RemoteUpdate   = false
 	SelfEnode      = ""
+	SelfIPPort     = ""
 	changed        = 0
 	Xp_changed     = 0
 
@@ -1307,6 +1308,9 @@ func updateRemoteIP(ip net.IP, port uint16) {
 		RemoteIP = ip
 		RemotePort = port
 		SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
+		SelfIPPort = fmt.Sprintf("%v:%v", RemoteIP, RemotePort)
+		n, _ := ParseNode(SelfEnode)
+		setGroup(n, "add")
 	}
 }
 

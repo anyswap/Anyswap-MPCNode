@@ -189,7 +189,6 @@ func (e *Emitter) addPeer(p *p2p.Peer, ws p2p.MsgReadWriter) {
 	fmt.Printf("%v ==== addPeer() ====, id: %v\n", common.CurrentTime(), p.ID().String()[:8])
 	discover.RemoveSequenceDoneRecv(p.ID().String())
 	e.peers[p.ID()] = &peer{ws: ws, peer: p, peerInfo: &peerInfo{int(ProtocolVersion)}, knownTxs: mapset.NewSet()}
-	fmt.Printf("==== addPeer() ====, e.peers[p.ID()]: %v\n", e.peers[p.ID()])
 	enode := fmt.Sprintf("enode://%v@%v", p.ID().String(), p.RemoteAddr())
 	node, _ := discover.ParseNode(enode)
 	p2pServer.AddTrustedPeer(node)
@@ -207,9 +206,7 @@ func (e *Emitter) removePeer(p *p2p.Peer) {
 	node, _ := discover.ParseNode(enode)
 	p2pServer.RemoveTrustedPeer(node)
 	discover.Remove(node)
-	fmt.Printf("==== removePeer() ====, e.peers[p.ID()]: %v del\n", e.peers[p.ID()])
 	delete(e.peers, p.ID())
-	fmt.Printf("==== removePeer() ====, e.peers[p.ID()]: %v deleted\n", e.peers[p.ID()])
 }
 
 func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
@@ -327,7 +324,7 @@ func getGroup(gid discover.NodeID, p2pType int) (int, string) {
 }
 
 func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType int, Type string) {
-	fmt.Printf("%v ==== recvGroupInfo() ====, gid: %v\n", common.CurrentTime(), gid)
+	fmt.Printf("%v ==== recvGroupInfo() ====, gid: %v, req: %v\n", common.CurrentTime(), gid, req)
 	discover.GroupSDK.Lock()
 	defer discover.GroupSDK.Unlock()
 	var xvcGroup *discover.Group
@@ -340,6 +337,13 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 			existID := false
 			for _, enode := range req.([]*discover.Node) {
 				node, _ := discover.ParseNode(enode.String())
+				if selfid == node.ID {
+					ipp := fmt.Sprintf("%v:%v", node.IP, node.UDP)
+					if ipp != discover.SelfIPPort {
+						fmt.Printf("==== recvGroupInfo() ====, gid: %v,  %v not match %v(self IP:Port)\n", gid, ipp, discover.SelfIPPort)
+						return
+					}
+				}
 				for _, n := range groupTmp.Nodes {
 					if node.ID == n.ID {
 						existID = true
@@ -390,12 +394,17 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 			go p2pServer.AddTrustedPeer(node)
 		}
 	}
-	fmt.Printf("%v ==== recvGroupInfo() ====, Group: %v\n", common.CurrentTime(), xvcGroup)
+	fmt.Printf("%v ==== recvGroupInfo() ====, Store Group: %v\n", common.CurrentTime(), xvcGroup)
 	discover.StoreGroupToDb(xvcGroup)
 	discover.RecoverGroupAll(SdkGroup)
-	//for i, g := range SdkGroup {
-	//	fmt.Printf("SdkGroup, i: %v, g: %v\n", i, g)
-	//}
+	if false {
+		var testGroup  map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)//TODO delete
+		discover.RecoverGroupAll(testGroup)
+		fmt.Printf("%v ==== recvGroupInfo() ====, Recov test Group: %v\n", common.CurrentTime(), testGroup)
+		for i, g := range testGroup {
+			fmt.Printf("testGroup, i: %v, g: %v\n", i, g)
+		}
+	}
 	discover.RecoverGroupAll(discover.SDK_groupList) // Group
 }
 
@@ -556,7 +565,9 @@ func InitServer(nodeserv interface{}) {
 	p2pServer = nodeserv.(p2p.Server)
 	discover.RecoverGroupAll(SdkGroup)
 	for i, g := range SdkGroup {
+		fmt.Printf("==== InitServer() ====, GetGroupFromDb, g: %v\n", g)
 		for _, node := range g.Nodes {
+			fmt.Printf("==== InitServer() ====, gid: %v, node: %v\n", i, node)
 			if node.ID != selfid {
 				discover.PingNode(node.ID, node.IP, int(node.UDP))
 				en := discover.NewNode(node.ID, node.IP, node.UDP, node.TCP)
@@ -564,7 +575,6 @@ func InitServer(nodeserv interface{}) {
 				go p2pServer.AddTrustedPeer(en)
 			}
 		}
-		fmt.Printf("discover.GetGroupFromDb, gid: %v, g: %v\n", i, g)
 	}
 	discover.RecoverGroupAll(discover.SDK_groupList) // Group
 }

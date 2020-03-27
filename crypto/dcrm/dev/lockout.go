@@ -50,19 +50,7 @@ import (
 
 func GetLockOutNonce(account string, cointype string, dcrmaddr string) (string, string, error) {
 	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
-	var da []byte
-	datmp, exsit := LdbPubKeyData.ReadMap(key2)
-	if exsit == false {
-		da2 := GetPubKeyDataValueFromDb(key2)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key2)
 	///////
 	if exsit == false {
 		return "0", "", nil
@@ -81,9 +69,6 @@ func SetLockOutNonce(account string, cointype string, dcrmaddr string, nonce str
 	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
 	kd := KeyData{Key: []byte(key2), Data: nonce}
 	PubKeyDataChan <- kd
-
-	//fmt.Println("================SetLockOutNonce,acc =%s,cointype =%s,dcrmaddr =%s,nonce =%s,nonce key =%s==================",account,cointype,dcrmaddr,nonce,key2)
-	//LdbPubKeyData[key2] = []byte(nonce)
 	LdbPubKeyData.WriteMap(key2, []byte(nonce))
 
 	return "", nil
@@ -99,19 +84,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	}
 
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-	var da []byte
-	datmp, exsit := LdbPubKeyData.ReadMap(key2)
-	if exsit == false {
-		da2 := GetPubKeyDataValueFromDb(key2)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key2)
 	///////
 	if exsit == false {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get lockout data from db fail", Err: fmt.Errorf("get lockout data from db fail")}
@@ -314,20 +287,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 
 		var eosstr string
 		key := string([]byte("eossettings"))
-		var da []byte
-		datmp, exsit := LdbPubKeyData.ReadMap(key)
-		if exsit == false {
-			da2 := GetPubKeyDataValueFromDb(key)
-			if da2 == nil {
-				exsit = false
-			} else {
-				exsit = true
-				da = da2
-			}
-		} else {
-			da = datmp.([]byte)
-		}
-
+		exsit,da := GetValueFromPubKeyData(key)
 		if exsit == true {
 			eosstr = string(da)
 		}

@@ -156,22 +156,10 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		sedsave := itertmp.Value.(string)
 		////////
 		rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-		_, exsit := LdbReqAddr.ReadMap(rk)
-		if exsit == false {
-			da2 := GetReqAddrValueFromDb(rk)
-			if da2 == nil {
-				exsit = false
-			} else {
-				exsit = true
-			}
-		} else {
-			//da = []byte(fmt.Sprintf("%v", datmp))
-			exsit = true
-		}
 
 		pubkeyhex := hex.EncodeToString(sedpk)
 		
-		pubs := &PubKeyData{Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
+		pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
 		epubs, err := Encode2(pubs)
 		if err != nil {
 			fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
@@ -187,15 +175,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			ch <- res
 			return
 		}
-
-		count := AllAccounts.MapLength()
-		index := strconv.Itoa(count)
-		keytmp := Keccak256Hash([]byte(strings.ToLower(index))).Hex()
-		kdtmp := KeyData{Key: []byte(keytmp), Data: ss}
-		AllAccountsChan <- kdtmp
-		////TODO
-		AllAccounts.WriteMap(index, pubs)
-		////////
 
 		fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
 		tip, reply := AcceptReqAddr(account, cointype, wk.groupid, nonce, wk.limitnum, mode, true, "true", "Success", pubkeyhex, "", "", nil, id)
@@ -228,14 +207,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			LdbPubKeyData.WriteMap(string(sedpk[:]), []byte(ss))
 			////
 
-			key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-			kd = KeyData{Key: []byte(key), Data: ss}
-			PubKeyDataChan <- kd
-			/////
-			LdbPubKeyData.WriteMap(key, []byte(ss))
-			////
-
-			key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
 			/////
@@ -246,13 +218,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			PubKeyDataChan <- kd
 			/////
 			LdbPubKeyData.WriteMap(string(sedpk[:]), []byte(ss))
-			////
-
-			key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-			kd = KeyData{Key: []byte(key), Data: ss}
-			PubKeyDataChan <- kd
-			/////
-			LdbPubKeyData.WriteMap(key, []byte(ss))
 			////
 
 			for _, ct := range coins.Cointypes {
@@ -269,7 +234,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 					continue
 				}
 
-				key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+				key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 				kd = KeyData{Key: []byte(key), Data: ss}
 				PubKeyDataChan <- kd
 				/////
@@ -315,22 +280,10 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	save := iter.Value.(string)
 	////////
 	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-	_, exsit := LdbReqAddr.ReadMap(rk)
-	if exsit == false {
-		da2 := GetReqAddrValueFromDb(rk)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-		}
-	} else {
-		//da = []byte(fmt.Sprintf("%v", datmp))
-		exsit = true
-	}
 
 	pubkeyhex := hex.EncodeToString(ys)
 	
-	pubs := &PubKeyData{Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
+	pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
 	epubs, err := Encode2(pubs)
 	if err != nil {
 		fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
@@ -349,16 +302,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	fmt.Printf("%v ===============dcrm_genPubKey,success encode and compress pubkey,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
 	
-	count := AllAccounts.MapLength()
-	index := strconv.Itoa(count)
-	keytmp := Keccak256Hash([]byte(strings.ToLower(index))).Hex()
-	kdtmp := KeyData{Key: []byte(keytmp), Data: ss}
-	AllAccountsChan <- kdtmp
-	////TODO
-	//AllAccounts = append(AllAccounts,pubs)
-	AllAccounts.WriteMap(index, pubs)
-	////////
-
 	fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
 
 	tip, reply := AcceptReqAddr(account, cointype, wk.groupid, nonce, wk.limitnum, mode, true, "true", "Success", pubkeyhex, "", "", nil, id)
@@ -390,14 +333,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		LdbPubKeyData.WriteMap(string(ys), []byte(ss))
 		////
 
-		key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-		kd = KeyData{Key: []byte(key), Data: ss}
-		PubKeyDataChan <- kd
-		/////
-		LdbPubKeyData.WriteMap(key, []byte(ss))
-		////
-
-		key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		kd = KeyData{Key: []byte(key), Data: ss}
 		PubKeyDataChan <- kd
 		/////
@@ -408,13 +344,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		PubKeyDataChan <- kd
 		/////
 		LdbPubKeyData.WriteMap(string(ys), []byte(ss))
-		////
-
-		key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-		kd = KeyData{Key: []byte(key), Data: ss}
-		PubKeyDataChan <- kd
-		/////
-		LdbPubKeyData.WriteMap(key, []byte(ss))
 		////
 
 		for _, ct := range coins.Cointypes {
@@ -431,7 +360,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				continue
 			}
 
-			key = Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
 			/////
@@ -479,7 +408,39 @@ func SavePubKeyDataToDb() {
 	}
 }
 
-func SaveAllAccountsToDb() {
+func GetAllPubKeyDataFromDb() *common.SafeMap {
+	kd := common.NewSafeMap(10)
+	dir := GetDbDir()
+	fmt.Printf("%v ==============GetAllPubKeyDataFromDb,start read from db,dir = %v ===============\n", common.CurrentTime(), dir)
+	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
+	//bug
+	if err != nil {
+		for i := 0; i < 100; i++ {
+			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
+			if err == nil && db != nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+	//
+	if db != nil {
+		fmt.Printf("%v ==============GetAllPubKeyDataFromDb,open db success.dir = %v ===============\n", common.CurrentTime(), dir)
+		iter := db.NewIterator()
+		for iter.Next() {
+			key := string(iter.Key())
+			value := string(iter.Value())
+			kd.WriteMap(key, []byte(value))
+		}
+		iter.Release()
+		db.Close()
+	}
+
+	return kd
+}
+
+/*func SaveAllAccountsToDb() {
 	for {
 		select {
 		case kd := <-AllAccountsChan:
@@ -669,57 +630,6 @@ func GetLockOutValueFromDb(key string) []byte {
 	return da
 }
 
-func GetAllPubKeyDataFromDb() *common.SafeMap {
-	kd := common.NewSafeMap(10)
-	dir := GetAllAccountsDir()
-	fmt.Printf("%v ==============GetAllPubKeyDataFromDb,start read from db,dir = %v ===============\n", common.CurrentTime(), dir)
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil && db != nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-	//
-	if db != nil {
-		fmt.Printf("%v ==============GetAllPubKeyDataFromDb,open db success.dir = %v ===============\n", common.CurrentTime(), dir)
-		index := 0
-		iter := db.NewIterator()
-		for iter.Next() {
-			value := string(iter.Value())
-			ss, err := UnCompress(value)
-			if err != nil {
-				fmt.Printf("%v ==============GetAllPubKeyDataFromDb,uncompress fail. err = %v,dir = %v ===============\n", common.CurrentTime(), err, dir)
-				continue
-			}
-
-			pubs, err := Decode2(ss, "PubKeyData")
-			if err != nil {
-				fmt.Printf("%v ==============GetAllPubKeyDataFromDb,decode fail. err = %v,dir = %v ===============\n", common.CurrentTime(), err, dir)
-				continue
-			}
-
-			pd := pubs.(*PubKeyData)
-			if pd == nil {
-				continue
-			}
-
-			ind := strconv.Itoa(index)
-			kd.WriteMap(ind, pd)
-			index++
-		}
-		iter.Release()
-		db.Close()
-	}
-
-	return kd
-}
-
 func GetAllPendingReqAddrFromDb() *common.SafeMap {
 	kd := common.NewSafeMap(10)
 	fmt.Println("==============GetAllPendingReqAddrFromDb,start read from db===============")
@@ -903,6 +813,7 @@ func GetAllGAccsValueFromDb() *common.SafeMap {
 
 	return kd
 }
+*/
 
 //ed
 //msgprex = hash

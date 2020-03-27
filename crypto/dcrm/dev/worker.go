@@ -74,25 +74,25 @@ var (
 
 	KeyFile string
 
-	AllAccounts     = common.NewSafeMap(10) //make([]*PubKeyData,0)
-	AllAccountsChan = make(chan KeyData, 1000)
+	//AllAccounts     = common.NewSafeMap(10) //make([]*PubKeyData,0)
+	//AllAccountsChan = make(chan KeyData, 1000)
 
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 1000)
 
-	LdbReqAddr  = common.NewSafeMap(10) //make(map[string][]byte)
-	ReqAddrChan = make(chan KeyData, 1000)
+	//LdbReqAddr  = common.NewSafeMap(10) //make(map[string][]byte)
+	//ReqAddrChan = make(chan KeyData, 1000)
 
-	LdbLockOut  = common.NewSafeMap(10) //make(map[string][]byte)
-	LockOutChan = make(chan KeyData, 1000)
+	//LdbLockOut  = common.NewSafeMap(10) //make(map[string][]byte)
+	//LockOutChan = make(chan KeyData, 1000)
 
 	ReSendTimes int //resend p2p msg times
 	DcrmCalls   = common.NewSafeMap(10)
 
 	RpcReqQueueCache = make(chan RpcReq, RpcMaxQueue)
 
-	GAccs         = common.NewSafeMap(10)
-	GAccsDataChan = make(chan KeyData, 1000)
+	//GAccs         = common.NewSafeMap(10)
+	//GAccsDataChan = make(chan KeyData, 1000)
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {
@@ -286,15 +286,10 @@ func InitDev(keyfile string) {
 	ReSendTimes = 1
 	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
 	fmt.Printf("%v ==================InitDev,cur_enode = %v ====================\n", common.CurrentTime(), cur_enode)
-	AllAccounts = GetAllPubKeyDataFromDb()
-	GAccs = GetAllGAccsValueFromDb()
-	//LdbReqAddr = GetAllPendingReqAddrFromDb()
-	//LdbLockOut = GetAllPendingLockOutFromDb()
+
+	LdbPubKeyData = GetAllPubKeyDataFromDb()
+
 	go SavePubKeyDataToDb()
-	go SaveAllAccountsToDb()
-	go SaveReqAddrToDb()
-	go SaveLockOutToDb()
-	go SaveGAccsDataToDb()
 	go CommitRpcReq()
 	go ec2.GenRandomInt(2048)
 	go ec2.GenRandomSafePrime(2048)
@@ -1558,19 +1553,7 @@ type ReqAddrStatus struct {
 }
 
 func GetReqAddrStatus(key string) (string, string, error) {
-	var da []byte
-	datmp, exsit := LdbReqAddr.ReadMap(key)
-	if exsit == false {
-		da2 := GetReqAddrValueFromDb(key)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
 		fmt.Printf("%v =====================GetReqAddrStatus,no exist key, key = %v ======================\n", common.CurrentTime(), key)
@@ -1606,19 +1589,7 @@ type LockOutStatus struct {
 }
 
 func GetLockOutStatus(key string) (string, string, error) {
-	var da []byte
-	datmp, exsit := LdbLockOut.ReadMap(key)
-	if exsit == false {
-		da2 := GetLockOutValueFromDb(key)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
 		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
@@ -1688,63 +1659,55 @@ func SortCurNodeInfo(value []interface{}) []interface{} {
 }
 
 func GetCurNodeReqAddrInfo(geter_acc string) (string, string, error) {
+	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	if exsit == false {
+	    return "","",nil
+	}
+
+	fmt.Printf("%v=================GetCurNodeReqAddrInfo,da = %v,geter_acc = %v ====================\n",common.CurrentTime(),string(da),geter_acc)
 	var ret []string
-	_, lmvalue := LdbReqAddr.ListMap()
-	lmvalue2 := SortCurNodeInfo(lmvalue)
-	for _, v := range lmvalue2 {
-		if v == nil {
-			continue
-		}
+	keys := strings.Split(string(da),":")
+	for _,key := range keys {
+	    exsit,data := GetValueFromPubKeyData(key)
+	    if exsit == false {
+		continue
+	    }
 
-		vv := v.([]byte)
-		value := string(vv)
-		////
-		ds, err := UnCompress(value)
-		if err != nil {
-			//	    fmt.Println("================GetCurNodeReqAddrInfo,uncompress err =%v ===================",err)
-			continue
-		}
+	    value := string(data)
+	    ////
+	    ds, err := UnCompress(value)
+	    if err != nil {
+		    continue
+	    }
 
-		dss, err := Decode2(ds, "AcceptReqAddrData")
-		if err != nil {
-			//	    fmt.Println("================GetCurNodeReqAddrInfo,decode err =%v ===================",err)
-			continue
-		}
+	    dss, err := Decode2(ds, "AcceptReqAddrData")
+	    if err != nil {
+		    continue
+	    }
 
-		ac := dss.(*AcceptReqAddrData)
-		if ac == nil {
-			//	    fmt.Println("================GetCurNodeReqAddrInfo,decode err ===================")
-			continue
-		}
+	    ac := dss.(*AcceptReqAddrData)
+	    if ac == nil {
+		    continue
+	    }
 
-		if ac.Mode == "1" {
-			//    if !strings.EqualFold(ac.Account,geter_acc) {
-			continue
-			//    }
-		}
+	    if ac.Mode == "1" {
+		    continue
+	    }
 
-		///////
-		key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + "ALL" + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
-		if ac.Mode == "0" && CheckAcc(cur_enode, geter_acc, key) == false {
-			continue
-		}
-		/////
+	    if ac.Deal == true || ac.Status == "Success" {
+		    continue
+	    }
 
-		if ac.Deal == true || ac.Status == "Success" {
-			//	    fmt.Println("================GetCurNodeReqAddrInfo,this req addr has handle,nonce =%s===================",ac.Nonce)
-			continue
-		}
+	    if ac.Status != "Pending" {
+		    continue
+	    }
 
-		if ac.Status != "Pending" {
-			//	    fmt.Println("================GetCurNodeReqAddrInfo,this is not pending,nonce =%s===================",ac.Nonce)
-			continue
-		}
+	    los := &ReqAddrReply{Key: key, Account: ac.Account, Cointype: ac.Cointype, GroupId: ac.GroupId, Nonce: ac.Nonce, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp}
+	    ret2, err := json.Marshal(los)
 
-		los := &ReqAddrReply{Key: key, Account: ac.Account, Cointype: ac.Cointype, GroupId: ac.GroupId, Nonce: ac.Nonce, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp}
-		ret2, err := json.Marshal(los)
+	    ret = append(ret, string(ret2))
+	    ////
 
-		ret = append(ret, string(ret2))
-		////
 	}
 
 	///////
@@ -1767,95 +1730,102 @@ type LockOutCurNodeInfo struct {
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
+	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	if exsit == false {
+	    return "","",nil
+	}
+
 	var ret []string
-	_, lmvalue := LdbLockOut.ListMap()
-	lmvalue2 := SortCurNodeInfo(lmvalue)
-	for _, v := range lmvalue2 {
-		if v == nil {
-			continue
-		}
+	keys := strings.Split(string(da),":")
+	for _,key := range keys {
+	    exsit,data := GetValueFromPubKeyData(key)
+	    if exsit == false {
+		continue
+	    }
 
-		vv := v.([]byte)
-		value := string(vv)
-		////
-		ds, err := UnCompress(value)
-		if err != nil {
-			//	    fmt.Println("================GetCurNodeLockOutInfo,uncompress err =%v ===================",err)
-			continue
-		}
+	    value := string(data)
+	    ////
+	    ds, err := UnCompress(value)
+	    if err != nil {
+		    //	    fmt.Println("================GetCurNodeLockOutInfo,uncompress err =%v ===================",err)
+		    continue
+	    }
 
-		dss, err := Decode2(ds, "AcceptLockOutData")
-		if err != nil {
-			//	    fmt.Println("================GetCurNodeLockOutInfo,decode err =%v ===================",err)
-			continue
-		}
+	    dss, err := Decode2(ds, "AcceptReqAddrData")
+	    if err != nil {
+		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err =%v ===================",err)
+		    continue
+	    }
 
-		ac := dss.(*AcceptLockOutData)
-		if ac == nil {
-			//	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
-			continue
-		}
+	    ac := dss.(*AcceptReqAddrData)
+	    if ac == nil {
+		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
+		    continue
+	    }
 
-		if ac.Mode == "1" {
-			//if !strings.EqualFold(ac.Account,geter_acc) {
-			continue
-			//}
-		}
+	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+	    ss, err := UnCompress(string(data2))
+	    if err != nil {
+		continue
+	    }
+	    
+	    pubs, err := Decode2(ss, "PubKeyData")
+	    if err != nil {
+		continue
+	    }
 
-		rk := Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()
-		var da []byte
-		datmp, exsit := LdbPubKeyData.ReadMap(rk)
+	    pd := pubs.(*PubKeyData)
+	    if pd == nil {
+		continue
+	    }
+
+	    if pd.RefLockOutKeys == "" {
+		continue
+	    }
+
+	    lockoutkeys := strings.Split(pd.RefLockOutKeys,":")
+	    for _,lockoutkey := range lockoutkeys {
+		exsit,data3 := GetValueFromPubKeyData(lockoutkey)
 		if exsit == false {
-			da2 := GetPubKeyDataValueFromDb(rk)
-			if da2 == nil {
-				exsit = false
-			} else {
-				exsit = true
-				da = da2
-			}
-		} else {
-			da = []byte(fmt.Sprintf("%v", datmp))
-			exsit = true
+		    continue
 		}
 
-		if exsit == true {
-			ss, err := UnCompress(string(da))
-			if err == nil {
-				pubs, err := Decode2(ss, "PubKeyData")
-				if err == nil {
-					pd := pubs.(*PubKeyData)
-					if pd != nil {
-						///////
-						key := Keccak256Hash([]byte(strings.ToLower(pd.Account + ":" + "ALL" + ":" + pd.GroupId + ":" + pd.Nonce + ":" + pd.LimitNum + ":" + pd.Mode))).Hex()
-						if pd.Mode == "0" && CheckAcc(cur_enode, geter_acc, key) == false {
-							continue
-						}
-						/////
-					} else {
-						continue
-					}
-				}
-			}
-		} else {
+		////
+		ds3, err := UnCompress(string(data3))
+		if err != nil {
 			continue
 		}
 
-		if ac.Deal == true || ac.Status == "Success" {
-			//	    fmt.Println("===============GetCurNodeLockOutInfo,ac.Deal is true,nonce =%s===============",ac.Nonce)
+		dss3, err := Decode2(ds3, "AcceptLockOutData")
+		if err != nil {
 			continue
 		}
 
-		if ac.Status != "Pending" {
-			//	    fmt.Println("===============GetCurNodeLockOutInfo,this is not pending,nonce =%s===============",ac.Nonce)
+		ac3 := dss3.(*AcceptLockOutData)
+		if ac3 == nil {
+			continue
+		}
+		
+		if ac3.Mode == "1" {
+			continue
+		}
+		
+		if ac3.Deal == true || ac3.Status == "Success" {
 			continue
 		}
 
-		key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
+		if ac3.Status != "Pending" {
+			continue
+		}
 
-		los := &LockOutCurNodeInfo{Key: key, Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, DcrmFrom: ac.DcrmFrom, DcrmTo: ac.DcrmTo, Value: ac.Value, Cointype: ac.Cointype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp}
+		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.GroupId + ":" + ac3.Nonce + ":" + ac3.DcrmFrom + ":" + ac3.LimitNum))).Hex()
+
+		los := &LockOutCurNodeInfo{Key: keytmp, Account: ac3.Account, GroupId: ac3.GroupId, Nonce: ac3.Nonce, DcrmFrom: ac3.DcrmFrom, DcrmTo: ac3.DcrmTo, Value: ac3.Value, Cointype: ac3.Cointype, LimitNum: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
 		ret2, err := json.Marshal(los)
 		ret = append(ret, string(ret2))
-		////
+	    }
+	    ////
 	}
 
 	///////
@@ -1866,19 +1836,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce string, threshold string, mode string) (string, bool) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
 	fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,acc =%v,cointype =%v,groupid =%v,nonce =%v,threshold =%v,mode =%v,key =%v !!!!============================\n", common.CurrentTime(), account, cointype, groupid, nonce, threshold, mode, key)
-	var da []byte
-	datmp, exsit := LdbReqAddr.ReadMap(key)
-	if exsit == false {
-		da2 := GetReqAddrValueFromDb(key)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
 		fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,no exsit key =%v !!!!============================\n", common.CurrentTime(), key)
@@ -1913,19 +1871,7 @@ func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce 
 func GetAcceptLockOutRes(account string, groupid string, nonce string, dcrmfrom string, threshold string) (string, bool) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
 	fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,acc =%v,groupid =%v,nonce =%v,dcrmfrom =%v,threshold =%v,key =%v !!!!============================\n", common.CurrentTime(), account, groupid, nonce, dcrmfrom, threshold, key)
-	var da []byte
-	datmp, exsit := LdbLockOut.ReadMap(key)
-	if exsit == false {
-		da2 := GetLockOutValueFromDb(key)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
 		fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,no exsit key =%v !!!!============================\n", common.CurrentTime(), key)
@@ -1959,19 +1905,7 @@ func GetAcceptLockOutRes(account string, groupid string, nonce string, dcrmfrom 
 
 func AcceptReqAddr(account string, cointype string, groupid string, nonce string, threshold string, mode string, deal bool, accept string, status string, pubkey string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-	var da []byte
-	datmp, exsit := LdbReqAddr.ReadMap(key)
-	if exsit == false {
-		da2 := GetReqAddrValueFromDb(key)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
 		fmt.Printf("%v =====================AcceptReqAddr,no exist key, key = %v ======================\n", common.CurrentTime(), key)
@@ -2042,9 +1976,9 @@ func AcceptReqAddr(account string, cointype string, groupid string, nonce string
 	}
 
 	kdtmp := KeyData{Key: []byte(key), Data: es}
-	ReqAddrChan <- kdtmp
+	PubKeyDataChan <- kdtmp
 
-	LdbReqAddr.WriteMap(key, []byte(es))
+	LdbPubKeyData.WriteMap(key, []byte(es))
 	return "", nil
 }
 
@@ -2056,19 +1990,7 @@ func AcceptReqAddr(account string, cointype string, groupid string, nonce string
 //if allreply == "",don't set AllReply
 func AcceptLockOut(account string, groupid string, nonce string, dcrmfrom string, threshold string, deal bool, accept string, status string, outhash string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-	var da []byte
-	datmp, exsit := LdbLockOut.ReadMap(key)
-	if exsit == false {
-		da2 := GetLockOutValueFromDb(key)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
+	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
 		fmt.Printf("%v =====================AcceptLockOut, no exist key = %v =================================\n", common.CurrentTime(), key)
@@ -2139,9 +2061,9 @@ func AcceptLockOut(account string, groupid string, nonce string, dcrmfrom string
 	}
 
 	kdtmp := KeyData{Key: []byte(key), Data: es}
-	LockOutChan <- kdtmp
+	PubKeyDataChan <- kdtmp
 
-	LdbLockOut.WriteMap(key, []byte(es))
+	LdbPubKeyData.WriteMap(key, []byte(es))
 	return "", nil
 }
 
@@ -2229,16 +2151,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				AcceptLockOut(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], false, "false", "Pending", "", "", "", nil, wid)
 			} else {
 				//nonce check
-				_, exsit := LdbLockOut.ReadMap(rr.Nonce)
-				if exsit == false {
-					da2 := GetLockOutValueFromDb(rr.Nonce)
-					if da2 == nil {
-						exsit = false
-					} else {
-						exsit = true
-					}
-				}
-
+				exsit,_ := GetValueFromPubKeyData(rr.Nonce)
 				///////
 				if exsit == true {
 					fmt.Printf("%v ================RecvMsg.Run,lockout nonce error, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
@@ -2268,9 +2181,49 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				err := SaveAcceptLockOutData(ac)
 				fmt.Printf("%v ===================finish call SaveAcceptLockOutData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,dcrm from = %v,dcrm to = %v,value = %v,cointype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, msgs[0], msgs[5], msgs[6], msgs[1], msgs[2], msgs[3], msgs[4], msgs[7], msgs[8], rr.Nonce)
 				if err != nil {
-					//TODO
+					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set AcceptLockOutData fail in RecvMsg.Run", Err: fmt.Errorf("set AcceptLockOutData fail in recvmsg.run")}
+					ch <- res2
+					return false
 				}
-				//}
+				////
+				dcrmkey := Keccak256Hash([]byte(strings.ToLower(msgs[1]))).Hex()
+				exsit,da := GetValueFromPubKeyData(dcrmkey)
+				if exsit {
+				    ss, err := UnCompress(string(da))
+				    if err == nil {
+					pubs, err := Decode2(ss, "PubKeyData")
+					if err == nil {
+					    dcrmpub := (pubs.(*PubKeyData)).Pub
+					    exsit,da2 := GetValueFromPubKeyData(dcrmpub)
+					    if exsit {
+						ss2, err := UnCompress(string(da2))
+						if err == nil {
+						    pubs2, err := Decode2(ss2, "PubKeyData")
+						    if err == nil {
+							keys := (pubs2.(*PubKeyData)).RefLockOutKeys
+							if keys == "" {
+							    keys = rr.Nonce
+							} else {
+							    keys = keys + ":" + rr.Nonce
+							}
+
+							pubs3 := &PubKeyData{Key:(pubs2.(*PubKeyData)).Key,Account: (pubs2.(*PubKeyData)).Account, Pub: (pubs2.(*PubKeyData)).Pub, Save: (pubs2.(*PubKeyData)).Save, Nonce: (pubs2.(*PubKeyData)).Nonce, GroupId: (pubs2.(*PubKeyData)).GroupId, LimitNum: (pubs2.(*PubKeyData)).LimitNum, Mode: (pubs2.(*PubKeyData)).Mode,RefLockOutKeys:keys}
+							epubs, err := Encode2(pubs3)
+							if err == nil {
+							    ss3, err := Compress([]byte(epubs))
+							    if err == nil {
+								kd := KeyData{Key: []byte(dcrmpub), Data: ss3}
+								PubKeyDataChan <- kd
+								LdbPubKeyData.WriteMap(dcrmpub, []byte(ss3))
+								fmt.Printf("%v ==============================RecvMsg.Run,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(),rr.Nonce)
+							    }
+							}
+						    }
+						}
+					    }
+					}
+				    }
+				}
 				////
 			}
 
@@ -2508,16 +2461,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				AcceptReqAddr(msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], false, "false", "Pending", "", "", "", nil, wid)
 			} else {
 				//nonce check
-				_, exsit := LdbReqAddr.ReadMap(rr.Nonce)
-				if exsit == false {
-					da2 := GetReqAddrValueFromDb(rr.Nonce)
-					if da2 == nil {
-						exsit = false
-					} else {
-						exsit = true
-					}
-				}
-
+				exsit,_ := GetValueFromPubKeyData(rr.Nonce)
 				if exsit == true {
 					fmt.Printf("%v =======================RecvMsg.Run,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v =========================\n", common.CurrentTime(), msgs[0], msgs[2], msgs[4], msgs[5], msgs[3], rr.Nonce)
 					//TODO must set acceptreqaddr(.....)
@@ -2547,6 +2491,32 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, wid = %v,account = %v,cointype = %v,group id = %v,nonce = %v, threshold = %v,mode = %v,err = %v,key = %v,msg hash = %v, ========================\n", common.CurrentTime(), wid, msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], err, rr.Nonce, test)
 				if err != nil {
 					////TODO
+				}
+
+				if msgs[5] == "1" {
+				    exsit,da := GetValueFromPubKeyData(strings.ToLower(msgs[0]))
+				    if exsit == false {
+					kdtmp := KeyData{Key: []byte(strings.ToLower(msgs[0])), Data: rr.Nonce}
+					PubKeyDataChan <- kdtmp
+					LdbPubKeyData.WriteMap(strings.ToLower(msgs[0]), []byte(rr.Nonce))
+				    } else {
+					//
+					found := false
+					keys := strings.Split(string(da),":")
+					for _,v := range keys {
+					    if strings.EqualFold(v,rr.Nonce) {
+						found = true
+						break
+					    }
+					}
+					//
+					if !found {
+					    da2 := string(da) + ":" + rr.Nonce
+					    kdtmp := KeyData{Key: []byte(strings.ToLower(msgs[0])), Data: da2}
+					    PubKeyDataChan <- kdtmp
+					    LdbPubKeyData.WriteMap(strings.ToLower(msgs[0]), []byte(da2))
+					}
+				    }
 				}
 				//}
 				////
@@ -2649,7 +2619,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 
 			///////////////////////
-			if msgs[5] == "0" {
+			/*if msgs[5] == "0" {
 				timeout2 := make(chan bool, 1)
 				go func(rk string) {
 					for {
@@ -2673,7 +2643,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					ch <- res2
 					return false
 				}
-			}
+			}*/
 			///////////////////////
 
 			fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
@@ -2714,6 +2684,7 @@ type SendMsg struct {
 }
 
 type PubKeyData struct {
+        Key string
 	Account  string
 	Pub      string
 	Save     string
@@ -2721,6 +2692,7 @@ type PubKeyData struct {
 	GroupId  string
 	LimitNum string
 	Mode     string
+	RefLockOutKeys string //key1:key2...
 }
 
 func Encode2(obj interface{}) (string, error) {
@@ -3262,7 +3234,6 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
 	}
 
 	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
-	//    fmt.Println("================SaveAcceptReqAddrData,acc =%s,cointype =%s,groupid =%s,nonce =%s,threshold =%s,mode =%s ===================",ac.Account,ac.Cointype,ac.GroupId,ac.Nonce,ac.LimitNum,ac.Mode)
 
 	alos, err := Encode2(ac)
 	if err != nil {
@@ -3274,12 +3245,10 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
 		return err
 	}
 
-	//  fmt.Println("==============SaveAcceptReqAddrData,success write into map,key =%s=================",key)
 	kdtmp := KeyData{Key: []byte(key), Data: ss}
-	ReqAddrChan <- kdtmp
+	PubKeyDataChan <- kdtmp
 
-	//LdbReqAddr[key] = []byte(ss)
-	LdbReqAddr.WriteMap(key, []byte(ss))
+	LdbPubKeyData.WriteMap(key, []byte(ss))
 	return nil
 }
 
@@ -3325,9 +3294,9 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 	}
 
 	kdtmp := KeyData{Key: []byte(key), Data: ss}
-	LockOutChan <- kdtmp
+	PubKeyDataChan <- kdtmp
 
-	LdbLockOut.WriteMap(key, []byte(ss))
+	LdbPubKeyData.WriteMap(key, []byte(ss))
 	return nil
 }
 
@@ -3555,10 +3524,35 @@ func DisMsg(msg string) {
 	/////////////////
 	if mm[1] == "GroupAccounts" {
 		key := prexs[0]
-		kd := KeyData{Key: []byte(key), Data: msg}
-		GAccsDataChan <- kd
-		GAccs.WriteMap(key, msg)
-		fmt.Printf("%v ===============DisMsg,get group accounts,msg = %v,msg hash = %v,key = %v=================\n", common.CurrentTime(), msg, test, key)
+		fmt.Printf("%v ===============DisMsg,get group accounts data,msg = %v,msg hash = %v,key = %v=================\n", common.CurrentTime(), msg, test, key)
+		nodecnt,_ := strconv.Atoi(mm[2])
+		for j:= 1;j <= nodecnt; j++ {
+		    acc := mm[2+2*j]
+		    exsit,da := GetValueFromPubKeyData(strings.ToLower(acc))
+		    if exsit == false {
+			kdtmp := KeyData{Key: []byte(strings.ToLower(acc)), Data: key}
+			PubKeyDataChan <- kdtmp
+			LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(key))
+		    } else {
+			//
+			found := false
+			keys := strings.Split(string(da),":")
+			for _,v := range keys {
+			    if strings.EqualFold(v,key) {
+				found = true
+				break
+			    }
+			}
+			//
+			if !found {
+			    da2 := string(da) + ":" + key
+			    kdtmp := KeyData{Key: []byte(strings.ToLower(acc)), Data: da2}
+			    PubKeyDataChan <- kdtmp
+			    LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(da2))
+			}
+		    }
+		}
+
 		return
 	}
 	/////////////////
@@ -3618,21 +3612,7 @@ func DisMsg(msg string) {
 			fmt.Printf("%v ===============DisMsg, Get All AcceptReqAddrRes, w.msg_acceptreqaddrres.Len() = %v, w.NodeCnt = %v, msg = %v, msg hash = %v, key = %v=================\n", common.CurrentTime(), w.msg_acceptreqaddrres.Len(), w.NodeCnt, msg, test, prexs[0])
 			w.bacceptreqaddrres <- true
 			///////
-			var da []byte
-			datmp, exsit := LdbReqAddr.ReadMap(prexs[0])
-			if exsit == false {
-				da2 := GetReqAddrValueFromDb(prexs[0])
-				if da2 == nil {
-					exsit = false
-				} else {
-					exsit = true
-					da = da2
-				}
-			} else {
-				da = datmp.([]byte)
-				//da = []byte(fmt.Sprintf("%v",datmp))
-			}
-
+			exsit,da := GetValueFromPubKeyData(prexs[0])
 			if exsit == false {
 				fmt.Printf("%v ==================DisMsg,no exist reqaddr data, worker id = %v,key = %v =======================\n", common.CurrentTime(), w.id, prexs[0])
 				return
@@ -3675,21 +3655,7 @@ func DisMsg(msg string) {
 			common.Info("===================Get All AcceptLockOutRes ", "msg hash = ", test, "", "====================")
 			w.bacceptlockoutres <- true
 			/////
-			var da []byte
-			datmp, exsit := LdbLockOut.ReadMap(prexs[0])
-			if exsit == false {
-				da2 := GetLockOutValueFromDb(prexs[0])
-				if da2 == nil {
-					exsit = false
-				} else {
-					exsit = true
-					da = da2
-				}
-			} else {
-				da = datmp.([]byte)
-				//da = []byte(fmt.Sprintf("%v",datmp))
-			}
-
+			exsit,da := GetValueFromPubKeyData(prexs[0])
 			if exsit == false {
 				return
 			}
@@ -4272,7 +4238,7 @@ type AccountsList struct {
 }
 
 //////tmp code
-func CheckAcc(eid string, geter_acc string, rk string) bool {
+/*func CheckAcc(eid string, geter_acc string, rk string) bool {
 
 	//fmt.Println("================!!!CheckAcc!!!====================")
 	if eid == "" || geter_acc == "" || rk == "" {
@@ -4315,7 +4281,7 @@ func CheckAcc(eid string, geter_acc string, rk string) bool {
 	//fmt.Println("=============CheckAcc,return false,eid =%s,geter acc =%s,key=%s====================",eid,geter_acc,rk)
 	return false
 }
-
+*/
 /////////////
 
 type PubKeyInfo struct {
@@ -4324,64 +4290,114 @@ type PubKeyInfo struct {
     TimeStamp string
 }
 
+func GetValueFromPubKeyData(key string) (bool,[]byte) {
+    if key == "" {
+	return false,nil
+    }
+
+    var data []byte
+    datmp, exsit := LdbPubKeyData.ReadMap(key)
+    if exsit == false {
+	    da := GetPubKeyDataValueFromDb(key)
+	    if da == nil {
+		    exsit = false
+	    } else {
+		    exsit = true
+		    data = da
+		    //fmt.Printf("%v==============GetValueFromPubKeyData,get data from db = %v================\n",common.CurrentTime(),string(data))
+	    }
+    } else {
+	    //data = []byte(fmt.Sprintf("%v", datmp))
+	    data = datmp.([]byte)
+	    //fmt.Printf("%v==============GetValueFromPubKeyData,get data from memory = %v================\n",common.CurrentTime(),string(data))
+	    exsit = true
+    }
+
+    return exsit,data
+}
+
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
-	if AllAccounts.MapLength() != 0 {
-		gp := make(map[string][]PubKeyInfo)
-		_, lmvalue := AllAccounts.ListMap()
-		for _, v := range lmvalue {
-			if v == nil {
-				continue
-			}
-
-			vv := v.(*PubKeyData)
-
-			if vv.Pub == "" || vv.GroupId == "" || vv.Mode == "" {
-				continue
-			}
-
-			//fmt.Printf("%v===========GetAccounts, vv = %v=========\n",common.CurrentTime(),vv)
-			///////
-			if vv.Mode == "1" {
-				if !strings.EqualFold(vv.Account, geter_acc) {
-					continue
-				}
-			} else {
-				rk := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + "ALL" + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
-				if CheckAcc(cur_enode, geter_acc, rk) == false {
-					continue
-				}
-			}
-			/////
-
-			pb := vv.Pub
-			pubkeyhex := hex.EncodeToString([]byte(pb))
-			gid := vv.GroupId
-			md := vv.Mode
-			limit := vv.LimitNum
-			if mode == md {
-				al, exsit := gp[gid]
-				if exsit == true {
-					tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
-					al = append(al, tmp)
-					gp[gid] = al
-				} else {
-					a := make([]PubKeyInfo, 0)
-					tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
-					a = append(a, tmp)
-					gp[gid] = a
-				}
-			}
-		}
-
-		als := make([]AccountsList, 0)
-		for k, v := range gp {
-			alNew := AccountsList{GroupID: k, Accounts: v}
-			als = append(als, alNew)
-		}
-
-		pa := &PubAccounts{Group: als}
-		return pa, "", nil
+    exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	if exsit == false {
+	    fmt.Printf("%v================GetAccounts, no exist, geter_acc = %v,=================\n",common.CurrentTime(),geter_acc)
+	    return nil,"",fmt.Errorf("get value from pubkeydata fail.")
 	}
 
-	return nil, "no accounts", nil
+	gp := make(map[string][]PubKeyInfo)
+	keys := strings.Split(string(da),":")
+	for _,key := range keys {
+	    exsit,data := GetValueFromPubKeyData(key)
+	    if exsit == false {
+		continue
+	    }
+
+	    value := string(data)
+	    ds, err := UnCompress(value)
+	    if err != nil {
+		    continue
+	    }
+
+	    dss, err := Decode2(ds, "AcceptReqAddrData")
+	    if err != nil {
+		    continue
+	    }
+
+	    ac := dss.(*AcceptReqAddrData)
+	    if ac == nil {
+		    continue
+	    }
+
+	    if ac.Mode == "1" {
+		    if !strings.EqualFold(ac.Account,geter_acc) {
+			fmt.Printf("%v================GetAccounts, ac.Account = %v,geter_acc = %v,key = %v,=================\n",common.CurrentTime(),ac.Account,geter_acc,key)
+			continue
+		    }
+	    }
+
+	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+	    ss, err := UnCompress(string(data2))
+	    if err != nil {
+		continue
+	    }
+	    
+	    pubs, err := Decode2(ss, "PubKeyData")
+	    if err != nil {
+		continue
+	    }
+
+	    pd := pubs.(*PubKeyData)
+	    if pd == nil {
+		continue
+	    }
+
+	    pb := pd.Pub
+	    pubkeyhex := hex.EncodeToString([]byte(pb))
+	    gid := pd.GroupId
+	    md := pd.Mode
+	    limit := pd.LimitNum
+	    if mode == md {
+		    al, exsit := gp[gid]
+		    if exsit {
+			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
+			    al = append(al, tmp)
+			    gp[gid] = al
+		    } else {
+			    a := make([]PubKeyInfo, 0)
+			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
+			    a = append(a, tmp)
+			    gp[gid] = a
+		    }
+	    }
+	}
+
+	als := make([]AccountsList, 0)
+	for k, v := range gp {
+		alNew := AccountsList{GroupID: k, Accounts: v}
+		als = append(als, alNew)
+	}
+
+	pa := &PubAccounts{Group: als}
+	return pa, "", nil
 }
+

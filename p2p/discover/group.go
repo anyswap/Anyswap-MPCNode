@@ -68,8 +68,8 @@ var (
 	Sequence                                  = uint64(1)
 	SelfID                                    = ""
 	SelfNodeID NodeID
-	groupSuffix                               = "p2p-"
-	groupDir                                  = ""
+	p2pSuffix                               = "p2p"
+	p2pDir                                  = ""
 	nodeOnline       map[NodeID]*OnLineStatus = make(map[NodeID]*OnLineStatus)
 
 	updateGroupsNode bool = false// update node dynamically
@@ -181,7 +181,7 @@ type (
 )
 
 func init() {
-	groupDir = DefaultDataDir()
+	p2pDir = DefaultDataDir()
 }
 
 func (req *findgroup) name() string { return "FINDGROUP/v4" }
@@ -1497,11 +1497,11 @@ func RecoverGroupSDKList() error { //nooo
 }
 
 func getGroupDir() string {
-	dir := groupDir
+	dir := p2pDir
 	if setgroup != 0 {
-		dir = filepath.Join(dir, groupSuffix+"bootnode-"+SelfID)
+		dir = filepath.Join(dir, p2pSuffix, "bootnode-"+SelfID)
 	} else {
-		dir = filepath.Join(dir, groupSuffix+SelfID)
+		dir = filepath.Join(dir, p2pSuffix, SelfID)
 	}
 	fmt.Printf("==== getGroupDir() ====, dir: %v\n", dir)
 	return dir
@@ -1511,7 +1511,7 @@ func getGroupSDKListDir() string {
 	if setgroup == 0 {
 		return ""
 	}
-	dir := filepath.Join(groupDir, groupSuffix+"SDKList-"+SelfID)
+	dir := filepath.Join(p2pDir, p2pSuffix, "SDKList-"+SelfID)
 	fmt.Printf("==== getGroupSDKListDir() ====, dir: %v\n", dir)
 	return dir
 }

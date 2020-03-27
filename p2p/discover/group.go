@@ -1096,12 +1096,14 @@ func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) e
 	if expired(req.Expiration) {
 		return errExpired
 	}
-	nodes := make([]*Node, 0, bucketSize)
+	nodes := make([]*Node, 0)
 	for _, rn := range req.Nodes {
+		fmt.Printf("%v ==== (req *Group) handle() ====, Node: %v\n", common.CurrentTime(), rn)
 		n, err := t.nodeFromRPC(from, rpcNode(rn))
 		if err != nil {
 			continue
 		}
+		fmt.Printf("%v ==== (req *Group) handle() ====, append Node: %v\n", common.CurrentTime(), rn)
 		nodes = append(nodes, n)
 	}
 
@@ -1631,8 +1633,9 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error { //nooo
 		for _, node := range gm.Nodes {
 			groupTmp.Nodes = append(groupTmp.Nodes, node)
 		}
+		fmt.Printf("==== getGroupFromDb() ====, nodes: %v\n", groupTmp.Nodes)
+		fmt.Printf("==== getGroupFromDb() ====, SdkGroup: %v\n", SdkGroup[gm.ID])
 	}
-	fmt.Printf("==== getGroupFromDb() ====, SdkGroup: %v\n", SdkGroup)
 	db.Close()
 	return nil
 }

@@ -123,7 +123,7 @@ func getGroupByID(gID string) string {
 	tip := ""
 	addGroupChanged := false
 	for id, g := range layer2.SdkGroup {
-		fmt.Printf("g: %v\n", id, g)
+		fmt.Printf("==== getGroupByID() ====, range g: %v\n", g)
 		enodes := make([]string, 0)
 		if id == gid {
 			for _, en := range g.Nodes {
@@ -133,6 +133,7 @@ func getGroupByID(gID string) string {
 				addGroupChanged = true
 			}
 			ret := &GroupInfo{Gid: gID, Mode: g.Mode, Count: len(g.Nodes), Enodes: enodes}
+			fmt.Printf("==== getGroupByID() ====, gid: %v, ret: %v\n", gid, ret)
 			return packageResult(stat, tip, tip, ret)
 		}
 	}

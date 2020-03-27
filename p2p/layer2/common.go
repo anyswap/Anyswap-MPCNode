@@ -333,8 +333,7 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 		if SdkGroup[gid] != nil {
 			//TODO: check IP,UDP
 			_, groupTmp := getGroupSDK(gid)
-			update := true
-			existID := false
+			idcount := 0
 			for _, enode := range req.([]*discover.Node) {
 				node, _ := discover.ParseNode(enode.String())
 				if selfid == node.ID {
@@ -344,23 +343,24 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 						return
 					}
 				}
+				existID := false
 				for _, n := range groupTmp.Nodes {
 					if node.ID == n.ID {
 						existID = true
 						ipp1 := fmt.Sprintf("%v:%v", node.IP, node.UDP)
 						ipp2 := fmt.Sprintf("%v:%v", n.IP, n.UDP)
 						if ipp1 == ipp2 {
-							update = false
+							idcount += 1
 							break
 						}
 						break
 					}
 				}
-				if existID == true {
+				if existID != true {
 					break
 				}
 			}
-			if update != true {
+			if idcount == len(req.([]*discover.Node)) {
 				fmt.Printf("==== recvGroupInfo() ====, gid: %v exist\n", gid)
 				return
 			}

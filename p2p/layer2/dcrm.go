@@ -354,13 +354,13 @@ func GetEnodeStatus(enode string) (string, error) {
 func CheckAddPeer(mode string, enodes []string) error {
 	es := strings.Split(mode, "/")
 	if len(es) != 2 {
-		msg := fmt.Sprintf("args mode format is wrong")
+		msg := fmt.Sprintf("args mode(%v) format is wrong", mode)
 		return errors.New(msg)
 	}
 	nodeNum0, _ := strconv.Atoi(es[0])
 	nodeNum1, _ := strconv.Atoi(es[1])
 	if len(enodes) < nodeNum0 || len(enodes) > nodeNum1 {
-		msg := fmt.Sprintf("args mode and enodes not match")
+		msg := fmt.Sprintf("args mode(%v) and enodes(%v) not match", mode, enodes)
 		return errors.New(msg)
 	}
 	var nodeid map[discover.NodeID]int = make(map[discover.NodeID]int, len(enodes))

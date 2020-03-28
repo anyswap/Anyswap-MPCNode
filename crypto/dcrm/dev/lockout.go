@@ -56,7 +56,7 @@ func GetLockOutNonce(account string, cointype string, dcrmaddr string) (string, 
 		return "0", "", nil
 	}
 
-	nonce, _ := new(big.Int).SetString(string(da), 10)
+	nonce, _ := new(big.Int).SetString(string(da.([]byte)), 10)
 	//  fmt.Println("=========GetLockOutNonce,get old nonce =%s,key =%s ============",nonce,key2)
 	one, _ := new(big.Int).SetString("1", 10)
 	nonce = new(big.Int).Add(nonce, one)
@@ -92,22 +92,15 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 		return
 	}
 
-	ss, err := UnCompress(string(da))
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:uncompress lockout data from db fail", Err: err}
+	_,ok := da.(*PubKeyData)
+	if ok == false {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get lockout data from db fail", Err: fmt.Errorf("get lockout data from db fail")}
 		ch <- res
 		return
 	}
 
-	pubs, err := Decode2(ss, "PubKeyData")
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:decode lockout data from db fail", Err: err}
-		ch <- res
-		return
-	}
-
-	save := (pubs.(*PubKeyData)).Save
-	dcrmpub := (pubs.(*PubKeyData)).Pub
+	save := (da.(*PubKeyData)).Save
+	dcrmpub := (da.(*PubKeyData)).Pub
 
 	var dcrmpkx *big.Int
 	var dcrmpky *big.Int
@@ -289,7 +282,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		key := string([]byte("eossettings"))
 		exsit,da := GetValueFromPubKeyData(key)
 		if exsit == true {
-			eosstr = string(da)
+			eosstr = string(da.([]byte))
 		}
 		///////
 		if eosstr == "" {

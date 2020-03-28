@@ -204,20 +204,20 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), []byte(ss))
+			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
 			////
 
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(key, []byte(ss))
+			LdbPubKeyData.WriteMap(key, pubs)
 			////
 		} else {
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), []byte(ss))
+			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
 			////
 
 			for _, ct := range coins.Cointypes {
@@ -238,7 +238,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				kd = KeyData{Key: []byte(key), Data: ss}
 				PubKeyDataChan <- kd
 				/////
-				LdbPubKeyData.WriteMap(key, []byte(ss))
+				LdbPubKeyData.WriteMap(key, pubs)
 				////
 			}
 		}
@@ -330,20 +330,20 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(string(ys), []byte(ss))
+		LdbPubKeyData.WriteMap(string(ys), pubs)
 		////
 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		kd = KeyData{Key: []byte(key), Data: ss}
 		PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(key, []byte(ss))
+		LdbPubKeyData.WriteMap(key, pubs)
 		////
 	} else {
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(string(ys), []byte(ss))
+		LdbPubKeyData.WriteMap(string(ys), pubs)
 		////
 
 		for _, ct := range coins.Cointypes {
@@ -364,7 +364,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(key, []byte(ss))
+			LdbPubKeyData.WriteMap(key, pubs)
 			////
 		}
 	}
@@ -431,7 +431,85 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 		for iter.Next() {
 			key := string(iter.Key())
 			value := string(iter.Value())
+
+			ss, err := UnCompress(value)
+			if err == nil {
+			    pubs3, err := Decode2(ss, "PubKeyData")
+			    if err == nil {
+				pd,ok := pubs3.(*PubKeyData)
+				if ok == true {
+				    kd.WriteMap(key, pd)
+				    fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read PubKeyData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+				    continue
+				}
+			    }
+			    
+			    pubs, err := Decode2(ss, "AcceptReqAddrData")
+			    if err == nil {
+				pd,ok := pubs.(*AcceptReqAddrData)
+				if ok == true {
+				    kd.WriteMap(key, pd)
+				    fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+				    continue
+				}
+			    }
+			    
+			    pubs2, err := Decode2(ss, "AcceptLockOutData")
+			    if err == nil {
+				pd,ok := pubs2.(*AcceptLockOutData)
+				if ok == true {
+				    kd.WriteMap(key, pd)
+				    fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+				    continue
+				}
+			    }
+			    
+			}
+
 			kd.WriteMap(key, []byte(value))
+			/*switch value.(type) {
+			case *AcceptReqAddrData:
+			    ss, err := UnCompress(value)
+			    if err != nil {
+				    continue
+			    }
+
+			    pubs, err := Decode2(ss, "AcceptReqAddrData")
+			    if err != nil {
+				    continue
+			    }
+
+			    pd := pubs.(*AcceptReqAddrData)
+			    kd.WriteMap(key, pd)
+			case *AcceptLockOutData:
+			    ss, err := UnCompress(value)
+			    if err != nil {
+				    continue
+			    }
+
+			    pubs, err := Decode2(ss, "AcceptLockOutData")
+			    if err != nil {
+				    continue
+			    }
+
+			    pd := pubs.(*AcceptLockOutData)
+			    kd.WriteMap(key, pd)
+			case *PubKeyData:
+			    ss, err := UnCompress(value)
+			    if err != nil {
+				    continue
+			    }
+
+			    pubs, err := Decode2(ss, "PubKeyData")
+			    if err != nil {
+				    continue
+			    }
+
+			    pd := pubs.(*PubKeyData)
+			    kd.WriteMap(key, pd)
+			case []byte:
+			    kd.WriteMap(key, []byte(value))
+			}*/
 		}
 		iter.Release()
 		db.Close()

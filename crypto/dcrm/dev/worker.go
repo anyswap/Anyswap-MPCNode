@@ -1560,19 +1560,15 @@ func GetReqAddrStatus(key string) (string, string, error) {
 		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	ds, err := UnCompress(string(da))
-	if err != nil {
-		fmt.Printf("%v =====================GetReqAddrStatus,uncompress fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
-		return "", "dcrm back-end internal error:uncompress accept data fail", err
+	if da == nil {
+		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	dss, err := Decode2(ds, "AcceptReqAddrData")
-	if err != nil {
-		fmt.Printf("%v =====================GetReqAddrStatus,decode fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
-		return "", "dcrm back-end internal error:decode accept data fail", err
+	ac,ok := da.(*AcceptReqAddrData)
+	if ok == false {
+		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	ac := dss.(*AcceptReqAddrData)
 	los := &ReqAddrStatus{Status: ac.Status, PubKey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
 	ret, err := json.Marshal(los)
 	fmt.Printf("%v =====================GetReqAddrStatus,status = %v,ret = %v,err = %v,key = %v ======================\n", common.CurrentTime(),ac.Status,ret,err, key)
@@ -1595,20 +1591,17 @@ func GetLockOutStatus(key string) (string, string, error) {
 		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	ds, err := UnCompress(string(da))
-	if err != nil {
-		return "", "dcrm back-end internal error:uncompress accept data fail", err
+	if da == nil {
+		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	dss, err := Decode2(ds, "AcceptLockOutData")
-	if err != nil {
-		return "", "dcrm back-end internal error:decode accept data fail", err
+	ac,ok := da.(*AcceptLockOutData)
+	if ok == false {
+		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
-
-	ac := dss.(*AcceptLockOutData)
 	los := &LockOutStatus{Status: ac.Status, OutTxHash: ac.OutTxHash, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
 	ret,_ := json.Marshal(los)
-	return string(ret), "", err
+	return string(ret), "",nil 
 }
 
 type EnAcc struct {
@@ -1664,28 +1657,24 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string, string, error) {
 	    return "","",nil
 	}
 
-	fmt.Printf("%v=================GetCurNodeReqAddrInfo,da = %v,geter_acc = %v ====================\n",common.CurrentTime(),string(da),geter_acc)
+	fmt.Printf("%v=================GetCurNodeReqAddrInfo,da = %v,geter_acc = %v ====================\n",common.CurrentTime(),string(da.([]byte)),geter_acc)
 	var ret []string
-	keys := strings.Split(string(da),":")
+	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
 	    exsit,data := GetValueFromPubKeyData(key)
 	    if exsit == false {
 		continue
 	    }
 
-	    value := string(data)
-	    ////
-	    ds, err := UnCompress(value)
-	    if err != nil {
-		    continue
+	    if data == nil {
+		continue
 	    }
 
-	    dss, err := Decode2(ds, "AcceptReqAddrData")
-	    if err != nil {
-		    continue
+	    ac,ok := data.(*AcceptReqAddrData)
+	    if ok == false {
+		continue
 	    }
 
-	    ac := dss.(*AcceptReqAddrData)
 	    if ac == nil {
 		    continue
 	    }
@@ -1703,7 +1692,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string, string, error) {
 	    }
 
 	    los := &ReqAddrReply{Key: key, Account: ac.Account, Cointype: ac.Cointype, GroupId: ac.GroupId, Nonce: ac.Nonce, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp}
-	    ret2, err := json.Marshal(los)
+	    ret2, _ := json.Marshal(los)
 
 	    ret = append(ret, string(ret2))
 	    ////
@@ -1736,28 +1725,22 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 	}
 
 	var ret []string
-	keys := strings.Split(string(da),":")
+	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
 	    exsit,data := GetValueFromPubKeyData(key)
 	    if exsit == false {
 		continue
 	    }
 
-	    value := string(data)
-	    ////
-	    ds, err := UnCompress(value)
-	    if err != nil {
-		    //	    fmt.Println("================GetCurNodeLockOutInfo,uncompress err =%v ===================",err)
-		    continue
+	    if data == nil {
+		continue
 	    }
 
-	    dss, err := Decode2(ds, "AcceptReqAddrData")
-	    if err != nil {
-		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err =%v ===================",err)
-		    continue
+	    ac,ok := data.(*AcceptReqAddrData)
+	    if ok == false {
+		continue
 	    }
 
-	    ac := dss.(*AcceptReqAddrData)
 	    if ac == nil {
 		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
 		    continue
@@ -1765,17 +1748,15 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
 	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-	    ss, err := UnCompress(string(data2))
-	    if err != nil {
-		continue
-	    }
-	    
-	    pubs, err := Decode2(ss, "PubKeyData")
-	    if err != nil {
+	    if exsit == false || data2 == nil {
 		continue
 	    }
 
-	    pd := pubs.(*PubKeyData)
+	    pd,ok := data2.(*PubKeyData)
+	    if ok == false {
+		continue
+	    }
+
 	    if pd == nil {
 		continue
 	    }
@@ -1792,17 +1773,11 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 		}
 
 		////
-		ds3, err := UnCompress(string(data3))
-		if err != nil {
-			continue
+		ac3,ok := data3.(*AcceptLockOutData)
+		if ok == false {
+		    continue
 		}
 
-		dss3, err := Decode2(ds3, "AcceptLockOutData")
-		if err != nil {
-			continue
-		}
-
-		ac3 := dss3.(*AcceptLockOutData)
 		if ac3 == nil {
 			continue
 		}
@@ -1822,7 +1797,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.GroupId + ":" + ac3.Nonce + ":" + ac3.DcrmFrom + ":" + ac3.LimitNum))).Hex()
 
 		los := &LockOutCurNodeInfo{Key: keytmp, Account: ac3.Account, GroupId: ac3.GroupId, Nonce: ac3.Nonce, DcrmFrom: ac3.DcrmFrom, DcrmTo: ac3.DcrmTo, Value: ac3.Value, Cointype: ac3.Cointype, LimitNum: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
-		ret2, err := json.Marshal(los)
+		ret2, _ := json.Marshal(los)
 		ret = append(ret, string(ret2))
 	    }
 	    ////
@@ -1843,19 +1818,11 @@ func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce 
 		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
-	ds, err := UnCompress(string(da))
-	if err != nil {
-		fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,uncompress fail,err = %v,key =%v !!!!============================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:uncompress accept result fail", false
+	ac,ok := da.(*AcceptReqAddrData)
+	if ok == false {
+		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
-	dss, err := Decode2(ds, "AcceptReqAddrData")
-	if err != nil {
-		fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,decode fail,err = %v,key =%v !!!!============================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:decode accept result fail", false
-	}
-
-	ac := dss.(*AcceptReqAddrData)
 	fmt.Printf("%v ===================!!!! GetAcceptReqAddrRes,ac.Accept =%v,key =%v !!!!============================\n", common.CurrentTime(),ac.Accept, key)
 
 	var rp bool
@@ -1878,19 +1845,11 @@ func GetAcceptLockOutRes(account string, groupid string, nonce string, dcrmfrom 
 		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
-	ds, err := UnCompress(string(da))
-	if err != nil {
-		fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,uncompress data fail, err = %v ,key =%v !!!!============================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:uncompress accept result fail", false
+	ac,ok := da.(*AcceptLockOutData)
+	if ok == false {
+		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
-	dss, err := Decode2(ds, "AcceptLockOutData")
-	if err != nil {
-		fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,decode data fail, err = %v ,key =%v !!!!============================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:decode accept result fail", false
-	}
-
-	ac := dss.(*AcceptLockOutData)
 	fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,ac.Accept =%v, key =%v !!!!============================\n", common.CurrentTime(), ac.Accept, key)
 
 	var rp bool
@@ -1912,19 +1871,10 @@ func AcceptReqAddr(account string, cointype string, groupid string, nonce string
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	ds, err := UnCompress(string(da))
-	if err != nil {
-		fmt.Printf("%v =====================AcceptReqAddr,uncompress fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:uncompress accept data fail", err
+	ac,ok := da.(*AcceptReqAddrData)
+	if ok == false {
+		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
-
-	dss, err := Decode2(ds, "AcceptReqAddrData")
-	if err != nil {
-		fmt.Printf("%v =====================AcceptReqAddr,decode fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:decode accept data fail", err
-	}
-
-	ac := dss.(*AcceptReqAddrData)
 
 	acp := ac.Accept
 	if accept != "" {
@@ -1978,7 +1928,7 @@ func AcceptReqAddr(account string, cointype string, groupid string, nonce string
 	kdtmp := KeyData{Key: []byte(key), Data: es}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, []byte(es))
+	LdbPubKeyData.WriteMap(key, ac2)
 	return "", nil
 }
 
@@ -1997,19 +1947,11 @@ func AcceptLockOut(account string, groupid string, nonce string, dcrmfrom string
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	ds, err := UnCompress(string(da))
-	if err != nil {
-		fmt.Printf("%v =====================AcceptLockOut, uncompress fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:uncompress accept data fail", err
-	}
+	ac,ok := da.(*AcceptLockOutData)
 
-	dss, err := Decode2(ds, "AcceptLockOutData")
-	if err != nil {
-		fmt.Printf("%v =====================AcceptLockOut, decode fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
-		return "dcrm back-end internal error:decode accept data fail", err
+	if ok == false {
+		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
-
-	ac := dss.(*AcceptLockOutData)
 
 	acp := ac.Accept
 	if accept != "" {
@@ -2063,7 +2005,7 @@ func AcceptLockOut(account string, groupid string, nonce string, dcrmfrom string
 	kdtmp := KeyData{Key: []byte(key), Data: es}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, []byte(es))
+	LdbPubKeyData.WriteMap(key, ac2)
 	return "", nil
 }
 
@@ -2189,42 +2131,35 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				dcrmkey := Keccak256Hash([]byte(strings.ToLower(msgs[1]))).Hex()
 				exsit,da := GetValueFromPubKeyData(dcrmkey)
 				if exsit {
-				    ss, err := UnCompress(string(da))
-				    if err == nil {
-					pubs, err := Decode2(ss, "PubKeyData")
-					if err == nil {
-					    dcrmpub := (pubs.(*PubKeyData)).Pub
-					    exsit,da2 := GetValueFromPubKeyData(dcrmpub)
-					    if exsit {
-						ss2, err := UnCompress(string(da2))
-						if err == nil {
-						    pubs2, err := Decode2(ss2, "PubKeyData")
-						    if err == nil {
-							keys := (pubs2.(*PubKeyData)).RefLockOutKeys
-							if keys == "" {
-							    keys = rr.Nonce
-							} else {
-							    keys = keys + ":" + rr.Nonce
-							}
+				    _,ok := da.(*PubKeyData)
+				    if ok == true {
+					dcrmpub := (da.(*PubKeyData)).Pub
+					exsit,da2 := GetValueFromPubKeyData(dcrmpub)
+					if exsit {
+					    _,ok = da2.(*PubKeyData)
+					    if ok == true {
+						keys := (da2.(*PubKeyData)).RefLockOutKeys
+						if keys == "" {
+						    keys = rr.Nonce
+						} else {
+						    keys = keys + ":" + rr.Nonce
+						}
 
-							pubs3 := &PubKeyData{Key:(pubs2.(*PubKeyData)).Key,Account: (pubs2.(*PubKeyData)).Account, Pub: (pubs2.(*PubKeyData)).Pub, Save: (pubs2.(*PubKeyData)).Save, Nonce: (pubs2.(*PubKeyData)).Nonce, GroupId: (pubs2.(*PubKeyData)).GroupId, LimitNum: (pubs2.(*PubKeyData)).LimitNum, Mode: (pubs2.(*PubKeyData)).Mode,RefLockOutKeys:keys}
-							epubs, err := Encode2(pubs3)
-							if err == nil {
-							    ss3, err := Compress([]byte(epubs))
-							    if err == nil {
-								kd := KeyData{Key: []byte(dcrmpub), Data: ss3}
-								PubKeyDataChan <- kd
-								LdbPubKeyData.WriteMap(dcrmpub, []byte(ss3))
-								fmt.Printf("%v ==============================RecvMsg.Run,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(),rr.Nonce)
-							    }
-							}
+						pubs3 := &PubKeyData{Key:(da2.(*PubKeyData)).Key,Account: (da2.(*PubKeyData)).Account, Pub: (da2.(*PubKeyData)).Pub, Save: (da2.(*PubKeyData)).Save, Nonce: (da2.(*PubKeyData)).Nonce, GroupId: (da2.(*PubKeyData)).GroupId, LimitNum: (da2.(*PubKeyData)).LimitNum, Mode: (da2.(*PubKeyData)).Mode,RefLockOutKeys:keys}
+						epubs, err := Encode2(pubs3)
+						if err == nil {
+						    ss3, err := Compress([]byte(epubs))
+						    if err == nil {
+							kd := KeyData{Key: []byte(dcrmpub), Data: ss3}
+							PubKeyDataChan <- kd
+							LdbPubKeyData.WriteMap(dcrmpub, pubs3)
+							fmt.Printf("%v ==============================RecvMsg.Run,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(),rr.Nonce)
 						    }
 						}
 					    }
 					}
 				    }
 				}
-				////
 			}
 
 			////bug
@@ -2502,7 +2437,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				    } else {
 					//
 					found := false
-					keys := strings.Split(string(da),":")
+					keys := strings.Split(string(da.([]byte)),":")
 					for _,v := range keys {
 					    if strings.EqualFold(v,rr.Nonce) {
 						found = true
@@ -2511,7 +2446,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 					//
 					if !found {
-					    da2 := string(da) + ":" + rr.Nonce
+					    da2 := string(da.([]byte)) + ":" + rr.Nonce
 					    kdtmp := KeyData{Key: []byte(strings.ToLower(msgs[0])), Data: da2}
 					    PubKeyDataChan <- kdtmp
 					    LdbPubKeyData.WriteMap(strings.ToLower(msgs[0]), []byte(da2))
@@ -3248,7 +3183,7 @@ func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
 	kdtmp := KeyData{Key: []byte(key), Data: ss}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, []byte(ss))
+	LdbPubKeyData.WriteMap(key, ac)
 	return nil
 }
 
@@ -3296,7 +3231,7 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 	kdtmp := KeyData{Key: []byte(key), Data: ss}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, []byte(ss))
+	LdbPubKeyData.WriteMap(key, ac)
 	return nil
 }
 
@@ -3536,7 +3471,7 @@ func DisMsg(msg string) {
 		    } else {
 			//
 			found := false
-			keys := strings.Split(string(da),":")
+			keys := strings.Split(string(da.([]byte)),":")
 			for _,v := range keys {
 			    if strings.EqualFold(v,key) {
 				found = true
@@ -3545,7 +3480,7 @@ func DisMsg(msg string) {
 			}
 			//
 			if !found {
-			    da2 := string(da) + ":" + key
+			    da2 := string(da.([]byte)) + ":" + key
 			    kdtmp := KeyData{Key: []byte(strings.ToLower(acc)), Data: da2}
 			    PubKeyDataChan <- kdtmp
 			    LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(da2))
@@ -3618,19 +3553,11 @@ func DisMsg(msg string) {
 				return
 			}
 
-			ds, err := UnCompress(string(da))
-			if err != nil {
-				fmt.Printf("%v ==================DisMsg,uncompress reqaddr data fail, err = %v, worker id = %v,key = %v =======================\n", common.CurrentTime(), err, w.id, prexs[0])
-				return
+			ac,ok := da.(*AcceptReqAddrData)
+			if ok == false {
+			    return
 			}
 
-			dss, err := Decode2(ds, "AcceptReqAddrData")
-			if err != nil {
-				fmt.Printf("%v ==================DisMsg,decode reqaddr data fail, err = %v, worker id = %v,key = %v =======================\n", common.CurrentTime(), err, w.id, prexs[0])
-				return
-			}
-
-			ac := dss.(*AcceptReqAddrData)
 			if ac == nil {
 				fmt.Printf("%v ==================DisMsg,ac is nil, worker id = %v,key = %v =======================\n", common.CurrentTime(), w.id, prexs[0])
 				return
@@ -3650,6 +3577,32 @@ func DisMsg(msg string) {
 			return
 		}
 
+		///bug
+		mm2 := mm[0:3]
+		var next *list.Element
+		for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
+			next = e.Next()
+
+			if e.Value == nil {
+				continue
+			}
+
+			s := e.Value.(string)
+
+			if s == "" {
+				continue
+			}
+
+			tmp := strings.Split(s, Sep)
+			tmp2 := tmp[0:3]
+			fmt.Printf("%v ===============DisMsg, msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+			if testEq(mm2, tmp2) {
+				fmt.Printf("%v ===============DisMsg, test eq return true,msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+				return
+			}
+		}
+		//////
+
 		w.msg_acceptlockoutres.PushBack(msg)
 		if w.msg_acceptlockoutres.Len() == w.NodeCnt {
 			common.Info("===================Get All AcceptLockOutRes ", "msg hash = ", test, "", "====================")
@@ -3660,17 +3613,11 @@ func DisMsg(msg string) {
 				return
 			}
 
-			ds, err := UnCompress(string(da))
-			if err != nil {
-				return
+			ac,ok := da.(*AcceptLockOutData)
+			if ok == false {
+			    return
 			}
 
-			dss, err := Decode2(ds, "AcceptLockOutData")
-			if err != nil {
-				return
-			}
-
-			ac := dss.(*AcceptLockOutData)
 			if ac == nil {
 				return
 			}
@@ -4290,30 +4237,30 @@ type PubKeyInfo struct {
     TimeStamp string
 }
 
-func GetValueFromPubKeyData(key string) (bool,[]byte) {
+func GetValueFromPubKeyData(key string) (bool,interface{}) {
     if key == "" {
 	return false,nil
     }
 
-    var data []byte
+    //var data []byte
     datmp, exsit := LdbPubKeyData.ReadMap(key)
     if exsit == false {
-	    da := GetPubKeyDataValueFromDb(key)
+	    /*da := GetPubKeyDataValueFromDb(key)
 	    if da == nil {
 		    exsit = false
 	    } else {
 		    exsit = true
 		    data = da
 		    //fmt.Printf("%v==============GetValueFromPubKeyData,get data from db = %v================\n",common.CurrentTime(),string(data))
-	    }
+	    }*/
     } else {
 	    //data = []byte(fmt.Sprintf("%v", datmp))
-	    data = datmp.([]byte)
+	    //data = datmp.([]byte)
 	    //fmt.Printf("%v==============GetValueFromPubKeyData,get data from memory = %v================\n",common.CurrentTime(),string(data))
 	    exsit = true
     }
 
-    return exsit,data
+    return exsit,datmp
 }
 
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
@@ -4323,26 +4270,21 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	    return nil,"",fmt.Errorf("get value from pubkeydata fail.")
 	}
 
+	fmt.Printf("%v================GetAccounts, da = %v, geter_acc = %v,=================\n",common.CurrentTime(),string(da.([]byte)),geter_acc)
 	gp := make(map[string][]PubKeyInfo)
-	keys := strings.Split(string(da),":")
+	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
 	    exsit,data := GetValueFromPubKeyData(key)
 	    if exsit == false {
 		continue
 	    }
 
-	    value := string(data)
-	    ds, err := UnCompress(value)
-	    if err != nil {
-		    continue
+	    ac,ok := data.(*AcceptReqAddrData)
+	    if ok == false {
+		fmt.Printf("%v================GetAccounts, ac = %v, key = %v,geter_acc = %v,=================\n",common.CurrentTime(),ac,key,geter_acc)
+		continue
 	    }
 
-	    dss, err := Decode2(ds, "AcceptReqAddrData")
-	    if err != nil {
-		    continue
-	    }
-
-	    ac := dss.(*AcceptReqAddrData)
 	    if ac == nil {
 		    continue
 	    }
@@ -4356,17 +4298,17 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
 	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-	    ss, err := UnCompress(string(data2))
-	    if err != nil {
-		continue
-	    }
-	    
-	    pubs, err := Decode2(ss, "PubKeyData")
-	    if err != nil {
+	    if exsit == false || data2 == nil {
+		fmt.Printf("%v================GetAccounts, ac.PubKey = %v, data2 = %v,geter_acc = %v,=================\n",common.CurrentTime(),ac.PubKey,data2,geter_acc)
 		continue
 	    }
 
-	    pd := pubs.(*PubKeyData)
+	    pd,ok := data2.(*PubKeyData)
+	    if ok == false {
+		fmt.Printf("%v================GetAccounts, pd = %v, geter_acc = %v,=================\n",common.CurrentTime(),pd,geter_acc)
+		continue
+	    }
+
 	    if pd == nil {
 		continue
 	    }

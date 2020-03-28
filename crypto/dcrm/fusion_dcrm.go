@@ -92,17 +92,11 @@ func GetPubKeyData(key string, account string, cointype string) (string, string,
 		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
 	}
 
-	ds, err := dev.UnCompress(string(da))
-	if err != nil {
-		return "", "dcrm back-end internal error:uncompress data fail in func GetPubKeyData", err
+	pubs,ok := da.(*dev.PubKeyData)
+	if ok == false {
+		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
 	}
 
-	dss, err := dev.Decode2(ds, "PubKeyData")
-	if err != nil {
-		return "", "dcrm back-end internal error:decode PubKeyData fail", err
-	}
-
-	pubs := dss.(*dev.PubKeyData)
 	pubkey := hex.EncodeToString([]byte(pubs.Pub))
 	///////////
 	var m interface{}
@@ -159,17 +153,11 @@ func ExsitPubKey(account string, cointype string) (string, bool) {
 		}
 	}
 
-	ds, err := dev.UnCompress(string(da))
-	if err != nil {
-		return "", false
+	pubs,ok  := da.(*dev.PubKeyData)
+	if ok == false {
+	    return "",false
 	}
 
-	dss, err := dev.Decode2(ds, "PubKeyData")
-	if err != nil {
-		return "", false
-	}
-
-	pubs := dss.(*dev.PubKeyData)
 	pubkey := hex.EncodeToString([]byte(pubs.Pub))
 	return pubkey, true
 }
@@ -321,7 +309,7 @@ func RecivReqAddr() {
 										} else {
 										    //
 										    found := false
-										    keys := strings.Split(string(da),":")
+										    keys := strings.Split(string(da.([]byte)),":")
 										    for _,v := range keys {
 											if strings.EqualFold(v,d.Key) {
 											    found = true
@@ -331,7 +319,7 @@ func RecivReqAddr() {
 										    //
 
 										    if !found {
-											da2 := string(da) + ":" + d.Key
+											da2 := string(da.([]byte)) + ":" + d.Key
 											kdtmp := dev.KeyData{Key: []byte(strings.ToLower(acc)), Data: da2}
 											dev.PubKeyDataChan <- kdtmp
 											dev.LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(da2))
@@ -348,7 +336,7 @@ func RecivReqAddr() {
 										dev.PubKeyDataChan <- kdtmp
 										dev.LdbPubKeyData.WriteMap(strings.ToLower(d.Account), []byte(d.Key))
 									    } else {
-										da2 := string(da) + ":" + d.Key
+										da2 := string(da.([]byte)) + ":" + d.Key
 										kdtmp := dev.KeyData{Key: []byte(strings.ToLower(d.Account)), Data: da2}
 										dev.PubKeyDataChan <- kdtmp
 										dev.LdbPubKeyData.WriteMap(strings.ToLower(d.Account), []byte(da2))
@@ -482,17 +470,11 @@ func AcceptReqAddr(raw string) (string, string, error) {
 		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	ds, err := dev.UnCompress(string(da))
-	if err != nil {
-		return "", "dcrm back-end internal error:uncompress accept data fail", err
+	ac,ok := da.(*dev.AcceptReqAddrData)
+	if ok == false {
+		return "", "dcrm back-end internal error:decode accept data fail", fmt.Errorf("decode accept data fail")
 	}
 
-	dss, err := dev.Decode2(ds, "AcceptReqAddrData")
-	if err != nil {
-		return "", "dcrm back-end internal error:decode accept data fail", err
-	}
-
-	ac := dss.(*dev.AcceptReqAddrData)
 	if ac == nil {
 		return "", "dcrm back-end internal error:decode accept data fail", fmt.Errorf("decode accept data fail")
 	}
@@ -509,7 +491,7 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	    }
 
 	    found := false
-	    keys := strings.Split(string(data),":")
+	    keys := strings.Split(string(data.([]byte)),":")
 	    for _,k := range keys {
 		if strings.EqualFold(k,key) {
 		    found = true
@@ -603,28 +585,14 @@ func AcceptLockOut(raw string) (string, string, error) {
 
 	check := false
 	found := false
-	keys := strings.Split(string(da),":")
+	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
 	    exsit,data2 := dev.GetValueFromPubKeyData(key)
 	    if exsit == false {
 		continue
 	    }
 
-	    value := string(data2)
-	    ////
-	    ds, err := dev.UnCompress(value)
-	    if err != nil {
-		    //	    fmt.Println("================GetCurNodeLockOutInfo,uncompress err =%v ===================",err)
-		    continue
-	    }
-
-	    dss, err := dev.Decode2(ds, "AcceptReqAddrData")
-	    if err != nil {
-		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err =%v ===================",err)
-		    continue
-	    }
-
-	    ac := dss.(*dev.AcceptReqAddrData)
+	    ac := data2.(*dev.AcceptReqAddrData)
 	    if ac == nil {
 		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
 		    continue
@@ -632,17 +600,15 @@ func AcceptLockOut(raw string) (string, string, error) {
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
 	    exsit,data3 := dev.GetValueFromPubKeyData(string(dcrmpks[:]))
-	    ss, err := dev.UnCompress(string(data3))
-	    if err != nil {
-		continue
-	    }
-	    
-	    pubs, err := dev.Decode2(ss, "PubKeyData")
-	    if err != nil {
+	    if exsit == false || data3 == nil {
 		continue
 	    }
 
-	    pd := pubs.(*dev.PubKeyData)
+	    pd,ok := data3.(*dev.PubKeyData)
+	    if ok == false {
+		continue
+	    }
+
 	    if pd == nil {
 		continue
 	    }
@@ -660,18 +626,11 @@ func AcceptLockOut(raw string) (string, string, error) {
 			break
 		    }
 
-		    ////
-		    ds3, err := dev.UnCompress(string(data3))
-		    if err != nil {
-			    break
+		    ac3,ok := data3.(*dev.AcceptLockOutData)
+		    if ok == false {
+			break
 		    }
 
-		    dss3, err := dev.Decode2(ds3, "AcceptLockOutData")
-		    if err != nil {
-			    break
-		    }
-
-		    ac3 := dss3.(*dev.AcceptLockOutData)
 		    if ac3 == nil {
 			    break
 		    }
@@ -702,17 +661,11 @@ func AcceptLockOut(raw string) (string, string, error) {
 		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
-	ds, err := dev.UnCompress(string(da))
-	if err != nil {
-		return "", "dcrm back-end internal error:uncompress accept result fail", fmt.Errorf("uncompress accept result fail")
+	ac,ok := da.(*dev.AcceptLockOutData)
+	if ok == false {
+		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
-	dss, err := dev.Decode2(ds, "AcceptLockOutData")
-	if err != nil {
-		return "", "dcrm back-end internal error:decode accept result fail", fmt.Errorf("decode accept result fail")
-	}
-
-	ac := dss.(*dev.AcceptLockOutData)
 	if ac == nil {
 		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
@@ -785,49 +738,43 @@ func RecivLockOut() {
 							dcrmkey := dev.Keccak256Hash([]byte(strings.ToLower(data.DcrmFrom))).Hex()
 							exsit,da := dev.GetValueFromPubKeyData(dcrmkey)
 							if exsit {
-							    ss, err := dev.UnCompress(string(da))
-							    if err == nil {
-								pubs, err := dev.Decode2(ss, "PubKeyData")
-								if err == nil {
-								    dcrmpub := (pubs.(*dev.PubKeyData)).Pub
+							    _,ok := da.(*dev.PubKeyData)
+							    if ok == true {
+								    dcrmpub := (da.(*dev.PubKeyData)).Pub
 								    exsit,da2 := dev.GetValueFromPubKeyData(dcrmpub)
 								    if exsit {
-									ss2, err := dev.UnCompress(string(da2))
-									if err == nil {
-									    pubs2, err := dev.Decode2(ss2, "PubKeyData")
+									_,ok = da2.(*dev.PubKeyData)
+									if ok == true {
+									    keys := (da2.(*dev.PubKeyData)).RefLockOutKeys
+									    if keys == "" {
+										keys = data.Key
+									    } else {
+										keys = keys + ":" + data.Key
+									    }
+
+									    pubs3 := &dev.PubKeyData{Key:(da2.(*dev.PubKeyData)).Key,Account: (da2.(*dev.PubKeyData)).Account, Pub: (da2.(*dev.PubKeyData)).Pub, Save: (da2.(*dev.PubKeyData)).Save, Nonce: (da2.(*dev.PubKeyData)).Nonce, GroupId: (da2.(*dev.PubKeyData)).GroupId, LimitNum: (da2.(*dev.PubKeyData)).LimitNum, Mode: (da2.(*dev.PubKeyData)).Mode,RefLockOutKeys:keys}
+									    epubs, err := dev.Encode2(pubs3)
 									    if err == nil {
-										keys := (pubs2.(*dev.PubKeyData)).RefLockOutKeys
-										if keys == "" {
-										    keys = data.Key
-										} else {
-										    keys = keys + ":" + data.Key
-										}
-
-										pubs3 := &dev.PubKeyData{Key:(pubs2.(*dev.PubKeyData)).Key,Account: (pubs2.(*dev.PubKeyData)).Account, Pub: (pubs2.(*dev.PubKeyData)).Pub, Save: (pubs2.(*dev.PubKeyData)).Save, Nonce: (pubs2.(*dev.PubKeyData)).Nonce, GroupId: (pubs2.(*dev.PubKeyData)).GroupId, LimitNum: (pubs2.(*dev.PubKeyData)).LimitNum, Mode: (pubs2.(*dev.PubKeyData)).Mode,RefLockOutKeys:keys}
-										epubs, err := dev.Encode2(pubs3)
+										ss3, err := dev.Compress([]byte(epubs))
 										if err == nil {
-										    ss3, err := dev.Compress([]byte(epubs))
-										    if err == nil {
-											kd := dev.KeyData{Key: []byte(dcrmpub), Data: ss3}
-											dev.PubKeyDataChan <- kd
-											dev.LdbPubKeyData.WriteMap(dcrmpub, []byte(ss3))
-											fmt.Printf("%v ==============================RecivLockOut,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
-											go func(d LockOutData) {
-												for i := 0; i < 1; i++ {
-													txhash, _, err2 := dev.SendLockOut(d.Account, d.DcrmFrom, d.DcrmTo, d.Value, d.Cointype, d.GroupId, d.Nonce, d.ThresHold, d.Mode, d.TimeStamp, d.Key)
-													if err2 == nil && txhash != "" {
-														return
-													}
+										    kd := dev.KeyData{Key: []byte(dcrmpub), Data: ss3}
+										    dev.PubKeyDataChan <- kd
+										    dev.LdbPubKeyData.WriteMap(dcrmpub, pubs3)
+										    fmt.Printf("%v ==============================RecivLockOut,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
+										    go func(d LockOutData) {
+											    for i := 0; i < 1; i++ {
+												    txhash, _, err2 := dev.SendLockOut(d.Account, d.DcrmFrom, d.DcrmTo, d.Value, d.Cointype, d.GroupId, d.Nonce, d.ThresHold, d.Mode, d.TimeStamp, d.Key)
+												    if err2 == nil && txhash != "" {
+													    return
+												    }
 
-													time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-												}
-											}(data)
-										    }
+												    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
+											    }
+										    }(data)
 										}
 									    }
 									}
 								    }
-								}
 							    }
 							}
 							/////
@@ -899,25 +846,18 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 	    return nil,"",fmt.Errorf("get value from pubkeydata fail.")
 	}
 
-	keys := strings.Split(string(da),":")
+	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
 	    exsit,data := dev.GetValueFromPubKeyData(key)
 	    if exsit == false {
 		continue
 	    }
 
-	    value := string(data)
-	    ds, err := dev.UnCompress(value)
-	    if err != nil {
-		    continue
+	    ac,ok := data.(*dev.AcceptReqAddrData)
+	    if ok == false {
+		continue
 	    }
 
-	    dss, err := dev.Decode2(ds, "AcceptReqAddrData")
-	    if err != nil {
-		    continue
-	    }
-
-	    ac := dss.(*dev.AcceptReqAddrData)
 	    if ac == nil {
 		    continue
 	    }
@@ -930,17 +870,15 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
 	    exsit,data2 := dev.GetValueFromPubKeyData(string(dcrmpks[:]))
-	    ss, err := dev.UnCompress(string(data2))
-	    if err != nil {
-		continue
-	    }
-	    
-	    pubs, err := dev.Decode2(ss, "PubKeyData")
-	    if err != nil {
+	    if exsit == false || data2 == nil {
 		continue
 	    }
 
-	    pd := pubs.(*dev.PubKeyData)
+	    pd,ok := data2.(*dev.PubKeyData)
+	    if ok == false {
+		continue
+	    }
+
 	    if pd == nil {
 		continue
 	    }

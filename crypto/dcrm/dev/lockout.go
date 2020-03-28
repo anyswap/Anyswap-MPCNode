@@ -3300,7 +3300,8 @@ func GetEnodesByUid(uid *big.Int, cointype string, groupid string) string {
 	_, nodes := GetGroup(groupid)
 	others := strings.Split(nodes, SepSg)
 	for _, v := range others {
-		id := DoubleHash(v, cointype)
+		node2 := ParseNode(v) //bug??
+		id := DoubleHash(node2, cointype)
 		if id.Cmp(uid) == 0 {
 			return v
 		}
@@ -3328,7 +3329,8 @@ func GetIds(cointype string, groupid string) sortableIDSSlice {
 	_, nodes := GetGroup(groupid)
 	others := strings.Split(nodes, SepSg)
 	for _, v := range others {
-		uid := DoubleHash(v, cointype)
+		node2 := ParseNode(v) //bug??
+		uid := DoubleHash(node2, cointype)
 		ids = append(ids, uid)
 	}
 	sort.Sort(ids)

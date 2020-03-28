@@ -439,7 +439,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 				pd,ok := pubs3.(*PubKeyData)
 				if ok == true {
 				    kd.WriteMap(key, pd)
-				    fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read PubKeyData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read PubKeyData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 				    continue
 				}
 			    }
@@ -449,7 +449,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 				pd,ok := pubs.(*AcceptReqAddrData)
 				if ok == true {
 				    kd.WriteMap(key, pd)
-				    fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 				    continue
 				}
 			    }
@@ -459,7 +459,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 				pd,ok := pubs2.(*AcceptLockOutData)
 				if ok == true {
 				    kd.WriteMap(key, pd)
-				    fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 				    continue
 				}
 			    }
@@ -467,49 +467,6 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			}
 
 			kd.WriteMap(key, []byte(value))
-			/*switch value.(type) {
-			case *AcceptReqAddrData:
-			    ss, err := UnCompress(value)
-			    if err != nil {
-				    continue
-			    }
-
-			    pubs, err := Decode2(ss, "AcceptReqAddrData")
-			    if err != nil {
-				    continue
-			    }
-
-			    pd := pubs.(*AcceptReqAddrData)
-			    kd.WriteMap(key, pd)
-			case *AcceptLockOutData:
-			    ss, err := UnCompress(value)
-			    if err != nil {
-				    continue
-			    }
-
-			    pubs, err := Decode2(ss, "AcceptLockOutData")
-			    if err != nil {
-				    continue
-			    }
-
-			    pd := pubs.(*AcceptLockOutData)
-			    kd.WriteMap(key, pd)
-			case *PubKeyData:
-			    ss, err := UnCompress(value)
-			    if err != nil {
-				    continue
-			    }
-
-			    pubs, err := Decode2(ss, "PubKeyData")
-			    if err != nil {
-				    continue
-			    }
-
-			    pd := pubs.(*PubKeyData)
-			    kd.WriteMap(key, pd)
-			case []byte:
-			    kd.WriteMap(key, []byte(value))
-			}*/
 		}
 		iter.Release()
 		db.Close()

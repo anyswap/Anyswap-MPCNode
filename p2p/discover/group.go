@@ -887,13 +887,13 @@ func updateGroupSDKNode(nd *Node, p2pType int) { //nooo
 					fmt.Printf("%v ==== updateGroupSDKNode() ====, %v vs %v\n", common.CurrentTime(), ipp2, ipp1)
 					g.Nodes[i] = n
 					fmt.Printf("%v ==== updateGroupSDKNode() ====, update group(gid=%v) enode %v -> %v\n", common.CurrentTime(), gid, node, n)
-					sendGroupInfo(g, p2pType)
+					//sendGroupInfo(g, p2pType)
 					sendGroupInit(g, p2pType)
 					StoreGroupToDb(g)
 					break
 				}
-				ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
-				go SendToPeer(gid, node.ID, ipa, "", Sdkprotocol_type)
+				//ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
+				//go SendToPeer(gid, node.ID, ipa, "", Sdkprotocol_type)
 				tmpi := i
 				go sendGroupInit2Node(gid, node, tmpi)
 				break

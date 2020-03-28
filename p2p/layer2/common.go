@@ -336,17 +336,8 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 			idcount := 0
 			for _, enode := range req.([]*discover.Node) {
 				node, _ := discover.ParseNode(enode.String())
-				if selfid == node.ID {
-					ipp := fmt.Sprintf("%v:%v", node.IP, node.UDP)
-					if ipp != discover.SelfIPPort {
-						fmt.Printf("==== recvGroupInfo() ====, gid: %v,  %v not match %v(self IP:Port)\n", gid, ipp, discover.SelfIPPort)
-						return
-					}
-				}
-				existID := false
 				for _, n := range groupTmp.Nodes {
 					if node.ID == n.ID {
-						existID = true
 						ipp1 := fmt.Sprintf("%v:%v", node.IP, node.UDP)
 						ipp2 := fmt.Sprintf("%v:%v", n.IP, n.UDP)
 						if ipp1 == ipp2 {
@@ -355,9 +346,6 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 						}
 						break
 					}
-				}
-				if existID != true {
-					break
 				}
 			}
 			if idcount == len(req.([]*discover.Node)) {

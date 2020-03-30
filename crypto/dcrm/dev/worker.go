@@ -37,7 +37,6 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 
-	//"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
@@ -45,7 +44,6 @@ import (
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 
-	//"github.com/fsn-dev/dcrm-walletService/coins/types"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
@@ -74,25 +72,15 @@ var (
 
 	KeyFile string
 
-	//AllAccounts     = common.NewSafeMap(10) //make([]*PubKeyData,0)
-	//AllAccountsChan = make(chan KeyData, 1000)
-
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 1000)
-
-	//LdbReqAddr  = common.NewSafeMap(10) //make(map[string][]byte)
-	//ReqAddrChan = make(chan KeyData, 1000)
-
-	//LdbLockOut  = common.NewSafeMap(10) //make(map[string][]byte)
-	//LockOutChan = make(chan KeyData, 1000)
 
 	ReSendTimes int //resend p2p msg times
 	DcrmCalls   = common.NewSafeMap(10)
 
 	RpcReqQueueCache = make(chan RpcReq, RpcMaxQueue)
-
-	//GAccs         = common.NewSafeMap(10)
-	//GAccsDataChan = make(chan KeyData, 1000)
+	
+	C1Data  = common.NewSafeMap(10)
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {
@@ -531,19 +519,6 @@ func FindWorker(sid string) (*RpcReqWorker, error) {
 	for i := 0; i < RpcMaxWorker; i++ {
 		w := workers[i]
 
-		if w.sid == "" {
-			continue
-		}
-
-		if strings.EqualFold(w.sid, sid) {
-			return w, nil
-		}
-	}
-
-	time.Sleep(time.Duration(60) * time.Second) //1000 == 1s //TODO
-
-	for i := 0; i < RpcMaxWorker; i++ {
-		w := workers[i]
 		if w.sid == "" {
 			continue
 		}
@@ -1529,8 +1504,6 @@ func GetGroupRes(wid int) RpcDcrmRes {
 func Call(msg interface{}, enode string) {
 	fmt.Printf("%v =========Call,get msg = %v,sender node = %v =================", common.CurrentTime(), msg, enode)
 	s := msg.(string)
-	test := Keccak256Hash([]byte(strings.ToLower(s))).Hex()
-	fmt.Printf("%v =========Call,get msg = %v,msg hash = %v,sender node = %v =================", common.CurrentTime(), msg, test, enode)
 	SetUpMsgList(s, enode)
 }
 
@@ -2089,6 +2062,20 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w.NodeCnt, _ = GetGroup(w.groupid)
 			w.ThresHold = w.NodeCnt
 
+			////fix bug: get C11 timeout
+			c1, exist := C1Data.ReadMap(w.sid)
+			if exist {
+			    c1s,ok := c1.([]string)
+			    if ok == true {
+				for _,v := range c1s {
+				    DisMsg(v)
+				}
+				
+				C1Data.DeleteMap(w.sid)
+			    }
+			}
+			////
+
 			if strings.EqualFold(cur_enode, self.sender) { //self send
 				AcceptLockOut(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], false, "false", "Pending", "", "", "", nil, wid)
 			} else {
@@ -2391,6 +2378,20 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w.limitnum = msgs[4]
 			w.NodeCnt, _ = GetGroup(w.groupid)
 			w.ThresHold = w.NodeCnt
+
+			////fix bug: get C1 timeout
+			c1, exist := C1Data.ReadMap(w.sid)
+			if exist {
+			    c1s,ok := c1.([]string)
+			    if ok == true {
+				for _,v := range c1s {
+				    DisMsg(v)
+				}
+
+				C1Data.DeleteMap(w.sid)
+			    }
+			}
+			////
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
 				AcceptReqAddr(msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], false, "false", "Pending", "", "", "", nil, wid)
@@ -3495,7 +3496,35 @@ func DisMsg(msg string) {
 	//msg:  hash-enode:C1:X1:X2
 	w, err := FindWorker(prexs[0])
 	if err != nil || w == nil {
-		fmt.Printf("%v ===============DisMsg,no find worker,msg = %v,msg hash = %v,err = %v,key = %v=================\n", common.CurrentTime(), msg, test, err, prexs[0])
+		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. msg = %v,msg hash = %v,err = %v,key = %v=================\n", common.CurrentTime(), msg, test, err, prexs[0])
+
+		c1, exist := C1Data.ReadMap(prexs[0])
+		if exist == false {
+		    c1s := make([]string,0)
+		    c1s = append(c1s,msg)
+		    C1Data.WriteMap(prexs[0],c1s)
+		} else {
+		    c1s,ok := c1.([]string)
+		    if ok == false {
+			return
+		    }
+
+		    found := false
+		    for _,v := range c1s {
+			if strings.EqualFold(v, msg) {
+			    found = true
+			    break
+			}
+		    }
+
+		    if found == true {
+			return
+		    }
+
+		    c1s = append(c1s,msg)
+		    C1Data.WriteMap(prexs[0],c1s)
+		}
+
 		return
 	}
 

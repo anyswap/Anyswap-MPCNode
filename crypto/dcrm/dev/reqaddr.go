@@ -1912,7 +1912,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	// u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
 	fmt.Printf("%v===================send NTILDEH1H2 finish,key = %v===============\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
-	fmt.Printf("%v===================finish get NTILDEH1H2, key = %v,err = %v====================\n",common.CurrentTime(),cherr)
+	fmt.Printf("%v===================finish get NTILDEH1H2, key = %v,err = %v====================\n",common.CurrentTime(),msgprex,cherr)
 	if cherr != nil {
 	    /////check
 	    _, enodes := GetGroup(w.groupid)

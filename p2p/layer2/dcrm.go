@@ -369,6 +369,7 @@ func CheckAddPeer(mode string, enodes []string) error {
 			delete(nodeid, k)
 		}
 	}()
+	selfEnodeExist := false
 	wg := &sync.WaitGroup{}
 	for _, enode := range enodes {
 		node, err := discover.ParseNode(enode)
@@ -382,6 +383,7 @@ func CheckAddPeer(mode string, enodes []string) error {
 		}
 		nodeid[node.ID] = 1
 		if selfid == node.ID {
+			selfEnodeExist = true
 			continue
 		}
 
@@ -393,5 +395,9 @@ func CheckAddPeer(mode string, enodes []string) error {
 		}(node)
 	}
 	wg.Wait()
+	if selfEnodeExist != true {
+		msg := fmt.Sprintf("CheckAddPeer, slefEnode: %v, err: selfEnode not exist", discover.GetEnode())
+		return errors.New(msg)
+	}
 	return nil
 }

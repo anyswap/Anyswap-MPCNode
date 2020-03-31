@@ -748,20 +748,15 @@ func sendGroupToNode(groupList *Group, p2pType int, node *Node) { //nooo
 
 func sendGroupInfo(groupList *Group, p2pType int) { //nooo
 	fmt.Printf("%v ==== sendGroupInfo() ====, gid: %v\n", common.CurrentTime(), groupList.ID)
-	count := 0
-	enode := ""
 	for i := 0; i < len(groupList.Nodes); i++ {
-		count++
+		fmt.Printf("==== sendGroupInfo() ====, gid: %v, node: %v\n", groupList.ID, groupList.Nodes[i])
 		node := groupList.Nodes[i]
-		if enode != "" {
-			enode += Dcrmdelimiter
-		}
-		e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
-		enode += e
-		//if bytes.Equal(n.IP, node.IP) == true && n.UDP == node.UDP {
+		//e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
+		//if e == SelfEnode {
+		//	go callGroupEvent(req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
+		//}
 		ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
 		go SendToPeer(groupList.ID, node.ID, ipa, "", p2pType)
-		//}
 	}
 }
 
@@ -808,7 +803,7 @@ func StartCreateSDKGroup(gid NodeID, mode string, enode []*Node, Type string, ex
 func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bool) {
 	GroupSDK.Lock()
 	defer GroupSDK.Unlock()
-	fmt.Printf("%v ==== buildSDKGroup() ====, gid: %v\n", common.CurrentTime(), gid)
+	fmt.Printf("%v ==== buildSDKGroup() ====, gid: %v, enode: %v\n", common.CurrentTime(), gid, enode)
 	if exist != true {
 		fmt.Printf("==== buildSDKGroup() ====, gid: %v new\n", gid)
 		groupTmp := new(Group)
@@ -821,6 +816,7 @@ func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bo
 		}
 		groupTmp.ID = gid
 		SDK_groupList[groupTmp.ID] = groupTmp
+		fmt.Printf("==== buildSDKGroup() ====, gid: %v, group: %v\n", groupTmp)
 		sendGroupInit(SDK_groupList[gid], Sdkprotocol_type)
 	}
 	sendGroupInfo(SDK_groupList[gid], Sdkprotocol_type)
@@ -1101,7 +1097,8 @@ func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) e
 		fmt.Printf("%v ==== (req *Group) handle() ====, Node: %v\n", common.CurrentTime(), rn)
 		n, err := t.nodeFromRPC(from, rpcNode(rn))
 		if err != nil {
-			continue
+			fmt.Printf("%v ==== (req *Group) handle() ====, gid: %v, Node: %v Group p2perror: %v\n", common.CurrentTime(), req.ID, rn, err)
+			return err
 		}
 		fmt.Printf("%v ==== (req *Group) handle() ====, append Node: %v\n", common.CurrentTime(), rn)
 		nodes = append(nodes, n)

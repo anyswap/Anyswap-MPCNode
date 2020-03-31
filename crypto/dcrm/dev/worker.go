@@ -1630,6 +1630,13 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string, string, error) {
 	    return "","",nil
 	}
 
+	//check obj type
+	_,ok := da.([]byte)
+	if ok == false {
+	    return "","get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
+	}
+	//
+
 	fmt.Printf("%v=================GetCurNodeReqAddrInfo,da = %v,geter_acc = %v ====================\n",common.CurrentTime(),string(da.([]byte)),geter_acc)
 	var ret []string
 	keys := strings.Split(string(da.([]byte)),":")
@@ -1697,6 +1704,13 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 	    return "","",nil
 	}
 
+	//check obj type
+	_,ok := da.([]byte)
+	if ok == false {
+	    return "","get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
+	}
+	//
+
 	var ret []string
 	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
@@ -1715,8 +1729,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 	    }
 
 	    if ac == nil {
-		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
-		    continue
+		continue
 	    }
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
@@ -2071,6 +2084,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w.groupid = msgs[5]
 			w.limitnum = msgs[7]
 			w.NodeCnt, _ = GetGroup(w.groupid)
+			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
 			w.ThresHold = w.NodeCnt
 
 			////fix bug: get C11 timeout
@@ -3698,8 +3712,9 @@ func DisMsg(msg string) {
 
 		//fmt.Println("=================Get C1 msg =%v,prex =%s===================",msg,prexs[0])
 		w.msg_c1.PushBack(msg)
+		fmt.Printf("%v======================DisMsg, w.msg_c1 len = %v, w.NodeCnt = %v, key = %v =======================\n",common.CurrentTime(),w.msg_c1.Len(),w.NodeCnt,prexs[0])
 		if w.msg_c1.Len() == (w.NodeCnt - 1) {
-			common.Info("===================Get All C1 ", "msg hash = ", test, "prex = ", prexs[0], "", "====================")
+			fmt.Printf("%v======================DisMsg, Get All C1,w.msg_c1 len = %v, w.NodeCnt = %v, key = %v =======================\n",common.CurrentTime(),w.msg_c1.Len(),w.NodeCnt,prexs[0])
 			w.bc1 <- true
 		}
 	case "D1":

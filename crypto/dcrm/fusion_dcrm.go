@@ -406,12 +406,23 @@ func ReqDcrmAddr(raw string, mode string) (string, string, error) {
 		return "", "transacion data format error,threshold is not right", fmt.Errorf("tx.data error.")
 	}
 
-	nodecnt, _ := strconv.Atoi(nums[1])
+	nodecnt, err := strconv.Atoi(nums[1])
+	if err != nil {
+		return "", err.Error(),err
+	}
+
 	if mode == "0" && len(datas) < (4+nodecnt) {
 		return "", "transacion data format error", fmt.Errorf("tx.data error.")
 	}
 
 	Nonce := tx.Nonce()
+
+	////
+	nc,_ := dev.GetGroup(groupid)
+	if nc != nodecnt {
+	    return "","check group node count error",fmt.Errorf("check group node count error")
+	}
+	////
 
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
@@ -823,6 +834,26 @@ func LockOut(raw string) (string, string, error) {
 	if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
+
+	////
+	nums := strings.Split(threshold, "/")
+	if len(nums) != 2 {
+		return "", "transacion data format error,threshold is not right", fmt.Errorf("tx.data error.")
+	}
+	nodecnt, err := strconv.Atoi(nums[1])
+	if err != nil {
+		return "", err.Error(),err
+	}
+	limit, err := strconv.Atoi(nums[0])
+	if err != nil {
+		return "", err.Error(),err
+	}
+
+	nc,_ := dev.GetGroup(groupid)
+	if nc < limit || nc > nodecnt {
+	    return "","check group node count error",fmt.Errorf("check group node count error")
+	}
+	////
 
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
 	data2 := LockOutData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), DcrmFrom: dcrmaddr, DcrmTo: dcrmto, Value: value, Cointype: cointype, GroupId: groupid, ThresHold: threshold, Mode: mode, TimeStamp: timestamp, Key: key}

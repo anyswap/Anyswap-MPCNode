@@ -2088,7 +2088,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w.ThresHold = w.NodeCnt
 
 			////fix bug: get C11 timeout
-			c1, exist := C1Data.ReadMap(w.sid)
+			/*c1, exist := C1Data.ReadMap(w.sid)
 			if exist {
 			    c1s,ok := c1.([]string)
 			    if ok == true {
@@ -2098,7 +2098,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				
 				C1Data.DeleteMap(w.sid)
 			    }
-			}
+			}*/
 			////
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
@@ -2405,7 +2405,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w.ThresHold = w.NodeCnt
 
 			////fix bug: get C1 timeout
-			c1, exist := C1Data.ReadMap(w.sid)
+			/*c1, exist := C1Data.ReadMap(w.sid)
 			if exist {
 			    c1s,ok := c1.([]string)
 			    if ok == true {
@@ -2415,7 +2415,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				C1Data.DeleteMap(w.sid)
 			    }
-			}
+			}*/
 			////
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send

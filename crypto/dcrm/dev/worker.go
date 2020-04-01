@@ -2129,7 +2129,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 				}
 
-				//if msgs[8] == "0" {// self-group
 				ars := GetAllReplyFromGroup(w.id,msgs[5],true)
 				ac := &AcceptLockOutData{Account: msgs[0], GroupId: msgs[5], Nonce: msgs[6], DcrmFrom: msgs[1], DcrmTo: msgs[2], Value: msgs[3], Cointype: msgs[4], LimitNum: msgs[7], Mode: msgs[8], TimeStamp: msgs[10], Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
 				err := SaveAcceptLockOutData(ac)
@@ -2445,7 +2444,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 				}
 
-				//if msgs[5] == "0" {// self-group
 				ars := GetAllReplyFromGroup(w.id,msgs[2],false)	
 				ac := &AcceptReqAddrData{Account: msgs[0], Cointype: "ALL", GroupId: msgs[2], Nonce: msgs[3], LimitNum: msgs[4], Mode: msgs[5], TimeStamp: msgs[7], Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
 				err := SaveAcceptReqAddrData(ac)
@@ -2479,7 +2477,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 				    }
 				}
-				//}
 				////
 			}
 
@@ -2918,6 +2915,19 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		SendMsgToDcrmGroup(ss, self.GroupId)
 		DisMsg(ss)
 		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
+		////fix bug: get C1 timeout
+		c1, exist := C1Data.ReadMap(self.Key)
+		if exist {
+		    c1s,ok := c1.([]string)
+		    if ok == true {
+			for _,v := range c1s {
+			    DisMsg(v)
+			}
+			
+			C1Data.DeleteMap(self.Key)
+		    }
+		}
+		////
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
@@ -3005,6 +3015,19 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		SendMsgToDcrmGroup(ss, self.GroupId)
 		DisMsg(ss)
 		fmt.Printf("%v ================== LockOutSendMsgToDcrm.Run , finish send AcceptLockOutRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
+		////fix bug: get C11 timeout
+		c1, exist := C1Data.ReadMap(self.Key)
+		if exist {
+		    c1s,ok := c1.([]string)
+		    if ok == true {
+			for _,v := range c1s {
+			    DisMsg(v)
+			}
+			
+			C1Data.DeleteMap(self.Key)
+		    }
+		}
+		////
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)

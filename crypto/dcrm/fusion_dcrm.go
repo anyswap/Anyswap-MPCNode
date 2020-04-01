@@ -527,6 +527,19 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	dev.SendMsgToDcrmGroup(ss, datas[3])
 	dev.DisMsg(ss)
 	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), key)
+	////fix bug: get C1 timeout
+	c1, exist := dev.C1Data.ReadMap(key)
+	if exist {
+	    c1s,ok := c1.([]string)
+	    if ok == true {
+		for _,v := range c1s {
+		    dev.DisMsg(v)
+		}
+		
+		dev.C1Data.DeleteMap(key)
+	    }
+	}
+	////
 	
 	w, err := dev.FindWorker(key)
 	if err != nil {
@@ -695,6 +708,19 @@ func AcceptLockOut(raw string) (string, string, error) {
 	dev.SendMsgToDcrmGroup(ss2, datas[2])
 	dev.DisMsg(ss2)
 	fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), keytmp)
+	////fix bug: get C11 timeout
+	c1, exist := dev.C1Data.ReadMap(keytmp)
+	if exist {
+	    c1s,ok := c1.([]string)
+	    if ok == true {
+		for _,v := range c1s {
+		    dev.DisMsg(v)
+		}
+		
+		dev.C1Data.DeleteMap(keytmp)
+	    }
+	}
+	////
 
 	w, err := dev.FindWorker(keytmp)
 	if err != nil {

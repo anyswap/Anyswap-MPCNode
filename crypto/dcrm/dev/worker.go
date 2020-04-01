@@ -2916,7 +2916,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		DisMsg(ss)
 		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
 		////fix bug: get C1 timeout
-		c1, exist := C1Data.ReadMap(self.Key)
+		c1, exist := C1Data.ReadMap(strings.ToLower(self.Key))
 		if exist {
 		    c1s,ok := c1.([]string)
 		    if ok == true {
@@ -2924,7 +2924,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 			    DisMsg(v)
 			}
 			
-			C1Data.DeleteMap(self.Key)
+			C1Data.DeleteMap(strings.ToLower(self.Key))
 		    }
 		}
 		////
@@ -3016,7 +3016,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		DisMsg(ss)
 		fmt.Printf("%v ================== LockOutSendMsgToDcrm.Run , finish send AcceptLockOutRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
 		////fix bug: get C11 timeout
-		c1, exist := C1Data.ReadMap(self.Key)
+		c1, exist := C1Data.ReadMap(strings.ToLower(self.Key))
 		if exist {
 		    c1s,ok := c1.([]string)
 		    if ok == true {
@@ -3024,7 +3024,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 			    DisMsg(v)
 			}
 			
-			C1Data.DeleteMap(self.Key)
+			C1Data.DeleteMap(strings.ToLower(self.Key))
 		    }
 		}
 		////
@@ -3549,36 +3549,41 @@ func DisMsg(msg string) {
 	//msg:  hash-enode:C1:X1:X2
 	w, err := FindWorker(prexs[0])
 	if err != nil || w == nil {
-		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. msg = %v,msg hash = %v,err = %v,key = %v=================\n", common.CurrentTime(), msg, test, err, prexs[0])
+	    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. msg = %v,key = %v=================\n", common.CurrentTime(), msg,prexs[0])
 
-		c1, exist := C1Data.ReadMap(prexs[0])
-		if exist == false {
-		    c1s := make([]string,0)
-		    c1s = append(c1s,msg)
-		    C1Data.WriteMap(prexs[0],c1s)
-		} else {
-		    c1s,ok := c1.([]string)
-		    if ok == false {
-			return
-		    }
-
-		    found := false
-		    for _,v := range c1s {
-			if strings.EqualFold(v, msg) {
-			    found = true
-			    break
-			}
-		    }
-
-		    if found == true {
-			return
-		    }
-
-		    c1s = append(c1s,msg)
-		    C1Data.WriteMap(prexs[0],c1s)
+	    c1, exist := C1Data.ReadMap(strings.ToLower(prexs[0]))
+	    if exist == false {
+		c1s := make([]string,0)
+		c1s = append(c1s,msg)
+		C1Data.WriteMap(strings.ToLower(prexs[0]),c1s)
+		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. write map success,c1s = %v, key = %v=================\n", common.CurrentTime(), c1s, prexs[0])
+	    } else {
+		c1s,ok := c1.([]string)
+		if ok == false {
+		    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. ok is false, key = %v=================\n", common.CurrentTime(),prexs[0])
+		    return
 		}
 
-		return
+		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. ok is true, c1s = %v, key = %v=================\n", common.CurrentTime(),c1s,prexs[0])
+		found := false
+		for _,v := range c1s {
+		    if strings.EqualFold(v, msg) {
+			found = true
+			break
+		    }
+		}
+
+		if found == true {
+		    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. found is true, key = %v=================\n", common.CurrentTime(),prexs[0])
+		    return
+		}
+
+		c1s = append(c1s,msg)
+		C1Data.WriteMap(strings.ToLower(prexs[0]),c1s)
+		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. write map success,c1s = %v, key = %v=================\n", common.CurrentTime(), c1s, prexs[0])
+	    }
+
+	    return
 	}
 
 	fmt.Printf("%v ===============DisMsg,get worker, worker id = %v,msg = %v,msg hash = %v,key = %v=================\n", common.CurrentTime(), w.id,msg, test, prexs[0])

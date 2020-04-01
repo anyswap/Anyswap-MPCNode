@@ -528,7 +528,7 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	dev.DisMsg(ss)
 	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), key)
 	////fix bug: get C1 timeout
-	c1, exist := dev.C1Data.ReadMap(key)
+	c1, exist := dev.C1Data.ReadMap(strings.ToLower(key))
 	if exist {
 	    c1s,ok := c1.([]string)
 	    if ok == true {
@@ -536,7 +536,7 @@ func AcceptReqAddr(raw string) (string, string, error) {
 		    dev.DisMsg(v)
 		}
 		
-		dev.C1Data.DeleteMap(key)
+		dev.C1Data.DeleteMap(strings.ToLower(key))
 	    }
 	}
 	////
@@ -709,7 +709,7 @@ func AcceptLockOut(raw string) (string, string, error) {
 	dev.DisMsg(ss2)
 	fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), keytmp)
 	////fix bug: get C11 timeout
-	c1, exist := dev.C1Data.ReadMap(keytmp)
+	c1, exist := dev.C1Data.ReadMap(strings.ToLower(keytmp))
 	if exist {
 	    c1s,ok := c1.([]string)
 	    if ok == true {
@@ -717,7 +717,7 @@ func AcceptLockOut(raw string) (string, string, error) {
 		    dev.DisMsg(v)
 		}
 		
-		dev.C1Data.DeleteMap(keytmp)
+		dev.C1Data.DeleteMap(strings.ToLower(keytmp))
 	    }
 	}
 	////

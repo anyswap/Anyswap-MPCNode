@@ -486,15 +486,18 @@ func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice
 	SendMsgToDcrmGroup(ss, w.groupid)
 
 	////fix bug: get C11 timeout
-	c1, exist := C1Data.ReadMap(w.sid)
+	c1, exist := C1Data.ReadMap(strings.ToLower(msgprex))
 	if exist {
+	    fmt.Printf("%v===================exist is true, key = %v====================\n",common.CurrentTime(),msgprex)
 	    c1s,ok := c1.([]string)
 	    if ok == true {
+		fmt.Printf("%v===================ok is true, key = %v====================\n",common.CurrentTime(),msgprex)
 		for _,v := range c1s {
+		    fmt.Printf("%v===================msg include = %v, key = %v====================\n",common.CurrentTime(),v,msgprex)
 		    DisMsg(v)
 		}
 		
-		C1Data.DeleteMap(w.sid)
+		C1Data.DeleteMap(strings.ToLower(msgprex))
 	    }
 	}
 	////

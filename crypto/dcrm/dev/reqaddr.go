@@ -1400,15 +1400,19 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	SendMsgToDcrmGroup(ss, w.groupid)
 
 	////fix bug: get C1 timeout
-	c1, exist := C1Data.ReadMap(w.sid)
+	fmt.Printf("%v===================DECDSAGenKeyRoundOne,key = %v====================\n",common.CurrentTime(),msgprex)
+	c1, exist := C1Data.ReadMap(strings.ToLower(msgprex))
 	if exist {
+	    fmt.Printf("%v===================DECDSAGenKeyRoundOne,exist is true, key = %v====================\n",common.CurrentTime(),msgprex)
 	    c1s,ok := c1.([]string)
 	    if ok == true {
+		fmt.Printf("%v===================DECDSAGenKeyRoundOne,ok is true, key = %v====================\n",common.CurrentTime(),msgprex)
 		for _,v := range c1s {
+		    fmt.Printf("%v===================DECDSAGenKeyRoundOne,msg include = %v, key = %v====================\n",common.CurrentTime(),v,msgprex)
 		    DisMsg(v)
 		}
 
-		C1Data.DeleteMap(w.sid)
+		C1Data.DeleteMap(strings.ToLower(msgprex))
 	    }
 	}
 	////

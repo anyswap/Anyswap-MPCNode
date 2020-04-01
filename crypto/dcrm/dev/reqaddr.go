@@ -1399,6 +1399,20 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	ss := enode + Sep + s0 + Sep + s1 + Sep + s2 + Sep + s3 + Sep + s4 + Sep + s5
 	SendMsgToDcrmGroup(ss, w.groupid)
 
+	////fix bug: get C1 timeout
+	c1, exist := C1Data.ReadMap(w.sid)
+	if exist {
+	    c1s,ok := c1.([]string)
+	    if ok == true {
+		for _,v := range c1s {
+		    DisMsg(v)
+		}
+
+		C1Data.DeleteMap(w.sid)
+	    }
+	}
+	////
+
 	// 1. Receive Broadcast
 	// commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
 	// u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk

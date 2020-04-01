@@ -485,6 +485,20 @@ func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice
 	ss := enode + Sep + s0 + Sep + s1
 	SendMsgToDcrmGroup(ss, w.groupid)
 
+	////fix bug: get C11 timeout
+	c1, exist := C1Data.ReadMap(w.sid)
+	if exist {
+	    c1s,ok := c1.([]string)
+	    if ok == true {
+		for _,v := range c1s {
+		    DisMsg(v)
+		}
+		
+		C1Data.DeleteMap(w.sid)
+	    }
+	}
+	////
+
 	// 1. Receive Broadcast
 	//	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
 	common.Info("===================send C11 finish, ", "prex = ", msgprex, "", "====================")

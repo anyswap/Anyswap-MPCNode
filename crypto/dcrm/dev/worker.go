@@ -2271,7 +2271,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			msgs := strings.Split(msg, ":")
 			w.groupid = msgs[5]
 			w.limitnum = msgs[7]
-			w.NodeCnt, _ = GetGroup(w.groupid)
+			gcnt, _ := GetGroup(w.groupid)
+			w.NodeCnt = gcnt
 			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
 			w.ThresHold = w.NodeCnt
 
@@ -2282,10 +2283,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				w.NodeCnt = nodecnt
 			    }
 
-			    th, err := strconv.Atoi(nums[0])
-			    if err == nil {
-				w.ThresHold = th 
-			    }
+			    //th, err := strconv.Atoi(nums[0])
+			    //if err == nil {
+				w.ThresHold = gcnt
+			    //}
 			}
 
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
@@ -2603,7 +2604,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			msgs := strings.Split(rr.Msg, ":")
 			w.groupid = msgs[2]
 			w.limitnum = msgs[4]
-			w.NodeCnt, _ = GetGroup(w.groupid)
+			gcnt, _ := GetGroup(w.groupid)
+			w.NodeCnt = gcnt
 			w.ThresHold = w.NodeCnt
 
 			nums := strings.Split(w.limitnum, "/")
@@ -2613,10 +2615,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				w.NodeCnt = nodecnt
 			    }
 
-			    th, err := strconv.Atoi(nums[0])
-			    if err == nil {
-				w.ThresHold = th 
-			    }
+			    //th, err := strconv.Atoi(nums[0])
+			    //if err == nil {
+				w.ThresHold = gcnt
+			    //}
 			}
 
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
@@ -3978,7 +3980,7 @@ func DisMsg(msg string) {
 		}
 	case "AcceptLockOutRes":
 		///bug
-		if w.msg_acceptlockoutres.Len() >= w.NodeCnt {
+		if w.msg_acceptlockoutres.Len() >= w.ThresHold {
 			return
 		}
 		///
@@ -4013,7 +4015,7 @@ func DisMsg(msg string) {
 		//////
 
 		w.msg_acceptlockoutres.PushBack(msg)
-		if w.msg_acceptlockoutres.Len() == w.NodeCnt {
+		if w.msg_acceptlockoutres.Len() == w.ThresHold {
 			common.Info("===================Get All AcceptLockOutRes ", "msg hash = ", test, "", "====================")
 			w.bacceptlockoutres <- true
 			/////
@@ -4035,7 +4037,7 @@ func DisMsg(msg string) {
 		}
 	case "SendLockOutRes":
 		///bug
-		if w.msg_sendlockoutres.Len() >= (w.NodeCnt - 1) {
+		if w.msg_sendlockoutres.Len() >= (w.ThresHold - 1) {
 			return
 		}
 		///
@@ -4044,7 +4046,7 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_sendlockoutres.PushBack(msg)
-		if w.msg_sendlockoutres.Len() == (w.NodeCnt - 1) {
+		if w.msg_sendlockoutres.Len() == (w.ThresHold - 1) {
 			common.Info("===================Get All SendLockOutRes ", "msg hash = ", test, "", "====================")
 			w.bsendlockoutres <- true
 		}

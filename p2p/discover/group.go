@@ -475,16 +475,6 @@ func (req *getdcrmmessage) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac 
 	//if expired(req.Expiration) {
 	//	return errExpired
 	//}
-	if !t.db.hasBond(fromID) {
-		// No bond exists, we don't process the packet. This prevents
-		// an attack vector where the discovery protocol could be used
-		// to amplify traffic in a DDOS attack. A malicious actor
-		// would send a findnode request with the IP address and UDP
-		// port of the target as the source address. The recipient of
-		// the findnode packet would then send a neighbors packet
-		// (which is a much bigger packet than findnode) to the victim.
-		return errUnknownNode
-	}
 	fmt.Printf("%v send ack ==== (req *getdcrmmessage) handle() ====, to: %v, squence: %v\n", common.CurrentTime(), from, req.Sequence)
 	t.send(from, byte(Ack_Packet), &Ack{
 		Sequence:   req.Sequence,

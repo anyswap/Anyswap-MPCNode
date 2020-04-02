@@ -270,6 +270,37 @@ func RecivReqAddr() {
 						err := dev.SaveAcceptReqAddrData(ac)
 						fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n", common.CurrentTime(), data.Account, err, data.Key)
 						if err == nil {
+						    ///////add decdsa log
+						    var enodeinfo string
+						    groupinfo := make([]string,0)
+						    _, enodes := dev.GetGroup(data.GroupId)
+						    nodes := strings.Split(enodes, dev.SepSg)
+						    for _, node := range nodes {
+							groupinfo = append(groupinfo,node)
+							node2 := dev.ParseNode(node)
+							if strings.EqualFold(cur_enode,node2) {
+							    enodeinfo = node 
+							}
+						    }
+
+						    log, exist := dev.DecdsaMap.ReadMap(strings.ToLower(data.Key))
+						    if exist == false {
+							logs := &dev.DecdsaLog{CurEnode:enodeinfo,GroupEnodes:groupinfo,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+							dev.DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
+							fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
+						    } else {
+							logs,ok := log.(*dev.DecdsaLog)
+							if ok == false {
+							    fmt.Printf("%v ===============RecivReqAddr,ok if false, key = %v=================\n", common.CurrentTime(),data.Key)
+							    return
+							}
+
+							logs.CurEnode = enodeinfo
+							logs.GroupEnodes = groupinfo
+							dev.DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
+							fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
+						    }
+						    //////////////////
 							////////bug
 							go func(d ReqAddrData) {
 								/////////////////////tmp code //////////////////////
@@ -525,6 +556,33 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	//s2 := strconv.Itoa(ac.WorkId)
 	ss := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
 	dev.SendMsgToDcrmGroup(ss, datas[3])
+	
+	//////////add decdsa log
+	cur_time := fmt.Sprintf("%v",common.CurrentTime())
+	log, exist := dev.DecdsaMap.ReadMap(strings.ToLower(key))
+	if exist == false {
+	    tmp := make([]dev.SendAcceptResTime,0)
+	    rat := dev.SendAcceptResTime{SendTime:cur_time,Reply:ss}
+	    tmp = append(tmp,rat)
+	    logs := &dev.DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:tmp,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+	    dev.DecdsaMap.WriteMap(strings.ToLower(key),logs)
+	    fmt.Printf("%v ===============AcceptReqAddr,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,key)
+	} else {
+	    logs,ok := log.(*dev.DecdsaLog)
+	    if ok == false {
+		fmt.Printf("%v ===============AcceptReqAddr,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),key)
+		return "", "get dcrm log fail", fmt.Errorf("get dcrm log fail.")
+	    }
+
+	    rats := logs.SendAcceptRes
+	    rat := dev.SendAcceptResTime{SendTime:cur_time,Reply:ss}
+	    rats = append(rats,rat)
+	    logs.SendAcceptRes = rats
+	    dev.DecdsaMap.WriteMap(strings.ToLower(key),logs)
+	    fmt.Printf("%v ===============AcceptReqAddr,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),key)
+	}
+	///////////////////////
+
 	dev.DisMsg(ss)
 	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), key)
 	////fix bug: get C1 timeout

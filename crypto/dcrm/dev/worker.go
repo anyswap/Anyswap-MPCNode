@@ -81,6 +81,7 @@ var (
 	RpcReqQueueCache = make(chan RpcReq, RpcMaxQueue)
 	
 	C1Data  = common.NewSafeMap(10)
+	DecdsaMap  = common.NewSafeMap(10)
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {
@@ -1336,6 +1337,28 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	//}
 	//if rr.MsgType == "rpc_req_dcrmaddr" {
 	//}
+
+	////add decdsa log
+	log, exist := DecdsaMap.ReadMap(strings.ToLower(rr.Nonce))
+	if exist == false {
+	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:fmt.Sprintf("%v",common.CurrentTime()),RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+	    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
+	    fmt.Printf("%v ===============DcrmCall,write map success,key = %v=================\n", common.CurrentTime(),rr.Nonce)
+	} else {
+	    logs,ok := log.(*DecdsaLog)
+	    if ok == false {
+		fmt.Printf("%v ===============DcrmCall,ok is false, key = %v=================\n", common.CurrentTime(),rr.Nonce)
+		ret := ("fail" + Sep + "decdsa log no exist" + Sep + "dcrm back-end internal error:decdsa log no exist" + Sep + "decdsa log no exist") //TODO "no-data"
+		ch <- ret
+		return ch
+	    }
+
+	    logs.DcrmCallTime = fmt.Sprintf("%v",common.CurrentTime())
+	    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
+	    fmt.Printf("%v ===============DcrmCall,write map success,key = %v=================\n", common.CurrentTime(),rr.Nonce)
+	}
+	/////////////////
+
 	test := Keccak256Hash([]byte(strings.ToLower(s))).Hex()
 	fmt.Printf("%v =============DcrmCall, get msg len = %v,msg hash = %v,sender node = %v,key = %v =======================\n", common.CurrentTime(), len(s), test, enode, rr.Nonce)
 	////////
@@ -1502,8 +1525,173 @@ func GetGroupRes(wid int) RpcDcrmRes {
 //=========================================
 
 func Call(msg interface{}, enode string) {
-	fmt.Printf("%v =========Call,get msg = %v,sender node = %v =================", common.CurrentTime(), msg, enode)
+    cur_time := fmt.Sprintf("%v",common.CurrentTime())
+	fmt.Printf("%v =========Call,get msg = %v,sender node = %v =================\n", cur_time, msg, enode)
 	s := msg.(string)
+	if s == "" {
+	    return
+	}
+
+	mm := strings.Split(s, Sep)
+	if len(mm) >= 2 {
+	    if len(mm) < 3 {
+		    return
+	    }
+
+	    mms := mm[0]
+	    prexs := strings.Split(mms, "-")
+	    if len(prexs) < 2 {
+		    return
+	    }
+
+	    mmtmp := mm[0:2]
+	    ss := strings.Join(mmtmp, Sep)
+
+	    msgCode := mm[1]
+	    switch msgCode {
+	    case "AcceptReqAddrRes":
+		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
+		if exist == false {
+		    tmp := make([]RecivAcceptResTime,0)
+		    rat := RecivAcceptResTime{RecivTime:cur_time,Reply:s}
+		    tmp = append(tmp,rat)
+		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:tmp,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		} else {
+		    logs,ok := log.(*DecdsaLog)
+		    if ok == false {
+			fmt.Printf("%v ===============Call,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),prexs[0])
+			return
+		    }
+
+		    rats := logs.RecivAcceptRes
+		    rat := RecivAcceptResTime{RecivTime:cur_time,Reply:s}
+		    rats = append(rats,rat)
+		    logs.RecivAcceptRes = rats
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		}
+	    case "C1":
+		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
+		if exist == false {
+		    tmp := make([]RecivDcrmTime,0)
+		    rat := RecivDcrmTime{Round:"C1",RecivTime:cur_time,Msg:ss}
+		    tmp = append(tmp,rat)
+		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is C1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		} else {
+		    logs,ok := log.(*DecdsaLog)
+		    if ok == false {
+			fmt.Printf("%v ===============Call,code is C1,ok if false, key = %v=================\n", common.CurrentTime(),prexs[0])
+			return
+		    }
+
+		    rats := logs.RecivDcrm
+		    rat := RecivDcrmTime{Round:"C1",RecivTime:cur_time,Msg:ss}
+		    rats = append(rats,rat)
+		    logs.RecivDcrm = rats
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is C1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		}
+	    case "D1":
+		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
+		if exist == false {
+		    tmp := make([]RecivDcrmTime,0)
+		    rat := RecivDcrmTime{Round:"D1",RecivTime:cur_time,Msg:ss}
+		    tmp = append(tmp,rat)
+		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is D1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		} else {
+		    logs,ok := log.(*DecdsaLog)
+		    if ok == false {
+			fmt.Printf("%v ===============Call,code is D1,ok if false, key = %v=================\n", common.CurrentTime(),prexs[0])
+			return
+		    }
+
+		    rats := logs.RecivDcrm
+		    rat := RecivDcrmTime{Round:"D1",RecivTime:cur_time,Msg:ss}
+		    rats = append(rats,rat)
+		    logs.RecivDcrm = rats
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is D1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		}
+	    case "SHARE1":
+		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
+		if exist == false {
+		    tmp := make([]RecivDcrmTime,0)
+		    rat := RecivDcrmTime{Round:"SHARE1",RecivTime:cur_time,Msg:ss}
+		    tmp = append(tmp,rat)
+		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is SHARE1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		} else {
+		    logs,ok := log.(*DecdsaLog)
+		    if ok == false {
+			fmt.Printf("%v ===============Call,code is SHARE1,ok if false, key = %v=================\n", common.CurrentTime(),prexs[0])
+			return
+		    }
+
+		    rats := logs.RecivDcrm
+		    rat := RecivDcrmTime{Round:"SHARE1",RecivTime:cur_time,Msg:ss}
+		    rats = append(rats,rat)
+		    logs.RecivDcrm = rats
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is SHARE1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		}
+	    case "NTILDEH1H2":
+		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
+		if exist == false {
+		    tmp := make([]RecivDcrmTime,0)
+		    rat := RecivDcrmTime{Round:"NTILDEH1H2",RecivTime:cur_time,Msg:ss}
+		    tmp = append(tmp,rat)
+		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		} else {
+		    logs,ok := log.(*DecdsaLog)
+		    if ok == false {
+			fmt.Printf("%v ===============Call,code is NTILDEH1H2,ok if false, key = %v=================\n", common.CurrentTime(),prexs[0])
+			return
+		    }
+
+		    rats := logs.RecivDcrm
+		    rat := RecivDcrmTime{Round:"NTILDEH1H2",RecivTime:cur_time,Msg:ss}
+		    rats = append(rats,rat)
+		    logs.RecivDcrm = rats
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		}
+	    case "ZKUPROOF":
+		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
+		if exist == false {
+		    tmp := make([]RecivDcrmTime,0)
+		    rat := RecivDcrmTime{Round:"ZKUPROOF",RecivTime:cur_time,Msg:ss}
+		    tmp = append(tmp,rat)
+		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is ZKUPROOF,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		} else {
+		    logs,ok := log.(*DecdsaLog)
+		    if ok == false {
+			fmt.Printf("%v ===============Call,code is ZKUPROOF,ok if false, key = %v=================\n", common.CurrentTime(),prexs[0])
+			return
+		    }
+
+		    rats := logs.RecivDcrm
+		    rat := RecivDcrmTime{Round:"ZKUPROOF",RecivTime:cur_time,Msg:ss}
+		    rats = append(rats,rat)
+		    logs.RecivDcrm = rats
+		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
+		    fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		}
+	    default:
+		    fmt.Println("unkown msg code")
+	    }
+	}
+
 	SetUpMsgList(s, enode)
 }
 
@@ -2452,6 +2640,40 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					////TODO
 				}
 
+				///////add decdsa log
+				var enodeinfo string
+				groupinfo := make([]string,0)
+				_, enodes := GetGroup(w.groupid)
+				nodes := strings.Split(enodes, SepSg)
+				for _, node := range nodes {
+				    groupinfo = append(groupinfo,node)
+				    node2 := ParseNode(node)
+				    if strings.EqualFold(cur_enode,node2) {
+					enodeinfo = node 
+				    }
+				}
+
+				log, exist := DecdsaMap.ReadMap(strings.ToLower(rr.Nonce))
+				if exist == false {
+				    logs := &DecdsaLog{CurEnode:enodeinfo,GroupEnodes:groupinfo,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+				    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
+				    fmt.Printf("%v ===============RecvMsg.Run,write map success,exist is false,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,rr.Nonce)
+				} else {
+				    logs,ok := log.(*DecdsaLog)
+				    if ok == false {
+					fmt.Printf("%v ===============RecvMsg.Run,ok if false, key = %v=================\n", common.CurrentTime(),rr.Nonce)
+					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm log fail in RecvMsg.Run", Err: fmt.Errorf("get dcrm log fail in recvmsg.run")}
+					ch <- res2
+					return false
+				    }
+
+				    logs.CurEnode = enodeinfo
+				    logs.GroupEnodes = groupinfo
+				    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
+				    fmt.Printf("%v ===============RecvMsg.Run,write map success,exist is true,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,rr.Nonce)
+				}
+				//////////////////
+
 				if msgs[5] == "1" {
 				    exsit,da := GetValueFromPubKeyData(strings.ToLower(msgs[0]))
 				    if exsit == false {
@@ -2913,6 +3135,35 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		s1 := "true"
 		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
 		SendMsgToDcrmGroup(ss, self.GroupId)
+		
+		//////////add decdsa log
+		cur_time := fmt.Sprintf("%v",common.CurrentTime())
+		log, exist := DecdsaMap.ReadMap(strings.ToLower(self.Key))
+		if exist == false {
+		    tmp := make([]SendAcceptResTime,0)
+		    rat := SendAcceptResTime{SendTime:cur_time,Reply:ss}
+		    tmp = append(tmp,rat)
+		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:tmp,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
+		    DecdsaMap.WriteMap(strings.ToLower(self.Key),logs)
+		    fmt.Printf("%v ===============ReqAddrSendMsgToDcrm.Run,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,self.Key)
+		} else {
+		    logs,ok := log.(*DecdsaLog)
+		    if ok == false {
+			fmt.Printf("%v ===============ReqAddrSendMsgToDcrm.Run,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),self.Key)
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm log fail in req addr", Err: err}
+			ch <- res
+			return false
+		    }
+
+		    rats := logs.SendAcceptRes
+		    rat := SendAcceptResTime{SendTime:cur_time,Reply:ss}
+		    rats = append(rats,rat)
+		    logs.SendAcceptRes = rats
+		    DecdsaMap.WriteMap(strings.ToLower(self.Key),logs)
+		    fmt.Printf("%v ===============ReqAddrSendMsgToDcrm.Run,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),self.Key)
+		}
+		///////////////////////
+
 		DisMsg(ss)
 		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
 		////fix bug: get C1 timeout
@@ -3369,6 +3620,46 @@ func SendReqToGroup(msg string, rpctype string) (string, string, error) {
 	}
 
 	return chret, "", nil
+}
+
+type RecivAcceptResTime struct {
+    RecivTime string
+    Reply string
+}
+
+type SendAcceptResTime struct {
+    SendTime string
+    Reply string
+}
+
+type RecivDcrmTime struct {
+    Round string
+    RecivTime string
+    Msg string
+}
+
+type SendDcrmTime struct {
+    Round string
+    SendTime string
+    Msg string
+}
+
+type NoRecivData struct {
+    Node string
+    Msg string
+}
+
+type DecdsaLog struct {
+    CurEnode string  //enodeid:ip:port
+    GroupEnodes []string
+    DcrmCallTime string
+    RecivAcceptRes []RecivAcceptResTime
+    SendAcceptRes []SendAcceptResTime
+    RecivDcrm []RecivDcrmTime
+    SendDcrm []SendDcrmTime
+    FailTime string
+    FailInfo string
+    No_Reciv []NoRecivData
 }
 
 func GetChannelValue(t int, obj interface{}) (string, string, error) {

@@ -2354,6 +2354,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	ids := GetIds(cointype, w.groupid)
 	idSign := ids[:w.ThresHold]
 	mMtA, _ := new(big.Int).SetString(message, 16)
+	fmt.Printf("%v =============Sign_ec2, w.ThresHold = %v, key = %v ================\n", common.CurrentTime(), w.ThresHold, msgprex)
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
@@ -3346,6 +3347,7 @@ func GetIds(cointype string, groupid string) sortableIDSSlice {
 	_, nodes := GetGroup(groupid)
 	others := strings.Split(nodes, SepSg)
 	for _, v := range others {
+	    fmt.Printf("%v==================GetIds, enode = %v =====================\n",common.CurrentTime(),v)
 		node2 := ParseNode(v) //bug??
 		uid := DoubleHash(node2, cointype)
 		ids = append(ids, uid)

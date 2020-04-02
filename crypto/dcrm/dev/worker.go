@@ -2275,6 +2275,21 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
 			w.ThresHold = w.NodeCnt
 
+			nums := strings.Split(w.limitnum, "/")
+			if len(nums) == 2 {
+			    nodecnt, err := strconv.Atoi(nums[1])
+			    if err == nil {
+				w.NodeCnt = nodecnt
+			    }
+
+			    th, err := strconv.Atoi(nums[0])
+			    if err == nil {
+				w.ThresHold = th 
+			    }
+			}
+
+			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
+
 			////fix bug: get C11 timeout
 			/*c1, exist := C1Data.ReadMap(w.sid)
 			if exist {
@@ -2590,6 +2605,22 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w.limitnum = msgs[4]
 			w.NodeCnt, _ = GetGroup(w.groupid)
 			w.ThresHold = w.NodeCnt
+
+			nums := strings.Split(w.limitnum, "/")
+			if len(nums) == 2 {
+			    nodecnt, err := strconv.Atoi(nums[1])
+			    if err == nil {
+				w.NodeCnt = nodecnt
+			    }
+
+			    th, err := strconv.Atoi(nums[0])
+			    if err == nil {
+				w.ThresHold = th 
+			    }
+			}
+
+			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
+
 
 			////fix bug: get C1 timeout
 			/*c1, exist := C1Data.ReadMap(w.sid)

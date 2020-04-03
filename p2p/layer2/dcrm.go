@@ -274,9 +274,9 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 }
 
 func SdkProtocol_getGroup(gID string) (int, string) {
-	gid, _ := discover.HexID(gID)
-	if checkExistGroup(gid) == false {
-		fmt.Printf("broadcastInGroupAll, group gid: %v not exist\n", gid)
+	gid, err := discover.HexID(gID)
+	if err != nil || checkExistGroup(gid) == false {
+		fmt.Printf("broadcastInGroupAll, group gID: %v, hexid-gid: %v not exist\n", gID, gid)
 		return 0, ""
 	}
 	return getGroup(gid, Sdkprotocol_type)

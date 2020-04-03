@@ -149,6 +149,7 @@ func startP2pNode(c *cli.Context) error {
 		kfd.Close()
 	}
 	layer2.InitSelfNodeID(discover.PubkeyID(&nodeKey.PublicKey).String())
+	layer2.InitIPPort(port)
 
 	dcrm := layer2.DcrmNew(nil)
 	nodeserv := p2p.Server{

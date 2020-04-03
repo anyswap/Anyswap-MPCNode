@@ -401,3 +401,56 @@ func CheckAddPeer(mode string, enodes []string) error {
 	}
 	return nil
 }
+
+func InitIPPort(port int) {
+	discover.InitIP(getLocalIP(), uint16(port))
+}
+
+func getLocalIP() string {
+	netInterfaces, err := net.Interfaces()
+	if err != nil {
+		fmt.Println("net.Interfaces failed, err:", err.Error())
+		return ""
+	}
+
+	internetIP := ""
+	wlanIP := ""
+	loopIP := ""
+	for i := 0; i < len(netInterfaces); i++ {
+		//fmt.Printf("i: %v, flags: %v, net.FlagUp: %v\n", i, netInterfaces[i].Flags, net.FlagUp)
+		if (netInterfaces[i].Flags & net.FlagUp) != 0 {
+			addrs, _ := netInterfaces[i].Addrs()
+
+			for _, address := range addrs {
+				if ipnet, ok := address.(*net.IPNet); ok {
+					//fmt.Println(ipnet.IP.String())
+					if ipnet.IP.To4() != nil {
+						if netInterfaces[i].Name == "WLAN" {
+							wlanIP = ipnet.IP.String()
+						} else if ipnet.IP.IsLoopback() {
+							loopIP = ipnet.IP.String()
+						}else {
+							if internetIP == "" {
+								internetIP = ipnet.IP.String()
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	//fmt.Printf("internetIP: %v, wlanIP: %v, loopIP: %v\n", internetIP, wlanIP, loopIP)
+	if internetIP != "" {
+		//fmt.Printf("\nip: %v\n", internetIP)
+		return internetIP
+	} else if wlanIP != "" {
+		//fmt.Printf("\nip: %v\n", wlanIP)
+		return wlanIP
+	} else if loopIP != "" {
+		//fmt.Printf("\nip: %v\n", loopIP)
+		return loopIP
+	}
+	fmt.Printf("ip is nil\n")
+	return ""
+}
+

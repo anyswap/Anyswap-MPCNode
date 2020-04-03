@@ -48,7 +48,7 @@ var (
 	Xp_groupList   *Group
 	tmpdcrmmsg     = &getdcrmmessage{Number: [3]byte{0, 0, 0}, Msg: ""}
 	setlocaliptrue = false
-	localIP        = "127.0.0.1"
+	LocalIP        string
 	RemoteIP       net.IP
 	RemotePort     = uint16(0)
 	RemoteUpdate   = false
@@ -1259,16 +1259,8 @@ func ParseNodes(n []*Node) (int, string) {
 	return i, enode
 }
 
-func setLocalIP(data interface{}) {
-	if setlocaliptrue == true {
-		return
-	}
-	localIP = data.(*pong).To.IP.String()
-	setlocaliptrue = true
-}
-
 func GetLocalIP() string {
-	return localIP
+	return LocalIP
 }
 
 func GetRemoteIP() net.IP {
@@ -1291,16 +1283,21 @@ func GetEnode() string {
 }
 
 func updateRemoteIP(ip net.IP, port uint16) {
-	if setgroup == 0 && RemoteUpdate == false && RemoteIP == nil {
+	if setgroup == 0 && RemoteUpdate == false {
 		RemoteUpdate = true
-		fmt.Printf("updateRemoteIP, IP:port = %v:%v\n\n", ip, port)
-		RemoteIP = ip
-		RemotePort = port
-		SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
-		SelfIPPort = fmt.Sprintf("%v:%v", RemoteIP, RemotePort)
-		n, _ := ParseNode(SelfEnode)
+		enode := fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
+		n, _ := ParseNode(enode)
 		setGroup(n, "add")
+		updateIPPort(ip, port)
 	}
+}
+
+func updateIPPort(ip net.IP, port uint16) {
+	fmt.Printf("updateRemoteIP, IP:port = %v:%v\n\n", ip, port)
+	RemoteIP = ip
+	RemotePort = port
+	SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
+	SelfIPPort = fmt.Sprintf("%v:%v", RemoteIP, RemotePort)
 }
 
 func SendToMyselfAndReturn(selfID, msg string, p2pType int) {
@@ -1631,13 +1628,6 @@ func NewGroup() *Group {
 	return &Group{}
 }
 
-func checkFrom(n *Node) {
-	//TODO check id
-	if setgroup == 0 {
-		setGroup(n, "add")
-	}
-}
-
 // DefaultDataDir is the default data directory to use for the databases and other
 // persistence requirements.
 func DefaultDataDir() string {
@@ -1739,6 +1729,7 @@ func checkUpdateNode(n *Node) {
 	if setgroup == 0 && n.ID != SelfNodeID && checkAddNodes(n.ID) == true {
 		if ok := checkSeeds(n.ID); ok == false {
 			setGroup(n, "add")
+			updateIPPort(n.IP, n.UDP)
 		}
 	}
 	updateGroupsNode = false
@@ -1774,5 +1765,22 @@ func checkSeeds(nid NodeID) bool {
 		return true
 	}
 	return false
+}
+
+func InitIP(ip string, port uint16) {
+	LocalIP = ip
+	RemoteIP = parseIP(ip)
+	RemotePort = port
+	SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
+	fmt.Printf("==== InitIP() ====, IP: %v\n", RemoteIP)
+}
+
+func parseIP(s string) net.IP {
+	ip := net.ParseIP(s)
+	if ip == nil {
+		fmt.Printf("parseIP invalid %v\n", s)
+		return net.IP{}
+	}
+	return ip
 }
 

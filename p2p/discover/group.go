@@ -1729,7 +1729,6 @@ func checkUpdateNode(n *Node) {
 	if setgroup == 0 && n.ID != SelfNodeID && checkAddNodes(n.ID) == true {
 		if ok := checkSeeds(n.ID); ok == false {
 			setGroup(n, "add")
-			updateIPPort(n.IP, n.UDP)
 		}
 	}
 	updateGroupsNode = false

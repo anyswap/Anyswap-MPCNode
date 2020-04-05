@@ -390,7 +390,7 @@ func CheckAddPeer(mode string, enodes []string) error {
 		go func(node *discover.Node) {
 			wg.Add(1)
 			defer wg.Done()
-			//p2pServer.AddPeer(node)
+			p2pServer.AddPeer(node)
 			p2pServer.AddTrustedPeer(node)
 		}(node)
 	}

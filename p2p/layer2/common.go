@@ -382,7 +382,7 @@ func recvGroupInfo(gid discover.NodeID, mode string, req interface{}, p2pType in
 		node, _ := discover.ParseNode(enode.String())
 		xvcGroup.Nodes = append(xvcGroup.Nodes, discover.RpcNode{ID: node.ID, IP: node.IP, UDP: node.UDP, TCP: node.UDP})
 		if node.ID != selfid {
-			//go p2pServer.AddPeer(node)
+			go p2pServer.AddPeer(node)
 			go p2pServer.AddTrustedPeer(node)
 		}
 	}
@@ -563,7 +563,7 @@ func InitServer(nodeserv interface{}) {
 			if node.ID != selfid {
 				discover.PingNode(node.ID, node.IP, int(node.UDP))
 				en := discover.NewNode(node.ID, node.IP, node.UDP, node.TCP)
-				//go p2pServer.AddPeer(en)
+				go p2pServer.AddPeer(en)
 				go p2pServer.AddTrustedPeer(en)
 			}
 		}

@@ -529,11 +529,11 @@ func DECDSASignPaillierEncrypt(cointype string, save string, w *RpcReqWorker, id
 	var ukc2 = make(map[string]*big.Int)
 	var ukc3 = make(map[string]*ec2.PublicKey)
 
-	for k, id := range idSign {
+	for _, id := range idSign {
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk(save, k)
+			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save paillier pk fail")}
 				ch <- res
@@ -561,11 +561,11 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqW
 	// 2.2 calculate zk(k)
 	var zk1proof = make(map[string]*ec2.MtAZK1Proof_nhh)
 	var zkfactproof = make(map[string]*ec2.NtildeH1H2)
-	for k, id := range idSign {
+	for _, id := range idSign {
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 
-		u1zkFactProof := GetZkFactProof(save, k, w.NodeCnt)
+		u1zkFactProof := GetZkFactProof(save, GetRealByUid(cointype,w,id), w.NodeCnt)
 		if u1zkFactProof == nil {
 			fmt.Println("=================Sign_ec2,u1zkFactProof is nil. Nonce =%s=====================", msgprex)
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get ntildeh1h2 fail")}
@@ -737,7 +737,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 	}
 
 	// 2.5 verify zk(k)
-	for k, id := range idSign {
+	for _, id := range idSign {
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
@@ -776,7 +776,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 				return false
 			}
 
-			u1PaillierPk := GetPaillierPk(save, k)
+			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				fmt.Println("============sign,22222222,verify mtazk1proof fail===================")
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
@@ -825,7 +825,7 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk(save, k)
+			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 				ch <- res
@@ -848,7 +848,7 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 			continue
 		}
 
-		u2PaillierPk := GetPaillierPk(save, k)
+		u2PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
 		if u2PaillierPk == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 			ch <- res
@@ -893,7 +893,7 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk(save, k)
+			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 				ch <- res
@@ -915,7 +915,7 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 			continue
 		}
 
-		u2PaillierPk := GetPaillierPk(save, k)
+		u2PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
 		if u2PaillierPk == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 			ch <- res
@@ -1162,8 +1162,8 @@ func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, s
 	// 2.12
 	// decrypt c_kGamma to get alpha, MtA(k, gamma)
 	// MtA(k, gamma)
-	var index int
-	for k, id := range idSign {
+	var uid *big.Int
+	for _, id := range idSign {
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		////////bug
 		if len(enodes) < 9 {
@@ -1173,12 +1173,12 @@ func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, s
 		}
 		////////
 		if IsCurNode(enodes, cur_enode) {
-			index = k
+			uid = id
 			break
 		}
 	}
 
-	u1PaillierSk := GetPaillierSk(save, index) //get self privkey
+	u1PaillierSk := GetPaillierSk(save,GetRealByUid(cointype,w,uid)) //get self privkey
 	if u1PaillierSk == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get sk fail.")}
 		ch <- res
@@ -2317,6 +2317,32 @@ func Calc_s(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, ss1s map[
 	s = new(big.Int).Mod(s, secp256k1.S256().N)
 
 	return s
+}
+
+func GetRealByUid(cointype string,w *RpcReqWorker,uid *big.Int) int {
+    if cointype == "" || w == nil || w.DcrmFrom == "" || uid == nil {
+	return -1
+    }
+
+    key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
+    exsit,da := GetValueFromPubKeyData(key)
+    if exsit == false {
+	return -1
+    }
+
+    pubs,ok := da.(*PubKeyData)
+    if ok == false {
+	return -1
+    }
+
+    ids := GetIds(cointype, pubs.GroupId)
+    for k,v := range ids {
+	if v.Cmp(uid) == 0 {
+	    return k
+	}
+    }
+
+    return -1
 }
 
 //msgprex = hash

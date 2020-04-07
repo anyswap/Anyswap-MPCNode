@@ -339,6 +339,7 @@ type RpcReqWorker struct {
 	id               int
 	groupid          string
 	limitnum         string
+	DcrmFrom         string
 	NodeCnt          int
 	ThresHold        int
 	ch               chan interface{}
@@ -652,6 +653,7 @@ func (w *RpcReqWorker) Clear() {
 	w.sid = ""
 	w.groupid = ""
 	w.limitnum = ""
+	w.DcrmFrom = ""
 	w.NodeCnt = 5
 	w.ThresHold = 5
 
@@ -2289,6 +2291,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    //}
 			}
 
+			w.DcrmFrom = msgs[1]
+
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			////fix bug: get C11 timeout
@@ -2465,7 +2469,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						if err != nil {
 							tip = "get other node terminal accept lockout result timeout" ////bug
 							AcceptLockOut(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", tip, tip, ars, wid)
-						} else if w.msg_sendlockoutres.Len() != (w.NodeCnt - 1) {
+						} else if w.msg_sendlockoutres.Len() != (w.ThresHold - 1) {
 							fmt.Printf("%v ================RecvMsg,the result SendLockOutRes msg from other nodes fail,key = %v =======================\n", common.CurrentTime(), rr.Nonce)
 							AcceptLockOut(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
 						} else {
@@ -2548,7 +2552,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				if err != nil {
 					tip = "get other node terminal accept lockout result timeout" ////bug
 					AcceptLockOut(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", tip, tip, ars, wid)
-				} else if w.msg_sendlockoutres.Len() != (w.NodeCnt - 1) {
+				} else if w.msg_sendlockoutres.Len() != (w.ThresHold - 1) {
 					fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes fail,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 					AcceptLockOut(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
 				} else {
@@ -2615,10 +2619,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				w.NodeCnt = nodecnt
 			    }
 
-			    //th, err := strconv.Atoi(nums[0])
-			    //if err == nil {
-				w.ThresHold = gcnt
-			    //}
+			    th, err := strconv.Atoi(nums[0])
+			    if err == nil {
+				w.ThresHold = th 
+			    }
 			}
 
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)

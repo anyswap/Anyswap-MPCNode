@@ -569,6 +569,7 @@ func InitServer(nodeserv interface{}) {
 		}
 	}
 	discover.RecoverGroupAll(discover.SDK_groupList) // Group
+	discover.SDK_groupListChan<-1
 }
 
 func getCDLen(msg string) int {

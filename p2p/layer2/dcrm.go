@@ -430,8 +430,10 @@ func getLocalIP() string {
 						} else if ipnet.IP.IsLoopback() {
 							loopIP = ipnet.IP.String()
 						}else {
-							if internetIP == "" {
-								internetIP = ipnet.IP.String()
+							if netInterfaces[i].Name[:6] != "VMware" {
+								if internetIP == "" {
+									internetIP = ipnet.IP.String()
+								}
 							}
 						}
 					}

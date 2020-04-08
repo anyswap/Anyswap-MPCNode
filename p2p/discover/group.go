@@ -51,7 +51,7 @@ var (
 	LocalIP        string
 	RemoteIP       net.IP
 	RemotePort     = uint16(0)
-	RemoteUpdate   = false
+	RemoteUpdate   = true
 	SelfEnode      = ""
 	SelfIPPort     = ""
 	changed        = 0
@@ -77,6 +77,7 @@ var (
 	addNodesLock sync.Mutex
 	loadedSeeds map[NodeID]int = make(map[NodeID]int)
 	loadedDone bool = false
+	SDK_groupListChan chan int = make(chan int, 1)
 )
 var (
 	Dcrm_groupMemNum = 0
@@ -794,19 +795,18 @@ func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bo
 	GroupSDK.Lock()
 	defer GroupSDK.Unlock()
 	fmt.Printf("%v ==== buildSDKGroup() ====, gid: %v, enode: %v\n", common.CurrentTime(), gid, enode)
+	groupTmp := new(Group)
+	groupTmp.Mode = mode
+	groupTmp.Type = Type
+	groupTmp.Nodes = make([]RpcNode, len(enode))
+	for i, node := range enode {
+		groupTmp.Nodes[i] = RpcNode(nodeToRPC(node))
+		groupTmp.count++
+	}
+	groupTmp.ID = gid
+	SDK_groupList[groupTmp.ID] = groupTmp
+	fmt.Printf("==== buildSDKGroup() ====, gid: %v, group: %v\n", groupTmp)
 	if exist != true {
-		fmt.Printf("==== buildSDKGroup() ====, gid: %v new\n", gid)
-		groupTmp := new(Group)
-		groupTmp.Mode = mode
-		groupTmp.Type = Type
-		groupTmp.Nodes = make([]RpcNode, len(enode))
-		for i, node := range enode {
-			groupTmp.Nodes[i] = RpcNode(nodeToRPC(node))
-			groupTmp.count++
-		}
-		groupTmp.ID = gid
-		SDK_groupList[groupTmp.ID] = groupTmp
-		fmt.Printf("==== buildSDKGroup() ====, gid: %v, group: %v\n", groupTmp)
 		sendGroupInit(SDK_groupList[gid], Sdkprotocol_type)
 	}
 	sendGroupInfo(SDK_groupList[gid], Sdkprotocol_type)
@@ -1772,6 +1772,12 @@ func InitIP(ip string, port uint16) {
 	RemotePort = port
 	SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
 	fmt.Printf("==== InitIP() ====, IP: %v\n", RemoteIP)
+	go func(enode string) {
+		n, _ := ParseNode(enode)
+		<-SDK_groupListChan
+		setGroup(n, "add")
+		RemoteUpdate = false
+	}(SelfEnode)
 }
 
 func parseIP(s string) net.IP {

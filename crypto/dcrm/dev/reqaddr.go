@@ -156,11 +156,12 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		sedsave := itertmp.Value.(string)
 		////////
+		tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 		rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
 
 		pubkeyhex := hex.EncodeToString(sedpk)
 		
-		pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
+		pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
 		epubs, err := Encode2(pubs)
 		if err != nil {
 			fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
@@ -280,11 +281,12 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	}
 	save := iter.Value.(string)
 	////////
+	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
 
 	pubkeyhex := hex.EncodeToString(ys)
 	
-	pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode}
+	pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
 	epubs, err := Encode2(pubs)
 	if err != nil {
 		fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)

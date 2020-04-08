@@ -2374,7 +2374,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						    keys = keys + ":" + rr.Nonce
 						}
 
-						pubs3 := &PubKeyData{Key:(da2.(*PubKeyData)).Key,Account: (da2.(*PubKeyData)).Account, Pub: (da2.(*PubKeyData)).Pub, Save: (da2.(*PubKeyData)).Save, Nonce: (da2.(*PubKeyData)).Nonce, GroupId: (da2.(*PubKeyData)).GroupId, LimitNum: (da2.(*PubKeyData)).LimitNum, Mode: (da2.(*PubKeyData)).Mode,RefLockOutKeys:keys}
+						pubs3 := &PubKeyData{Key:(da2.(*PubKeyData)).Key,Account: (da2.(*PubKeyData)).Account, Pub: (da2.(*PubKeyData)).Pub, Save: (da2.(*PubKeyData)).Save, Nonce: (da2.(*PubKeyData)).Nonce, GroupId: (da2.(*PubKeyData)).GroupId, LimitNum: (da2.(*PubKeyData)).LimitNum, Mode: (da2.(*PubKeyData)).Mode,KeyGenTime:(da2.(*PubKeyData)).KeyGenTime,RefLockOutKeys:keys}
 						epubs, err := Encode2(pubs3)
 						if err == nil {
 						    ss3, err := Compress([]byte(epubs))
@@ -2919,6 +2919,7 @@ type PubKeyData struct {
 	GroupId  string
 	LimitNum string
 	Mode     string
+	KeyGenTime string
 	RefLockOutKeys string //key1:key2...
 }
 
@@ -4760,12 +4761,12 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	    if mode == md {
 		    al, exsit := gp[gid]
 		    if exsit {
-			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
+			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
 			    al = append(al, tmp)
 			    gp[gid] = al
 		    } else {
 			    a := make([]PubKeyInfo, 0)
-			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:""}
+			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
 			    a = append(a, tmp)
 			    gp[gid] = a
 		    }

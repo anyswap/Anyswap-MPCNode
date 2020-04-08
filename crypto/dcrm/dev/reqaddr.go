@@ -178,7 +178,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		}
 
 		fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
-		tip, reply := AcceptReqAddr(account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id)
+		tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id)
 		if reply != nil {
 			fmt.Printf("%v ===============dcrm_genPubKey,update reqaddr status,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), reply,account, pubkeyhex, nonce,rk)
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
@@ -305,7 +305,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	
 	fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
 
-	tip, reply := AcceptReqAddr(account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id)
+	tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id)
 	if reply != nil {
 		fmt.Printf("%v ===============dcrm_genPubKey,update reqaddr status,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), reply,account, pubkeyhex, nonce,rk)
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}

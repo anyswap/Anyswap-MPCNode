@@ -44,13 +44,12 @@ type Service struct{}
 
 // this will be called by dcrm_reqDcrmAddr
 // raw: tx raw data
-// model: "0"  self-group; "1" non self-group
 //return pubkey and coins addr
-func (this *Service) ReqDcrmAddr(raw string, mode string) map[string]interface{} { //函数名首字母必须大写
-	fmt.Printf("%v ==========call rpc ReqDcrmAddr from web,raw = %v,mode = %v  ===========\n", common.CurrentTime(), raw, mode)
+func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数名首字母必须大写
+	fmt.Printf("%v ==========call rpc ReqDcrmAddr from web,raw = %v ===========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
-	if raw == "" || mode == "" || (mode != "0" && mode != "1") {
+	if raw == "" {
 		data["result"] = ""
 		return map[string]interface{}{
 			"Status": "Error",
@@ -60,8 +59,8 @@ func (this *Service) ReqDcrmAddr(raw string, mode string) map[string]interface{}
 		}
 	}
 
-	ret, tip, err := dcrm.ReqDcrmAddr(raw, mode)
-	fmt.Printf("%v ==========call rpc ReqDcrmAddr finish,ret = %v,tip = %v,err = %v,raw = %v,mode = %v  ===========\n", common.CurrentTime(), ret, tip, err, raw, mode)
+	ret, tip, err := dcrm.ReqDcrmAddr(raw)
+	fmt.Printf("%v ==========call rpc ReqDcrmAddr finish,ret = %v,tip = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{

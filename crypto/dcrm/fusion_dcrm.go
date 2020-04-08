@@ -314,7 +314,7 @@ func RecivReqAddr() {
 									nodecnt, _ := strconv.Atoi(d.NodeCnt)
 									for j := 0; j < nodecnt; j++ {
 										tx2 := new(types.Transaction)
-										vs := common.FromHex(d.Datas[4+j])
+										vs := common.FromHex(d.Datas[5+j])
 										if err := rlp.DecodeBytes(vs, tx2); err != nil {
 											return
 										}
@@ -379,7 +379,7 @@ func RecivReqAddr() {
 								//if !types.IsDefaultED25519(msgs[1]) {  //TODO
 								//}
 
-								addr, _, err := dev.SendReqDcrmAddr(d.Account, d.Cointype, d.GroupId, d.Nonce, d.ThresHold, d.Mode, d.Datas[3], d.Key)
+								addr, _, err := dev.SendReqDcrmAddr(d.Account, d.Cointype, d.GroupId, d.Nonce, d.ThresHold, d.Mode, d.Datas[4], d.Key)
 								fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n", common.CurrentTime(), addr, err, d.Key)
 								if addr != "" && err == nil {
 									return
@@ -394,7 +394,7 @@ func RecivReqAddr() {
 	}
 }
 
-func ReqDcrmAddr(raw string, mode string) (string, string, error) {
+func ReqDcrmAddr(raw string) (string, string, error) {
 	tx := new(types.Transaction)
 	raws := common.FromHex(raw)
 	if err := rlp.DecodeBytes(raws, tx); err != nil {
@@ -407,9 +407,9 @@ func ReqDcrmAddr(raw string, mode string) (string, string, error) {
 	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
-	data := string(tx.Data()) //REQDCRMADDR:gid:threshold:timestamp:tx1:tx2:tx3...
+	data := string(tx.Data()) //REQDCRMADDR:gid:threshold:mode:timestamp:tx1:tx2:tx3...
 	datas := strings.Split(data, ":")
-	if len(datas) < 4 {
+	if len(datas) < 5 {
 		return "", "transacion data format error", fmt.Errorf("tx.data error.")
 	}
 
@@ -427,7 +427,12 @@ func ReqDcrmAddr(raw string, mode string) (string, string, error) {
 		return "", "no threshold value", fmt.Errorf("get threshold fail.")
 	}
 
-	timestamp := datas[3]
+	mode := datas[3]
+	if mode == "" {
+		return "", "get mode fail", fmt.Errorf("get mode fail.")
+	}
+
+	timestamp := datas[4]
 	if timestamp == "" {
 		return "", "no timestamp value", fmt.Errorf("get timestamp fail.")
 	}
@@ -442,8 +447,8 @@ func ReqDcrmAddr(raw string, mode string) (string, string, error) {
 		return "", err.Error(),err
 	}
 
-	if mode == "0" && len(datas) < (4+nodecnt) {
-		return "", "transacion data format error", fmt.Errorf("tx.data error.")
+	if mode == "0" && len(datas) < (5+nodecnt) {
+		return "", "transacion data format error, no nodes sign data", fmt.Errorf("tx.data error, no nodes sign data")
 	}
 
 	Nonce := tx.Nonce()

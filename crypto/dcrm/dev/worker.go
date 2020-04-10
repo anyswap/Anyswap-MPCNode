@@ -1855,7 +1855,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string, string, error) {
 		    continue
 	    }
 	    
-	    if !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
 		continue
 	    }
 
@@ -1928,7 +1928,7 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 		continue
 	    }
 
-	    if !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
 		continue
 	    }
 
@@ -4673,7 +4673,7 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 		    }
 	    }
 
-	    if !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
 		continue
 	    }
 

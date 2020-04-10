@@ -693,7 +693,7 @@ func AcceptLockOut(raw string) (string, string, error) {
 		continue
 	    }
 
-	    if !dev.CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
+	    if ac.Mode == "0" && !dev.CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
 		continue
 	    }
 
@@ -1000,7 +1000,7 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 		    }
 	    }
 
-	    if !dev.CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+	    if ac.Mode == "0" && !dev.CheckAcc(cur_enode,geter_acc,ac.Sigs) {
 		continue
 	    }
 

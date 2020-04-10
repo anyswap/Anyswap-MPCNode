@@ -1388,6 +1388,15 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 		return nil, nil, nil, nil, nil, nil, false
 	}
 
+	///bug groupid == nil ???
+	w, err := FindWorker(msgprex)
+	if err != nil || w.groupid == "" {
+	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+	    ch <- res
+	    return nil, nil, nil, nil, nil, nil, false
+	}
+	//////
+	
 	// 4. Broadcast
 	// commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
 	// u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk
@@ -1411,11 +1420,11 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	    tmp = append(tmp,rat)
 	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:tmp,FailTime:"",FailInfo:"",No_Reciv:nil}
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
-	    fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is false, key = %v=================\n", common.CurrentTime(),msgprex)
+	    //fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is false, key = %v=================\n", common.CurrentTime(),msgprex)
 	} else {
 	    logs,ok := log.(*DecdsaLog)
 	    if ok == false {
-		fmt.Printf("%v ===============DECDSAGenKeyRoundOne,code is C1,ok if false, key = %v=================\n", common.CurrentTime(),msgprex)
+		//fmt.Printf("%v ===============DECDSAGenKeyRoundOne,code is C1,ok if false, key = %v=================\n", common.CurrentTime(),msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get dcrm log fail")}
 		ch <- res
 		return nil, nil, nil, nil, nil, nil, false
@@ -1426,24 +1435,23 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	    rats = append(rats,rat)
 	    logs.SendDcrm = rats
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
-	    fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is true,key = %v=================\n", common.CurrentTime(),msgprex)
+	    //fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is true,key = %v=================\n", common.CurrentTime(),msgprex)
 	}
 	/////////////////////
 
 	////fix bug: get C1 timeout
-	fmt.Printf("%v===================DECDSAGenKeyRoundOne,key = %v====================\n",common.CurrentTime(),msgprex)
-	c1, exist := C1Data.ReadMap(strings.ToLower(msgprex))
-	if exist {
-	    fmt.Printf("%v===================DECDSAGenKeyRoundOne,exist is true, key = %v====================\n",common.CurrentTime(),msgprex)
-	    c1s,ok := c1.([]string)
-	    if ok == true {
-		fmt.Printf("%v===================DECDSAGenKeyRoundOne,ok is true, key = %v====================\n",common.CurrentTime(),msgprex)
-		for _,v := range c1s {
-		    fmt.Printf("%v===================DECDSAGenKeyRoundOne,msg include = %v, key = %v====================\n",common.CurrentTime(),v,msgprex)
-		    DisMsg(v)
-		}
-
-		C1Data.DeleteMap(strings.ToLower(msgprex))
+	//fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle C1, w.groupid = %v, key = %v=================\n", common.CurrentTime(),w.groupid,msgprex)
+	_, enodestmp := GetGroup(w.groupid)
+	nodestmp := strings.Split(enodestmp, SepSg)
+	for _, node := range nodestmp {
+	    node2 := ParseNode(node)
+	    c1data := msgprex + "-" + node2 + Sep + "C1"
+	    //fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle C1, w.groupid = %v, c1data = %v, key = %v=================\n", common.CurrentTime(),w.groupid,c1data,msgprex)
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle prex C1 data, exist is true in C1Data, w.groupid = %v, c1data = %v, msg = %v, key = %v=================\n", common.CurrentTime(),w.groupid,c1data,c1.(string),msgprex)
+		DisMsg(c1.(string))
+		go C1Data.DeleteMap(strings.ToLower(c1data))
 	    }
 	}
 	////
@@ -1459,6 +1467,15 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	    cur_time := fmt.Sprintf("%v",common.CurrentTime())
 	    tmp := make([]NoRecivData,0)
 	    /////check
+	    ///bug groupid == nil ???
+	    w, err := FindWorker(msgprex)
+	    if err != nil || w.groupid == "" {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+		ch <- res
+		return nil, nil, nil, nil, nil, nil, false
+	    }
+	    //////
+	    
 	    cnt, enodes := GetGroup(w.groupid)
 	    fmt.Printf("%v===================DECDSAGenKeyRoundOne,get current group info, group node cnt = %v, group id = %v, group enodes = %v, key = %v ====================\n",common.CurrentTime(),cnt,w.groupid,enodes,msgprex)
 
@@ -1495,11 +1512,11 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	    if exist == false {
 		logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:cur_time,FailInfo:"get C1 timeout",No_Reciv:tmp}
 		DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
-		fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is false, key = %v=================\n", common.CurrentTime(),msgprex)
+		//fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is false, key = %v=================\n", common.CurrentTime(),msgprex)
 	    } else {
 		logs,ok := log.(*DecdsaLog)
 		if ok == false {
-		    fmt.Printf("%v ===============DECDSAGenKeyRoundOne,code is C1,ok if false, key = %v=================\n", common.CurrentTime(),msgprex)
+		    //fmt.Printf("%v ===============DECDSAGenKeyRoundOne,code is C1,ok if false, key = %v=================\n", common.CurrentTime(),msgprex)
 		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get dcrm log fail")}
 		    ch <- res
 		    return nil, nil, nil, nil, nil, nil, false
@@ -1509,7 +1526,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 		logs.FailInfo = "get C1 timeout"
 		logs.No_Reciv = tmp 
 		DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
-		fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is true,key = %v=================\n", common.CurrentTime(),msgprex)
+		//fmt.Printf("%v ===============DECDSAGenKeyRoundOne,write map success,code is C1,exist is true,key = %v=================\n", common.CurrentTime(),msgprex)
 	    }
 	    
 	    log,_ = DecdsaMap.ReadMap(strings.ToLower(msgprex))
@@ -2457,9 +2474,14 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 
 	w := workers[id]
 	if w.groupid == "" {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
-		ch <- res
-		return false
+		///bug groupid == nil ???
+		w, err := FindWorker(msgprex)
+		if err != nil || w.groupid == "" {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+		    ch <- res
+		    return false
+		}
+		//////
 	}
 
 	ns, _ := GetGroup(w.groupid)

@@ -486,18 +486,15 @@ func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice
 	SendMsgToDcrmGroup(ss, w.groupid)
 
 	////fix bug: get C11 timeout
-	c1, exist := C1Data.ReadMap(strings.ToLower(msgprex))
-	if exist {
-	    fmt.Printf("%v===================exist is true, key = %v====================\n",common.CurrentTime(),msgprex)
-	    c1s,ok := c1.([]string)
-	    if ok == true {
-		fmt.Printf("%v===================ok is true, key = %v====================\n",common.CurrentTime(),msgprex)
-		for _,v := range c1s {
-		    fmt.Printf("%v===================msg include = %v, key = %v====================\n",common.CurrentTime(),v,msgprex)
-		    DisMsg(v)
-		}
-		
-		C1Data.DeleteMap(strings.ToLower(msgprex))
+	_, enodestmp := GetGroup(w.groupid)
+	nodestmp := strings.Split(enodestmp, SepSg)
+	for _, node := range nodestmp {
+	    node2 := ParseNode(node)
+	    c1data := msgprex + "-" + node2 + Sep + "C11"
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		DisMsg(c1.(string))
+		go C1Data.DeleteMap(strings.ToLower(c1data))
 	    }
 	}
 	////
@@ -3373,7 +3370,6 @@ func GetIds(cointype string, groupid string) sortableIDSSlice {
 	_, nodes := GetGroup(groupid)
 	others := strings.Split(nodes, SepSg)
 	for _, v := range others {
-	    fmt.Printf("%v==================GetIds, enode = %v =====================\n",common.CurrentTime(),v)
 		node2 := ParseNode(v) //bug??
 		uid := DoubleHash(node2, cointype)
 		ids = append(ids, uid)

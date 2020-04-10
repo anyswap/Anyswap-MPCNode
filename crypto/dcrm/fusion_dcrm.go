@@ -290,15 +290,12 @@ func RecivReqAddr() {
 							fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
 						    } else {
 							logs,ok := log.(*dev.DecdsaLog)
-							if ok == false {
-							    fmt.Printf("%v ===============RecivReqAddr,ok if false, key = %v=================\n", common.CurrentTime(),data.Key)
-							    return
+							if ok == true {
+							    logs.CurEnode = enodeinfo
+							    logs.GroupEnodes = groupinfo
+							    dev.DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
+							    fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
 							}
-
-							logs.CurEnode = enodeinfo
-							logs.GroupEnodes = groupinfo
-							dev.DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
-							fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
 						    }
 						    //////////////////
 							////////bug
@@ -591,15 +588,15 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	dev.DisMsg(ss)
 	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), key)
 	////fix bug: get C1 timeout
-	c1, exist := dev.C1Data.ReadMap(strings.ToLower(key))
-	if exist {
-	    c1s,ok := c1.([]string)
-	    if ok == true {
-		for _,v := range c1s {
-		    dev.DisMsg(v)
-		}
-		
-		dev.C1Data.DeleteMap(strings.ToLower(key))
+	_, enodes := dev.GetGroup(datas[3])
+	nodes := strings.Split(enodes, dev.SepSg)
+	for _, node := range nodes {
+	    node2 := dev.ParseNode(node)
+	    c1data := key + "-" + node2 + dev.Sep + "AcceptReqAddrRes"
+	    c1, exist := dev.C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		dev.DisMsg(c1.(string))
+		go dev.C1Data.DeleteMap(strings.ToLower(c1data))
 	    }
 	}
 	////
@@ -772,15 +769,15 @@ func AcceptLockOut(raw string) (string, string, error) {
 	dev.DisMsg(ss2)
 	fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), keytmp)
 	////fix bug: get C11 timeout
-	c1, exist := dev.C1Data.ReadMap(strings.ToLower(keytmp))
-	if exist {
-	    c1s,ok := c1.([]string)
-	    if ok == true {
-		for _,v := range c1s {
-		    dev.DisMsg(v)
-		}
-		
-		dev.C1Data.DeleteMap(strings.ToLower(keytmp))
+	_, enodes := dev.GetGroup(datas[2])
+	nodes := strings.Split(enodes, dev.SepSg)
+	for _, node := range nodes {
+	    node2 := dev.ParseNode(node)
+	    c1data := keytmp + "-" + node2 + dev.Sep + "AcceptLockOutRes"
+	    c1, exist := dev.C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		dev.DisMsg(c1.(string))
+		go dev.C1Data.DeleteMap(strings.ToLower(c1data))
 	    }
 	}
 	////

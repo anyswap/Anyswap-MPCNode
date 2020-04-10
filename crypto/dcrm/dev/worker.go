@@ -650,6 +650,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
 func (w *RpcReqWorker) Clear() {
 
+    	fmt.Printf("%v======================RpcReqWorker.Clear, w.id = %v, w.groupid = %v, key = %v ==========================\n",common.CurrentTime(),w.id,w.groupid,w.sid)
 	w.sid = ""
 	w.groupid = ""
 	w.limitnum = ""
@@ -2276,6 +2277,20 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		//rpc_lockout
 		if rr.MsgType == "rpc_lockout" {
+			
+			if !strings.EqualFold(cur_enode, self.sender) { //self send
+			    //nonce check
+			    exsit,_ := GetValueFromPubKeyData(rr.Nonce)
+			    ///////
+			    if exsit == true {
+				    fmt.Printf("%v ================RecvMsg.Run,lockout nonce error, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+				    //TODO must set acceptlockout(.....)
+				    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:lockout tx nonce error", Err: fmt.Errorf("lockout tx nonce error")}
+				    ch <- res2
+				    return false
+			    }
+			}
+			
 			w := workers[workid]
 			w.sid = rr.Nonce
 			//msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode:key:timestamp
@@ -2305,34 +2320,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
-			////fix bug: get C11 timeout
-			/*c1, exist := C1Data.ReadMap(w.sid)
-			if exist {
-			    c1s,ok := c1.([]string)
-			    if ok == true {
-				for _,v := range c1s {
-				    DisMsg(v)
-				}
-				
-				C1Data.DeleteMap(w.sid)
-			    }
-			}*/
-			////
-
 			if strings.EqualFold(cur_enode, self.sender) { //self send
 				AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "false", "Pending", "", "", "", nil, wid)
 			} else {
-				//nonce check
-				exsit,_ := GetValueFromPubKeyData(rr.Nonce)
-				///////
-				if exsit == true {
-					fmt.Printf("%v ================RecvMsg.Run,lockout nonce error, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-					//TODO must set acceptlockout(.....)
-					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:lockout tx nonce error", Err: fmt.Errorf("lockout tx nonce error")}
-					ch <- res2
-					return false
-				}
-
 				cur_nonce, _, _ := GetLockOutNonce(msgs[0], msgs[4], msgs[1])
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 				new_nonce_num, _ := new(big.Int).SetString(msgs[6], 10)
@@ -2610,12 +2600,26 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		//rpc_req_dcrmaddr
 		if rr.MsgType == "rpc_req_dcrmaddr" {
+			
+			msgs := strings.Split(rr.Msg, ":")
+		    	
+			if !strings.EqualFold(cur_enode, self.sender) { //self send
+			    //nonce check
+			    exsit,_ := GetValueFromPubKeyData(rr.Nonce)
+			    if exsit == true {
+				    fmt.Printf("%v =======================RecvMsg.Run,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v =========================\n", common.CurrentTime(), msgs[0], msgs[2], msgs[4], msgs[5], msgs[3], rr.Nonce)
+				    //TODO must set acceptreqaddr(.....)
+				    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:req addr nonce error", Err: fmt.Errorf("req addr nonce error")}
+				    ch <- res2
+				    return false
+			    }
+			}
+
 			//msg = account:cointype:groupid:nonce:threshold:mode:key:timestamp
 			rch := make(chan interface{}, 1)
 			w := workers[workid]
 			w.sid = rr.Nonce
 
-			msgs := strings.Split(rr.Msg, ":")
 			w.groupid = msgs[2]
 			w.limitnum = msgs[4]
 			gcnt, _ := GetGroup(w.groupid)
@@ -2637,34 +2641,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
-
-			////fix bug: get C1 timeout
-			/*c1, exist := C1Data.ReadMap(w.sid)
-			if exist {
-			    c1s,ok := c1.([]string)
-			    if ok == true {
-				for _,v := range c1s {
-				    DisMsg(v)
-				}
-
-				C1Data.DeleteMap(w.sid)
-			    }
-			}*/
-			////
-
 			if strings.EqualFold(cur_enode, self.sender) { //self send
 				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Pending", "", "", "", nil, wid)
 			} else {
-				//nonce check
-				exsit,_ := GetValueFromPubKeyData(rr.Nonce)
-				if exsit == true {
-					fmt.Printf("%v =======================RecvMsg.Run,req addr nonce error, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v =========================\n", common.CurrentTime(), msgs[0], msgs[2], msgs[4], msgs[5], msgs[3], rr.Nonce)
-					//TODO must set acceptreqaddr(.....)
-					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:req addr nonce error", Err: fmt.Errorf("req addr nonce error")}
-					ch <- res2
-					return false
-				}
-
 				cur_nonce, _, _ := GetReqAddrNonce(msgs[0])
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 				new_nonce_num, _ := new(big.Int).SetString(msgs[3], 10)
@@ -2845,35 +2824,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 			}
 
-			///////////////////////
-			/*if msgs[5] == "0" {
-				timeout2 := make(chan bool, 1)
-				go func(rk string) {
-					for {
-						_, exsit := GAccs.ReadMap(rk)
-						if exsit == false {
-							time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
-						} else {
-							timeout2 <- true
-							break
-						}
-					}
-				}(rr.Nonce)
-
-				fmt.Printf("%v ================== (self *RecvMsg) Run(), start wait group accounts, key = %v ============================\n", common.CurrentTime(), rr.Nonce)
-				_, _, err = GetChannelValue(50, timeout2)
-				fmt.Printf("%v ================== (self *RecvMsg) Run(), finish wait group accounts, err = %v,key = %v ============================\n", common.CurrentTime(), err, rr.Nonce)
-				if err != nil {
-					ars := GetAllReplyFromGroup(w.id,msgs[2],false)	
-					AcceptReqAddr(msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], false, "false", "Failure", "", "get group account sigs data timeout", "get group account sigs data timeout", ars, wid)
-					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: "get group account sigs data timeout", Err: fmt.Errorf("get group account sigs data timeout")}
-					ch <- res2
-					return false
-				}
-			}*/
-			///////////////////////
-
-			fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
+			fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey, w.id = %v, w.groupid = %v, key = %v ============================\n", common.CurrentTime(), w.id,w.groupid,rr.Nonce)
 			dcrm_genPubKey(w.sid, msgs[0], msgs[1], rch, msgs[5], msgs[3])
 			fmt.Printf("%v ================== (self *RecvMsg) Run(), finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
@@ -3215,15 +3166,15 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		DisMsg(ss)
 		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
 		////fix bug: get C1 timeout
-		c1, exist := C1Data.ReadMap(strings.ToLower(self.Key))
-		if exist {
-		    c1s,ok := c1.([]string)
-		    if ok == true {
-			for _,v := range c1s {
-			    DisMsg(v)
-			}
-			
-			C1Data.DeleteMap(strings.ToLower(self.Key))
+		_, enodes := GetGroup(self.GroupId)
+		nodes := strings.Split(enodes, SepSg)
+		for _, node := range nodes {
+		    node2 := ParseNode(node)
+		    c1data := self.Key + "-" + node2 + Sep + "AcceptReqAddrRes"
+		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+		    if exist {
+			DisMsg(c1.(string))
+			go C1Data.DeleteMap(strings.ToLower(c1data))
 		    }
 		}
 		////
@@ -3314,16 +3265,17 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		SendMsgToDcrmGroup(ss, self.GroupId)
 		DisMsg(ss)
 		fmt.Printf("%v ================== LockOutSendMsgToDcrm.Run , finish send AcceptLockOutRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
+		
 		////fix bug: get C11 timeout
-		c1, exist := C1Data.ReadMap(strings.ToLower(self.Key))
-		if exist {
-		    c1s,ok := c1.([]string)
-		    if ok == true {
-			for _,v := range c1s {
-			    DisMsg(v)
-			}
-			
-			C1Data.DeleteMap(strings.ToLower(self.Key))
+		_, enodes := GetGroup(self.GroupId)
+		nodes := strings.Split(enodes, SepSg)
+		for _, node := range nodes {
+		    node2 := ParseNode(node)
+		    c1data := self.Key + "-" + node2 + Sep + "AcceptLockOutRes"
+		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+		    if exist {
+			DisMsg(c1.(string))
+			go C1Data.DeleteMap(strings.ToLower(c1data))
 		    }
 		}
 		////
@@ -3901,39 +3853,11 @@ func DisMsg(msg string) {
 	//msg:  hash-enode:C1:X1:X2
 	w, err := FindWorker(prexs[0])
 	if err != nil || w == nil {
-	    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. msg = %v,key = %v=================\n", common.CurrentTime(), msg,prexs[0])
 
-	    c1, exist := C1Data.ReadMap(strings.ToLower(prexs[0]))
-	    if exist == false {
-		c1s := make([]string,0)
-		c1s = append(c1s,msg)
-		C1Data.WriteMap(strings.ToLower(prexs[0]),c1s)
-		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. write map success,c1s = %v, key = %v=================\n", common.CurrentTime(), c1s, prexs[0])
-	    } else {
-		c1s,ok := c1.([]string)
-		if ok == false {
-		    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. ok is false, key = %v=================\n", common.CurrentTime(),prexs[0])
-		    return
-		}
-
-		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. ok is true, c1s = %v, key = %v=================\n", common.CurrentTime(),c1s,prexs[0])
-		found := false
-		for _,v := range c1s {
-		    if strings.EqualFold(v, msg) {
-			found = true
-			break
-		    }
-		}
-
-		if found == true {
-		    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. found is true, key = %v=================\n", common.CurrentTime(),prexs[0])
-		    return
-		}
-
-		c1s = append(c1s,msg)
-		C1Data.WriteMap(strings.ToLower(prexs[0]),c1s)
-		fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. write map success,c1s = %v, key = %v=================\n", common.CurrentTime(), c1s, prexs[0])
-	    }
+	    mmtmp := mm[0:2]
+	    ss := strings.Join(mmtmp, Sep)
+	    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. ss = %v, msg = %v,key = %v=================\n", common.CurrentTime(), strings.ToLower(ss),msg,prexs[0])
+	    C1Data.WriteMap(strings.ToLower(ss),msg)
 
 	    return
 	}

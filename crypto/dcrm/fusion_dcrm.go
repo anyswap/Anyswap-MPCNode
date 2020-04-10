@@ -266,7 +266,7 @@ func RecivReqAddr() {
 					if err == nil {
 					    ars := dev.GetAllReplyFromGroup(-1,data.GroupId,false,cur_enode)
 
-					    ac := &dev.AcceptReqAddrData{Initiator:cur_enode,Account: data.Account, Cointype: "ALL", GroupId: data.GroupId, Nonce: data.Nonce, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.Datas[3], Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+					    ac := &dev.AcceptReqAddrData{Initiator:cur_enode,Account: data.Account, Cointype: "ALL", GroupId: data.GroupId, Nonce: data.Nonce, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.Datas[3], Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: -1,Sigs:""}
 						err := dev.SaveAcceptReqAddrData(ac)
 						fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n", common.CurrentTime(), data.Account, err, data.Key)
 						if err == nil {
@@ -299,7 +299,7 @@ func RecivReqAddr() {
 						    }
 						    //////////////////
 							////////bug
-							go func(d ReqAddrData) {
+							go func(d ReqAddrData,rad *dev.AcceptReqAddrData) {
 								/////////////////////tmp code //////////////////////
 								if d.Mode == "0" {
 									mp := []string{d.Key, cur_enode}
@@ -308,6 +308,7 @@ func RecivReqAddr() {
 									s1 := d.NodeCnt
 									ss := enode + common.Sep + s0 + common.Sep + s1
 
+									sstmp := s1
 									nodecnt, _ := strconv.Atoi(d.NodeCnt)
 									for j := 0; j < nodecnt; j++ {
 										tx2 := new(types.Transaction)
@@ -322,12 +323,18 @@ func RecivReqAddr() {
 										    return
 										}
 
+										//key-enode:GroupAccounts:5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
 										eid := string(tx2.Data())
 										acc := from2.Hex()
 										ss += common.Sep
 										ss += eid
 										ss += common.Sep
 										ss += acc
+										
+										sstmp += common.Sep
+										sstmp += eid
+										sstmp += common.Sep
+										sstmp += acc
 										
 										exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(acc))
 										if exsit == false {
@@ -357,6 +364,7 @@ func RecivReqAddr() {
 
 									dev.SendMsgToDcrmGroup(ss, d.GroupId)
 									fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n", common.CurrentTime(), ss, d.Key)
+									rad.Sigs = sstmp
 								} else {
 									    exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(d.Account))
 									    if exsit == false {
@@ -381,7 +389,7 @@ func RecivReqAddr() {
 								if addr != "" && err == nil {
 									return
 								}
-							}(data)
+							}(data,ac)
 							//
 						}
 					}
@@ -527,6 +535,10 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	if ac.Mode == "1" {
 		return "", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
 	}
+	
+	if !dev.CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
+	    return "", "invalid accepter", fmt.Errorf("invalid accepter")
+	}
 
 	if ac.Mode == "0" {
 	    exsit,data := dev.GetValueFromPubKeyData(strings.ToLower(from.Hex()))
@@ -608,7 +620,7 @@ func AcceptReqAddr(raw string) (string, string, error) {
 
 	id,_ := dev.GetWorkerId(w)
 	ars := dev.GetAllReplyFromGroup(id,datas[3],false,ac.Initiator)
-	tip, err := dev.AcceptReqAddr(ac.Initiator,datas[1], datas[2], datas[3], datas[4], datas[5], datas[6], "false", accept, status, "", "", "", ars, ac.WorkId)
+	tip, err := dev.AcceptReqAddr(ac.Initiator,datas[1], datas[2], datas[3], datas[4], datas[5], datas[6], "false", accept, status, "", "", "", ars, ac.WorkId,"")
 	if err != nil {
 		return "", tip, err
 	}
@@ -676,10 +688,13 @@ func AcceptLockOut(raw string) (string, string, error) {
 		continue
 	    }
 
-	    ac := data2.(*dev.AcceptReqAddrData)
-	    if ac == nil {
-		    //	    fmt.Println("================GetCurNodeLockOutInfo,decode err ===================")
-		    continue
+	    ac,ok := data2.(*dev.AcceptReqAddrData)
+	    if ok == false || ac == nil {
+		continue
+	    }
+
+	    if !dev.CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
+		continue
 	    }
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
@@ -983,6 +998,10 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 		    if !strings.EqualFold(ac.Account,geter_acc) {
 			continue
 		    }
+	    }
+
+	    if !dev.CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+		continue
 	    }
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)

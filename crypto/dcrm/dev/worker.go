@@ -82,6 +82,7 @@ var (
 	
 	C1Data  = common.NewSafeMap(10)
 	DecdsaMap  = common.NewSafeMap(10)
+	GAccs  = common.NewSafeMap(10)
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {
@@ -1853,6 +1854,10 @@ func GetCurNodeReqAddrInfo(geter_acc string) (string, string, error) {
 	    if ac.Mode == "1" {
 		    continue
 	    }
+	    
+	    if !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+		continue
+	    }
 
 	    if ac.Deal == "true" || ac.Status == "Success" {
 		    continue
@@ -1920,6 +1925,10 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 	    }
 
 	    if ac == nil {
+		continue
+	    }
+
+	    if !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
 		continue
 	    }
 
@@ -2039,7 +2048,7 @@ func GetAcceptLockOutRes(account string, groupid string, nonce string, dcrmfrom 
 	return "", rp
 }
 
-func AcceptReqAddr(initiator string,account string, cointype string, groupid string, nonce string, threshold string, mode string, deal string, accept string, status string, pubkey string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
+func AcceptReqAddr(initiator string,account string, cointype string, groupid string, nonce string, threshold string, mode string, deal string, accept string, status string, pubkey string, tip string, errinfo string, allreply []NodeReply, workid int,sigs string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
@@ -2098,7 +2107,12 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 		wid = workid
 	}
 
-	ac2 := &AcceptReqAddrData{Initiator:in,Account: ac.Account, Cointype: ac.Cointype, GroupId: ac.GroupId, Nonce: ac.Nonce, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, PubKey: pk, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+	gs := ac.Sigs
+	if sigs != "" {
+	    gs = sigs
+	}
+
+	ac2 := &AcceptReqAddrData{Initiator:in,Account: ac.Account, Cointype: ac.Cointype, GroupId: ac.GroupId, Nonce: ac.Nonce, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, PubKey: pk, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid,Sigs:gs}
 
 	e, err := Encode2(ac2)
 	if err != nil {
@@ -2642,7 +2656,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
-				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Pending", "", "", "", nil, wid)
+				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Pending", "", "", "", nil, wid,"")
 			} else {
 				cur_nonce, _, _ := GetReqAddrNonce(msgs[0])
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
@@ -2659,7 +2673,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
-				ac := &AcceptReqAddrData{Initiator:self.sender,Account: msgs[0], Cointype: "ALL", GroupId: msgs[2], Nonce: msgs[3], LimitNum: msgs[4], Mode: msgs[5], TimeStamp: msgs[7], Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
+				sigs := ""
+				datmp, exsit := GAccs.ReadMap(strings.ToLower(rr.Nonce))
+				if exsit == true {
+				    sigs = string(datmp.([]byte))
+				    go GAccs.DeleteMap(strings.ToLower(rr.Nonce))
+				}
+
+				ac := &AcceptReqAddrData{Initiator:self.sender,Account: msgs[0], Cointype: "ALL", GroupId: msgs[2], Nonce: msgs[3], LimitNum: msgs[4], Mode: msgs[5], TimeStamp: msgs[7], Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: wid,Sigs:sigs}
 				err := SaveAcceptReqAddrData(ac)
 				fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, wid = %v,account = %v,cointype = %v,group id = %v,nonce = %v, threshold = %v,mode = %v,err = %v,key = %v,msg hash = %v, ========================\n", common.CurrentTime(), wid, msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], err, rr.Nonce, test)
 				if err != nil {
@@ -2739,7 +2760,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 					if wid < 0 || wid >= len(workers) || workers[wid] == nil {
 						ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
-						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Failure", "", "workid error", "workid error", ars, wid)
+						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Failure", "", "workid error", "workid error", ars, wid,"")
 						tip = "worker id error"
 						reply = false
 						timeout <- true
@@ -2769,10 +2790,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply == false {
 								tip = "don't accept req addr"
-								AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid)
+								AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid,"")
 							} else {
 								tip = ""
-								AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "true", "Pending", "", "", "", ars, wid)
+								AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "true", "Pending", "", "", "", ars, wid,"")
 							}
 
 							///////
@@ -2782,7 +2803,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							fmt.Printf("%v ================== (self *RecvMsg) Run(), agree wait timeout, key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 							ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
 							//bug: if self not accept and timeout
-							AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid)
+							AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
 							tip = "get other node accept req addr result timeout"
 							reply = false
 							//
@@ -2804,9 +2825,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
 				if reply == false {
 					if tip == "get other node accept req addr result timeout" {
-						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Timeout", "", tip, "don't accept req addr.", ars, wid)
+						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Timeout", "", tip, "don't accept req addr.", ars, wid,"")
 					} else {
-						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Failure", "", tip, "don't accept req addr.", ars, wid)
+						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Failure", "", tip, "don't accept req addr.", ars, wid,"")
 					}
 
 					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept req addr.")}
@@ -2820,7 +2841,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				if !strings.EqualFold(cur_enode, self.sender) { //no self send
 					ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
-					AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "true", "Pending", "", "", "", ars, wid)
+					AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "true", "Pending", "", "", "", ars, wid,"")
 				}
 			}
 
@@ -2831,7 +2852,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
-				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Failure", "", tip, cherr.Error(), ars, wid)
+				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Failure", "", tip, cherr.Error(), ars, wid,"")
 				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: cherr}
 				ch <- res2
 				return false
@@ -3113,7 +3134,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	w := workers[workid]
 	
-	AcceptReqAddr(cur_enode,self.Account, self.Cointype, self.GroupId, self.Nonce, self.LimitNum, self.Mode, "false", "true", "Pending", "", "", "", nil, workid)
+	AcceptReqAddr(cur_enode,self.Account, self.Cointype, self.GroupId, self.Nonce, self.LimitNum, self.Mode, "false", "true", "Pending", "", "", "", nil, workid,"")
 
 	for i := 0; i < ReSendTimes; i++ {
 		test := Keccak256Hash([]byte(strings.ToLower(res))).Hex()
@@ -3182,7 +3203,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	time.Sleep(time.Duration(1) * time.Second)
 	ars := GetAllReplyFromGroup(-1,self.GroupId,false,cur_enode)
-	AcceptReqAddr(cur_enode,self.Account, self.Cointype, self.GroupId, self.Nonce, self.LimitNum, self.Mode, "", "", "", "", "", "", ars, workid)
+	AcceptReqAddr(cur_enode,self.Account, self.Cointype, self.GroupId, self.Nonce, self.LimitNum, self.Mode, "", "", "", "", "", "", ars, workid,"")
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, w.ch)
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Get Result. result = %v,cherr = %v,key = %v============================\n", common.CurrentTime(), chret, cherr, self.Key)
@@ -3478,6 +3499,8 @@ type AcceptReqAddrData struct {
 	AllReply []NodeReply
 
 	WorkId int
+
+	Sigs string //5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
 }
 
 func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
@@ -3816,6 +3839,7 @@ func DisMsg(msg string) {
 
 	/////////////////
 	if mm[1] == "GroupAccounts" {
+		//msg:       key-enode:GroupAccounts:5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
 		key := prexs[0]
 		fmt.Printf("%v ===============DisMsg,get group accounts data,msg = %v,msg hash = %v,key = %v=================\n", common.CurrentTime(), msg, test, key)
 		nodecnt,_ := strconv.Atoi(mm[2])
@@ -3842,6 +3866,20 @@ func DisMsg(msg string) {
 			    kdtmp := KeyData{Key: []byte(strings.ToLower(acc)), Data: da2}
 			    PubKeyDataChan <- kdtmp
 			    LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(da2))
+			}
+		    }
+		}
+
+		mmtmp := mm[2:]
+		ss := strings.Join(mmtmp, Sep)
+		GAccs.WriteMap(strings.ToLower(key),[]byte(ss))
+		exsit,da := GetValueFromPubKeyData(key)
+		if exsit == true {
+		    ac,ok := da.(*AcceptReqAddrData)
+		    if ok == true {
+			if ac != nil {
+			    ac.Sigs = ss
+			    go GAccs.DeleteMap(strings.ToLower(key))
 			}
 		    }
 		}
@@ -4549,50 +4587,25 @@ type AccountsList struct {
 }
 
 //////tmp code
-/*func CheckAcc(eid string, geter_acc string, rk string) bool {
+func CheckAcc(eid string, geter_acc string, sigs string) bool {
 
-	//fmt.Println("================!!!CheckAcc!!!====================")
-	if eid == "" || geter_acc == "" || rk == "" {
-		//fmt.Println("================!!!CheckAcc,param error.!!!====================")
-		return false
+	if eid == "" || geter_acc == "" || sigs == "" {
+	    return false
 	}
 
-	var da []byte
-	datmp, exsit := GAccs.ReadMap(rk)
-	if exsit == false {
-		//fmt.Println("===================CheckAcc,no exsit key=%s======================",rk)
-		da2 := GetGAccsValueFromDb(rk)
-		if da2 == nil {
-			//	    fmt.Println("===================CheckAcc,no exsit,2222, key=%s======================",rk)
-			exsit = false
-		} else {
-			//	    fmt.Println("===================CheckAcc,exsit,4444, key=%s======================",rk)
-			exsit = true
-			da = da2
-		}
-	} else {
-		//	fmt.Println("===================CheckAcc,exsit ,1111,data =%v,key=%s======================",datmp,rk)
-		da = []byte(fmt.Sprintf("%v", datmp))
-		exsit = true
-	}
-
-	if exsit == true {
-		//	fmt.Println("===================CheckAcc,exsit ,2222,data =%v,key=%s======================",string(da),rk)
-		mms := strings.Split(string(da), common.Sep)
-		for k, mm := range mms {
-			if strings.EqualFold(mm, eid) {
-				if len(mms) >= (k+1) && strings.EqualFold(mms[k+1], geter_acc) {
-					//	    fmt.Println("=============CheckAcc,return true,eid =%s,geter acc =%s,key=%s====================",eid,geter_acc,rk)
-					return true
-				}
+	//sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
+	mms := strings.Split(sigs, common.Sep)
+	for k, mm := range mms {
+		if strings.EqualFold(mm, eid) {
+			if len(mms) >= (k+1) && strings.EqualFold(mms[k+1], geter_acc) {
+			    return true
 			}
 		}
 	}
-
-	//fmt.Println("=============CheckAcc,return false,eid =%s,geter acc =%s,key=%s====================",eid,geter_acc,rk)
+	
 	return false
 }
-*/
+
 /////////////
 
 type PubKeyInfo struct {
@@ -4658,6 +4671,10 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 			fmt.Printf("%v================GetAccounts, ac.Account = %v,geter_acc = %v,key = %v,=================\n",common.CurrentTime(),ac.Account,geter_acc,key)
 			continue
 		    }
+	    }
+
+	    if !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+		continue
 	    }
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)

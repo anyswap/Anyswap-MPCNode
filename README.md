@@ -27,17 +27,19 @@ cd dcrm-walletService && make
 cmd/conf.toml (bin/cmd/conf.toml)
 
 ## Run
-Open access to the APIs by running the compiled code. 
+First generate the key, then run the dcrm node. 
 ```
-./bin/cmd/gdcrm
+./bin/cmd/gdcrm --genkey node1.key
+
+./bin/cmd/gdcrm --nodekey node1.key
 ```
 The `gdcrm` will provide rpc service, the default RPC port is port 4449.
 
 Note: 
-Before call [walletService RPC API](https://github.com/fsn-dev/dcrm-walletService/wiki/walletService-RPC-API), please wait at least 5 minutes after running the node which need to prepare dcrm env.
+Before use [walletService RPC API](https://github.com/fsn-dev/dcrm-walletService/wiki/walletService-RPC-API), please wait at least 5 minutes after running the node which need to prepare dcrm env.
 
 # Front-end
 
-After running the dcrm wallet rpc service and get the rpc IP:port, we can use [SMPCWallet](https://github.com/fsn-dev/SMPCWallet/releases) to connect service. This front-end can create distributed custodial account which support BTC/ETH/FSN.
+After running the dcrm wallet rpc service and get the rpc IP:port, we can use [SMPCWallet](https://github.com/fsn-dev/SMPCWallet/releases) to connect the rpc service. This front-end can create distributed custodial account which support BTC/ETH/FSN.
 
 

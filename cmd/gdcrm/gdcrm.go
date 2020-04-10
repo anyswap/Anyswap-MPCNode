@@ -122,7 +122,7 @@ func startP2pNode(c *cli.Context) error {
 		rpcport = 4449
 	}
 	if bootnodes == "" {
-		bootnodes = "enode://a794694a2596d371efe7aecd9608583fd38b20e452aa1ccc0e079f395b3bd8aa468fd35482c2104fdc8787d622029d2f5dd8375a4b0aba5c1c49b4240e043273@139.196.26.212:17883"
+		bootnodes = "enode://5bf686893daa0cfd5f77e45330e8719f2ad1aa08cd19e690e93936fecdd6c7ac2463a9c8f7e424c67d6451913b52762c14721ca2f5d8b6b7f9f2a06bf6bbd112@212.129.146.143:11920"
 	}
 	if genKey != "" {
 		nodeKey, err := crypto.GenerateKey()

@@ -23,15 +23,16 @@ Next compile the code.  Make sure you are in dcrm-walletService directory.
 ```
 cd dcrm-walletService && make
 ```
-## config file
-cmd/conf.toml (bin/cmd/conf.toml)
 
 ## Run
-First generate the key, then run the dcrm node. 
+First generate the node key: 
 ```
 ./bin/cmd/gdcrm --genkey node1.key
+```
 
-./bin/cmd/gdcrm --nodekey node1.key
+then run the dcrm node 7x24 in the background:
+```
+nohup ./bin/cmd/gdcrm --nodekey node1.key &
 ```
 The `gdcrm` will provide rpc service, the default RPC port is port 4449.
 

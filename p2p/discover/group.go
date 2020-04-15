@@ -70,7 +70,8 @@ var (
 	SelfNodeID NodeID
 	p2pSuffix                               = "p2p"
 	p2pDir                                  = ""
-	nodeOnline       map[NodeID]*OnLineStatus = make(map[NodeID]*OnLineStatus)
+	nodeOnline       map[NodeID]bool = make(map[NodeID]bool)
+	nodeOnlineLock   sync.Mutex
 
 	updateGroupsNode bool = false// update node dynamically
 	addNodes map[NodeID]int = make(map[NodeID]int)
@@ -84,11 +85,6 @@ var (
 	Xp_groupMemNum   = 0
 	SDK_groupNum     = 0
 )
-
-type OnLineStatus struct {
-	Status bool
-	Lock   sync.Mutex
-}
 
 const (
 	SendWaitTime = 1 * time.Minute
@@ -1657,23 +1653,18 @@ func homeDir() string {
 }
 
 func UpdateOnLine(nodeID NodeID, online bool) {
-	if nodeOnline[nodeID] == nil {
-		nodeOnline[nodeID] = new(OnLineStatus)
-	}
-	nodeOnline[nodeID].Lock.Lock()
-	nodeOnline[nodeID].Status = online
-	nodeOnline[nodeID].Lock.Unlock()
+	nodeOnlineLock.Lock()
+	defer nodeOnlineLock.Unlock()
+	nodeOnline[nodeID] = online
 	fmt.Printf("%v ==== UpdateOnLine() ====, nodeid: %v, status: %v\n", common.CurrentTime(), nodeID, online)
 }
 
 func getOnLine(nodeID NodeID) string {
-	if nodeOnline[nodeID] != nil {
-		nodeOnline[nodeID].Lock.Lock()
-		online := nodeOnline[nodeID].Status
-		nodeOnline[nodeID].Lock.Unlock()
-		if online == true {
-			return "OnLine"
-		}
+	nodeOnlineLock.Lock()
+	defer nodeOnlineLock.Unlock()
+	online := nodeOnline[nodeID]
+	if online == true {
+		return "OnLine"
 	}
 	return "OffLine"
 }

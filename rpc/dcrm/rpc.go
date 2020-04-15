@@ -155,6 +155,31 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 	}
 }
 
+func (this *Service) Sign(raw string) map[string]interface{} {
+	fmt.Printf("%v ==========call rpc Sign from web,raw = %v ===========\n", common.CurrentTime(), raw)
+
+	data := make(map[string]interface{})
+	rsv, tip, err := dcrm.Sign(raw)
+	fmt.Printf("%v ==========finish call rpc Sign from web, rsv = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), rsv, err, raw)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = rsv
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) GetBalance(account string, cointype string, dcrmaddr string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
 

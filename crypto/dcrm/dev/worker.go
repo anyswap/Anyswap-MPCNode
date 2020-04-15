@@ -352,8 +352,14 @@ type RpcReqWorker struct {
 	msg_acceptlockoutres      *list.List
 	splitmsg_acceptlockoutres map[string]*list.List
 
+	msg_acceptsignres      *list.List
+	splitmsg_acceptsignres map[string]*list.List
+
 	msg_sendlockoutres      *list.List
 	splitmsg_sendlockoutres map[string]*list.List
+
+	msg_sendsignres      *list.List
+	splitmsg_sendsignres map[string]*list.List
 
 	msg_c1      *list.List
 	splitmsg_c1 map[string]*list.List
@@ -415,7 +421,9 @@ type RpcReqWorker struct {
 
 	bacceptreqaddrres chan bool
 	bacceptlockoutres chan bool
+	bacceptsignres chan bool
 	bsendlockoutres   chan bool
+	bsendsignres   chan bool
 	bgaccs            chan bool
 	bc1               chan bool
 	bmkg              chan bool
@@ -467,9 +475,10 @@ type RpcReqWorker struct {
 
 	acceptReqAddrChan     chan string
 	acceptWaitReqAddrChan chan string
-
 	acceptLockOutChan     chan string
 	acceptWaitLockOutChan chan string
+	acceptSignChan     chan string
+	acceptWaitSignChan chan string
 }
 
 //workers,RpcMaxWorker,RpcReqWorker,RpcReqQueue,RpcMaxQueue,ReqDispatcher
@@ -581,8 +590,12 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 		splitmsg_acceptreqaddrres: make(map[string]*list.List),
 		msg_acceptlockoutres:      list.New(),
 		splitmsg_acceptlockoutres: make(map[string]*list.List),
+		msg_acceptsignres:      list.New(),
+		splitmsg_acceptsignres: make(map[string]*list.List),
 		msg_sendlockoutres:        list.New(),
 		splitmsg_sendlockoutres:   make(map[string]*list.List),
+		msg_sendsignres:        list.New(),
+		splitmsg_sendsignres:   make(map[string]*list.List),
 
 		pkx:  list.New(),
 		pky:  list.New(),
@@ -590,7 +603,9 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
 		bacceptreqaddrres: make(chan bool, 1),
 		bacceptlockoutres: make(chan bool, 1),
+		bacceptsignres: make(chan bool, 1),
 		bsendlockoutres:   make(chan bool, 1),
+		bsendsignres:   make(chan bool, 1),
 		bgaccs:            make(chan bool, 1),
 		bc1:               make(chan bool, 1),
 		bd1_1:             make(chan bool, 1),
@@ -646,6 +661,8 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
 		acceptLockOutChan:     make(chan string, 1),
 		acceptWaitLockOutChan: make(chan string, 1),
+		acceptSignChan:     make(chan string, 1),
+		acceptWaitSignChan: make(chan string, 1),
 	}
 }
 
@@ -666,9 +683,19 @@ func (w *RpcReqWorker) Clear() {
 		w.msg_acceptlockoutres.Remove(e)
 	}
 
+	for e := w.msg_acceptsignres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_acceptsignres.Remove(e)
+	}
+
 	for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendlockoutres.Remove(e)
+	}
+
+	for e := w.msg_sendsignres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_sendsignres.Remove(e)
 	}
 
 	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
@@ -807,8 +834,14 @@ func (w *RpcReqWorker) Clear() {
 	if len(w.bacceptlockoutres) == 1 {
 		<-w.bacceptlockoutres
 	}
+	if len(w.bacceptsignres) == 1 {
+		<-w.bacceptsignres
+	}
 	if len(w.bsendlockoutres) == 1 {
 		<-w.bsendlockoutres
+	}
+	if len(w.bsendsignres) == 1 {
+		<-w.bsendsignres
 	}
 	if len(w.bacceptreqaddrres) == 1 {
 		<-w.bacceptreqaddrres
@@ -950,7 +983,9 @@ func (w *RpcReqWorker) Clear() {
 
 	//TODO
 	w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+	w.splitmsg_acceptsignres = make(map[string]*list.List)
 	w.splitmsg_sendlockoutres = make(map[string]*list.List)
+	w.splitmsg_sendsignres = make(map[string]*list.List)
 	w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
 	w.splitmsg_c1 = make(map[string]*list.List)
 	w.splitmsg_kc = make(map[string]*list.List)
@@ -983,6 +1018,12 @@ func (w *RpcReqWorker) Clear() {
 	if len(w.acceptLockOutChan) == 1 {
 		<-w.acceptLockOutChan
 	}
+	if len(w.acceptSignChan) == 1 {
+		<-w.acceptSignChan
+	}
+	if len(w.acceptWaitSignChan) == 1 {
+		<-w.acceptWaitSignChan
+	}
 }
 
 func (w *RpcReqWorker) Clear2() {
@@ -999,9 +1040,19 @@ func (w *RpcReqWorker) Clear2() {
 		w.msg_acceptlockoutres.Remove(e)
 	}
 
+	for e := w.msg_acceptsignres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_acceptsignres.Remove(e)
+	}
+
 	for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendlockoutres.Remove(e)
+	}
+
+	for e := w.msg_sendsignres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_sendsignres.Remove(e)
 	}
 
 	for e := w.msg_c1.Front(); e != nil; e = next {
@@ -1100,8 +1151,14 @@ func (w *RpcReqWorker) Clear2() {
 	if len(w.bacceptlockoutres) == 1 {
 		<-w.bacceptlockoutres
 	}
+	if len(w.bacceptsignres) == 1 {
+		<-w.bacceptsignres
+	}
 	if len(w.bsendlockoutres) == 1 {
 		<-w.bsendlockoutres
+	}
+	if len(w.bsendsignres) == 1 {
+		<-w.bsendsignres
 	}
 	if len(w.bacceptreqaddrres) == 1 {
 		<-w.bacceptreqaddrres
@@ -1221,7 +1278,9 @@ func (w *RpcReqWorker) Clear2() {
 
 	//TODO
 	w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+	w.splitmsg_acceptsignres = make(map[string]*list.List)
 	w.splitmsg_sendlockoutres = make(map[string]*list.List)
+	w.splitmsg_sendsignres = make(map[string]*list.List)
 	w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
 	w.splitmsg_c1 = make(map[string]*list.List)
 	w.splitmsg_kc = make(map[string]*list.List)
@@ -1249,6 +1308,12 @@ func (w *RpcReqWorker) Clear2() {
 	}
 	if len(w.acceptLockOutChan) == 1 {
 		<-w.acceptLockOutChan
+	}
+	if len(w.acceptSignChan) == 1 {
+		<-w.acceptSignChan
+	}
+	if len(w.acceptWaitSignChan) == 1 {
+		<-w.acceptWaitSignChan
 	}
 }
 
@@ -1337,11 +1402,6 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	}
 
 	rr := r.(*SendMsg)
-	//if rr.MsgType == "rpc_lockout" {
-	//}
-	//if rr.MsgType == "rpc_req_dcrmaddr" {
-	//}
-
 	////add decdsa log
 	log, exist := DecdsaMap.ReadMap(strings.ToLower(rr.Nonce))
 	if exist == false {
@@ -1375,13 +1435,6 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, rch)
 	fmt.Printf("%v =============DcrmCall, ret = %v,err = %v,msg hash = %v,key = %v =======================\n", common.CurrentTime(), chret, cherr, test, rr.Nonce)
 	if cherr != nil {
-		////
-		if rr.MsgType == "rpc_lockout" {
-		}
-		if rr.MsgType == "rpc_req_dcrmaddr" {
-		}
-		////
-
 		//fail:chret:tip:error
 		ret := ("fail" + Sep + chret + Sep + tip + Sep + cherr.Error())
 		ch <- ret
@@ -1441,16 +1494,17 @@ func DcrmCallRet(msg interface{}, enode string) {
 			}
 		}
 
-		if ss[2] == "rpc_req_dcrmaddr" {
+		if ss[2] == "rpc_sign" {
 			if w.retres.Len() == w.NodeCnt {
 				ret := GetGroupRes(workid)
 				w.ch <- ret
 			}
 		}
 
-		if ss[2] == "rpc_get_lockout_reply" {
-
+		if ss[2] == "rpc_req_dcrmaddr" {
 			if w.retres.Len() == w.NodeCnt {
+				ret := GetGroupRes(workid)
+				w.ch <- ret
 			}
 		}
 
@@ -1472,15 +1526,17 @@ func DcrmCallRet(msg interface{}, enode string) {
 			}
 		}
 
-		if ss[2] == "rpc_req_dcrmaddr" {
+		if ss[2] == "rpc_sign" {
 			if w.retres.Len() == w.NodeCnt {
 				ret := GetGroupRes(workid)
 				w.ch <- ret
 			}
 		}
 
-		if ss[2] == "rpc_get_lockout_reply" {
+		if ss[2] == "rpc_req_dcrmaddr" {
 			if w.retres.Len() == w.NodeCnt {
+				ret := GetGroupRes(workid)
+				w.ch <- ret
 			}
 		}
 
@@ -2134,12 +2190,6 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	return "", nil
 }
 
-//if accept == "",don't set Accept
-//if status == "",don't set Status
-//if outhash == "",don't set OutHash
-//if tip == "",don't set Tip
-//if errinfo == "",don't set ErrInfo
-//if allreply == "",don't set AllReply
 func AcceptLockOut(initiator string,account string, groupid string, nonce string, dcrmfrom string, threshold string, deal string, accept string, status string, outhash string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
@@ -2221,6 +2271,87 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 	return "", nil
 }
 
+func AcceptSign(initiator string,account string, pubkey string,unsignhash string,keytype string,groupid string, nonce string,threshold string,mode string, deal string, accept string, status string, rsv string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + unsignhash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
+	exsit,da := GetValueFromPubKeyData(key)
+	///////
+	if exsit == false {
+		fmt.Printf("%v =====================AcceptSign, no exist key = %v =================================\n", common.CurrentTime(), key)
+		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	}
+
+	ac,ok := da.(*AcceptSignData)
+
+	if ok == false {
+		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	}
+
+	in := ac.Initiator
+	if initiator != "" {
+	    in = initiator
+	}
+
+	de := ac.Deal
+	if deal != "" {
+	    de = deal
+	}
+
+	acp := ac.Accept
+	if accept != "" {
+		acp = accept
+	}
+
+	ah := ac.Rsv
+	if rsv != "" {
+		ah = rsv
+	}
+
+	ttip := ac.Tip
+	if tip != "" {
+		ttip = tip
+	}
+
+	eif := ac.Error
+	if errinfo != "" {
+		eif = errinfo
+	}
+
+	sts := ac.Status
+	if status != "" {
+		sts = status
+	}
+
+	arl := ac.AllReply
+	if allreply != nil && len(allreply) != 0 {
+		arl = allreply
+	}
+
+	wid := ac.WorkId
+	if workid >= 0 {
+		wid = workid
+	}
+
+	ac2 := &AcceptSignData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey: ac.PubKey, UnsignHash: ac.UnsignHash,Keytype: ac.Keytype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, Rsv: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+
+	e, err := Encode2(ac2)
+	if err != nil {
+		fmt.Printf("%v =====================AcceptSign, encode fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		return "dcrm back-end internal error:encode accept data fail", err
+	}
+
+	es, err := Compress([]byte(e))
+	if err != nil {
+		fmt.Printf("%v =====================AcceptSign, compress fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		return "dcrm back-end internal error:compress accept data fail", err
+	}
+
+	kdtmp := KeyData{Key: []byte(key), Data: es}
+	PubKeyDataChan <- kdtmp
+
+	LdbPubKeyData.WriteMap(key, ac2)
+	return "", nil
+}
+
 type LockOutReply struct {
 	Enode string
 	Reply string
@@ -2255,14 +2386,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	////
 	mm := strings.Split(res, Sep)
 	if len(mm) >= 2 {
-		//msg:  hash-enode:C1:X1:X2
+		//msg:  key-enode:C1:X1:X2....:Xn
 		DisMsg(res)
 		return true
 	}
 
 	res, err := UnCompress(res)
 	if err != nil {
-		fmt.Printf("%v ===================RecvMsg.Run,the msg is not hash-enode:C1:X1:X2, uncompress fail,msg hash = %v,err = %v ==============================\n", common.CurrentTime(), test, err)
+		fmt.Printf("%v ===================RecvMsg.Run,the msg is not key-enode:C1:X1:X2...Xn, uncompress fail,msg hash = %v,err = %v ==============================\n", common.CurrentTime(), test, err)
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:uncompress data fail in RecvMsg.Run", Err: fmt.Errorf("uncompress data fail in recvmsg.run")}
 		ch <- res2
 		return false
@@ -2270,7 +2401,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	r, err := Decode2(res, "SendMsg")
 	if err != nil {
-		fmt.Printf("%v ===================RecvMsg.Run,the msg is not hash-enode:C1:X1:X2, decode fail,msg hash = %v,err = %v ==============================\n", common.CurrentTime(), test, err)
+		fmt.Printf("%v ===================RecvMsg.Run,the msg is not key-enode:C1:X1:X2...:Xn, decode fail,msg hash = %v,err = %v ==============================\n", common.CurrentTime(), test, err)
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run", Err: fmt.Errorf("decode data to SendMsg fail in recvmsg.run")}
 		ch <- res2
 		return false
@@ -2287,7 +2418,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			wid = workid
 		}
 
-		fmt.Printf("%v ===================RecvMsg.Run,the msg is not hash-enode:C1:X1:X2, msg hash = %v,wid = %v,key = %v ==============================\n", common.CurrentTime(), test, wid, rr.Nonce)
+		fmt.Printf("%v ===================RecvMsg.Run,the msg is not key-enode:C1:X1:X2...Xn, msg hash = %v,wid = %v,key = %v ==============================\n", common.CurrentTime(), test, wid, rr.Nonce)
 
 		//rpc_lockout
 		if rr.MsgType == "rpc_lockout" {
@@ -2351,7 +2482,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 				}
 
-				ars := GetAllReplyFromGroup(w.id,msgs[5],true,self.sender)
+				ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 				ac := &AcceptLockOutData{Initiator:self.sender,Account: msgs[0], GroupId: msgs[5], Nonce: msgs[6], DcrmFrom: msgs[1], DcrmTo: msgs[2], Value: msgs[3], Cointype: msgs[4], LimitNum: msgs[7], Mode: msgs[8], TimeStamp: msgs[10], Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
 				err := SaveAcceptLockOutData(ac)
 				fmt.Printf("%v ===================finish call SaveAcceptLockOutData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,dcrm from = %v,dcrm to = %v,value = %v,cointype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, msgs[0], msgs[5], msgs[6], msgs[1], msgs[2], msgs[3], msgs[4], msgs[7], msgs[8], rr.Nonce)
@@ -2378,7 +2509,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						    keys = keys + ":" + rr.Nonce
 						}
 
-						pubs3 := &PubKeyData{Key:(da2.(*PubKeyData)).Key,Account: (da2.(*PubKeyData)).Account, Pub: (da2.(*PubKeyData)).Pub, Save: (da2.(*PubKeyData)).Save, Nonce: (da2.(*PubKeyData)).Nonce, GroupId: (da2.(*PubKeyData)).GroupId, LimitNum: (da2.(*PubKeyData)).LimitNum, Mode: (da2.(*PubKeyData)).Mode,KeyGenTime:(da2.(*PubKeyData)).KeyGenTime,RefLockOutKeys:keys}
+						pubs3 := &PubKeyData{Key:(da2.(*PubKeyData)).Key,Account: (da2.(*PubKeyData)).Account, Pub: (da2.(*PubKeyData)).Pub, Save: (da2.(*PubKeyData)).Save, Nonce: (da2.(*PubKeyData)).Nonce, GroupId: (da2.(*PubKeyData)).GroupId, LimitNum: (da2.(*PubKeyData)).LimitNum, Mode: (da2.(*PubKeyData)).Mode,KeyGenTime:(da2.(*PubKeyData)).KeyGenTime,RefLockOutKeys:keys,RefSignKeys:(da2.(*PubKeyData)).RefSignKeys}
 						epubs, err := Encode2(pubs3)
 						if err == nil {
 						    ss3, err := Compress([]byte(epubs))
@@ -2413,7 +2544,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						case account := <-wtmp2.acceptLockOutChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
 							//tip, reply = GetAcceptLockOutRes(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7])
-							ars := GetAllReplyFromGroup(w.id,msgs[5],true,self.sender)
+							ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 							fmt.Printf("%v ================== (self *RecvMsg) Run() , get all AcceptLockOutRes ,result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
 							
 							//bug
@@ -2439,7 +2570,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							return
 						case <-agreeWaitTimeOut.C:
 							fmt.Printf("%v ================== (self *RecvMsg) Run() , agree wait timeout. key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
-							ars := GetAllReplyFromGroup(w.id,msgs[5],true,self.sender)
+							ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 							//bug: if self not accept and timeout
 							AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "false", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
 							reply = false
@@ -2463,7 +2594,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				if reply == false {
 					//////////////////////lockout result start/////////////////////////
 					if tip == "get other node accept lockout result timeout" {
-						ars := GetAllReplyFromGroup(w.id,msgs[5],true,self.sender)
+						ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 						AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
 					} else {
 						/////////////TODO tmp
@@ -2479,7 +2610,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 						_, _, err := GetChannelValue(ch_t, w.bsendlockoutres)
 						fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes, err = %v,key = %v =============\n", common.CurrentTime(), err, rr.Nonce)
-						ars := GetAllReplyFromGroup(w.id,msgs[5],true,self.sender)
+						ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 						if err != nil {
 							tip = "get other node terminal accept lockout result timeout" ////bug
 							AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", tip, tip, ars, wid)
@@ -2527,7 +2658,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				if !strings.EqualFold(cur_enode, self.sender) { //no self send
-					ars := GetAllReplyFromGroup(w.id,msgs[5],true,self.sender)
+					ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 					AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "true", "Pending", "", "", "", ars, wid)
 				}
 			}
@@ -2546,7 +2677,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 
 			//////////////////////lockout result start/////////////////////////
-			ars := GetAllReplyFromGroup(w.id,msgs[5],true,self.sender)
+			ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 			if tip == "get other node accept lockout result timeout" {
 				AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", tip, cherr.Error(), ars, wid)
 			} else {
@@ -2612,6 +2743,315 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return true
 		}
 
+		//rpc_sign
+		if rr.MsgType == "rpc_sign" {
+			
+			if !strings.EqualFold(cur_enode, self.sender) { //self send
+			    //nonce check
+			    exsit,_ := GetValueFromPubKeyData(rr.Nonce)
+			    ///////
+			    if exsit == true {
+				    fmt.Printf("%v ================RecvMsg.Run, sign nonce error, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+				    //TODO must set acceptsign(.....)
+				    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:sign tx nonce error", Err: fmt.Errorf("sign tx nonce error")}
+				    ch <- res2
+				    return false
+			    }
+			}
+			
+			w := workers[workid]
+			w.sid = rr.Nonce
+			//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+			msg := rr.Msg
+			msgs := strings.Split(msg, ":")
+			w.groupid = msgs[4]
+			w.limitnum = msgs[6]
+			gcnt, _ := GetGroup(w.groupid)
+			w.NodeCnt = gcnt
+			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
+			w.ThresHold = w.NodeCnt
+
+			nums := strings.Split(w.limitnum, "/")
+			if len(nums) == 2 {
+			    nodecnt, err := strconv.Atoi(nums[1])
+			    if err == nil {
+				w.NodeCnt = nodecnt
+			    }
+
+			    w.ThresHold = gcnt
+			}
+
+			w.DcrmFrom = msgs[1]  // pubkey replace dcrmfrom in sign
+
+			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
+
+			if strings.EqualFold(cur_enode, self.sender) { //self send
+				AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "false", "Pending", "", "", "", nil,wid)
+			} else {
+				cur_nonce, _, _ := GetSignNonce(msgs[0])
+				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
+				new_nonce_num, _ := new(big.Int).SetString(msgs[5], 10)
+				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+					_, err = SetSignNonce(msgs[0],msgs[5])
+					if err != nil {
+						fmt.Printf("%v ================RecvMsg.Run,set sign nonce fail, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+						//TODO must set acceptsign(.....)
+						res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set sign nonce fail in RecvMsg.Run", Err: fmt.Errorf("set sign nonce fail in recvmsg.run")}
+						ch <- res2
+						return false
+					}
+				}
+
+				ars := GetAllReplyFromGroup(w.id,msgs[4],Rpc_SIGN,self.sender)
+				//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+				ac := &AcceptSignData{Initiator:self.sender,Account: msgs[0], GroupId: msgs[4], Nonce: msgs[5], PubKey: msgs[1], UnsignHash: msgs[2], Keytype: msgs[3], LimitNum: msgs[6], Mode: msgs[7], TimeStamp: msgs[9], Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
+				err := SaveAcceptSignData(ac)
+				fmt.Printf("%v ===================finish call SaveAcceptSignData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,pubkey = %v,unsignhash = %v,keytype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, msgs[0], msgs[4], msgs[5], msgs[1], msgs[2], msgs[3], msgs[6], msgs[7], rr.Nonce)
+				if err != nil {
+					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set AcceptSignData fail in RecvMsg.Run", Err: fmt.Errorf("set AcceptSignData fail in recvmsg.run")}
+					ch <- res2
+					return false
+				}
+				////
+				dcrmpks, _ := hex.DecodeString(ac.PubKey)
+				exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+				if exsit {
+				    _,ok := da.(*PubKeyData)
+				    if ok == true {
+					keys := (da.(*PubKeyData)).RefSignKeys
+					if keys == "" {
+					    keys = rr.Nonce
+					} else {
+					    keys = keys + ":" + rr.Nonce
+					}
+
+					pubs3 := &PubKeyData{Key:(da.(*PubKeyData)).Key,Account: (da.(*PubKeyData)).Account, Pub: (da.(*PubKeyData)).Pub, Save: (da.(*PubKeyData)).Save, Nonce: (da.(*PubKeyData)).Nonce, GroupId: (da.(*PubKeyData)).GroupId, LimitNum: (da.(*PubKeyData)).LimitNum, Mode: (da.(*PubKeyData)).Mode,KeyGenTime:(da.(*PubKeyData)).KeyGenTime,RefLockOutKeys:(da.(*PubKeyData)).RefLockOutKeys,RefSignKeys:keys}
+					epubs, err := Encode2(pubs3)
+					if err == nil {
+					    ss3, err := Compress([]byte(epubs))
+					    if err == nil {
+						kd := KeyData{Key: dcrmpks[:], Data: ss3}
+						PubKeyDataChan <- kd
+						LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs3)
+						fmt.Printf("%v ==============================RecvMsg.Run,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(),rr.Nonce)
+					    }
+					}
+				    }
+				}
+			}
+
+			//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+			////bug
+			if msgs[7] == "0" { // self-group
+				////
+				var reply bool
+				var tip string
+				timeout := make(chan bool, 1)
+				go func(wid int) {
+					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
+					agreeWaitTime := 10 * time.Minute
+					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+
+					wtmp2 := workers[wid]
+
+					for {
+						select {
+						case account := <-wtmp2.acceptSignChan:
+							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
+							ars := GetAllReplyFromGroup(w.id,msgs[4],Rpc_SIGN,self.sender)
+							fmt.Printf("%v ================== (self *RecvMsg) Run() , get all AcceptSignRes ,result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
+							
+							//bug
+							reply = true
+							for _,nr := range ars {
+							    if !strings.EqualFold(nr.Status,"Agree") {
+								reply = false
+								break
+							    }
+							}
+							//
+
+							if reply == false {
+								tip = "don't accept sign"
+								AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
+							} else {
+								tip = ""
+								AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "false", "Pending", "", "", "", ars,wid)
+							}
+
+							///////
+							timeout <- true
+							return
+						case <-agreeWaitTimeOut.C:
+							fmt.Printf("%v ================== (self *RecvMsg) Run() , agree wait timeout. key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
+							ars := GetAllReplyFromGroup(w.id,msgs[4],Rpc_SIGN,self.sender)
+							//bug: if self not accept and timeout
+							AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
+							reply = false
+							tip = "get other node accept sign result timeout"
+							//
+
+							timeout <- true
+							return
+						}
+					}
+				}(wid)
+
+				if len(workers[wid].acceptWaitSignChan) == 0 {
+					workers[wid].acceptWaitSignChan <- "go on"
+				}
+
+				<-timeout
+
+				fmt.Printf("%v ================== (self *RecvMsg) Run() , the terminal accept sign result = %v,key = %v,============================\n", common.CurrentTime(), reply, rr.Nonce)
+
+				if reply == false {
+					//////////////////////sign result start/////////////////////////
+					if tip == "get other node accept sign result timeout" {
+						ars := GetAllReplyFromGroup(w.id,msgs[4],Rpc_SIGN,self.sender)
+						AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
+					} else {
+						/////////////TODO tmp
+						//sid-enode:SendSignRes:Success:rsv
+						//sid-enode:SendSignRes:Fail:err
+						mp := []string{w.sid, cur_enode}
+						enode := strings.Join(mp, "-")
+						s0 := "SendSignRes"
+						s1 := "Fail"
+						s2 := "don't accept sign."
+						ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+						SendMsgToDcrmGroup(ss, w.groupid)
+						fmt.Printf("%v ================RecvMsg.Run,send SendSignRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+						_, _, err := GetChannelValue(ch_t, w.bsendsignres)
+						fmt.Printf("%v ================RecvMsg.Run,the SendSignRes result from other nodes, err = %v,key = %v =============\n", common.CurrentTime(), err, rr.Nonce)
+						ars := GetAllReplyFromGroup(w.id,msgs[4],Rpc_SIGN,self.sender)
+						if err != nil {
+							tip = "get other node terminal accept sign result timeout" ////bug
+							AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Timeout", "", tip, tip, ars,wid)
+						} else if w.msg_sendsignres.Len() != (w.ThresHold - 1) {
+							fmt.Printf("%v ================RecvMsg,the result SendSignRes msg from other nodes fail,key = %v =======================\n", common.CurrentTime(), rr.Nonce)
+							AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,wid)
+						} else {
+							reply2 := "false"
+							lohash := ""
+							iter := w.msg_sendsignres.Front()
+							for iter != nil {
+								mdss := iter.Value.(string)
+								ms := strings.Split(mdss, Sep)
+								if strings.EqualFold(ms[2], "Success") {
+									reply2 = "true"
+									lohash = ms[3]
+									break
+								}
+
+								lohash = ms[3]
+								iter = iter.Next()
+							}
+
+							if reply2 == "true" {
+								fmt.Printf("%v ================RecvMsg,the terminal sign res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+								AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"true", "true", "Success", lohash, " ", " ", ars,wid)
+							} else {
+								fmt.Printf("%v ================RecvMsg,the terminal sign res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+								AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Failure", "", lohash,lohash, ars,wid)
+							}
+						}
+						/////////////////////
+					}
+					///////////////////////sign result end////////////////////////
+
+					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept sign.")}
+					ch <- res2
+					return false
+				}
+			} else {
+				if len(workers[wid].acceptWaitSignChan) == 0 {
+					workers[wid].acceptWaitSignChan <- "go on"
+				}
+
+				if !strings.EqualFold(cur_enode, self.sender) { //no self send
+					ars := GetAllReplyFromGroup(w.id,msgs[4],Rpc_SIGN,self.sender)
+					AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "true", "Pending", "", "","", ars,wid)
+				}
+			}
+
+			rch := make(chan interface{}, 1)
+			//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+			fmt.Printf("%v ================== (self *RecvMsg) Run() , start call sign,key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
+			sign(w.sid, msgs[0],msgs[1],msgs[2],msgs[3],msgs[5],msgs[7],rch)
+			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish call sign,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
+			chret, tip, cherr := GetChannelValue(ch_t, rch)
+			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get sign return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
+			if chret != "" {
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType + Sep + chret, Tip: "", Err: nil}
+				ch <- res2
+				return true
+			}
+
+			//////////////////////sign result start/////////////////////////
+			ars := GetAllReplyFromGroup(w.id,msgs[4],Rpc_SIGN,self.sender)
+			if tip == "get other node accept sign result timeout" {
+				AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Timeout", "", tip,cherr.Error(),ars,wid)
+			} else {
+				/////////////TODO tmp
+				//sid-enode:SendSignRes:Success:rsv
+				//sid-enode:SendSignRes:Fail:err
+				mp := []string{w.sid, cur_enode}
+				enode := strings.Join(mp, "-")
+				s0 := "SendSignRes"
+				s1 := "Fail"
+				s2 := cherr.Error()
+				ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+				SendMsgToDcrmGroup(ss, w.groupid)
+				fmt.Printf("%v ================RecvMsg.Run,send SendSignRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+				_, _, err := GetChannelValue(ch_t, w.bsendsignres)
+				fmt.Printf("%v ================RecvMsg.Run,the SendSignRes result from other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+				if err != nil {
+					tip = "get other node terminal accept sign result timeout" ////bug
+					AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Timeout", "", tip, tip, ars, wid)
+				} else if w.msg_sendsignres.Len() != (w.ThresHold - 1) {
+					fmt.Printf("%v ================RecvMsg.Run,the SendSignRes result from other nodes fail,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+					AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, wid)
+				} else {
+					reply2 := "false"
+					lohash := ""
+					iter := w.msg_sendsignres.Front()
+					for iter != nil {
+						mdss := iter.Value.(string)
+						ms := strings.Split(mdss, Sep)
+						if strings.EqualFold(ms[2], "Success") {
+							reply2 = "true"
+							lohash = ms[3]
+							break
+						}
+
+						lohash = ms[3]
+						iter = iter.Next()
+					}
+
+					if reply2 == "true" {
+						fmt.Printf("%v ================RecvMsg,the terminal sign res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+						AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"true", "true", "Success", lohash, " ", " ", ars, wid)
+					} else {
+						fmt.Printf("%v ================RecvMsg,the terminal sign res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+						AcceptSign(self.sender,msgs[0],msgs[1],msgs[2],msgs[3],msgs[4],msgs[5],msgs[6],msgs[7],"false", "", "Failure", "", lohash, lohash, ars, wid)
+					}
+				}
+				/////////////////////
+			}
+			///////////////////////sign result end////////////////////////
+
+			if cherr != nil {
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: cherr}
+				ch <- res2
+				return false
+			}
+
+			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("sign fail.")}
+			ch <- res2
+			return true
+		}
+
 		//rpc_req_dcrmaddr
 		if rr.MsgType == "rpc_req_dcrmaddr" {
 			
@@ -2672,7 +3112,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 				}
 
-				ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
+				ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
 				sigs := ""
 				datmp, exsit := GAccs.ReadMap(strings.ToLower(rr.Nonce))
 				if exsit == true {
@@ -2759,7 +3199,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					agreeWaitTime := 10 * time.Minute
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 					if wid < 0 || wid >= len(workers) || workers[wid] == nil {
-						ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
+						ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
 						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Failure", "", "workid error", "workid error", ars, wid,"")
 						tip = "worker id error"
 						reply = false
@@ -2774,8 +3214,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						select {
 						case account := <-wtmp2.acceptReqAddrChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
-							//tip, reply = GetAcceptReqAddrRes(msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5])
-							ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
+							ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
 							fmt.Printf("%v ================== (self *RecvMsg) Run(),get all AcceptReqAddrRes, result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
 							
 							//bug
@@ -2801,7 +3240,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							return
 						case <-agreeWaitTimeOut.C:
 							fmt.Printf("%v ================== (self *RecvMsg) Run(), agree wait timeout, key = %v ============================\n", common.CurrentTime(), rr.Nonce)
-							ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
+							ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
 							//bug: if self not accept and timeout
 							AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
 							tip = "get other node accept req addr result timeout"
@@ -2822,7 +3261,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				fmt.Printf("%v ================== (self *RecvMsg) Run(), the terminal accept req addr result = %v, key = %v ============================\n", common.CurrentTime(), reply, rr.Nonce)
 
-				ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
+				ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
 				if reply == false {
 					if tip == "get other node accept req addr result timeout" {
 						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Timeout", "", tip, "don't accept req addr.", ars, wid,"")
@@ -2840,7 +3279,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				if !strings.EqualFold(cur_enode, self.sender) { //no self send
-					ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
+					ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
 					AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "true", "Pending", "", "", "", ars, wid,"")
 				}
 			}
@@ -2851,7 +3290,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
 			if cherr != nil {
-				ars := GetAllReplyFromGroup(w.id,msgs[2],false,self.sender)	
+				ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
 				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Failure", "", tip, cherr.Error(), ars, wid,"")
 				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: cherr}
 				ch <- res2
@@ -2861,10 +3300,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType + Sep + chret, Tip: "", Err: nil}
 			ch <- res2
 			return true
-		}
-
-		//rpc_get_lockout_reply
-		if rr.MsgType == "rpc_get_lockout_reply" {
 		}
 
 	default:
@@ -2893,6 +3328,7 @@ type PubKeyData struct {
 	Mode     string
 	KeyGenTime string
 	RefLockOutKeys string //key1:key2...
+	RefSignKeys string //key1:key2...
 }
 
 func Encode2(obj interface{}) (string, error) {
@@ -3202,7 +3638,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
-	ars := GetAllReplyFromGroup(-1,self.GroupId,false,cur_enode)
+	ars := GetAllReplyFromGroup(-1,self.GroupId,Rpc_REQADDR,cur_enode)
 	AcceptReqAddr(cur_enode,self.Account, self.Cointype, self.GroupId, self.Nonce, self.LimitNum, self.Mode, "", "", "", "", "", "", ars, workid,"")
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, w.ch)
@@ -3303,12 +3739,112 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
-	ars := GetAllReplyFromGroup(-1,self.GroupId,true,cur_enode)
+	ars := GetAllReplyFromGroup(-1,self.GroupId,Rpc_LOCKOUT,cur_enode)
 	AcceptLockOut(cur_enode,self.Account, self.GroupId, self.Nonce, self.DcrmFrom, self.LimitNum, "", "", "", "", "", "", ars, workid)
 	fmt.Printf("%v ===================LockOutSendMsgToDcrm.Run, finish agree this lockout oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
 	
 	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)
 	fmt.Printf("%v ==============LockOutSendMsgToDcrm.Run,Get Result = %v, err = %v, key = %v =================\n", common.CurrentTime(), chret, cherr, self.Key)
+	if cherr != nil {
+		res2 := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
+		ch <- res2
+		return false
+	}
+
+	res2 := RpcDcrmRes{Ret: chret, Tip: tip, Err: cherr}
+	ch <- res2
+
+	return true
+}
+
+type SignSendMsgToDcrm struct {
+	Account   string
+	PubKey  string
+	UnsignHash    string
+	Keytype  string
+	GroupId   string
+	Nonce     string
+	LimitNum  string
+	Mode      string
+	TimeStamp string
+	Key       string
+}
+
+func (self *SignSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
+	if workid < 0 || workid >= RpcMaxWorker {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id error", Err: GetRetErr(ErrGetWorkerIdError)}
+		ch <- res
+		return false
+	}
+
+	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
+	msg := self.Account + ":" + self.PubKey + ":" + self.UnsignHash + ":" + self.Keytype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode + ":" + self.Key + ":" + self.TimeStamp
+
+	sm := &SendMsg{MsgType: "rpc_sign", Nonce: self.Key, WorkId: workid, Msg: msg}
+	res, err := Encode2(sm)
+	if err != nil {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode SendMsg fail in sign", Err: err}
+		ch <- res
+		return false
+	}
+
+	res, err = Compress([]byte(res))
+	if err != nil {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress SendMsg data error in sign", Err: err}
+		ch <- res
+		return false
+	}
+
+	AcceptSign(cur_enode,self.Account, self.PubKey,self.UnsignHash,self.Keytype,self.GroupId, self.Nonce,self.LimitNum,self.Mode,"false", "true", "Pending", "", "", "", nil, workid)
+	
+	for i := 0; i < ReSendTimes; i++ {
+		test := Keccak256Hash([]byte(strings.ToLower(res))).Hex()
+		fmt.Printf("%v ===================SignSendMsgToDcrm.Run,begin send msg to all nodes. msg hash = %v,key = %v ====================\n", common.CurrentTime(), test, self.Key)
+
+		SendToGroupAllNodes(self.GroupId, res)
+	}
+
+	w := workers[workid]
+
+	////
+	fmt.Printf("%v =============SignSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
+	<-w.acceptWaitSignChan
+	var tip string
+
+	///////
+	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+	if self.Mode == "0" {
+		mp := []string{self.Key, cur_enode}
+		enode := strings.Join(mp, "-")
+		s0 := "AcceptSignRes"
+		s1 := "true"
+		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
+		SendMsgToDcrmGroup(ss, self.GroupId)
+		DisMsg(ss)
+		fmt.Printf("%v ================== SignSendMsgToDcrm.Run , finish send AcceptSignRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
+		
+		////fix bug: get C11 timeout
+		_, enodes := GetGroup(self.GroupId)
+		nodes := strings.Split(enodes, SepSg)
+		for _, node := range nodes {
+		    node2 := ParseNode(node)
+		    c1data := self.Key + "-" + node2 + Sep + "AcceptSignRes"
+		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+		    if exist {
+			DisMsg(c1.(string))
+			go C1Data.DeleteMap(strings.ToLower(c1data))
+		    }
+		}
+		////
+	}
+
+	time.Sleep(time.Duration(1) * time.Second)
+	ars := GetAllReplyFromGroup(-1,self.GroupId,Rpc_SIGN,cur_enode)
+	AcceptSign(cur_enode,self.Account,self.PubKey,self.UnsignHash,self.Keytype,self.GroupId, self.Nonce,self.LimitNum,self.Mode,"", "","","","","", ars,workid)
+	fmt.Printf("%v ===================SignSendMsgToDcrm.Run, finish agree this sign oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
+	
+	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)
+	fmt.Printf("%v ==============SignSendMsgToDcrm.Run,Get Result = %v, err = %v, key = %v =================\n", common.CurrentTime(), chret, cherr, self.Key)
 	if cherr != nil {
 		res2 := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		ch <- res2
@@ -3369,7 +3905,15 @@ func (self *GetCurNodeLockOutInfoSendMsgToDcrm) Run(workid int, ch chan interfac
 	return true
 }
 
-func GetAllReplyFromGroup(wid int,gid string,lockout bool,initiator string) []NodeReply {
+type RpcType int32
+
+const (
+    Rpc_REQADDR      RpcType = 0
+    Rpc_LOCKOUT     RpcType = 1
+    Rpc_SIGN      RpcType = 2
+)
+
+func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []NodeReply {
     if gid == "" {
 	return nil
     }
@@ -3400,7 +3944,7 @@ func GetAllReplyFromGroup(wid int,gid string,lockout bool,initiator string) []No
 	return nil
     }
 
-    if lockout == true {
+    if rt == Rpc_LOCKOUT {
 	for _, node := range nodes {
 		node2 := ParseNode(node)
 		sta := "Pending"
@@ -3433,7 +3977,44 @@ func GetAllReplyFromGroup(wid int,gid string,lockout bool,initiator string) []No
 		nr := NodeReply{Enode:node2,Status:sta,TimeStamp:ts,Initiator:in}
 		ars = append(ars,nr)
 	}
-    } else {
+    } 
+    
+    if rt == Rpc_SIGN {
+	for _, node := range nodes {
+		node2 := ParseNode(node)
+		sta := "Pending"
+		ts := ""
+		in := "0"
+		if strings.EqualFold(initiator,node2) {
+		    in = "1"
+		}
+
+		iter := w.msg_acceptsignres.Front()
+		for iter != nil {
+		    mdss := iter.Value.(string)
+		    ms := strings.Split(mdss, Sep)
+		    prexs := strings.Split(ms[0], "-")
+		    node3 := prexs[1]
+		    if strings.EqualFold(node3,node2) {
+			if strings.EqualFold(ms[2],"false") {
+			    sta = "DisAgree"
+			} else {
+			    sta = "Agree"
+			}
+
+			ts = ms[3]
+			break
+		    }
+		    
+		    iter = iter.Next()
+		}
+		
+		nr := NodeReply{Enode:node2,Status:sta,TimeStamp:ts,Initiator:in}
+		ars = append(ars,nr)
+	}
+    } 
+    
+    if rt == Rpc_REQADDR {
 	for _, node := range nodes {
 	    node2 := ParseNode(node)
 	    sta := "Pending"
@@ -3576,6 +4157,55 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 	return nil
 }
 
+type AcceptSignData struct {
+        Initiator string //enode
+	Account   string
+	GroupId   string
+	Nonce     string
+	PubKey  string
+	UnsignHash    string
+	Keytype  string
+	LimitNum  string
+	Mode      string
+	TimeStamp string
+
+	Deal   string 
+	Accept string
+
+	Status    string
+	Rsv string
+	Tip       string
+	Error     string
+
+	AllReply []NodeReply
+	WorkId   int
+}
+
+func SaveAcceptSignData(ac *AcceptSignData) error {
+	if ac == nil {
+		return fmt.Errorf("no accept data.")
+	}
+
+	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Nonce + ":" + ac.PubKey + ":" + ac.UnsignHash + ":" + ac.Keytype + ":" + ac.GroupId + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+
+	alos, err := Encode2(ac)
+	if err != nil {
+		return err
+	}
+
+	ss, err := Compress([]byte(alos))
+	if err != nil {
+		return err
+	}
+
+	kdtmp := KeyData{Key: []byte(key), Data: ss}
+	PubKeyDataChan <- kdtmp
+
+	LdbPubKeyData.WriteMap(key, ac)
+	return nil
+}
+
 func CommitRpcReq() {
 	for {
 		select {
@@ -3604,6 +4234,21 @@ func SendReqDcrmAddr(acc string, cointype string, gid string, nonce string, thre
 
 func SendLockOut(acc string, dcrmfrom string, dcrmto string, value string, cointype string, gid string, nonce string, threshold string, mode string, timestamp string, key string) (string, string, error) {
 	v := LockOutSendMsgToDcrm{Account: acc, DcrmFrom: dcrmfrom, DcrmTo: dcrmto, Value: value, Cointype: cointype, GroupId: gid, Nonce: nonce, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Key: key}
+	rch := make(chan interface{}, 1)
+	req := RpcReq{rpcdata: &v, ch: rch}
+
+	RpcReqQueueCache <- req
+	chret, tip, cherr := GetChannelValue(600, req.ch)
+
+	if cherr != nil {
+		return chret, tip, cherr
+	}
+
+	return chret, "", nil
+}
+
+func SendSign(acc string, pubkey string, unsignhash string, keytype string, gid string, nonce string, threshold string, mode string, timestamp string, key string) (string, string, error) {
+    v := SignSendMsgToDcrm{Account: acc, PubKey: pubkey, UnsignHash:unsignhash, Keytype:keytype, GroupId: gid, Nonce: nonce, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Key: key}
 	rch := make(chan interface{}, 1)
 	req := RpcReq{rpcdata: &v, ch: rch}
 
@@ -3815,11 +4460,11 @@ func testEq(a, b []string) bool {
     return true
 }
 
-//msg: hash-enode:C1:X1:X2
+//msg: key-enode:C1:X1:X2...:Xn
 func DisMsg(msg string) {
 
 	if msg == "" {
-		return
+	    return
 	}
 
 	test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
@@ -4039,6 +4684,76 @@ func DisMsg(msg string) {
 		if w.msg_sendlockoutres.Len() == (w.ThresHold - 1) {
 			common.Info("===================Get All SendLockOutRes ", "msg hash = ", test, "", "====================")
 			w.bsendlockoutres <- true
+		}
+	case "AcceptSignRes":
+		///bug
+		if w.msg_acceptsignres.Len() >= w.ThresHold {
+			return
+		}
+		///
+		if Find(w.msg_acceptsignres, msg) {
+			return
+		}
+
+		///bug
+		mm2 := mm[0:3]
+		var next *list.Element
+		for e := w.msg_acceptsignres.Front(); e != nil; e = next {
+			next = e.Next()
+
+			if e.Value == nil {
+				continue
+			}
+
+			s := e.Value.(string)
+
+			if s == "" {
+				continue
+			}
+
+			tmp := strings.Split(s, Sep)
+			tmp2 := tmp[0:3]
+			fmt.Printf("%v ===============DisMsg, msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+			if testEq(mm2, tmp2) {
+				fmt.Printf("%v ===============DisMsg, test eq return true,msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+				return
+			}
+		}
+		//////
+
+		w.msg_acceptsignres.PushBack(msg)
+		if w.msg_acceptsignres.Len() == w.ThresHold {
+			w.bacceptsignres <- true
+			/////
+			exsit,da := GetValueFromPubKeyData(prexs[0])
+			if exsit == false {
+				return
+			}
+
+			ac,ok := da.(*AcceptSignData)
+			if ok == false {
+			    return
+			}
+
+			if ac == nil {
+				return
+			}
+			workers[ac.WorkId].acceptSignChan <- "go on"
+			/////
+		}
+	case "SendSignRes":
+		///bug
+		if w.msg_sendsignres.Len() >= (w.ThresHold - 1) {
+			return
+		}
+		///
+		if Find(w.msg_sendsignres, msg) {
+			return
+		}
+
+		w.msg_sendsignres.PushBack(msg)
+		if w.msg_sendsignres.Len() == (w.ThresHold - 1) {
+			w.bsendsignres <- true
 		}
 	case "C1":
 		///bug

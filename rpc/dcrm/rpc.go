@@ -130,6 +130,31 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 	}
 }
 
+func (this *Service) AcceptSign(raw string) map[string]interface{} {
+	fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
+
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.AcceptSign(raw)
+	fmt.Printf("%v ==========call rpc AcceptSign from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) LockOut(raw string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc LockOut from web,raw = %v ===========\n", common.CurrentTime(), raw)
 

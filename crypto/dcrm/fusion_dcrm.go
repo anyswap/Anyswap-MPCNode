@@ -814,6 +814,189 @@ func AcceptLockOut(raw string) (string, string, error) {
 	return pubdata, "", nil
 }
 
+func AcceptSign(raw string) (string, string, error) {
+	tx := new(types.Transaction)
+	raws := common.FromHex(raw)
+	if err := rlp.DecodeBytes(raws, tx); err != nil {
+		return "", "raw data error", err
+	}
+
+	signer := types.NewEIP155Signer(big.NewInt(30400)) //
+	from, err := types.Sender(signer, tx)
+	if err != nil {
+	    return "", "recover fusion account fail from raw data,maybe raw data error", err
+	}
+
+	data := string(tx.Data())
+	datas := strings.Split(data, ":")
+
+	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
+	if datas[0] != "ACCEPTSIGN" {
+	    return "", "transaction data format error,it is not ACCEPTSIGN tx", fmt.Errorf("tx.data error,it is not ACCEPTSIGN tx.")
+	}
+
+	if datas[9] != "AGREE" && datas[9] != "DISAGREE" {
+	    return "", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
+	}
+
+	dcrmpks, _ := hex.DecodeString(datas[2])
+	pubdata, tip, err := GetPubKeyData(string(dcrmpks[:]), datas[1],"ALL")
+	if err != nil {
+		return "", tip, err
+	}
+
+	status := "Pending"
+	accept := "false"
+	if datas[9] == "AGREE" {
+		accept = "true"
+	} else {
+		status = "Failure"
+	}
+
+	////bug,check valid accepter
+	exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(from.Hex()))
+	if exsit == false {
+		return "", "dcrm back-end internal error:get sign data from db fail", fmt.Errorf("get sign data from db fail")
+	}
+
+	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
+	keytmp := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + datas[6] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[5] + ":" + datas[7] + ":" + datas[8]))).Hex()
+
+	check := false
+	found := false
+	keys := strings.Split(string(da.([]byte)),":")
+	for _,key := range keys {
+	    exsit,data2 := dev.GetValueFromPubKeyData(key)
+	    if exsit == false {
+		continue
+	    }
+
+	    ac,ok := data2.(*dev.AcceptReqAddrData)
+	    if ok == false || ac == nil {
+		continue
+	    }
+
+	    if ac.Mode == "0" && !dev.CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
+		continue
+	    }
+
+	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	    exsit,data3 := dev.GetValueFromPubKeyData(string(dcrmpks[:]))
+	    if exsit == false || data3 == nil {
+		continue
+	    }
+
+	    pd,ok := data3.(*dev.PubKeyData)
+	    if ok == false {
+		continue
+	    }
+
+	    if pd == nil {
+		continue
+	    }
+
+	    if pd.RefSignKeys == "" {
+		continue
+	    }
+
+	    signkeys := strings.Split(pd.RefSignKeys,":")
+	    for _,signkey := range signkeys {
+		if strings.EqualFold(signkey, keytmp) {
+		    found = true
+		    exsit,data3 := dev.GetValueFromPubKeyData(signkey)
+		    if exsit == false {
+			break
+		    }
+
+		    ac3,ok := data3.(*dev.AcceptSignData)
+		    if ok == false {
+			break
+		    }
+
+		    if ac3 == nil {
+			    break
+		    }
+
+		    if ac3.Mode == "1" {
+			    break
+		    }
+
+		    check = true
+		    break
+		}
+	    }
+
+	    if check == true || found == true {
+		break
+	    }
+	    ////
+	}
+
+	if !check {
+	    return "", "invalid accepter", fmt.Errorf("invalid accepter")
+	}
+
+	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
+	exsit,da = dev.GetValueFromPubKeyData(keytmp)
+	///////
+	if exsit == false {
+		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	}
+
+	ac,ok := da.(*dev.AcceptSignData)
+	if ok == false {
+	    return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	}
+
+	if ac == nil {
+	    return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	}
+
+	if ac.Mode == "1" {
+	    return "", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
+	}
+
+	///////
+	mp := []string{keytmp, cur_enode}
+	enode := strings.Join(mp, "-")
+	s0 := "AcceptSignRes"
+	s1 := accept
+	s2 := datas[10]
+	ss2 := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
+	dev.SendMsgToDcrmGroup(ss2, datas[5])
+	dev.DisMsg(ss2)
+	fmt.Printf("%v ================== AcceptSign, finish send AcceptSignRes to other nodes ,key = %v ============================\n", common.CurrentTime(), keytmp)
+	////fix bug: get C11 timeout
+	_, enodes := dev.GetGroup(datas[5])
+	nodes := strings.Split(enodes, dev.SepSg)
+	for _, node := range nodes {
+	    node2 := dev.ParseNode(node)
+	    c1data := keytmp + "-" + node2 + dev.Sep + "AcceptSignRes"
+	    c1, exist := dev.C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		dev.DisMsg(c1.(string))
+		go dev.C1Data.DeleteMap(strings.ToLower(c1data))
+	    }
+	}
+	////
+
+	w, err := dev.FindWorker(keytmp)
+	if err != nil {
+	    return "",err.Error(),err
+	}
+
+	id,_ := dev.GetWorkerId(w)
+	ars := dev.GetAllReplyFromGroup(id,datas[5],dev.Rpc_SIGN,ac.Initiator)
+	
+	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
+	tip, err = dev.AcceptSign(ac.Initiator,datas[1], datas[2], datas[3], datas[4], datas[5], datas[6],datas[7],datas[8],"false", accept, status, "", "", "", ars, ac.WorkId)
+	if err != nil {
+		return "", tip, err
+	}
+
+	return pubdata, "", nil
+}
+
 type LockOutData struct {
 	Account   string
 	Nonce     string

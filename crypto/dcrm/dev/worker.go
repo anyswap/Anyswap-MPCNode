@@ -1825,6 +1825,36 @@ func GetLockOutStatus(key string) (string, string, error) {
 	return string(ret), "",nil 
 }
 
+type SignStatus struct {
+	Status    string
+	Rsv string
+	Tip       string
+	Error     string
+	AllReply  []NodeReply 
+	TimeStamp string
+}
+
+func GetSignStatus(key string) (string, string, error) {
+	exsit,da := GetValueFromPubKeyData(key)
+	///////
+	if exsit == false {
+		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	}
+
+	if da == nil {
+		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	}
+
+	ac,ok := da.(*AcceptSignData)
+	if ok == false {
+		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	}
+
+	los := &SignStatus{Status: ac.Status, Rsv: ac.Rsv, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
+	ret,_ := json.Marshal(los)
+	return string(ret), "",nil 
+}
+
 type EnAcc struct {
 	Enode    string
 	Accounts []string

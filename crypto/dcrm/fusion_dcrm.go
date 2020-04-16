@@ -1297,6 +1297,10 @@ func GetLockOutStatus(key string) (string, string, error) {
 	return dev.GetLockOutStatus(key)
 }
 
+func GetSignStatus(key string) (string, string, error) {
+	return dev.GetSignStatus(key)
+}
+
 func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, error) {
 	exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {

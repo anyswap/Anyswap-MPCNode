@@ -480,6 +480,30 @@ func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
 	}
 }
 
+func (this *Service) GetSignStatus(key string) map[string]interface{} {
+	fmt.Printf("%v ==============call rpc GetSignStatus from web, key = %v ================\n", common.CurrentTime(), key)
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.GetSignStatus(key)
+	fmt.Printf("%v ==============finish call rpc GetSignStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 var (
 	rpcport  int
 	endpoint string = "0.0.0.0"

@@ -403,6 +403,34 @@ func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interfac
 	}
 }
 
+func (this *Service) GetCurNodeSignInfo(geter_acc string) map[string]interface{} {
+	fmt.Printf("%v ==============call rpc GetCurNodeSignInfo from web,geter acc = %v ================\n", common.CurrentTime(), geter_acc)
+
+	data := make(map[string]interface{})
+	s, tip, err := dcrm.GetCurNodeSignInfo(geter_acc)
+	fmt.Printf("%v ==============finish call rpc GetCurNodeSignInfo ,ret = %v,err = %v,geter acc = %v ================\n", common.CurrentTime(), s, err, geter_acc)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	for k, v := range s {
+		data[strconv.Itoa(k)] = v
+	}
+
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
 	fmt.Printf("%v ==============call rpc GetReqAddrStatus from web, key = %v ================\n", common.CurrentTime(), key)
 

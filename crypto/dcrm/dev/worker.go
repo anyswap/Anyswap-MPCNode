@@ -2050,6 +2050,120 @@ func GetCurNodeLockOutInfo(geter_acc string) (string, string, error) {
 	return ss, "", nil
 }
 
+type SignCurNodeInfo struct {
+	Key       string
+	Account   string
+	PubKey   string
+	UnsignHash   string
+	KeyType   string
+	GroupId   string
+	Nonce     string
+	LimitNum  string
+	Mode      string
+	TimeStamp string
+}
+
+func GetCurNodeSignInfo(geter_acc string) (string, string, error) {
+	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	if exsit == false {
+	    return "","",nil
+	}
+
+	//check obj type
+	_,ok := da.([]byte)
+	if ok == false {
+	    return "","get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
+	}
+	//
+
+	var ret []string
+	keys := strings.Split(string(da.([]byte)),":")
+	for _,key := range keys {
+	    exsit,data := GetValueFromPubKeyData(key)
+	    if exsit == false {
+		continue
+	    }
+
+	    if data == nil {
+		continue
+	    }
+
+	    ac,ok := data.(*AcceptReqAddrData)
+	    if ok == false {
+		continue
+	    }
+
+	    if ac == nil {
+		continue
+	    }
+
+	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+		continue
+	    }
+
+	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+	    if exsit == false || data2 == nil {
+		continue
+	    }
+
+	    pd,ok := data2.(*PubKeyData)
+	    if ok == false {
+		continue
+	    }
+
+	    if pd == nil {
+		continue
+	    }
+
+	    if pd.RefSignKeys == "" {
+		continue
+	    }
+
+	    signkeys := strings.Split(pd.RefSignKeys,":")
+	    for _,signkey := range signkeys {
+		exsit,data3 := GetValueFromPubKeyData(signkey)
+		if exsit == false {
+		    continue
+		}
+
+		////
+		ac3,ok := data3.(*AcceptSignData)
+		if ok == false {
+		    continue
+		}
+
+		if ac3 == nil {
+			continue
+		}
+		
+		if ac3.Mode == "1" {
+			continue
+		}
+		
+		if ac3.Deal == "true" || ac3.Status == "Success" {
+			continue
+		}
+
+		if ac3.Status != "Pending" {
+			continue
+		}
+
+		//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
+		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.UnsignHash + ":" + ac3.Keytype + ":" + ac3.GroupId + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
+
+		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, UnsignHash:ac3.UnsignHash, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, LimitNum: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
+		ret2, _ := json.Marshal(los)
+		ret = append(ret, string(ret2))
+	    }
+	    ////
+	}
+
+	///////
+	ss := strings.Join(ret, "|")
+	return ss, "", nil
+}
+
 func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce string, threshold string, mode string) (string, bool) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
 	fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,acc =%v,cointype =%v,groupid =%v,nonce =%v,threshold =%v,mode =%v,key =%v !!!!============================\n", common.CurrentTime(), account, cointype, groupid, nonce, threshold, mode, key)
@@ -2543,7 +2657,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						select {
 						case account := <-wtmp2.acceptLockOutChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
-							//tip, reply = GetAcceptLockOutRes(msgs[0], msgs[5], msgs[6], msgs[1], msgs[7])
 							ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
 							fmt.Printf("%v ================== (self *RecvMsg) Run() , get all AcceptLockOutRes ,result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
 							
@@ -3905,6 +4018,30 @@ func (self *GetCurNodeLockOutInfoSendMsgToDcrm) Run(workid int, ch chan interfac
 	return true
 }
 
+type GetCurNodeSignInfoSendMsgToDcrm struct {
+	Account string //geter_acc
+}
+
+func (self *GetCurNodeSignInfoSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
+	if workid < 0 || workid >= RpcMaxWorker {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id fail", Err: GetRetErr(ErrGetWorkerIdError)}
+		ch <- res
+		return false
+	}
+
+	ret, tip, err := GetCurNodeSignInfo(self.Account)
+	if err != nil {
+		res2 := RpcDcrmRes{Ret: "", Tip: tip, Err: err}
+		ch <- res2
+		return false
+	}
+
+	res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
+	ch <- res2
+
+	return true
+}
+
 type RpcType int32
 
 const (
@@ -4268,6 +4405,11 @@ func SendReqToGroup(msg string, rpctype string) (string, string, error) {
 	switch rpctype {
 	case "rpc_get_cur_node_lockout_info":
 		v := GetCurNodeLockOutInfoSendMsgToDcrm{Account: msg}
+		rch := make(chan interface{}, 1)
+		req = RpcReq{rpcdata: &v, ch: rch}
+		break
+	case "rpc_get_cur_node_sign_info":
+		v := GetCurNodeSignInfoSendMsgToDcrm{Account: msg}
 		rch := make(chan interface{}, 1)
 		req = RpcReq{rpcdata: &v, ch: rch}
 		break

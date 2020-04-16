@@ -1482,6 +1482,16 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]string, string, error) {
 	return ss, "", nil
 }
 
+func GetCurNodeSignInfo(geter_acc string) ([]string, string, error) {
+	reply, tip, err := SendReqToGroup(geter_acc, "rpc_get_cur_node_sign_info")
+	if reply == "" || err != nil {
+	    return nil, tip, err
+	}
+
+	ss := strings.Split(reply, "|")
+	return ss, "", nil
+}
+
 func init() {
 	p2pdcrm.RegisterRecvCallback(Call)
 	p2pdcrm.SdkProtocol_registerBroadcastInGroupCallback(dev.Call)

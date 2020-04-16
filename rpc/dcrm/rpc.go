@@ -504,6 +504,28 @@ func (this *Service) GetSignStatus(key string) map[string]interface{} {
 	}
 }
 
+func (this *Service) GetDcrmAddr(pubkey string) map[string]interface{} {
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.GetDcrmAddr(pubkey)
+	if err != nil {
+	    data["result"] = ""
+	    return map[string]interface{}{
+		    "Status": "Error",
+		    "Tip":    tip,
+		    "Error":  err.Error(),
+		    "Data":   data,
+	    }
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 var (
 	rpcport  int
 	endpoint string = "0.0.0.0"

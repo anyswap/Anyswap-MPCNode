@@ -142,6 +142,31 @@ func GetPubKeyData(key string, account string, cointype string) (string, string,
 	return string(b), "", nil
 }
 
+func GetDcrmAddr(pubkey string) (string, string, error) {
+	var m interface{}
+	addrmp := make(map[string]string)
+	for _, ct := range coins.Cointypes {
+		if strings.EqualFold(ct, "ALL") {
+			continue
+		}
+
+		h := coins.NewCryptocoinHandler(ct)
+		if h == nil {
+			continue
+		}
+		ctaddr, err := h.PublicKeyToAddress(pubkey)
+		if err != nil {
+			continue
+		}
+
+		addrmp[ct] = ctaddr
+	}
+
+	m = &DcrmPubkeyRes{Account: "", PubKey: pubkey, DcrmAddress: addrmp}
+	b,_ := json.Marshal(m)
+	return string(b), "", nil
+}
+
 func ExsitPubKey(account string, cointype string) (string, bool) {
 	key := dev.Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
 	exsit,da := dev.GetValueFromPubKeyData(key)

@@ -89,7 +89,7 @@ type transport interface {
 	findgroup(gid, toid NodeID, addr *net.UDPAddr, target NodeID, p2pType int) ([]*Node, error)
 	sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) error
 	sendMsgToPeer(toid NodeID, toaddr *net.UDPAddr, msg string) error
-	sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) (string, error)
+	sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int, normal bool) (string, error)
 	close()
 }
 

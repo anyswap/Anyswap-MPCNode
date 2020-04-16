@@ -608,6 +608,8 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 		req = new(Group)
 	case PeerMsgPacket:
 		req = new(message)
+	case PeerSdkPacket:
+		req = new(messageNormal)
 	case getDcrmPacket:
 		req = new(getdcrmmessage)
 	case getSdkPacket:

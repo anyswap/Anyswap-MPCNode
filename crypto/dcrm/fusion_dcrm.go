@@ -1453,6 +1453,15 @@ func GetLockOutNonce(account string, cointype string, dcrmaddr string) (string, 
 	return nonce, "", nil
 }
 
+func GetSignNonce(account string) (string, string, error) {
+	nonce, tip, err := dev.GetSignNonce(account)
+	if err != nil {
+	    return "", tip, err
+	}
+
+	return nonce, "", nil
+}
+
 func GetCurNodeReqAddrInfo(geter_acc string) ([]string, string, error) {
 	reply, tip, err := SendReqToGroup(geter_acc, "rpc_get_cur_node_reqaddr_info")
 	if reply == "" || err != nil {

@@ -315,6 +315,38 @@ func (this *Service) GetLockOutNonce(account string, cointype string, dcrmaddr s
 	}
 }
 
+func (this *Service) GetSignNonce(account string) map[string]interface{} {
+	data := make(map[string]interface{})
+	if account == "" {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    "parameter error,but return 0",
+			"Error":  "parameter error",
+			"Data":   data,
+		}
+	}
+
+	ret, tip, err := dcrm.GetSignNonce(account)
+	if err != nil {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    tip + ",but return 0",
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interface{} {
 	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, get_acc = %v ================\n", common.CurrentTime(), geter_acc)
 

@@ -1544,7 +1544,7 @@ func Call(msg interface{}) {
 	SetUpMsgList(s)
 }
 
-var parts = make(map[int]string)
+var parts  = common.NewSafeMap(10)
 
 func receiveGroupInfo(msg interface{}) {
 	fmt.Println("===========receiveGroupInfo==============", "msg", msg)
@@ -1565,13 +1565,21 @@ func receiveGroupInfo(msg interface{}) {
 	}
 	p, _ := strconv.Atoi(strings.Split(head, "dcrmslash")[0])
 	total, _ := strconv.Atoi(strings.Split(head, "dcrmslash")[1])
-	parts[p] = body
+	//parts[p] = body
+	parts.WriteMap(strconv.Itoa(p),body)
 
-	if len(parts) == total {
+	if parts.MapLength() == total {
 		var c string = ""
 		for i := 1; i <= total; i++ {
-			c += parts[i]
+			da,exist := parts.ReadMap(strconv.Itoa(i))
+			if exist == true {
+			    datmp,ok := da.(string)
+			    if ok == true {
+				c += datmp
+			    }
+			}
 		}
+
 		time.Sleep(time.Duration(2) * time.Second) //1000 == 1s
 		////
 		Init(m[0])

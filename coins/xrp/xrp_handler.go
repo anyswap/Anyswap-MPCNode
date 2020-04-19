@@ -124,12 +124,12 @@ func (h *XRPHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	fmt.Printf("!!! XRP Handler BuildUnsignedTransaction,txseq = %v\n", txseq)
 
 	if types.IsDefaultED25519("XRP") {
-		transaction, _, msg := XRP_newUnsignedPaymentTransaction(xrp_pubKey, nil, txseq, toAddress, amt, fee, "", false, false, false)
+		transaction, _, msg := XRP_newUnsignedPaymentTransaction(xrp_pubKey, nil, txseq, toAddress, amt, fee, "", false, false, false,memo)
 		digests = append(digests, string(msg))
 		return transaction, digests, err
 	}
 
-	transaction, hash, _ := XRP_newUnsignedPaymentTransaction(xrp_pubKey, nil, txseq, toAddress, amt, fee, "", false, false, false)
+	transaction, hash, _ := XRP_newUnsignedPaymentTransaction(xrp_pubKey, nil, txseq, toAddress, amt, fee, "", false, false, false,memo)
 	digests = append(digests, hash.String())
 	return
 }
@@ -353,7 +353,7 @@ func XRP_newUnsignedSimplePaymentTransaction(fromAddress string, publicKey []byt
 	d := new(big.Int).Sub(amount, new(big.Int).Mul(amount, big.NewInt(1000000)))
 	amt := z.String() + "." + d.String() + "/XRP/" + fromAddress
 	dcrm_txseq := getSeq(fromAddress) // 一般是1
-	return XRP_newUnsignedPaymentTransaction(dcrm_key, nil, dcrm_txseq, toAddress, amt, fee, "", false, false, false)
+	return XRP_newUnsignedPaymentTransaction(dcrm_key, nil, dcrm_txseq, toAddress, amt, fee, "", false, false, false,"")
 }
 
 // 普通xrp转账
@@ -364,7 +364,7 @@ func XRP_Remit(seed string, cryptoType string, keyseq *uint32, toaddress string,
 	z := new(big.Int).Div(amount, big.NewInt(1000000))
 	d := new(big.Int).Sub(amount, new(big.Int).Mul(z, big.NewInt(1000000)))
 	amt := z.String() + "." + d.String() + "/XRP/" + fromaddress
-	tx, hash, _ := XRP_newUnsignedPaymentTransaction(key, keyseq, txseq, toaddress, amt, fee, "", false, false, false)
+	tx, hash, _ := XRP_newUnsignedPaymentTransaction(key, keyseq, txseq, toaddress, amt, fee, "", false, false, false,"")
 	sig := XRP_getSig(tx, key, keyseq, hash, nil)
 	signedTx := XRP_makeSignedTx(tx, sig)
 	res := XRP_submitTx(signedTx)
@@ -379,7 +379,7 @@ func XRP_FundAddress(toaddress string) {
 	key := XRP_importKeyFromSeed("ssfL5tmpTTqCw5sHjnRHQ4yyUCQKf", "ecdsa")
 	keyseq := uint32(0)
 	txseq := uint32(1) // 新帐户是1
-	tx, hash, msg := XRP_newUnsignedPaymentTransaction(key, &keyseq, txseq, toaddress, "10000/XRP/rwLc28nRV7WZiBv6vsHnpxUGAVcj8qpAtE", int64(10), "", false, false, false)
+	tx, hash, msg := XRP_newUnsignedPaymentTransaction(key, &keyseq, txseq, toaddress, "10000/XRP/rwLc28nRV7WZiBv6vsHnpxUGAVcj8qpAtE", int64(10), "", false, false, false,"")
 
 	// 签名
 	sig := XRP_getSig(tx, key, &keyseq, hash, msg)
@@ -392,7 +392,7 @@ func XRP_FundAddress(toaddress string) {
 
 // keyseq is only supported by ecdsa, leave nil when key crypto type is ed25519
 // amt format: "value/currency/issuer"
-func XRP_newUnsignedPaymentTransaction(key crypto.Key, keyseq *uint32, txseq uint32, dest string, amt string, fee int64, path string, nodirect bool, partial bool, limit bool) (data.Transaction, data.Hash256, []byte) {
+func XRP_newUnsignedPaymentTransaction(key crypto.Key, keyseq *uint32, txseq uint32, dest string, amt string, fee int64, path string, nodirect bool, partial bool, limit bool,memo string) (data.Transaction, data.Hash256, []byte) {
 
 	destination, amount := parseAccount(dest), parseAmount(amt)
 	payment := &data.Payment{

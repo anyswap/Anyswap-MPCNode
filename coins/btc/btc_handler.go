@@ -27,7 +27,7 @@ import (
 	"github.com/btcsuite/btcwallet/wallet/txrules"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto"
-	//	"github.com/fsn-dev/dcrm-walletService/log"
+	//	"github.com/fsn-dev/cryptoCoins/log"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
 	rpcutils "github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/coins/types"
@@ -177,6 +177,17 @@ func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	pkscript, _ := txscript.PayToAddrScript(toAddr)
 	txOut := wire.NewTxOut(amount.Int64(), pkscript)
 	txOuts = append(txOuts, txOut)
+	//add memo 
+	data := []byte(memo)
+	builder := txscript.NewScriptBuilder()
+	nullScript,err := builder.AddOp(txscript.OP_RETURN).AddData(data).Script()
+	if err != nil {
+	    return
+	}
+	txOut2 := wire.NewTxOut(0, nullScript)
+	txOuts = append(txOuts, txOut2)
+	//
+
 	if len(sourceOutputs) < 1 {
 		err = errContext(err, "cannot find p2pkh utxo")
 		return

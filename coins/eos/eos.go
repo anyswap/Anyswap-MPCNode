@@ -11,23 +11,54 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"runtime"
+	"path/filepath"
+	"os/user"
+	"os"
 
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/dcrm-walletService/coins/config"
 	"github.com/fsn-dev/dcrm-walletService/coins/rpcutils"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
-	"github.com/fsn-dev/dcrm-walletService/node"
 )
 
 var (
 	lock sync.Mutex
 )
 
+// DefaultDataDir is the default data directory to use for the databases and other
+// persistence requirements.
+func DefaultDataDir() string {
+	// Try to place the data folder in the user's home dir
+	home := homeDir()
+	if home != "" {
+		if runtime.GOOS == "darwin" {
+			return filepath.Join(home, "Library", "coins-service")
+		} else if runtime.GOOS == "windows" {
+			return filepath.Join(home, "AppData", "Roaming", "coins-service")
+		} else {
+			return filepath.Join(home, ".coins-service")
+		}
+	}
+	// As we cannot guess a stable location, return empty and handle later
+	return ""
+}
+
+func homeDir() string {
+	if home := os.Getenv("HOME"); home != "" {
+		return home
+	}
+	if usr, err := user.Current(); err == nil {
+		return usr.HomeDir
+	}
+	return ""
+}
+
 //eos_init---> eos account
 //key: crypto.Keccak256Hash([]byte("eossettings"))
 //value: pubkey+eos account
 func GetEosDbDir() string {
-	dir := node.DefaultDataDir()
+	dir := DefaultDataDir()
 	dir += "/dcrmdata/eosdb"
 	return dir
 }

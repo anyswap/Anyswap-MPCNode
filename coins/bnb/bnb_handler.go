@@ -117,7 +117,7 @@ func (h *BNBHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 			return
 		}
 	}()
-	transaction, hexMsg, err := h.BNB_buildSendTx(fromAddress, fromPublicKey, toAddress, amount)
+	transaction, hexMsg, err := h.BNB_buildSendTx(fromAddress, fromPublicKey, toAddress, amount,memo)
 	if err != nil {
 		return
 	}
@@ -126,7 +126,7 @@ func (h *BNBHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddr
 	return
 }
 
-func (h *BNBHandler) BNB_buildSendTx(fromAddress, fromPublicKey, toAddress string, amount *big.Int) (transaction BNBTx, hexMsg []byte, err error) {
+func (h *BNBHandler) BNB_buildSendTx(fromAddress, fromPublicKey, toAddress string, amount *big.Int,memo string) (transaction BNBTx, hexMsg []byte, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_BuildSendTx Runtime error: %v\n%v", e, string(debug.Stack()))

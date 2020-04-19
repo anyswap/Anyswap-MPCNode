@@ -139,7 +139,8 @@ func (h *AtomHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAdd
 		Tx:        stdtx,
 	}
 
-	hexTx := auth.StdSignBytes("gaia-13006", accnum, sequence, fee, []sdk.Msg{msg}, "this transaction is signed by Dcrm (^_^)")
+	//hexTx := auth.StdSignBytes("gaia-13006", accnum, sequence, fee, []sdk.Msg{msg}, "this transaction is signed by Dcrm (^_^)")
+	hexTx := auth.StdSignBytes("gaia-13006", accnum, sequence, fee, []sdk.Msg{msg}, memo)
 	testmsg = hexTx
 	fmt.Printf("\n============\nhex tx json:\n%v\n============\n", string(hexTx))
 	digest := crypto.Sha256(hexTx)

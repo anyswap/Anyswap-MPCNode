@@ -215,6 +215,17 @@ func (h *OmniHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAdd
 	txOut := wire.NewTxOut(0, script)
 	txOuts = append(txOuts, txOut)
 
+	//add memo
+	data := []byte(memo)
+	builder := txscript.NewScriptBuilder()
+	nullScript,err := builder.AddOp(txscript.OP_RETURN).AddData(data).Script()
+	if err != nil {
+	    return
+	}
+	txOut2 := wire.NewTxOut(0, nullScript)
+	txOuts = append(txOuts, txOut2)
+	//
+
 	// 3. 发送 1 satoshi
 	toAddr, _ := btcutil.DecodeAddress(toAddress, chainconfig)
 	pkscript0, _ := txscript.PayToAddrScript(toAddr)

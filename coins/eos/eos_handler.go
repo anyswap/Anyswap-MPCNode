@@ -75,7 +75,7 @@ func (h *EOSHandler) PublicKeyToAddress(pubKeyHex string) (acctName string, err 
 // 构造Lockin交易, 开发用
 func (h *EOSHandler) BuildUnsignedLockinTransaction(fromAddress, toUserKey, toAcctName string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
 	memo := toUserKey
-	digest, transaction, err := EOS_newUnsignedTransaction(fromAddress, toAcctName, amount, memo)
+	digest, transaction, err := EOS_newUnsignedTransaction(fromAddress, toAcctName, amount, memo,"")
 	digests = append(digests, digest)
 	return
 }
@@ -83,7 +83,7 @@ func (h *EOSHandler) BuildUnsignedLockinTransaction(fromAddress, toUserKey, toAc
 // 构造交易
 func (h *EOSHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAcctName string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
 	memo2 := GenAccountName(fromPublicKey)
-	digest, transaction, err := EOS_newUnsignedTransaction(fromAddress, toAcctName, amount, memo2)
+	digest, transaction, err := EOS_newUnsignedTransaction(fromAddress, toAcctName, amount, memo2,memo)
 	digests = append(digests, digest)
 	return
 }
@@ -409,7 +409,7 @@ func GenAccountName(pubKeyHex string) string {
 	return crypto.Base58Encode(b, ALPHABET)
 }
 
-func EOS_newUnsignedTransaction(fromAcctName, toAcctName string, amount *big.Int, memo string) (string, *eos.SignedTransaction, error) {
+func EOS_newUnsignedTransaction(fromAcctName, toAcctName string, amount *big.Int, memo2 string,memo string) (string, *eos.SignedTransaction, error) {
 	from := eos.AccountName(fromAcctName)
 	to := eos.AccountName(toAcctName)
 	s := strconv.FormatFloat(float64(amount.Int64())/10000, 'f', 4, 64) + " EOS"
@@ -428,7 +428,7 @@ func EOS_newUnsignedTransaction(fromAcctName, toAcctName string, amount *big.Int
 			From:     from,
 			To:       to,
 			Quantity: quantity,
-			Memo:     memo,
+			Memo:     memo2,
 		}),
 	}
 

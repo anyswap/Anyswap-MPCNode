@@ -117,7 +117,7 @@ func (h *BTCHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 }
 
 // jsonstring: '{"feeRate":0.0001,"changAddress":"mtjq9RmBBDVne7YB4AFHYCZFn3P2AXv9D5"}'
-func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
+func (h *BTCHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
 	fmt.Printf("\nBTC handler: %+v\n\n", h)
 	defer func() {
 		if e := recover(); e != nil {

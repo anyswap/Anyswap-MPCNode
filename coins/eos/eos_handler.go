@@ -81,9 +81,9 @@ func (h *EOSHandler) BuildUnsignedLockinTransaction(fromAddress, toUserKey, toAc
 }
 
 // 构造交易
-func (h *EOSHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAcctName string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
-	memo := GenAccountName(fromPublicKey)
-	digest, transaction, err := EOS_newUnsignedTransaction(fromAddress, toAcctName, amount, memo)
+func (h *EOSHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAcctName string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
+	memo2 := GenAccountName(fromPublicKey)
+	digest, transaction, err := EOS_newUnsignedTransaction(fromAddress, toAcctName, amount, memo2)
 	digests = append(digests, digest)
 	return
 }

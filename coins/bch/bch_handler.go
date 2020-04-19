@@ -99,8 +99,8 @@ func (h *BCHHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 }
 
 // NOT completed, may or not work
-func (h *BCHHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
-	transaction, digests, err = h.btcHandler.BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress, amount, jsonstring)
+func (h *BCHHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
+	transaction, digests, err = h.btcHandler.BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress, amount, jsonstring,memo)
 	return
 }
 

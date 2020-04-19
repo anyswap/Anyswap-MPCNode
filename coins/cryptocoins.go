@@ -115,7 +115,7 @@ type CryptocoinHandler interface {
 	PublicKeyToAddress(pubKeyHex string) (address string, err error)
 
 	// 构造未签名交易
-	BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error)
+	BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error)
 
 	// 签名函数 txhash 输出 rsv 测试用
 	//SignTransaction(hash []string, privateKey interface{}) (rsv []string, err error)

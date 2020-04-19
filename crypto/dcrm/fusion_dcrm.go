@@ -1023,17 +1023,10 @@ func AcceptSign(raw string) (string, string, error) {
 }
 
 type LockOutData struct {
-	Account   string
-	Nonce     string
-	DcrmFrom  string
-	DcrmTo    string
-	Value     string
-	Cointype  string
-	GroupId   string
-	ThresHold string
-	Mode      string
-	TimeStamp string
-	Key       string
+    Account string
+    Nonce string
+    JsonStr string
+    Key       string
 }
 
 func RecivLockOut() {
@@ -1042,22 +1035,37 @@ func RecivLockOut() {
 		case data := <-LockOutCh:
 			exsit,_ := dev.GetValueFromPubKeyData(data.Key)
 			if exsit == false {
-				cur_nonce, _, _ := dev.GetLockOutNonce(data.Account, data.Cointype, data.DcrmFrom)
+				lo := dev.TxDataLockOut{}
+				_ = json.Unmarshal([]byte(data.JsonStr), &lo)
+				//if err != nil {
+				    //TODO
+				//}
+
+				dcrmaddr := lo.DcrmAddr
+				dcrmto := lo.DcrmTo
+				value := lo.Value
+				cointype := lo.Cointype
+				groupid := lo.GroupId
+				threshold := lo.ThresHold
+				mode := lo.Mode
+				timestamp := lo.TimeStamp
+				
+				cur_nonce, _, _ := dev.GetLockOutNonce(data.Account, cointype, dcrmaddr)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 				new_nonce_num, _ := new(big.Int).SetString(data.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err := dev.SetLockOutNonce(data.Account, data.Cointype, data.DcrmFrom, data.Nonce)
+					_, err := dev.SetLockOutNonce(data.Account, cointype, dcrmaddr, data.Nonce)
 					if err == nil {
-						fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, data.Key)
-					    ars := dev.GetAllReplyFromGroup(-1,data.GroupId,dev.Rpc_LOCKOUT,cur_enode)
+						fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, groupid, threshold, mode, data.Nonce, data.Key)
+					    ars := dev.GetAllReplyFromGroup(-1,groupid,dev.Rpc_LOCKOUT,cur_enode)
 
-					    ac := &dev.AcceptLockOutData{Initiator:cur_enode,Account: data.Account, GroupId: data.GroupId, Nonce: data.Nonce, DcrmFrom: data.DcrmFrom, DcrmTo: data.DcrmTo, Value: data.Value, Cointype: data.Cointype, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+					    ac := &dev.AcceptLockOutData{Initiator:cur_enode,Account: data.Account, GroupId: groupid, Nonce: data.Nonce, DcrmFrom: dcrmaddr, DcrmTo: dcrmto, Value: value, Cointype: cointype, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := dev.SaveAcceptLockOutData(ac)
 						if err == nil {
-							fmt.Printf("%v ==============================RecivLockOut,finish call SaveAcceptLockOutData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, data.Key)
+							fmt.Printf("%v ==============================RecivLockOut,finish call SaveAcceptLockOutData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, groupid, threshold, mode, data.Nonce, data.Key)
 
 							/////
-							dcrmkey := dev.Keccak256Hash([]byte(strings.ToLower(data.DcrmFrom))).Hex()
+							dcrmkey := dev.Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
 							exsit,da := dev.GetValueFromPubKeyData(dcrmkey)
 							if exsit {
 							    _,ok := da.(*dev.PubKeyData)
@@ -1085,7 +1093,7 @@ func RecivLockOut() {
 										    fmt.Printf("%v ==============================RecivLockOut,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
 										    go func(d LockOutData) {
 											    for i := 0; i < 1; i++ {
-												    txhash, _, err2 := dev.SendLockOut(d.Account, d.DcrmFrom, d.DcrmTo, d.Value, d.Cointype, d.GroupId, d.Nonce, d.ThresHold, d.Mode, d.TimeStamp, d.Key)
+												    txhash, _, err2 := dev.SendLockOut(d.Account, d.Nonce, d.JsonStr,d.Key)
 												    if err2 == nil && txhash != "" {
 													    return
 												    }
@@ -1118,31 +1126,32 @@ func LockOut(raw string) (string, string, error) {
 	signer := types.NewEIP155Signer(big.NewInt(30400)) //
 	from, err := types.Sender(signer, tx)
 	if err != nil {
-		signer = types.NewEIP155Signer(big.NewInt(4)) //
-		from, err = types.Sender(signer, tx)
-		if err != nil {
-			return "", "recover fusion account fail from raw data,maybe raw data error", err
-		}
+	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
-	data := string(tx.Data())
-	datas := strings.Split(data, ":")
-	//LOCKOUT:dcrmaddr:dcrmto:value:cointype:groupid:threshold:mode:timestamp
-	if datas[0] != "LOCKOUT" {
+	lo := dev.TxDataLockOut{}
+	err = json.Unmarshal(tx.Data(), &lo)
+	if err != nil {
+	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
+	}
+
+	//LOCKOUT:dcrmaddr:dcrmto:value:cointype:groupid:threshold:mode:timestamp:{xxx:xxx}
+	if lo.TxType != "LOCKOUT" {
 		return "", "transaction data format error,it is not LOCKOUT tx", fmt.Errorf("lock raw data error,it is not lockout tx.")
 	}
 
-	dcrmaddr := datas[1]
-	dcrmto := datas[2]
-	value := datas[3]
-	cointype := datas[4]
-	groupid := datas[5]
-	threshold := datas[6]
-	mode := datas[7]
-	timestamp := datas[8]
+	dcrmaddr := lo.DcrmAddr
+	dcrmto := lo.DcrmTo
+	value := lo.Value
+	cointype := lo.Cointype
+	groupid := lo.GroupId
+	threshold := lo.ThresHold
+	mode := lo.Mode
+	timestamp := lo.TimeStamp
+	memo := lo.Memo
 	Nonce := tx.Nonce()
 
-	if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
+	if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" || memo == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
 
@@ -1167,7 +1176,7 @@ func LockOut(raw string) (string, string, error) {
 	////
 
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
-	data2 := LockOutData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), DcrmFrom: dcrmaddr, DcrmTo: dcrmto, Value: value, Cointype: cointype, GroupId: groupid, ThresHold: threshold, Mode: mode, TimeStamp: timestamp, Key: key}
+	data2 := LockOutData{Account:from.Hex(),Nonce:fmt.Sprintf("%v", Nonce),JsonStr:string(tx.Data()),Key: key}
 	LockOutCh <- data2
 
 	fmt.Printf("%v =================== LockOut, return, key = %v ===========================\n", common.CurrentTime(), key)

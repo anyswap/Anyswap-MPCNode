@@ -147,7 +147,7 @@ func isBEP2(tokentype string) bool {
 
 func send_common(h api.CryptocoinHandler, fromPrivateKey *ecdsa.PrivateKey, fromPubKeyHex, fromAddress, toAddress string, amt *big.Int, build_tx_args string) {
 	fmt.Printf("========== %s ==========\n\n", "build unsigned transfer transaction")
-	transaction, digest, err := h.BuildUnsignedTransaction(fromAddress, fromPubKeyHex, toAddress, amt, build_tx_args)
+	transaction, digest, err := h.BuildUnsignedTransaction(fromAddress, fromPubKeyHex, toAddress, amt, build_tx_args,"")
 	if err != nil {
 		//fmt.Printf("Error: %v\n\n", err.Error())
 		panic(err)

@@ -79,7 +79,7 @@ func (h *AtomHandler) PublicKeyToAddress(pubKeyHex string) (address string, err 
 	return
 }
 
-func (h *AtomHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
+func (h *AtomHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
 	fmt.Printf("\n======== atom BuildUnsignedTransaction ========\n")
 	fromacc, err := sdk.AccAddressFromBech32(fromAddress)
 	if err != nil {

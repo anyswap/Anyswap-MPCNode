@@ -141,7 +141,7 @@ func (h *OmniHandler) PublicKeyToAddress(pubKeyHex string) (address string, err 
 	return
 }
 
-func (h *OmniHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
+func (h *OmniHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v\n", e, string(debug.Stack()))

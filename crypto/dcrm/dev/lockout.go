@@ -492,7 +492,7 @@ func SignEc2(msgprex string, save string, message string, keytype string, pkx *b
 	return ""
 }
 
-func validate_lockout(wsid string, account string, dcrmaddr string, cointype string, value string, to string, nonce string, ch chan interface{}) {
+func validate_lockout(wsid string, account string, dcrmaddr string, cointype string, value string, to string, nonce string, memo string,ch chan interface{}) {
 	var ret2 Err
 	chandler := coins.NewCryptocoinHandler(cointype)
 	if chandler == nil {
@@ -567,9 +567,9 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	var digests []string
 	var buildTxErr error
 	if strings.EqualFold(cointype, "EOS") {
-		lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(eosaccount, pubkey, to, amount, jsonstring)
+		lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(eosaccount, pubkey, to, amount, jsonstring,memo)
 	} else {
-		lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(realdcrmfrom, pubkey, to, amount, jsonstring)
+		lockouttx, digests, buildTxErr = chandler.BuildUnsignedTransaction(realdcrmfrom, pubkey, to, amount, jsonstring,memo)
 	}
 
 	if buildTxErr != nil || lockouttx == nil || len(digests) == 0 {

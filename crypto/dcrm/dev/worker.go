@@ -2505,6 +2505,19 @@ type LockOutReplys struct {
 	Replys []LockOutReply
 }
 
+type TxDataLockOut struct {
+    TxType string
+    DcrmAddr string
+    DcrmTo string
+    Value string
+    Cointype string
+    GroupId string
+    ThresHold string
+    Mode string
+    TimeStamp string
+    Memo string
+}
+
 func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if workid < 0 || workid >= RpcMaxWorker { //TODO
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id fail", Err: fmt.Errorf("no find worker.")}
@@ -2583,10 +2596,24 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w := workers[workid]
 			w.sid = rr.Nonce
 			//msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode:key:timestamp
-			msg := rr.Msg
-			msgs := strings.Split(msg, ":")
-			w.groupid = msgs[5]
-			w.limitnum = msgs[7]
+			lomsg := LockOutSendMsgToDcrm{}
+			err = json.Unmarshal([]byte(rr.Msg), &lomsg)
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+			    ch <- res
+			    return false
+			}
+
+			lo := TxDataLockOut{}
+			err = json.Unmarshal([]byte(lomsg.TxData), &lo)
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+			    ch <- res
+			    return false
+			}
+
+			w.groupid = lo.GroupId 
+			w.limitnum = lo.ThresHold
 			gcnt, _ := GetGroup(w.groupid)
 			w.NodeCnt = gcnt
 			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
@@ -2605,18 +2632,18 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    //}
 			}
 
-			w.DcrmFrom = msgs[1]
+			w.DcrmFrom = lo.DcrmAddr
 
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
-				AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "false", "Pending", "", "", "", nil, wid)
+				AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Pending", "", "", "", nil, wid)
 			} else {
-				cur_nonce, _, _ := GetLockOutNonce(msgs[0], msgs[4], msgs[1])
+				cur_nonce, _, _ := GetLockOutNonce(lomsg.Account, lo.Cointype, lo.DcrmAddr)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
-				new_nonce_num, _ := new(big.Int).SetString(msgs[6], 10)
+				new_nonce_num, _ := new(big.Int).SetString(lomsg.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err = SetLockOutNonce(msgs[0], msgs[4], msgs[1], msgs[6])
+					_, err = SetLockOutNonce(lomsg.Account, lo.Cointype, lo.DcrmAddr, lomsg.Nonce)
 					if err != nil {
 						fmt.Printf("%v ================RecvMsg.Run,set lockout nonce fail, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 						//TODO must set acceptlockout(.....)
@@ -2626,17 +2653,17 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 				}
 
-				ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
-				ac := &AcceptLockOutData{Initiator:self.sender,Account: msgs[0], GroupId: msgs[5], Nonce: msgs[6], DcrmFrom: msgs[1], DcrmTo: msgs[2], Value: msgs[3], Cointype: msgs[4], LimitNum: msgs[7], Mode: msgs[8], TimeStamp: msgs[10], Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
+				ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
+				ac := &AcceptLockOutData{Initiator:self.sender,Account: lomsg.Account, GroupId: lo.GroupId, Nonce: lomsg.Nonce, DcrmFrom: lo.DcrmAddr, DcrmTo: lo.DcrmTo, Value: lo.Value, Cointype: lo.Cointype, LimitNum: lo.ThresHold, Mode: lo.Mode, TimeStamp: lo.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
 				err := SaveAcceptLockOutData(ac)
-				fmt.Printf("%v ===================finish call SaveAcceptLockOutData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,dcrm from = %v,dcrm to = %v,value = %v,cointype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, msgs[0], msgs[5], msgs[6], msgs[1], msgs[2], msgs[3], msgs[4], msgs[7], msgs[8], rr.Nonce)
+				fmt.Printf("%v ===================finish call SaveAcceptLockOutData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,dcrm from = %v,dcrm to = %v,value = %v,cointype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.DcrmTo, lo.Value, lo.Cointype, lo.ThresHold, lo.Mode, rr.Nonce)
 				if err != nil {
 					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set AcceptLockOutData fail in RecvMsg.Run", Err: fmt.Errorf("set AcceptLockOutData fail in recvmsg.run")}
 					ch <- res2
 					return false
 				}
 				////
-				dcrmkey := Keccak256Hash([]byte(strings.ToLower(msgs[1]))).Hex()
+				dcrmkey := Keccak256Hash([]byte(strings.ToLower(lo.DcrmAddr))).Hex()
 				exsit,da := GetValueFromPubKeyData(dcrmkey)
 				if exsit {
 				    _,ok := da.(*PubKeyData)
@@ -2671,7 +2698,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 
 			////bug
-			if msgs[8] == "0" { // self-group
+			if lo.Mode == "0" { // self-group
 				////
 				var reply bool
 				var tip string
@@ -2687,7 +2714,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						select {
 						case account := <-wtmp2.acceptLockOutChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
-							ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
+							ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
 							fmt.Printf("%v ================== (self *RecvMsg) Run() , get all AcceptLockOutRes ,result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
 							
 							//bug
@@ -2702,10 +2729,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply == false {
 								tip = "don't accept lockout"
-								AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "false", "Failure", "", "don't accept lockout", "don't accept lockout", ars, wid)
+								AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Failure", "", "don't accept lockout", "don't accept lockout", ars, wid)
 							} else {
 								tip = ""
-								AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "true", "Pending", "", "", "", ars, wid)
+								AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, wid)
 							}
 
 							///////
@@ -2713,9 +2740,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							return
 						case <-agreeWaitTimeOut.C:
 							fmt.Printf("%v ================== (self *RecvMsg) Run() , agree wait timeout. key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
-							ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
+							ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
 							//bug: if self not accept and timeout
-							AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "false", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
+							AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
 							reply = false
 							tip = "get other node accept lockout result timeout"
 							//
@@ -2737,8 +2764,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				if reply == false {
 					//////////////////////lockout result start/////////////////////////
 					if tip == "get other node accept lockout result timeout" {
-						ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
-						AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
+						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
+						AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
 					} else {
 						/////////////TODO tmp
 						//sid-enode:SendLockOutRes:Success:lockout_tx_hash
@@ -2753,13 +2780,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 						_, _, err := GetChannelValue(ch_t, w.bsendlockoutres)
 						fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes, err = %v,key = %v =============\n", common.CurrentTime(), err, rr.Nonce)
-						ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
+						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
 						if err != nil {
 							tip = "get other node terminal accept lockout result timeout" ////bug
-							AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", tip, tip, ars, wid)
+							AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, wid)
 						} else if w.msg_sendlockoutres.Len() != (w.ThresHold - 1) {
 							fmt.Printf("%v ================RecvMsg,the result SendLockOutRes msg from other nodes fail,key = %v =======================\n", common.CurrentTime(), rr.Nonce)
-							AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
+							AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
 						} else {
 							reply2 := "false"
 							lohash := ""
@@ -2781,10 +2808,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply2 == "true" {
 								fmt.Printf("%v ================RecvMsg,the terminal lockout res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-								AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "true", "true", "Success", lohash, " ", " ", ars, wid)
+								AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, wid)
 							} else {
 								fmt.Printf("%v ================RecvMsg,the terminal lockout res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-								AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Failure", "", lohash, lohash, ars, wid)
+								AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, wid)
 							}
 						}
 						/////////////////////
@@ -2801,15 +2828,15 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				if !strings.EqualFold(cur_enode, self.sender) { //no self send
-					ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
-					AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "true", "Pending", "", "", "", ars, wid)
+					ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
+					AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, wid)
 				}
 			}
 
 			rch := make(chan interface{}, 1)
 			//msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode:key:timestamp
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , start call validate_lockout,key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
-			validate_lockout(w.sid, msgs[0], msgs[1], msgs[4], msgs[3], msgs[2], msgs[6], rch)
+			validate_lockout(w.sid, lomsg.Account, lo.DcrmAddr, lo.Cointype, lo.Value, lo.DcrmTo, lomsg.Nonce, lo.Memo,rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish call validate_lockout,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get validate_lockout return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
@@ -2820,9 +2847,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 
 			//////////////////////lockout result start/////////////////////////
-			ars := GetAllReplyFromGroup(w.id,msgs[5],Rpc_LOCKOUT,self.sender)
+			ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
 			if tip == "get other node accept lockout result timeout" {
-				AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", tip, cherr.Error(), ars, wid)
+				AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, cherr.Error(), ars, wid)
 			} else {
 				/////////////TODO tmp
 				//sid-enode:SendLockOutRes:Success:lockout_tx_hash
@@ -2839,10 +2866,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 				if err != nil {
 					tip = "get other node terminal accept lockout result timeout" ////bug
-					AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Timeout", "", tip, tip, ars, wid)
+					AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, wid)
 				} else if w.msg_sendlockoutres.Len() != (w.ThresHold - 1) {
 					fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes fail,key = %v =============\n", common.CurrentTime(), rr.Nonce)
-					AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
+					AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
 				} else {
 					reply2 := "false"
 					lohash := ""
@@ -2864,10 +2891,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 					if reply2 == "true" {
 						fmt.Printf("%v ================RecvMsg,the terminal lockout res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-						AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "true", "true", "Success", lohash, " ", " ", ars, wid)
+						AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, wid)
 					} else {
 						fmt.Printf("%v ================RecvMsg,the terminal lockout res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-						AcceptLockOut(self.sender,msgs[0], msgs[5], msgs[6], msgs[1], msgs[7], "false", "", "Failure", "", lohash, lohash, ars, wid)
+						AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, wid)
 					}
 				}
 				/////////////////////
@@ -3801,15 +3828,8 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 type LockOutSendMsgToDcrm struct {
 	Account   string
-	DcrmFrom  string
-	DcrmTo    string
-	Value     string
-	Cointype  string
-	GroupId   string
 	Nonce     string
-	LimitNum  string
-	Mode      string
-	TimeStamp string
+	TxData     string
 	Key       string
 }
 
@@ -3821,9 +3841,14 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	}
 
 	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-	msg := self.Account + ":" + self.DcrmFrom + ":" + self.DcrmTo + ":" + self.Value + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode + ":" + self.Key + ":" + self.TimeStamp
+	msg, err := json.Marshal(self)
+	if err != nil {
+		res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
+		ch <- res
+		return false
+	}
 
-	sm := &SendMsg{MsgType: "rpc_lockout", Nonce: self.Key, WorkId: workid, Msg: msg}
+	sm := &SendMsg{MsgType: "rpc_lockout", Nonce: self.Key, WorkId: workid, Msg: string(msg)}
 	res, err := Encode2(sm)
 	if err != nil {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode SendMsg fail in lockout", Err: err}
@@ -3838,13 +3863,21 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
-	AcceptLockOut(cur_enode,self.Account, self.GroupId, self.Nonce, self.DcrmFrom, self.LimitNum, "false", "true", "Pending", "", "", "", nil, workid)
+	lo := TxDataLockOut{}
+	err = json.Unmarshal([]byte(self.TxData), &lo)
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+	    ch <- res
+	    return false
+	}
+
+	AcceptLockOut(cur_enode,self.Account, lo.GroupId, self.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", nil, workid)
 	
 	for i := 0; i < ReSendTimes; i++ {
 		test := Keccak256Hash([]byte(strings.ToLower(res))).Hex()
 		fmt.Printf("%v ===================LockOutSendMsgToDcrm.Run,begin send msg to all nodes. msg hash = %v,key = %v ====================\n", common.CurrentTime(), test, self.Key)
 
-		SendToGroupAllNodes(self.GroupId, res)
+		SendToGroupAllNodes(lo.GroupId, res)
 	}
 
 	w := workers[workid]
@@ -3856,18 +3889,18 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	///////
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-	if self.Mode == "0" {
+	if lo.Mode == "0" {
 		mp := []string{self.Key, cur_enode}
 		enode := strings.Join(mp, "-")
 		s0 := "AcceptLockOutRes"
 		s1 := "true"
 		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
-		SendMsgToDcrmGroup(ss, self.GroupId)
+		SendMsgToDcrmGroup(ss, lo.GroupId)
 		DisMsg(ss)
 		fmt.Printf("%v ================== LockOutSendMsgToDcrm.Run , finish send AcceptLockOutRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
 		
 		////fix bug: get C11 timeout
-		_, enodes := GetGroup(self.GroupId)
+		_, enodes := GetGroup(lo.GroupId)
 		nodes := strings.Split(enodes, SepSg)
 		for _, node := range nodes {
 		    node2 := ParseNode(node)
@@ -3882,8 +3915,8 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
-	ars := GetAllReplyFromGroup(-1,self.GroupId,Rpc_LOCKOUT,cur_enode)
-	AcceptLockOut(cur_enode,self.Account, self.GroupId, self.Nonce, self.DcrmFrom, self.LimitNum, "", "", "", "", "", "", ars, workid)
+	ars := GetAllReplyFromGroup(-1,lo.GroupId,Rpc_LOCKOUT,cur_enode)
+	AcceptLockOut(cur_enode,self.Account, lo.GroupId, self.Nonce, lo.DcrmAddr, lo.ThresHold, "", "", "", "", "", "", ars, workid)
 	fmt.Printf("%v ===================LockOutSendMsgToDcrm.Run, finish agree this lockout oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
 	
 	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)
@@ -4399,8 +4432,8 @@ func SendReqDcrmAddr(acc string, cointype string, gid string, nonce string, thre
 	return chret, "", nil
 }
 
-func SendLockOut(acc string, dcrmfrom string, dcrmto string, value string, cointype string, gid string, nonce string, threshold string, mode string, timestamp string, key string) (string, string, error) {
-	v := LockOutSendMsgToDcrm{Account: acc, DcrmFrom: dcrmfrom, DcrmTo: dcrmto, Value: value, Cointype: cointype, GroupId: gid, Nonce: nonce, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Key: key}
+func SendLockOut(acc string, nonce string, txdata string,key string) (string, string, error) {
+	v := LockOutSendMsgToDcrm{Account: acc, Nonce: nonce, TxData:txdata, Key: key}
 	rch := make(chan interface{}, 1)
 	req := RpcReq{rpcdata: &v, ch: rch}
 

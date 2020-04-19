@@ -91,7 +91,7 @@ func (h *FSNHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 }
 
 // jsonstring '{"gasPrice":8000000000,"gasLimit":50000}'
-func (h *FSNHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
+func (h *FSNHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("Runtime error: %v\n%v", e, string(debug.Stack()))

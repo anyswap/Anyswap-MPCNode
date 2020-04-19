@@ -102,7 +102,7 @@ func (h *EvtHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 	return
 }
 
-func (h *EvtHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
+func (h *EvtHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
 
 	key := strconv.Itoa(int(h.TokenId))
 	number := makeEVTFTNumber(amount, key)

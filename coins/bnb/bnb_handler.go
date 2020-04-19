@@ -110,7 +110,7 @@ func (h *BNBHandler) PublicKeyToAddress(pubKeyHex string) (address string, err e
 	return
 }
 
-func (h *BNBHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string) (transaction interface{}, digests []string, err error) {
+func (h *BNBHandler) BuildUnsignedTransaction(fromAddress, fromPublicKey, toAddress string, amount *big.Int, jsonstring string,memo string) (transaction interface{}, digests []string, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("BNB_BuildUnsignedTransaction Runtime error: %v\n%v", e, string(debug.Stack()))

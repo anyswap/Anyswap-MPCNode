@@ -71,24 +71,21 @@ func SetSignNonce(account string,nonce string) (string, error) {
 	return "", nil
 }
 
-func GetLockOutNonce(account string, cointype string, dcrmaddr string) (string, string, error) {
-	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
-	exsit,da := GetValueFromPubKeyData(key2)
+func GetLockOutNonce(account string) (string, string, error) {
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
+	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
 		return "0", "", nil
 	}
 
 	nonce, _ := new(big.Int).SetString(string(da.([]byte)), 10)
-	//  fmt.Println("=========GetLockOutNonce,get old nonce =%s,key =%s ============",nonce,key2)
 	one, _ := new(big.Int).SetString("1", 10)
 	nonce = new(big.Int).Add(nonce, one)
-
-	//fmt.Println("=========GetLockOutNonce,get new nonce = %s,key =%s ============",nonce,key2)
 	return fmt.Sprintf("%v", nonce), "", nil
 }
 
-func SetLockOutNonce(account string, cointype string, dcrmaddr string, nonce string) (string, error) {
+func SetLockOutNonce(account string,nonce string) (string, error) {
 	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
 	kd := KeyData{Key: []byte(key2), Data: nonce}
 	PubKeyDataChan <- kd

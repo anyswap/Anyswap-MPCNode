@@ -279,11 +279,11 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
 	}
 }
 
-func (this *Service) GetLockOutNonce(account string, cointype string, dcrmaddr string) map[string]interface{} {
+func (this *Service) GetLockOutNonce(account string) map[string]interface{} {
 	common.Info("==============call rpc GetLockOutNonce from web================")
 
 	data := make(map[string]interface{})
-	if account == "" || cointype == "" || dcrmaddr == "" {
+	if account == "" {
 		data["result"] = "0"
 		return map[string]interface{}{
 			"Status": "Success",
@@ -293,9 +293,7 @@ func (this *Service) GetLockOutNonce(account string, cointype string, dcrmaddr s
 		}
 	}
 
-	ret, tip, err := dcrm.GetLockOutNonce(account, cointype, dcrmaddr)
-	//    fmt.Println("==========GetLockOutNonce,ret =%s,tip =%s,err =%v ===========",ret,tip,err)
-
+	ret, tip, err := dcrm.GetLockOutNonce(account)
 	if err != nil {
 		data["result"] = "0"
 		return map[string]interface{}{

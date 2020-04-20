@@ -1039,11 +1039,11 @@ func RecivLockOut() {
 				mode := lo.Mode
 				timestamp := lo.TimeStamp
 				
-				cur_nonce, _, _ := dev.GetLockOutNonce(data.Account, cointype, dcrmaddr)
+				cur_nonce, _, _ := dev.GetLockOutNonce(data.Account)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 				new_nonce_num, _ := new(big.Int).SetString(data.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err := dev.SetLockOutNonce(data.Account, cointype, dcrmaddr, data.Nonce)
+					_, err := dev.SetLockOutNonce(data.Account,data.Nonce)
 					if err == nil {
 						fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, groupid, threshold, mode, data.Nonce, data.Key)
 					    ars := dev.GetAllReplyFromGroup(-1,groupid,dev.Rpc_LOCKOUT,cur_enode)
@@ -1471,8 +1471,8 @@ func GetReqAddrNonce(account string) (string, string, error) {
 	return nonce, "", nil
 }
 
-func GetLockOutNonce(account string, cointype string, dcrmaddr string) (string, string, error) {
-	nonce, tip, err := dev.GetLockOutNonce(account, cointype, dcrmaddr)
+func GetLockOutNonce(account string) (string, string, error) {
+	nonce, tip, err := dev.GetLockOutNonce(account)
 	if err != nil {
 		return "", tip, err
 	}

@@ -2646,11 +2646,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			if strings.EqualFold(cur_enode, self.sender) { //self send
 				AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Pending", "", "", "", nil, wid)
 			} else {
-				cur_nonce, _, _ := GetLockOutNonce(lomsg.Account, lo.Cointype, lo.DcrmAddr)
+				cur_nonce, _, _ := GetLockOutNonce(lomsg.Account)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 				new_nonce_num, _ := new(big.Int).SetString(lomsg.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err = SetLockOutNonce(lomsg.Account, lo.Cointype, lo.DcrmAddr, lomsg.Nonce)
+					_, err = SetLockOutNonce(lomsg.Account, lomsg.Nonce)
 					if err != nil {
 						fmt.Printf("%v ================RecvMsg.Run,set lockout nonce fail, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 						//TODO must set acceptlockout(.....)

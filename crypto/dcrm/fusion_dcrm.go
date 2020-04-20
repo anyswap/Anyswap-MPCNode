@@ -267,13 +267,8 @@ func SendReqToGroup(msg string, rpctype string) (string, string, error) {
 
 type ReqAddrData struct {
 	Account   string
-	GroupId   string
 	Nonce     string
-	ThresHold string
-	Mode      string
-	Cointype  string
-	NodeCnt   string
-	Datas     []string
+	JsonStr   string
 	Key       string
 }
 
@@ -284,23 +279,26 @@ func RecivReqAddr() {
 			////////bug
 			exsit,_ := dev.GetValueFromPubKeyData(data.Key)
 			if exsit == false {
+				req := dev.TxDataReqAddr{}
+				json.Unmarshal([]byte(data.JsonStr), &req)
+				
 				cur_nonce, _, _ := dev.GetReqAddrNonce(data.Account)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 				new_nonce_num, _ := new(big.Int).SetString(data.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err := dev.SetReqAddrNonce(data.Account, data.Nonce)
-					fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n", common.CurrentTime(), data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, err, data.Key)
+					_, err := dev.SetReqAddrNonce(data.Account,data.Nonce)
+					fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n", common.CurrentTime(), data.Account, req.GroupId, req.ThresHold,req.Mode, data.Nonce, err, data.Key)
 					if err == nil {
-					    ars := dev.GetAllReplyFromGroup(-1,data.GroupId,dev.Rpc_REQADDR,cur_enode)
+					    ars := dev.GetAllReplyFromGroup(-1,req.GroupId,dev.Rpc_REQADDR,cur_enode)
 
-					    ac := &dev.AcceptReqAddrData{Initiator:cur_enode,Account: data.Account, Cointype: "ALL", GroupId: data.GroupId, Nonce: data.Nonce, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.Datas[3], Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: -1,Sigs:""}
+					    ac := &dev.AcceptReqAddrData{Initiator:cur_enode,Account: data.Account, Cointype: "ALL", GroupId: req.GroupId, Nonce: data.Nonce, LimitNum: req.ThresHold, Mode: req.Mode, TimeStamp: req.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: -1,Sigs:""}
 						err := dev.SaveAcceptReqAddrData(ac)
 						fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n", common.CurrentTime(), data.Account, err, data.Key)
 						if err == nil {
 						    ///////add decdsa log
 						    var enodeinfo string
 						    groupinfo := make([]string,0)
-						    _, enodes := dev.GetGroup(data.GroupId)
+						    _, enodes := dev.GetGroup(req.GroupId)
 						    nodes := strings.Split(enodes, dev.SepSg)
 						    for _, node := range nodes {
 							groupinfo = append(groupinfo,node)
@@ -326,20 +324,22 @@ func RecivReqAddr() {
 						    }
 						    //////////////////
 							////////bug
-							go func(d ReqAddrData,rad *dev.AcceptReqAddrData) {
+							go func(d ReqAddrData,reqda *dev.TxDataReqAddr,rad *dev.AcceptReqAddrData) {
+								nums := strings.Split(reqda.ThresHold, "/")
+								nodecnt, _ := strconv.Atoi(nums[1])
+								sigs := strings.Split(reqda.Sigs,":")
 								/////////////////////tmp code //////////////////////
-								if d.Mode == "0" {
+								if reqda.Mode == "0" {
 									mp := []string{d.Key, cur_enode}
 									enode := strings.Join(mp, "-")
 									s0 := "GroupAccounts"
-									s1 := d.NodeCnt
+									s1 := strconv.Itoa(nodecnt)
 									ss := enode + common.Sep + s0 + common.Sep + s1
 
 									sstmp := s1
-									nodecnt, _ := strconv.Atoi(d.NodeCnt)
 									for j := 0; j < nodecnt; j++ {
 										tx2 := new(types.Transaction)
-										vs := common.FromHex(d.Datas[5+j])
+										vs := common.FromHex(sigs[j])
 										if err := rlp.DecodeBytes(vs, tx2); err != nil {
 											return
 										}
@@ -389,7 +389,7 @@ func RecivReqAddr() {
 										}
 									}
 
-									dev.SendMsgToDcrmGroup(ss, d.GroupId)
+									dev.SendMsgToDcrmGroup(ss, reqda.GroupId)
 									fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n", common.CurrentTime(), ss, d.Key)
 									rad.Sigs = sstmp
 								} else {
@@ -411,12 +411,12 @@ func RecivReqAddr() {
 								//if !types.IsDefaultED25519(msgs[1]) {  //TODO
 								//}
 
-								addr, _, err := dev.SendReqDcrmAddr(d.Account, d.Cointype, d.GroupId, d.Nonce, d.ThresHold, d.Mode, d.Datas[4], d.Key)
+								addr, _, err := dev.SendReqDcrmAddr(d.Account, d.Nonce, d.JsonStr, d.Key)
 								fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n", common.CurrentTime(), addr, err, d.Key)
 								if addr != "" && err == nil {
 									return
 								}
-							}(data,ac)
+							}(data,&req,ac)
 							//
 						}
 					}
@@ -439,32 +439,32 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
-	data := string(tx.Data()) //REQDCRMADDR:gid:threshold:mode:timestamp:tx1:tx2:tx3...
-	datas := strings.Split(data, ":")
-	if len(datas) < 5 {
-		return "", "transacion data format error", fmt.Errorf("tx.data error.")
+	req := dev.TxDataReqAddr{}
+	err = json.Unmarshal(tx.Data(), &req)
+	if err != nil {
+	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
 	}
 
-	if datas[0] != "REQDCRMADDR" {
+	if req.TxType != "REQDCRMADDR" {
 		return "", "transaction data format error,it is not REQDCRMADDR tx", fmt.Errorf("tx type error.")
 	}
 
-	groupid := datas[1]
+	groupid := req.GroupId 
 	if groupid == "" {
 		return "", "group id error", fmt.Errorf("get group id fail.")
 	}
 
-	threshold := datas[2]
+	threshold := req.ThresHold
 	if threshold == "" {
 		return "", "no threshold value", fmt.Errorf("get threshold fail.")
 	}
 
-	mode := datas[3]
+	mode := req.Mode
 	if mode == "" {
 		return "", "get mode fail", fmt.Errorf("get mode fail.")
 	}
 
-	timestamp := datas[4]
+	timestamp := req.TimeStamp
 	if timestamp == "" {
 		return "", "no timestamp value", fmt.Errorf("get timestamp fail.")
 	}
@@ -479,10 +479,6 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 		return "", err.Error(),err
 	}
 
-	if mode == "0" && len(datas) < (5+nodecnt) {
-		return "", "transacion data format error, no nodes sign data", fmt.Errorf("tx.data error, no nodes sign data")
-	}
-
 	Nonce := tx.Nonce()
 
 	////
@@ -494,8 +490,8 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-	data2 := ReqAddrData{Account: from.Hex(), GroupId: groupid, Nonce: fmt.Sprintf("%v", Nonce), ThresHold: threshold, Mode: mode, Cointype: "ALL", NodeCnt: nums[1], Datas: datas, Key: key}
-	ReqAddrCh <- data2
+	data := ReqAddrData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
+	ReqAddrCh <- data
 
 	fmt.Printf("%v ===============ReqDcrmAddr finish,return,key = %v,raw = %v,mode = %v ================================\n", common.CurrentTime(), key, raw, mode)
 	return key, "", nil
@@ -1176,8 +1172,8 @@ func LockOut(raw string) (string, string, error) {
 	////
 
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
-	data2 := LockOutData{Account:from.Hex(),Nonce:fmt.Sprintf("%v", Nonce),JsonStr:string(tx.Data()),Key: key}
-	LockOutCh <- data2
+	data := LockOutData{Account:from.Hex(),Nonce:fmt.Sprintf("%v", Nonce),JsonStr:string(tx.Data()),Key: key}
+	LockOutCh <- data
 
 	fmt.Printf("%v =================== LockOut, return, key = %v ===========================\n", common.CurrentTime(), key)
 	return key, "", nil

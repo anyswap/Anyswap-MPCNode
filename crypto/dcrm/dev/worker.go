@@ -3244,8 +3244,24 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w := workers[workid]
 			w.sid = rr.Nonce
 
-			w.groupid = msgs[2]
-			w.limitnum = msgs[4]
+			reqmsg := ReqAddrSendMsgToDcrm{}
+			err = json.Unmarshal([]byte(rr.Msg), &reqmsg)
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+			    ch <- res
+			    return false
+			}
+
+			req := TxDataReqAddr{}
+			err = json.Unmarshal([]byte(reqmsg.TxData), &req)
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+			    ch <- res
+			    return false
+			}
+
+			w.groupid = req.GroupId
+			w.limitnum = req.ThresHold
 			gcnt, _ := GetGroup(w.groupid)
 			w.NodeCnt = gcnt
 			w.ThresHold = w.NodeCnt
@@ -3266,14 +3282,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
-				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Pending", "", "", "", nil, wid,"")
+				AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "false", "Pending", "", "", "", nil, wid,"")
 			} else {
-				cur_nonce, _, _ := GetReqAddrNonce(msgs[0])
+				cur_nonce, _, _ := GetReqAddrNonce(reqmsg.Account)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
-				new_nonce_num, _ := new(big.Int).SetString(msgs[3], 10)
+				new_nonce_num, _ := new(big.Int).SetString(reqmsg.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err = SetReqAddrNonce(msgs[0], msgs[3])
-					fmt.Printf("%v =======================RecvMsg.Run,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v =========================\n", common.CurrentTime(), msgs[0], msgs[2], msgs[4], msgs[5], msgs[3], err, rr.Nonce)
+					_, err = SetReqAddrNonce(reqmsg.Account, reqmsg.Nonce)
+					fmt.Printf("%v =======================RecvMsg.Run,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v =========================\n", common.CurrentTime(), reqmsg.Account, req.GroupId, req.ThresHold, req.Mode, reqmsg.Nonce, err, rr.Nonce)
 					if err != nil {
 						//TODO must set acceptreqaddr(.....)
 						res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run", Err: fmt.Errorf("set req addr nonce fail in recvmsg.run")}
@@ -3282,7 +3298,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 				}
 
-				ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
+				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
 				sigs := ""
 				datmp, exsit := GAccs.ReadMap(strings.ToLower(rr.Nonce))
 				if exsit == true {
@@ -3290,9 +3306,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				    go GAccs.DeleteMap(strings.ToLower(rr.Nonce))
 				}
 
-				ac := &AcceptReqAddrData{Initiator:self.sender,Account: msgs[0], Cointype: "ALL", GroupId: msgs[2], Nonce: msgs[3], LimitNum: msgs[4], Mode: msgs[5], TimeStamp: msgs[7], Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: wid,Sigs:sigs}
+				ac := &AcceptReqAddrData{Initiator:self.sender,Account: reqmsg.Account, Cointype: "ALL", GroupId: req.GroupId, Nonce: reqmsg.Nonce, LimitNum: req.ThresHold, Mode: req.Mode, TimeStamp: req.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: wid,Sigs:sigs}
 				err := SaveAcceptReqAddrData(ac)
-				fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, wid = %v,account = %v,cointype = %v,group id = %v,nonce = %v, threshold = %v,mode = %v,err = %v,key = %v,msg hash = %v, ========================\n", common.CurrentTime(), wid, msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], err, rr.Nonce, test)
+				fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, wid = %v,account = %v,cointype = %v,group id = %v,nonce = %v, threshold = %v,mode = %v,err = %v,key = %v,msg hash = %v, ========================\n", common.CurrentTime(), wid, reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, err, rr.Nonce, test)
 				if err != nil {
 					////TODO
 				}
@@ -3331,12 +3347,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 				//////////////////
 
-				if msgs[5] == "1" {
-				    exsit,da := GetValueFromPubKeyData(strings.ToLower(msgs[0]))
+				if req.Mode == "1" {
+				    exsit,da := GetValueFromPubKeyData(strings.ToLower(reqmsg.Account))
 				    if exsit == false {
-					kdtmp := KeyData{Key: []byte(strings.ToLower(msgs[0])), Data: rr.Nonce}
+					kdtmp := KeyData{Key: []byte(strings.ToLower(reqmsg.Account)), Data: rr.Nonce}
 					PubKeyDataChan <- kdtmp
-					LdbPubKeyData.WriteMap(strings.ToLower(msgs[0]), []byte(rr.Nonce))
+					LdbPubKeyData.WriteMap(strings.ToLower(reqmsg.Account), []byte(rr.Nonce))
 				    } else {
 					//
 					found := false
@@ -3350,16 +3366,16 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					//
 					if !found {
 					    da2 := string(da.([]byte)) + ":" + rr.Nonce
-					    kdtmp := KeyData{Key: []byte(strings.ToLower(msgs[0])), Data: da2}
+					    kdtmp := KeyData{Key: []byte(strings.ToLower(reqmsg.Account)), Data: da2}
 					    PubKeyDataChan <- kdtmp
-					    LdbPubKeyData.WriteMap(strings.ToLower(msgs[0]), []byte(da2))
+					    LdbPubKeyData.WriteMap(strings.ToLower(reqmsg.Account), []byte(da2))
 					}
 				    }
 				}
 				////
 			}
 
-			if msgs[5] == "0" { // self-group
+			if req.Mode == "0" { // self-group
 				////
 				var reply bool
 				var tip string
@@ -3369,8 +3385,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					agreeWaitTime := 10 * time.Minute
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 					if wid < 0 || wid >= len(workers) || workers[wid] == nil {
-						ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
-						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Failure", "", "workid error", "workid error", ars, wid,"")
+						ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)	
+						AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "workid error", "workid error", ars, wid,"")
 						tip = "worker id error"
 						reply = false
 						timeout <- true
@@ -3384,7 +3400,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						select {
 						case account := <-wtmp2.acceptReqAddrChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
-							ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
+							ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
 							fmt.Printf("%v ================== (self *RecvMsg) Run(),get all AcceptReqAddrRes, result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
 							
 							//bug
@@ -3399,10 +3415,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply == false {
 								tip = "don't accept req addr"
-								AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid,"")
+								AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid,"")
 							} else {
 								tip = ""
-								AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "true", "Pending", "", "", "", ars, wid,"")
+								AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, wid,"")
 							}
 
 							///////
@@ -3410,9 +3426,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							return
 						case <-agreeWaitTimeOut.C:
 							fmt.Printf("%v ================== (self *RecvMsg) Run(), agree wait timeout, key = %v ============================\n", common.CurrentTime(), rr.Nonce)
-							ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
+							ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
 							//bug: if self not accept and timeout
-							AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
+							AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
 							tip = "get other node accept req addr result timeout"
 							reply = false
 							//
@@ -3431,12 +3447,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				fmt.Printf("%v ================== (self *RecvMsg) Run(), the terminal accept req addr result = %v, key = %v ============================\n", common.CurrentTime(), reply, rr.Nonce)
 
-				ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
+				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
 				if reply == false {
 					if tip == "get other node accept req addr result timeout" {
-						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Timeout", "", tip, "don't accept req addr.", ars, wid,"")
+						AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "", "Timeout", "", tip, "don't accept req addr.", ars, wid,"")
 					} else {
-						AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Failure", "", tip, "don't accept req addr.", ars, wid,"")
+						AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, "don't accept req addr.", ars, wid,"")
 					}
 
 					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept req addr.")}
@@ -3449,19 +3465,19 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				if !strings.EqualFold(cur_enode, self.sender) { //no self send
-					ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
-					AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "true", "Pending", "", "", "", ars, wid,"")
+					ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
+					AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, wid,"")
 				}
 			}
 
 			fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey, w.id = %v, w.groupid = %v, key = %v ============================\n", common.CurrentTime(), w.id,w.groupid,rr.Nonce)
-			dcrm_genPubKey(w.sid, msgs[0], msgs[1], rch, msgs[5], msgs[3])
+			dcrm_genPubKey(w.sid, reqmsg.Account, "ALL", rch, req.Mode, reqmsg.Nonce)
 			fmt.Printf("%v ================== (self *RecvMsg) Run(), finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
 			if cherr != nil {
-				ars := GetAllReplyFromGroup(w.id,msgs[2],Rpc_REQADDR,self.sender)	
-				AcceptReqAddr(self.sender,msgs[0], msgs[1], msgs[2], msgs[3], msgs[4], msgs[5], "false", "", "Failure", "", tip, cherr.Error(), ars, wid,"")
+				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
+				AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, wid,"")
 				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: cherr}
 				ch <- res2
 				return false
@@ -3702,14 +3718,19 @@ func Keccak256Hash(data ...[]byte) (h DcrmHash) {
 	return h
 }
 
+type TxDataReqAddr struct {
+    TxType string
+    GroupId string
+    ThresHold string
+    Mode string
+    TimeStamp string
+    Sigs string
+}
+
 type ReqAddrSendMsgToDcrm struct {
 	Account   string
-	Cointype  string
-	GroupId   string
 	Nonce     string
-	LimitNum  string
-	Mode      string
-	TimeStamp string
+	TxData string
 	Key       string
 }
 
@@ -3721,9 +3742,14 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	}
 
 	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-	msg := self.Account + ":" + self.Cointype + ":" + self.GroupId + ":" + self.Nonce + ":" + self.LimitNum + ":" + self.Mode + ":" + self.Key + ":" + self.TimeStamp
+	msg, err := json.Marshal(self)
+	if err != nil {
+		res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
+		ch <- res
+		return false
+	}
 
-	sm := &SendMsg{MsgType: "rpc_req_dcrmaddr", Nonce: self.Key, WorkId: workid, Msg: msg}
+	sm := &SendMsg{MsgType: "rpc_req_dcrmaddr", Nonce: self.Key, WorkId: workid, Msg: string(msg)}
 	res, err := Encode2(sm)
 	if err != nil {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode SendMsg fail in req addr", Err: err}
@@ -3738,15 +3764,23 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
+	req := TxDataReqAddr{}
+	err = json.Unmarshal([]byte(self.TxData), &req)
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+	    ch <- res
+	    return false
+	}
+
 	w := workers[workid]
 	
-	AcceptReqAddr(cur_enode,self.Account, self.Cointype, self.GroupId, self.Nonce, self.LimitNum, self.Mode, "false", "true", "Pending", "", "", "", nil, workid,"")
+	AcceptReqAddr(cur_enode,self.Account, "ALL", req.GroupId, self.Nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", nil, workid,"")
 
 	for i := 0; i < ReSendTimes; i++ {
 		test := Keccak256Hash([]byte(strings.ToLower(res))).Hex()
 		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, begin send msg to all nodes. msg hash = %v,key = %v============================\n", common.CurrentTime(), test, self.Key)
 
-		SendToGroupAllNodes(self.GroupId, res)
+		SendToGroupAllNodes(req.GroupId, res)
 	}
 
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Waiting For Result.key = %v============================\n", common.CurrentTime(), self.Key)
@@ -3754,13 +3788,13 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	///////
-	if self.Mode == "0" {
+	if req.Mode == "0" {
 		mp := []string{self.Key, cur_enode}
 		enode := strings.Join(mp, "-")
 		s0 := "AcceptReqAddrRes"
 		s1 := "true"
 		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
-		SendMsgToDcrmGroup(ss, self.GroupId)
+		SendMsgToDcrmGroup(ss, req.GroupId)
 		
 		//////////add decdsa log
 		cur_time := fmt.Sprintf("%v",common.CurrentTime())
@@ -3793,7 +3827,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		DisMsg(ss)
 		fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
 		////fix bug: get C1 timeout
-		_, enodes := GetGroup(self.GroupId)
+		_, enodes := GetGroup(req.GroupId)
 		nodes := strings.Split(enodes, SepSg)
 		for _, node := range nodes {
 		    node2 := ParseNode(node)
@@ -3808,8 +3842,8 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
-	ars := GetAllReplyFromGroup(-1,self.GroupId,Rpc_REQADDR,cur_enode)
-	AcceptReqAddr(cur_enode,self.Account, self.Cointype, self.GroupId, self.Nonce, self.LimitNum, self.Mode, "", "", "", "", "", "", ars, workid,"")
+	ars := GetAllReplyFromGroup(-1,req.GroupId,Rpc_REQADDR,cur_enode)
+	AcceptReqAddr(cur_enode,self.Account, "ALL", req.GroupId, self.Nonce, req.ThresHold, req.Mode, "", "", "", "", "", "", ars, workid,"")
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, w.ch)
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Get Result. result = %v,cherr = %v,key = %v============================\n", common.CurrentTime(), chret, cherr, self.Key)
@@ -4417,8 +4451,8 @@ func CommitRpcReq() {
 	}
 }
 
-func SendReqDcrmAddr(acc string, cointype string, gid string, nonce string, threshold string, mode string, timestamp string, key string) (string, string, error) {
-	v := ReqAddrSendMsgToDcrm{Account: acc, Cointype: cointype, GroupId: gid, Nonce: nonce, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Key: key}
+func SendReqDcrmAddr(acc string, nonce string, txdata string, key string) (string, string, error) {
+	v := ReqAddrSendMsgToDcrm{Account: acc, Nonce: nonce, TxData: txdata, Key: key}
 	rch := make(chan interface{}, 1)
 	req := RpcReq{rpcdata: &v, ch: rch}
 

@@ -507,40 +507,34 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	signer := types.NewEIP155Signer(big.NewInt(30400)) //
 	from, err := types.Sender(signer, tx)
 	if err != nil {
-		signer = types.NewEIP155Signer(big.NewInt(4)) //
-		from, err = types.Sender(signer, tx)
-		if err != nil {
-			return "", "recover fusion account fail from raw data,maybe raw data error", err
-		}
+	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
-	data := string(tx.Data())
-	datas := strings.Split(data, ":")
-
-	if len(datas) < 9 {
-		return "", "transacion data format error", fmt.Errorf("tx.data error.")
+	acceptreq := dev.TxDataAcceptReqAddr{}
+	err = json.Unmarshal(tx.Data(), &acceptreq)
+	if err != nil {
+	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
 	}
 
 	//ACCEPTREQADDR:account:cointype:groupid:nonce:threshold:mode:accept:timestamp
-	if datas[0] != "ACCEPTREQADDR" {
+	if acceptreq.TxType != "ACCEPTREQADDR" {
 		return "", "transaction data format error,it is not ACCEPTREQADDR tx", fmt.Errorf("tx.data error,it is not ACCEPTREQADDR tx.")
 	}
 
-	if datas[7] != "AGREE" && datas[7] != "DISAGREE" {
+	if acceptreq.Accept != "AGREE" && acceptreq.Accept != "DISAGREE" {
 		return "", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
 	}
 
 	status := "Pending"
 	accept := "false"
-	if datas[7] == "AGREE" {
+	if acceptreq.Accept == "AGREE" {
 		accept = "true"
 	} else {
 		status = "Failure"
 	}
 
 	////bug,check valid accepter
-	key := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[5] + ":" + datas[6]))).Hex()
-	exsit,da := dev.GetValueFromPubKeyData(key)
+	exsit,da := dev.GetValueFromPubKeyData(acceptreq.Key)
 	if exsit == false {
 		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
@@ -572,7 +566,7 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	    found := false
 	    keys := strings.Split(string(data.([]byte)),":")
 	    for _,k := range keys {
-		if strings.EqualFold(k,key) {
+		if strings.EqualFold(k,acceptreq.Key) {
 		    found = true
 		    break
 		}
@@ -585,29 +579,28 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	/////
 
 	///////
-	mp := []string{key, cur_enode}
+	mp := []string{acceptreq.Key, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "AcceptReqAddrRes"
 	s1 := accept
-	s2 := datas[8]
-	//s2 := strconv.Itoa(ac.WorkId)
+	s2 := acceptreq.TimeStamp
 	ss := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
-	dev.SendMsgToDcrmGroup(ss, datas[3])
+	dev.SendMsgToDcrmGroup(ss, ac.GroupId)
 	
 	//////////add decdsa log
 	cur_time := fmt.Sprintf("%v",common.CurrentTime())
-	log, exist := dev.DecdsaMap.ReadMap(strings.ToLower(key))
+	log, exist := dev.DecdsaMap.ReadMap(strings.ToLower(acceptreq.Key))
 	if exist == false {
 	    tmp := make([]dev.SendAcceptResTime,0)
 	    rat := dev.SendAcceptResTime{SendTime:cur_time,Reply:ss}
 	    tmp = append(tmp,rat)
 	    logs := &dev.DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:tmp,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
-	    dev.DecdsaMap.WriteMap(strings.ToLower(key),logs)
-	    fmt.Printf("%v ===============AcceptReqAddr,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,key)
+	    dev.DecdsaMap.WriteMap(strings.ToLower(acceptreq.Key),logs)
+	    fmt.Printf("%v ===============AcceptReqAddr,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,acceptreq.Key)
 	} else {
 	    logs,ok := log.(*dev.DecdsaLog)
 	    if ok == false {
-		fmt.Printf("%v ===============AcceptReqAddr,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),key)
+		fmt.Printf("%v ===============AcceptReqAddr,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),acceptreq.Key)
 		return "", "get dcrm log fail", fmt.Errorf("get dcrm log fail.")
 	    }
 
@@ -615,19 +608,19 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	    rat := dev.SendAcceptResTime{SendTime:cur_time,Reply:ss}
 	    rats = append(rats,rat)
 	    logs.SendAcceptRes = rats
-	    dev.DecdsaMap.WriteMap(strings.ToLower(key),logs)
-	    fmt.Printf("%v ===============AcceptReqAddr,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),key)
+	    dev.DecdsaMap.WriteMap(strings.ToLower(acceptreq.Key),logs)
+	    fmt.Printf("%v ===============AcceptReqAddr,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),acceptreq.Key)
 	}
 	///////////////////////
 
 	dev.DisMsg(ss)
-	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), key)
+	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), acceptreq.Key)
 	////fix bug: get C1 timeout
-	_, enodes := dev.GetGroup(datas[3])
+	_, enodes := dev.GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, dev.SepSg)
 	for _, node := range nodes {
 	    node2 := dev.ParseNode(node)
-	    c1data := key + "-" + node2 + dev.Sep + "AcceptReqAddrRes"
+	    c1data := acceptreq.Key + "-" + node2 + dev.Sep + "AcceptReqAddrRes"
 	    c1, exist := dev.C1Data.ReadMap(strings.ToLower(c1data))
 	    if exist {
 		dev.DisMsg(c1.(string))
@@ -636,14 +629,14 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	}
 	////
 	
-	w, err := dev.FindWorker(key)
+	w, err := dev.FindWorker(acceptreq.Key)
 	if err != nil {
 	    return "",err.Error(),err
 	}
 
 	id,_ := dev.GetWorkerId(w)
-	ars := dev.GetAllReplyFromGroup(id,datas[3],dev.Rpc_REQADDR,ac.Initiator)
-	tip, err := dev.AcceptReqAddr(ac.Initiator,datas[1], datas[2], datas[3], datas[4], datas[5], datas[6], "false", accept, status, "", "", "", ars, ac.WorkId,"")
+	ars := dev.GetAllReplyFromGroup(id,ac.GroupId,dev.Rpc_REQADDR,ac.Initiator)
+	tip, err := dev.AcceptReqAddr(ac.Initiator,ac.Account, ac.Cointype, ac.GroupId, ac.Nonce, ac.LimitNum, ac.Mode, "false", accept, status, "", "", "", ars, ac.WorkId,"")
 	if err != nil {
 		return "", tip, err
 	}

@@ -2341,6 +2341,17 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	return "", nil
 }
 
+type TxDataAcceptLockOut struct {
+    TxType string
+    Key string
+    DcrmTo string
+    Value string
+    Cointype string
+    Mode string
+    Accept string
+    TimeStamp string
+}
+
 func AcceptLockOut(initiator string,account string, groupid string, nonce string, dcrmfrom string, threshold string, deal string, accept string, status string, outhash string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)

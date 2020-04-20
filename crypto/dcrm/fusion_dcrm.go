@@ -657,31 +657,24 @@ func AcceptLockOut(raw string) (string, string, error) {
 	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
-	data := string(tx.Data())
-	datas := strings.Split(data, ":")
-
-	if len(datas) < 12 {
-	    return "", "transacion data format error", fmt.Errorf("tx.data error.")
+	acceptlo := dev.TxDataAcceptLockOut{}
+	err = json.Unmarshal(tx.Data(), &acceptlo)
+	if err != nil {
+	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
 	}
 
 	//ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept:timestamp
-	if datas[0] != "ACCEPTLOCKOUT" {
+	if acceptlo.TxType != "ACCEPTLOCKOUT" {
 	    return "", "transaction data format error,it is not ACCEPTLOCKOUT tx", fmt.Errorf("tx.data error,it is not ACCEPTLOCKOUT tx.")
 	}
 
-	if datas[10] != "AGREE" && datas[10] != "DISAGREE" {
+	if acceptlo.Accept != "AGREE" && acceptlo.Accept != "DISAGREE" {
 	    return "", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
-	}
-
-	key2 := dev.Keccak256Hash([]byte(strings.ToLower(datas[4]))).Hex()
-	pubdata, tip, err := GetPubKeyData(key2, datas[1], datas[7])
-	if err != nil {
-		return "", tip, err
 	}
 
 	status := "Pending"
 	accept := "false"
-	if datas[10] == "AGREE" {
+	if acceptlo.Accept == "AGREE" {
 		accept = "true"
 	} else {
 		status = "Failure"
@@ -692,8 +685,6 @@ func AcceptLockOut(raw string) (string, string, error) {
 	if exsit == false {
 		return "", "dcrm back-end internal error:get lockout data from db fail", fmt.Errorf("get lockout data from db fail")
 	}
-
-	keytmp := dev.Keccak256Hash([]byte(strings.ToLower(datas[1] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[8]))).Hex()
 
 	check := false
 	found := false
@@ -734,7 +725,7 @@ func AcceptLockOut(raw string) (string, string, error) {
 
 	    lockoutkeys := strings.Split(pd.RefLockOutKeys,":")
 	    for _,lockoutkey := range lockoutkeys {
-		if strings.EqualFold(lockoutkey, keytmp) {
+		if strings.EqualFold(lockoutkey,acceptlo.Key) {
 		    found = true
 		    exsit,data3 := dev.GetValueFromPubKeyData(lockoutkey)
 		    if exsit == false {
@@ -770,7 +761,7 @@ func AcceptLockOut(raw string) (string, string, error) {
 	}
 
 	//ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept:timestamp
-	exsit,da = dev.GetValueFromPubKeyData(keytmp)
+	exsit,da = dev.GetValueFromPubKeyData(acceptlo.Key)
 	///////
 	if exsit == false {
 		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
@@ -789,22 +780,28 @@ func AcceptLockOut(raw string) (string, string, error) {
 		return "", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
 	}
 
+	key2 := dev.Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()
+	pubdata, tip, err := GetPubKeyData(key2, ac.Account, ac.Cointype)
+	if err != nil {
+		return "", tip, err
+	}
+
 	///////
-	mp := []string{keytmp, cur_enode}
+	mp := []string{acceptlo.Key, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "AcceptLockOutRes"
 	s1 := accept
-	s2 := datas[11]
+	s2 := acceptlo.TimeStamp
 	ss2 := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
-	dev.SendMsgToDcrmGroup(ss2, datas[2])
+	dev.SendMsgToDcrmGroup(ss2, ac.GroupId)
 	dev.DisMsg(ss2)
-	fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), keytmp)
+	fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptlo.Key)
 	////fix bug: get C11 timeout
-	_, enodes := dev.GetGroup(datas[2])
+	_, enodes := dev.GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, dev.SepSg)
 	for _, node := range nodes {
 	    node2 := dev.ParseNode(node)
-	    c1data := keytmp + "-" + node2 + dev.Sep + "AcceptLockOutRes"
+	    c1data := acceptlo.Key + "-" + node2 + dev.Sep + "AcceptLockOutRes"
 	    c1, exist := dev.C1Data.ReadMap(strings.ToLower(c1data))
 	    if exist {
 		dev.DisMsg(c1.(string))
@@ -813,14 +810,14 @@ func AcceptLockOut(raw string) (string, string, error) {
 	}
 	////
 
-	w, err := dev.FindWorker(keytmp)
+	w, err := dev.FindWorker(acceptlo.Key)
 	if err != nil {
 	    return "",err.Error(),err
 	}
 
 	id,_ := dev.GetWorkerId(w)
-	ars := dev.GetAllReplyFromGroup(id,datas[2],dev.Rpc_LOCKOUT,ac.Initiator)
-	tip, err = dev.AcceptLockOut(ac.Initiator,datas[1], datas[2], datas[3], datas[4], datas[8], "false", accept, status, "", "", "", ars, ac.WorkId)
+	ars := dev.GetAllReplyFromGroup(id,ac.GroupId,dev.Rpc_LOCKOUT,ac.Initiator)
+	tip, err = dev.AcceptLockOut(ac.Initiator,ac.Account, ac.GroupId, ac.Nonce, ac.DcrmFrom, ac.LimitNum, "false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 		return "", tip, err
 	}

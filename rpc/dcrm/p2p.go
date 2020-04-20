@@ -17,7 +17,6 @@
 package dcrm
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
@@ -49,13 +48,16 @@ type EnodeStatus struct {
 	Status string
 }
 
-func packageResult(status, tip, errors string, msg interface{}) string {
-	ret := &Result{Status: status, Tip: tip, Error: errors, Data: msg}
-	retnid, _ := json.Marshal(ret)
-	return string(retnid)
+func packageResult(status, tip, errors string, msg interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"Status": status,
+		"Tip":    tip,
+		"Error":  errors,
+		"Data":   msg,
+	}
 }
 
-func (this *Service) GetEnode() string {
+func (this *Service) GetEnode() map[string]interface{} {
 	fmt.Printf("==== GetEnode() ====\n")
 	en := layer2.GetEnode()
 	reten := &Enode{Enode: en}
@@ -70,11 +72,11 @@ type GroupInfo struct {
 	Enodes []string
 }
 
-func (this *Service) CreateGroup(threshold string, enodes []string) string {
+func (this *Service) CreateGroup(threshold string, enodes []string) map[string]interface{} {
 	return this.CreateSDKGroup(threshold, enodes)
 }
 
-func (this *Service) CreateSDKGroup(mode string, enodes []string) string {
+func (this *Service) CreateSDKGroup(mode string, enodes []string) map[string]interface{} {
 	fmt.Printf("==== CreateSDKGroup() ====\n")
 	err := layer2.CheckAddPeer(mode, enodes)
 	if err != nil {
@@ -99,25 +101,25 @@ type sdkGroupInfo struct {
 	GroupList []GroupInfo
 }
 
-func (this *Service) GetGroupByID(gid string) string {
+func (this *Service) GetGroupByID(gid string) map[string]interface{} {
 	fmt.Printf("==== GetGroupByID() ====, gid: %v\n", gid)
 	return getGroupByID(gid)
 }
 
-func (this *Service) GetSDKGroup(enode string) string {
+func (this *Service) GetSDKGroup(enode string) map[string]interface{} {
 	return getSDKGroup(enode, "1+1+1")
 }
 
-func (this *Service) GetSDKGroup4Dcrm() string {
+func (this *Service) GetSDKGroup4Dcrm() map[string]interface{} {
 	enode := layer2.GetEnode()
 	return getSDKGroup(enode, "")
 }
 
-func (this *Service) GetSDKGroupPerson(enode string) string {
+func (this *Service) GetSDKGroupPerson(enode string) map[string]interface{} {
 	return getSDKGroup(enode, "1+2")
 }
 
-func getGroupByID(gID string) string {
+func getGroupByID(gID string) map[string]interface{} {
 	gid, _ := layer2.HexID(gID)
 	stat := SUCCESS
 	tip := ""
@@ -145,7 +147,7 @@ func getGroupByID(gID string) string {
 	return packageResult(stat, tip, tip, ret)
 }
 
-func getSDKGroup(enode, groupType string) string {
+func getSDKGroup(enode, groupType string) map[string]interface{} {
 	group := make([]GroupInfo, 0)
 	fmt.Printf("==== getSDKGroup() ====, call layer2.ParseNodeID() args enode: %v\n", enode)
 	nodeid := layer2.ParseNodeID(enode)
@@ -179,7 +181,7 @@ func getSDKGroup(enode, groupType string) string {
 	return packageResult(stat, tip, tip, sgi)
 }
 
-func (this *Service) GetEnodeStatus(enode string) string {
+func (this *Service) GetEnodeStatus(enode string) map[string]interface{} {
 	fmt.Printf("==== GetEnodeStatus() ====, enode: %v\n", enode)
 	es := &EnodeStatus{Enode: enode}
 	status := SUCCESS
@@ -198,18 +200,18 @@ func (this *Service) GetEnodeStatus(enode string) string {
 }
 
 // TEST
-func (this *Service) GetSDKGroupAll() string {
+func (this *Service) GetSDKGroupAll() map[string]interface{} {
 	if RPCTEST == false {
-		return ""
+		return packageResult(FAIL, "", "RPCTEST == false", "")
 	}
 	retMsg := layer2.GetGroupSDKAll()
 	fmt.Printf("==== GetSDKGroupAll() ====, ret: %v\n", retMsg)
 	return packageResult(SUCCESS, "", "", retMsg)
 }
 
-func (this *Service) BroadcastInSDKGroupAll(gid, msg string) string {
+func (this *Service) BroadcastInSDKGroupAll(gid, msg string) map[string]interface{} {
 	if RPCTEST == false {
-		return ""
+		return packageResult(FAIL, "", "RPCTEST == false", "")
 	}
 	retMsg, err := layer2.SdkProtocol_broadcastInGroupAll(gid, msg)
 	status := SUCCESS
@@ -220,9 +222,9 @@ func (this *Service) BroadcastInSDKGroupAll(gid, msg string) string {
 	return packageResult(status, "", retMsg, msg)
 }
 
-func (this *Service) SendToGroupAllNodes(gid, msg string) string {
+func (this *Service) SendToGroupAllNodes(gid, msg string) map[string]interface{} {
 	if RPCTEST == false {
-		return ""
+		return packageResult(FAIL, "", "RPCTEST == false", "")
 	}
 	retMsg, err := layer2.SdkProtocol_SendToGroupAllNodes(gid, msg)
 	status := SUCCESS

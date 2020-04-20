@@ -4684,18 +4684,18 @@ func DecryptMsg(cm string) (string, error) {
 ///
 
 func SendMsgToPeer(enodes string, msg string) {
-	/*test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
+	test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
 	fmt.Printf("%v =========SendMsgToPeer,msg = %v,msg hash = %v,send to peer = %v =================\n", common.CurrentTime(), msg, test, enodes)
 	en := strings.Split(string(enodes[8:]), "@")
 	cm, err := EncryptMsg(msg, en[0])
 	if err != nil {
 		fmt.Printf("%v =========SendMsgToPeer,encrypt msg fail,err = %v =================\n", common.CurrentTime(), err)
 		return
-	}*///----tmp
+	}
 
 	for i := 0; i < ReSendTimes; i++ {
-		//SendToPeer(enodes, cm) //---tmp
-		SendToPeer(enodes,msg)
+		SendToPeer(enodes, cm)
+		//SendToPeer(enodes,msg)
 		//time.Sleep(time.Duration(2)*time.Second) //1000 == 1s
 	}
 }

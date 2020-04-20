@@ -21,8 +21,8 @@ import (
 	//"github.com/fusion/dcrm-sdk/crypto/dcrm/dev/lib/ec2/paillier"
 	"math/big"
 
-	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	s256 "github.com/fsn-dev/cryptoCoins/crypto/secp256k1"
+	"github.com/fsn-dev/cryptoCoins/crypto/sha3"
 )
 
 type MtAZK1Proof struct {

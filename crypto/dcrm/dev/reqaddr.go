@@ -30,11 +30,11 @@ import (
 	"encoding/json"
 
 	"github.com/astaxie/beego/logs"
-	"github.com/fsn-dev/dcrm-walletService/coins"
-	"github.com/fsn-dev/dcrm-walletService/coins/types"
+	"github.com/fsn-dev/cryptoCoins/coins"
+	"github.com/fsn-dev/cryptoCoins/types"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ed"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/fsn-dev/cryptoCoins/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )

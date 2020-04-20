@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/cryptoCoins/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 )
 

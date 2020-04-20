@@ -29,8 +29,8 @@ import (
 
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ed"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/cryptoCoins/crypto/secp256k1"
+	"github.com/fsn-dev/cryptoCoins/crypto/sha3"
 
 	//"github.com/syndtr/goleveldb/leveldb"
 	//    "github.com/fsn-dev/dcrm-walletService/ethdb"
@@ -41,11 +41,11 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/agl/ed25519"
 	"github.com/astaxie/beego/logs"
-	"github.com/fsn-dev/dcrm-walletService/coins"
-	"github.com/fsn-dev/dcrm-walletService/coins/eos"
-	"github.com/fsn-dev/dcrm-walletService/coins/types"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/crypto/ecies"
+	"github.com/fsn-dev/cryptoCoins/coins"
+	"github.com/fsn-dev/cryptoCoins/coins/eos"
+	"github.com/fsn-dev/cryptoCoins/types"
+	"github.com/fsn-dev/cryptoCoins/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto/ecies"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 

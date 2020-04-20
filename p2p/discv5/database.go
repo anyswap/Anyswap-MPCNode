@@ -27,8 +27,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -200,7 +201,8 @@ func (db *nodeDB) node(id NodeID) *Node {
 	if err := db.fetchRLP(makeKey(id, nodeDBDiscoverRoot), &node); err != nil {
 		return nil
 	}
-	node.sha = crypto.Keccak256Hash(node.ID[:])
+	tmp := crypto.Keccak256Hash(node.ID[:]).Hex()
+	node.sha = common.HexToHash(tmp)
 	return &node
 }
 

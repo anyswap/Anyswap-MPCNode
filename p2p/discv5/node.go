@@ -30,7 +30,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
@@ -53,12 +53,13 @@ func NewNode(id NodeID, ip net.IP, udpPort, tcpPort uint16) *Node {
 	if ipv4 := ip.To4(); ipv4 != nil {
 		ip = ipv4
 	}
+	tmp := crypto.Keccak256Hash(id[:]).Hex()
 	return &Node{
 		IP:          ip,
 		UDP:         udpPort,
 		TCP:         tcpPort,
 		ID:          id,
-		nodeNetGuts: nodeNetGuts{sha: crypto.Keccak256Hash(id[:])},
+		nodeNetGuts: nodeNetGuts{sha: common.HexToHash(tmp)},
 	}
 }
 

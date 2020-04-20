@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"

@@ -24,8 +24,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/cryptoCoins/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/mclock"
 	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
@@ -204,7 +204,8 @@ func (net *Network) SetFallbackNodes(nodes []*Node) error {
 		// Recompute cpy.sha because the node might not have been
 		// created by NewNode or ParseNode.
 		cpy := *n
-		cpy.sha = crypto.Keccak256Hash(n.ID[:])
+		tmp := crypto.Keccak256Hash(n.ID[:]).Hex()
+		cpy.sha = common.HexToHash(tmp)
 		nursery = append(nursery, &cpy)
 	}
 	net.reqRefresh(nursery)
@@ -214,7 +215,8 @@ func (net *Network) SetFallbackNodes(nodes []*Node) error {
 // Resolve searches for a specific node with the given ID.
 // It returns nil if the node could not be found.
 func (net *Network) Resolve(targetID NodeID) *Node {
-	result := net.lookup(crypto.Keccak256Hash(targetID[:]), true)
+    tmp := crypto.Keccak256Hash(targetID[:]).Hex()
+	result := net.lookup(common.HexToHash(tmp), true)
 	for _, n := range result {
 		if n.ID == targetID {
 			return n
@@ -231,7 +233,8 @@ func (net *Network) Resolve(targetID NodeID) *Node {
 //
 // The local node may be included in the result.
 func (net *Network) Lookup(targetID NodeID) []*Node {
-	return net.lookup(crypto.Keccak256Hash(targetID[:]), false)
+    tmp := crypto.Keccak256Hash(targetID[:]).Hex()
+	return net.lookup(common.HexToHash(tmp), false)
 }
 
 func (net *Network) lookup(target common.Hash, stopOnMatch bool) []*Node {
@@ -790,7 +793,8 @@ func (n *nodeNetGuts) startNextQuery(net *Network) {
 func (q *findnodeQuery) start(net *Network) bool {
 	// Satisfy queries against the local node directly.
 	if q.remote == net.tab.self {
-		closest := net.tab.closest(crypto.Keccak256Hash(q.target[:]), bucketSize)
+	    tmp := crypto.Keccak256Hash(q.target[:]).Hex()
+		closest := net.tab.closest(common.HexToHash(tmp), bucketSize)
 		q.reply <- closest.entries
 		return true
 	}
@@ -1134,7 +1138,8 @@ func (net *Network) handleKnownPong(n *Node, pkt *ingressPacket) error {
 func (net *Network) handleQueryEvent(n *Node, ev nodeEvent, pkt *ingressPacket) (*nodeState, error) {
 	switch ev {
 	case findnodePacket:
-		target := crypto.Keccak256Hash(pkt.data.(*findnode).Target[:])
+	    tmp := crypto.Keccak256Hash(pkt.data.(*findnode).Target[:]).Hex()
+		target := common.HexToHash(tmp)
 		results := net.tab.closest(target, bucketSize).entries
 		net.conn.sendNeighbours(n, results)
 		return n.state, nil

@@ -25,10 +25,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
 	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
 	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 // Errors
@@ -684,7 +685,8 @@ func (req *findnode) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte
 		// findnode) to the victim.
 		return errUnknownNode
 	}
-	target := crypto.Keccak256Hash(req.Target[:])
+	tmp := crypto.Keccak256Hash(req.Target[:]).Hex()
+	target := common.HexToHash(tmp)
 	t.mutex.Lock()
 	closest := t.closest(target, bucketSize).entries
 	t.mutex.Unlock()

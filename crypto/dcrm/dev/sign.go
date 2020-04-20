@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/fsn-dev/cryptoCoins/crypto/secp256k1"
 )
 
 //////////////////////////////////////////////////////////////

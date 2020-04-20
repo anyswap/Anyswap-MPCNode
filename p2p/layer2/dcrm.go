@@ -26,7 +26,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/rpc"

@@ -34,7 +34,7 @@ import (
 	"time"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/cryptoCoins/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 
 	"encoding/gob"

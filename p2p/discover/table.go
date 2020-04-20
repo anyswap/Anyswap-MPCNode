@@ -32,7 +32,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
 )
@@ -217,7 +217,8 @@ func (tab *Table) setFallbackNodes(nodes []*Node) error {
 		cpy := *n
 		// Recompute cpy.sha because the node might not have been
 		// created by NewNode or ParseNode.
-		cpy.sha = crypto.Keccak256Hash(n.ID[:])
+		tmp := crypto.Keccak256Hash(n.ID[:]).Hex()
+		cpy.sha = common.HexToHash(tmp)
 		tab.nursery = append(tab.nursery, &cpy)
 	}
 	return nil
@@ -238,7 +239,8 @@ func (tab *Table) isInitDone() bool {
 func (tab *Table) Resolve(targetID NodeID) *Node {
 	// If the node is present in the local table, no
 	// network interaction is required.
-	hash := crypto.Keccak256Hash(targetID[:])
+	tmp := crypto.Keccak256Hash(targetID[:]).Hex()
+	hash := common.HexToHash(tmp)
 	tab.mutex.Lock()
 	cl := tab.closest(hash, 1)
 	tab.mutex.Unlock()
@@ -265,8 +267,9 @@ func (tab *Table) Lookup(targetID NodeID) []*Node {
 }
 
 func (tab *Table) lookup(targetID NodeID, refreshIfEmpty bool) []*Node {
+    tmp := crypto.Keccak256Hash(targetID[:]).Hex()
 	var (
-		target         = crypto.Keccak256Hash(targetID[:])
+		target         = common.HexToHash(tmp)
 		asked          = make(map[NodeID]bool)
 		seen           = make(map[NodeID]bool)
 		reply          = make(chan []*Node, alpha)

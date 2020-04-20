@@ -26,7 +26,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	//"github.com/fusion/go-fusion/cmd/utils"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discv5"
 	"github.com/fsn-dev/dcrm-walletService/p2p/nat"

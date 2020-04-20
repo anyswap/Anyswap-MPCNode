@@ -24,7 +24,7 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -536,7 +536,8 @@ func broadAddHash(hash common.Hash) {
 }
 
 func msgHash(msg string) common.Hash {
-	hash := crypto.Keccak256Hash([]byte(strings.ToLower(msg)))//.Hex()//string
+    tmp := crypto.Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
+	hash := common.HexToHash(tmp)
 	return hash
 }
 //-------- for broadcast end --------

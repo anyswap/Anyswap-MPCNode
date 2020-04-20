@@ -1172,13 +1172,7 @@ func LockOut(raw string) (string, string, error) {
 type SignData struct {
 	Account   string
 	Nonce     string
-	PubKey    string
-	UnsignHash string
-	Keytype  string
-	GroupId   string
-	ThresHold string
-	Mode      string
-	TimeStamp string
+	JsonStr string
 	Key       string
 }
 
@@ -1195,20 +1189,24 @@ func Sign(raw string) (string, string, error) {
 	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
-	data := string(tx.Data())
-	datas := strings.Split(data, ":")
+	sig := dev.TxDataSign{}
+	err = json.Unmarshal(tx.Data(), &sig)
+	if err != nil {
+	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
+	}
+
 	//SIGN : pubkey : hash : keytype : groupid : threshold : mode : timestamp
-	if datas[0] != "SIGN" {
+	if sig.TxType != "SIGN" {
 	    return "", "transaction data format error,it is not SIGN tx", fmt.Errorf("lock raw data error,it is not SIGN tx.")
 	}
 
-	pubkey := datas[1]
-	hash := datas[2]
-	keytype := datas[3]
-	groupid := datas[4]
-	threshold := datas[5]
-	mode := datas[6]
-	timestamp := datas[7]
+	pubkey := sig.PubKey
+	hash := sig.UnsignHash
+	keytype := sig.Keytype
+	groupid := sig.GroupId
+	threshold := sig.ThresHold
+	mode := sig.Mode
+	timestamp := sig.TimeStamp
 	Nonce := tx.Nonce()
 
 	if from.Hex() == "" || pubkey == "" || hash == "" || keytype == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
@@ -1237,8 +1235,8 @@ func Sign(raw string) (string, string, error) {
 
 	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + hash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
-	data2 := SignData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), PubKey: pubkey, UnsignHash: hash, Keytype: keytype, GroupId: groupid, ThresHold: threshold, Mode: mode, TimeStamp: timestamp, Key: key}
-	SignCh <- data2
+	data := SignData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
+	SignCh <- data
 
 	fmt.Printf("%v =================== Sign, return key = %v ===========================\n", common.CurrentTime(),key)
 	return key,"",nil
@@ -1250,19 +1248,22 @@ func RecivSign() {
 		case data := <-SignCh:
 			exsit,_ := dev.GetValueFromPubKeyData(data.Key)
 			if exsit == false {
+				sig := dev.TxDataSign{}
+				json.Unmarshal([]byte(data.JsonStr), &sig)
+				
 				cur_nonce, _, _ := dev.GetSignNonce(data.Account)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 				new_nonce_num, _ := new(big.Int).SetString(data.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 					_, err := dev.SetSignNonce(data.Account,data.Nonce)
 					if err == nil {
-						fmt.Printf("%v ==============================RecivSign, SetSignNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, data.Key)
-					    ars := dev.GetAllReplyFromGroup(-1,data.GroupId,dev.Rpc_SIGN,cur_enode)
+						fmt.Printf("%v ==============================RecivSign, SetSignNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)
+					    ars := dev.GetAllReplyFromGroup(-1,sig.GroupId,dev.Rpc_SIGN,cur_enode)
 
-					    ac := &dev.AcceptSignData{Initiator:cur_enode,Account: data.Account, GroupId: data.GroupId, Nonce: data.Nonce, PubKey: data.PubKey, UnsignHash: data.UnsignHash, Keytype: data.Keytype, LimitNum: data.ThresHold, Mode: data.Mode, TimeStamp: data.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+					    ac := &dev.AcceptSignData{Initiator:cur_enode,Account: data.Account, GroupId: sig.GroupId, Nonce: data.Nonce, PubKey: sig.PubKey, UnsignHash: sig.UnsignHash, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := dev.SaveAcceptSignData(ac)
 						if err == nil {
-							fmt.Printf("%v ==============================RecivSign,finish call SaveAcceptSignData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, data.GroupId, data.ThresHold, data.Mode, data.Nonce, data.Key)
+							fmt.Printf("%v ==============================RecivSign,finish call SaveAcceptSignData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)
 
 							/////
 							dcrmpks, _ := hex.DecodeString(ac.PubKey)
@@ -1288,7 +1289,7 @@ func RecivSign() {
 									    fmt.Printf("%v ==============================RecivSign,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
 									    go func(d SignData) {
 										    for i := 0; i < 1; i++ {
-											    rsv, _, err2 := dev.SendSign(d.Account, d.PubKey, d.UnsignHash, d.Keytype, d.GroupId, d.Nonce, d.ThresHold, d.Mode, d.TimeStamp, d.Key)
+											    rsv, _, err2 := dev.SendSign(d.Account, d.Nonce, d.JsonStr, d.Key)
 											    if err2 == nil && rsv != "" {
 												return
 											    }

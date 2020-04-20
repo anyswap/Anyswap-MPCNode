@@ -4355,8 +4355,8 @@ func GetRealByUid2(keytype string,w *RpcReqWorker,uid *big.Int) int {
 	return -1
     }
 
-    key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
-    exsit,da := GetValueFromPubKeyData(key)
+    dcrmpks, _ := hex.DecodeString(w.DcrmFrom)
+    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
     if exsit == false {
 	return -1
     }

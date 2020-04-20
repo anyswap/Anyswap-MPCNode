@@ -2433,6 +2433,13 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 	return "", nil
 }
 
+type TxDataAcceptSign struct {
+    TxType string
+    Key string
+    Accept string
+    TimeStamp string
+}
+
 func AcceptSign(initiator string,account string, pubkey string,unsignhash string,keytype string,groupid string, nonce string,threshold string,mode string, deal string, accept string, status string, rsv string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + unsignhash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)

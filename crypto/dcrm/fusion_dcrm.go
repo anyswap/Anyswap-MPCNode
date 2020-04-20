@@ -838,27 +838,24 @@ func AcceptSign(raw string) (string, string, error) {
 	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
-	data := string(tx.Data())
-	datas := strings.Split(data, ":")
+	acceptsig := dev.TxDataAcceptSign{}
+	err = json.Unmarshal(tx.Data(), &acceptsig)
+	if err != nil {
+	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
+	}
 
 	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
-	if datas[0] != "ACCEPTSIGN" {
+	if acceptsig.TxType != "ACCEPTSIGN" {
 	    return "", "transaction data format error,it is not ACCEPTSIGN tx", fmt.Errorf("tx.data error,it is not ACCEPTSIGN tx.")
 	}
 
-	if datas[9] != "AGREE" && datas[9] != "DISAGREE" {
+	if acceptsig.Accept != "AGREE" && acceptsig.Accept != "DISAGREE" {
 	    return "", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
-	}
-
-	dcrmpks, _ := hex.DecodeString(datas[2])
-	pubdata, tip, err := GetPubKeyData(string(dcrmpks[:]), datas[1],"ALL")
-	if err != nil {
-		return "", tip, err
 	}
 
 	status := "Pending"
 	accept := "false"
-	if datas[9] == "AGREE" {
+	if acceptsig.Accept == "AGREE" {
 		accept = "true"
 	} else {
 		status = "Failure"
@@ -871,8 +868,6 @@ func AcceptSign(raw string) (string, string, error) {
 	}
 
 	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
-	keytmp := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + datas[6] + ":" + datas[2] + ":" + datas[3] + ":" + datas[4] + ":" + datas[5] + ":" + datas[7] + ":" + datas[8]))).Hex()
-
 	check := false
 	found := false
 	keys := strings.Split(string(da.([]byte)),":")
@@ -912,7 +907,7 @@ func AcceptSign(raw string) (string, string, error) {
 
 	    signkeys := strings.Split(pd.RefSignKeys,":")
 	    for _,signkey := range signkeys {
-		if strings.EqualFold(signkey, keytmp) {
+		if strings.EqualFold(signkey, acceptsig.Key) {
 		    found = true
 		    exsit,data3 := dev.GetValueFromPubKeyData(signkey)
 		    if exsit == false {
@@ -948,7 +943,7 @@ func AcceptSign(raw string) (string, string, error) {
 	}
 
 	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
-	exsit,da = dev.GetValueFromPubKeyData(keytmp)
+	exsit,da = dev.GetValueFromPubKeyData(acceptsig.Key)
 	///////
 	if exsit == false {
 		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
@@ -967,22 +962,28 @@ func AcceptSign(raw string) (string, string, error) {
 	    return "", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
 	}
 
+	dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	pubdata, tip, err := GetPubKeyData(string(dcrmpks[:]), ac.Account,"ALL")
+	if err != nil {
+		return "", tip, err
+	}
+
 	///////
-	mp := []string{keytmp, cur_enode}
+	mp := []string{acceptsig.Key, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "AcceptSignRes"
 	s1 := accept
-	s2 := datas[10]
+	s2 := acceptsig.TimeStamp
 	ss2 := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
-	dev.SendMsgToDcrmGroup(ss2, datas[5])
+	dev.SendMsgToDcrmGroup(ss2, ac.GroupId)
 	dev.DisMsg(ss2)
-	fmt.Printf("%v ================== AcceptSign, finish send AcceptSignRes to other nodes ,key = %v ============================\n", common.CurrentTime(), keytmp)
+	fmt.Printf("%v ================== AcceptSign, finish send AcceptSignRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptsig.Key)
 	////fix bug: get C11 timeout
-	_, enodes := dev.GetGroup(datas[5])
+	_, enodes := dev.GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, dev.SepSg)
 	for _, node := range nodes {
 	    node2 := dev.ParseNode(node)
-	    c1data := keytmp + "-" + node2 + dev.Sep + "AcceptSignRes"
+	    c1data := acceptsig.Key + "-" + node2 + dev.Sep + "AcceptSignRes"
 	    c1, exist := dev.C1Data.ReadMap(strings.ToLower(c1data))
 	    if exist {
 		dev.DisMsg(c1.(string))
@@ -991,16 +992,16 @@ func AcceptSign(raw string) (string, string, error) {
 	}
 	////
 
-	w, err := dev.FindWorker(keytmp)
+	w, err := dev.FindWorker(acceptsig.Key)
 	if err != nil {
 	    return "",err.Error(),err
 	}
 
 	id,_ := dev.GetWorkerId(w)
-	ars := dev.GetAllReplyFromGroup(id,datas[5],dev.Rpc_SIGN,ac.Initiator)
+	ars := dev.GetAllReplyFromGroup(id,ac.GroupId,dev.Rpc_SIGN,ac.Initiator)
 	
 	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
-	tip, err = dev.AcceptSign(ac.Initiator,datas[1], datas[2], datas[3], datas[4], datas[5], datas[6],datas[7],datas[8],"false", accept, status, "", "", "", ars, ac.WorkId)
+	tip, err = dev.AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.UnsignHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 		return "", tip, err
 	}

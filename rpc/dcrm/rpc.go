@@ -345,12 +345,12 @@ func (this *Service) GetSignNonce(account string) map[string]interface{} {
 	}
 }
 
-func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, get_acc = %v ================\n", common.CurrentTime(), geter_acc)
+func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{} {
+	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v ================\n", common.CurrentTime(), account)
 
 	data := make(map[string]interface{})
-	s, tip, err := dcrm.GetCurNodeReqAddrInfo(geter_acc)
-	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, get_acc = %v,ret = %v,err = %v ================\n", common.CurrentTime(), geter_acc, s, err)
+	s, tip, err := dcrm.GetCurNodeReqAddrInfo(account)
+	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v,ret = %v,err = %v ================\n", common.CurrentTime(), account, s, err)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -373,12 +373,12 @@ func (this *Service) GetCurNodeReqAddrInfo(geter_acc string) map[string]interfac
 	}
 }
 
-func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetCurNodeLockOutInfo from web,geter acc = %v ================\n", common.CurrentTime(), geter_acc)
+func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{} {
+	fmt.Printf("%v ==============call rpc GetCurNodeLockOutInfo from web,account = %v ================\n", common.CurrentTime(), account)
 
 	data := make(map[string]interface{})
-	s, tip, err := dcrm.GetCurNodeLockOutInfo(geter_acc)
-	fmt.Printf("%v ==============finish call rpc GetCurNodeLockOutInfo ,ret = %v,err = %v,geter acc = %v ================\n", common.CurrentTime(), s, err, geter_acc)
+	s, tip, err := dcrm.GetCurNodeLockOutInfo(account)
+	fmt.Printf("%v ==============finish call rpc GetCurNodeLockOutInfo ,ret = %v,err = %v,account = %v ================\n", common.CurrentTime(), s, err, account)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -401,12 +401,12 @@ func (this *Service) GetCurNodeLockOutInfo(geter_acc string) map[string]interfac
 	}
 }
 
-func (this *Service) GetCurNodeSignInfo(geter_acc string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetCurNodeSignInfo from web,geter acc = %v ================\n", common.CurrentTime(), geter_acc)
+func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
+	fmt.Printf("%v ==============call rpc GetCurNodeSignInfo from web,account = %v ================\n", common.CurrentTime(), account)
 
 	data := make(map[string]interface{})
-	s, tip, err := dcrm.GetCurNodeSignInfo(geter_acc)
-	fmt.Printf("%v ==============finish call rpc GetCurNodeSignInfo ,ret = %v,err = %v,geter acc = %v ================\n", common.CurrentTime(), s, err, geter_acc)
+	s, tip, err := dcrm.GetCurNodeSignInfo(account)
+	fmt.Printf("%v ==============finish call rpc GetCurNodeSignInfo ,ret = %v,err = %v, account = %v ================\n", common.CurrentTime(), s, err, account)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -638,11 +638,11 @@ func startRpcServer() error {
 
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
-func (this *Service) GetAccounts(geter_acc, mode string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc GetAccounts from web, get_acc = %v, mode = %v ================\n", common.CurrentTime(), geter_acc, mode)
+func (this *Service) GetAccounts(account, mode string) map[string]interface{} {
+	fmt.Printf("%v ==========call rpc GetAccounts from web, account = %v, mode = %v ================\n", common.CurrentTime(), account, mode)
 	data := make(map[string]interface{})
-	ret, tip, err := dcrm.GetAccounts(geter_acc, mode)
-	fmt.Printf("%v ==========finish call rpc GetAccounts ,ret = %v,err = %v,get_acc = %v, mode = %v ================\n", common.CurrentTime(), ret, err, geter_acc, mode)
+	ret, tip, err := dcrm.GetAccounts(account, mode)
+	fmt.Printf("%v ==========finish call rpc GetAccounts ,ret = %v,err = %v,account = %v, mode = %v ================\n", common.CurrentTime(), ret, err, account, mode)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -662,8 +662,8 @@ func (this *Service) GetAccounts(geter_acc, mode string) map[string]interface{} 
 	}
 }
 
-func (this *Service) GetAccountsBalance(pubkey string, geter_acc string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc GetAccountsBalance from web, geter acc = %v, pubkey = %v,=============\n", common.CurrentTime(), geter_acc, pubkey)
+func (this *Service) GetAccountsBalance(pubkey string, account string) map[string]interface{} {
+	fmt.Printf("%v ==========call rpc GetAccountsBalance from web, account = %v, pubkey = %v,=============\n", common.CurrentTime(), account, pubkey)
 	data := make(map[string]interface{})
 	if pubkey == "" {
 		data["result"] = ""
@@ -675,8 +675,8 @@ func (this *Service) GetAccountsBalance(pubkey string, geter_acc string) map[str
 		}
 	}
 
-	ret, tip, err := dcrm.GetAccountsBalance(pubkey, geter_acc)
-	fmt.Printf("%v ==========finish call rpc GetAccountsBalance from web, ret = %v,err = %v,geter acc = %v, pubkey = %v,=============\n", common.CurrentTime(), ret, err, geter_acc, pubkey)
+	ret, tip, err := dcrm.GetAccountsBalance(pubkey, account)
+	fmt.Printf("%v ==========finish call rpc GetAccountsBalance from web, ret = %v,err = %v,account = %v, pubkey = %v,=============\n", common.CurrentTime(), ret, err, account, pubkey)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{

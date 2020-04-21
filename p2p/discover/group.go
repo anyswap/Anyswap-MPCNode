@@ -89,7 +89,7 @@ var (
 )
 
 const (
-	SendWaitTime = 2 * time.Minute
+	SendWaitTime = 1 * time.Minute
 	pingCount    = 10
 
 	Dcrmprotocol_type = iota + 1

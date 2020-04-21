@@ -34,11 +34,11 @@ func Xprotocol_sendToGroupOneNode(msg string) (string, error) {
 // broadcast
 // to group's nodes
 func Xprotocol_broadcastInGroupOthers(msg string) {
-	BroadcastToGroup(discover.NodeID{}, msg, Xprotocol_type, false, discover.NodeID{}, discover.NodeID{})
+	BroadcastToGroup(discover.NodeID{}, msg, Xprotocol_type, false)
 }
 
 func Xprotocol_broadcastInGroupAll(msg string) {
-	BroadcastToGroup(discover.NodeID{}, msg, Xprotocol_type, true, discover.NodeID{}, discover.NodeID{})
+	BroadcastToGroup(discover.NodeID{}, msg, Xprotocol_type, true)
 }
 
 // unicast

@@ -40,11 +40,11 @@ func DcrmProtocol_sendToGroupOneNode(msg string) (string, error) {
 // broadcast
 // to group's nodes
 func DcrmProtocol_broadcastInGroupAll(msg string) { // within self
-	BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type, true, discover.NodeID{}, discover.NodeID{})
+	BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type, true)
 }
 
 func DcrmProtocol_broadcastInGroupOthers(msg string) { // without self
-	BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type, false, discover.NodeID{}, discover.NodeID{})
+	BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type, false)
 }
 
 // unicast
@@ -260,7 +260,7 @@ func SdkProtocol_broadcastInGroupOthers(gID, msg string) (string, error) { // wi
 		fmt.Println(e)
 		return "", errors.New(e)
 	}
-	return BroadcastToGroup(gid, msg, Sdkprotocol_type, false, discover.NodeID{}, discover.NodeID{})
+	return BroadcastToGroup(gid, msg, Sdkprotocol_type, false)
 }
 
 func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // within self
@@ -270,7 +270,7 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 		fmt.Println(e)
 		return "", errors.New(e)
 	}
-	return BroadcastToGroup(gid, msg, Sdkprotocol_type, true, discover.NodeID{}, discover.NodeID{})
+	return BroadcastToGroup(gid, msg, Sdkprotocol_type, true)
 }
 
 func SdkProtocol_getGroup(gID string) (int, string) {

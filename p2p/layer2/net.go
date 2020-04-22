@@ -19,24 +19,17 @@ package layer2
 import (
 	"net"
 	"sync"
-	"sync/atomic"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
-//TODO
 const (
-	DcrmProtocol_type = discover.Dcrmprotocol_type
-	Xprotocol_type    = discover.Xprotocol_type
 	Sdkprotocol_type  = discover.Sdkprotocol_type
 	ProtocolName      = "dcrm"
-	Xp_ProtocolName   = "xp"
 	peerMsgCode       = iota
-	Dcrm_msgCode
 	Sdk_msgCode
-	Xp_msgCode
 
 	ProtocolVersion      = 1
 	ProtocolVersionStr   = "1"
@@ -52,14 +45,11 @@ var (
 	p2pServer     p2p.Server
 	bootNodeIP    *net.UDPAddr
 	callback      func(interface{}, string)
-	Dcrm_callback func(interface{}) <-chan string
 	Sdk_callback  func(interface{}, string)
-	Xp_callback   func(interface{})
 	emitter       *Emitter
 	selfid        discover.NodeID
 
 	dccpGroup *discover.Group
-	xpGroup   *discover.Group
 	SdkGroup  map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
 
 	knownHash      mapset.Set // Set of transaction hashes known to be known by this peer
@@ -67,15 +57,6 @@ var (
 )
 
 type Dcrm struct {
-	protocol  p2p.Protocol
-	peers     map[discover.NodeID]*peer
-	dccpPeers map[discover.NodeID]bool
-	peerMu    sync.Mutex    // Mutex to sync the active peer set
-	quit      chan struct{} // Channel used for graceful exit
-	cfg       *Config
-}
-
-type Xp struct {
 	protocol  p2p.Protocol
 	peers     map[discover.NodeID]*peer
 	dccpPeers map[discover.NodeID]bool
@@ -96,11 +77,6 @@ var DefaultConfig = Config{
 type DcrmAPI struct {
 	dcrm *Dcrm
 }
-
-type XpAPI struct {
-	xp *Xp
-}
-
 type peerInfo struct {
 	Version int `json:"version"`
 	//Head     string   `json:"head"`
@@ -119,7 +95,3 @@ type Emitter struct {
 
 type Group discover.Group
 
-type Transaction struct {
-	Payload []byte
-	Hash    atomic.Value
-}

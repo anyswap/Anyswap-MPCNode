@@ -32,65 +32,9 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
 
-// txs start
-func DcrmProtocol_sendToGroupOneNode(msg string) (string, error) {
-	return discover.SendToGroup(discover.NodeID{}, msg, false, DcrmProtocol_type, nil)
-}
-
-// broadcast
-// to group's nodes
-func DcrmProtocol_broadcastInGroupAll(msg string) { // within self
-	BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type, true)
-}
-
-func DcrmProtocol_broadcastInGroupOthers(msg string) { // without self
-	BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type, false)
-}
-
-// unicast
-// to anyone
-func DcrmProtocol_sendMsgToNode(toid discover.NodeID, toaddr *net.UDPAddr, msg string) error {
-	fmt.Printf("==== SendMsgToNode() ====\n")
-	return discover.SendMsgToNode(toid, toaddr, msg)
-}
-
-// to peers
-func DcrmProtocol_sendMsgToPeer(enode string, msg string) error {
-	return SendMsgToPeer(enode, msg)
-}
-
-// callback
-// receive private key
-func DcrmProtocol_registerPriKeyCallback(recvPrivkeyFunc func(interface{})) {
-	discover.RegisterPriKeyCallback(recvPrivkeyFunc)
-}
-
 func Sdk_callEvent(msg string, fromID string) {
 	fmt.Printf("Sdk_callEvent\n")
 	Sdk_callback(msg, fromID)
-}
-
-// receive message form peers
-func DcrmProtocol_registerRecvCallback(recvDcrmFunc func(interface{}) <-chan string) {
-	Dcrm_callback = recvDcrmFunc
-}
-func Dcrm_callEvent(msg string) {
-	Dcrm_callback(msg)
-}
-
-// receive message from dccp
-func DcrmProtocol_registerMsgRecvCallback(dcrmcallback func(interface{}) <-chan string) {
-	discover.RegisterDcrmMsgCallback(dcrmcallback)
-}
-
-// receive message from dccp result
-func DcrmProtocol_registerMsgRetCallback(dcrmcallback func(interface{})) {
-	discover.RegisterDcrmMsgRetCallback(dcrmcallback)
-}
-
-// get info
-func DcrmProtocol_getGroup() (int, string) {
-	return getGroup(discover.NodeID{}, DcrmProtocol_type)
 }
 
 func (dcrm *DcrmAPI) Version(ctx context.Context) (v string) {
@@ -166,39 +110,8 @@ func (dcrm *Dcrm) APIs() []rpc.API {
 	}
 }
 
-func DcrmProtocol_getEnodes() (int, string) {
-	return getGroup(discover.NodeID{}, DcrmProtocol_type)
-}
-
-//=============================== DCRM =================================
-func SendMsg(msg string) {
-	//BroadcastToGroup(discover.NodeID{}, msg, DcrmProtocol_type)
-	DcrmProtocol_broadcastInGroupOthers(msg)
-}
-
-func SendToDcrmGroupAllNodes(msg string) (string, error) {
-	return discover.SendToGroup(discover.NodeID{}, msg, true, DcrmProtocol_type, nil)
-}
-
 func RegisterRecvCallback(recvPrivkeyFunc func(interface{})) {
 	discover.RegisterPriKeyCallback(recvPrivkeyFunc)
-}
-
-func RegisterDcrmCallback(dcrmcallback func(interface{}) <-chan string) {
-	discover.RegisterDcrmMsgCallback(dcrmcallback)
-	DcrmProtocol_registerRecvCallback(dcrmcallback)
-}
-
-func RegisterDcrmRetCallback(dcrmcallback func(interface{})) {
-	discover.RegisterDcrmMsgRetCallback(dcrmcallback)
-}
-
-func GetGroup() (int, string) {
-	return DcrmProtocol_getGroup()
-}
-
-func GetEnodes() (int, string) {
-	return GetGroup()
 }
 
 func RegisterSendCallback(callbackfunc func(interface{})) {
@@ -231,11 +144,11 @@ func SdkProtocol_sendToGroupOneNode(gID, msg string) (string, error) {
 
 func getSDKGroupNodes(gid discover.NodeID) []*discover.Node {
 	g := make([]*discover.Node, 0)
-	_, xvcGroup := getGroupSDK(gid)
-	if xvcGroup == nil {
+	_, group := getGroupSDK(gid)
+	if group == nil {
 		return g
 	}
-	for _, rn := range xvcGroup.Nodes {
+	for _, rn := range group.Nodes {
 		n := discover.NewNode(rn.ID, rn.IP, rn.UDP, rn.TCP)
 		g = append(g, n)
 	}
@@ -286,7 +199,7 @@ func checkExistGroup(gid discover.NodeID) bool {
 	discover.GroupSDK.Lock()
 	defer discover.GroupSDK.Unlock()
 	if SdkGroup[gid] != nil {
-		if SdkGroup[gid].Type == "1+2" || SdkGroup[gid].Type == "1+1+1" {
+		if SdkGroup[gid].Type == "1+1+1" {
 			return true
 		}
 	}

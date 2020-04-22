@@ -67,7 +67,6 @@ func (this *Service) GetEnode() map[string]interface{} {
 
 type GroupInfo struct {
 	Gid    string
-	Mode   string
 	Count  int
 	Enodes []string
 }
@@ -76,23 +75,23 @@ func (this *Service) CreateGroup(threshold string, enodes []string) map[string]i
 	return this.CreateSDKGroup(threshold, enodes)
 }
 
-func (this *Service) CreateSDKGroup(mode string, enodes []string) map[string]interface{} {
+func (this *Service) CreateSDKGroup(threshold string, enodes []string) map[string]interface{} {
 	fmt.Printf("==== CreateSDKGroup() ====\n")
-	err := layer2.CheckAddPeer(mode, enodes)
+	err := layer2.CheckAddPeer(threshold, enodes)
 	if err != nil {
-		ret := &GroupInfo{Mode: mode}
+		ret := &GroupInfo{}
 		fmt.Printf("==== CreateSDKGroup() ====, CheckAddPeer err: %v\n", err)
 		return packageResult(FAIL, err.Error(), err.Error(), ret)
 	}
-	gid, count, retErr := layer2.CreateSDKGroup(mode, enodes)
+	gid, count, retErr := layer2.CreateSDKGroup(enodes)
 	if retErr != "" {
 		status := FAIL
 		fmt.Printf("==== CreateSDKGroup() ====, CreateSDKGroup tip: %v, err: %v\n", retErr, retErr)
-		ret := &GroupInfo{Gid: gid, Mode: mode, Count: count, Enodes: enodes}
+		ret := &GroupInfo{Gid: gid, Count: count, Enodes: enodes}
 		return packageResult(status, retErr, retErr, ret)
 	}
 	fmt.Printf("==== CreateSDKGroup() ====, gid: %v, count: %v\n", gid, count)
-	ret := &GroupInfo{Gid: gid, Mode: mode, Count: count, Enodes: enodes}
+	ret := &GroupInfo{Gid: gid, Count: count, Enodes: enodes}
 	return packageResult(SUCCESS, "", "", ret)
 }
 
@@ -124,7 +123,7 @@ func getGroupByID(gID string) map[string]interface{} {
 	stat := SUCCESS
 	tip := ""
 	addGroupChanged := false
-	for id, g := range layer2.SdkGroup {
+	for id, g := range layer2.GetGroupList() {
 		fmt.Printf("==== getGroupByID() ====, range g: %v\n", g)
 		enodes := make([]string, 0)
 		if id == gid {
@@ -134,7 +133,7 @@ func getGroupByID(gID string) map[string]interface{} {
 				fmt.Printf("==== getGroupByID() ====, gid: %v, enode: %v\n", gid, enode)
 				addGroupChanged = true
 			}
-			ret := &GroupInfo{Gid: gID, Mode: g.Mode, Count: len(g.Nodes), Enodes: enodes}
+			ret := &GroupInfo{Gid: gID, Count: len(g.Nodes), Enodes: enodes}
 			fmt.Printf("==== getGroupByID() ====, gid: %v, ret: %v\n", gid, ret)
 			return packageResult(stat, tip, tip, ret)
 		}
@@ -154,7 +153,7 @@ func getSDKGroup(enode, groupType string) map[string]interface{} {
 	stat := SUCCESS
 	tip := ""
 	addGroupChanged := false
-	for gid, g := range layer2.SdkGroup {
+	for gid, g := range layer2.GetGroupList() {
 		addGroup := false
 		fmt.Printf("g: %v\n", gid, g)
 		enodes := make([]string, 0)
@@ -169,7 +168,7 @@ func getSDKGroup(enode, groupType string) map[string]interface{} {
 			}
 		}
 		if addGroup {
-			ret := &GroupInfo{Gid: gid.String(), Mode: g.Mode, Count: len(g.Nodes), Enodes: enodes}
+			ret := &GroupInfo{Gid: gid.String(), Count: len(g.Nodes), Enodes: enodes}
 			group = append(group, *ret)
 		}
 	}

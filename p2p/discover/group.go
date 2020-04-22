@@ -103,7 +103,6 @@ type (
 	Group struct {
 		sync.Mutex
 		ID NodeID
-		Mode string // 2/3
 		msg  string
 		count   int
 		P2pType byte
@@ -467,9 +466,8 @@ func getGroupInfo(gid NodeID, p2pType int) *Group { //nooo
 	return nil
 }
 
-func InitGroup() error {
+func InitGroup() {
 	setgroup = 1
-	return nil
 }
 
 func SendToGroup(gid NodeID, msg string, allNodes bool, p2pType int, gg []*Node) (string, error) {
@@ -587,18 +585,17 @@ func sendGroupInit(groupList *Group, p2pType int) { //nooo
 	}
 }
 
-func StartCreateSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bool) string {
+func StartCreateSDKGroup(gid NodeID, enode []*Node, Type string, exist bool) string {
 	fmt.Printf("%v ==== StartCreateSDKGroup() ====, gid: %v\n", common.CurrentTime(), gid)
-	buildSDKGroup(gid, mode, enode, Type, exist)
+	buildSDKGroup(gid, enode, Type, exist)
 	return ""
 }
 
-func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bool) {
+func buildSDKGroup(gid NodeID, enode []*Node, Type string, exist bool) {
 	GroupSDK.Lock()
 	defer GroupSDK.Unlock()
 	fmt.Printf("%v ==== buildSDKGroup() ====, gid: %v, enode: %v\n", common.CurrentTime(), gid, enode)
 	groupTmp := new(Group)
-	groupTmp.Mode = mode
 	groupTmp.Type = Type
 	groupTmp.Nodes = make([]RpcNode, len(enode))
 	for i, node := range enode {
@@ -765,7 +762,7 @@ func (req *Group) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) e
 	}
 
 	fmt.Printf("%v ==== (req *Group) handle() ====, callGroupEvent, from: %v, gid: %v, req.Nodes: %v\n", common.CurrentTime(), from, req.ID, nodes)
-	go callGroupEvent(req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
+	go callGroupEvent(req.ID, nodes, int(req.P2pType), req.Type)
 	return nil
 }
 
@@ -821,21 +818,22 @@ var callback func(interface{}, string)
 func RegisterCallback(recvFunc func(interface{}, string)) {
 	callback = recvFunc
 }
+
 func callEvent(msg, fromID string) {
 	fmt.Printf("%v ==== callEvent() ====, fromID: %v, msg: %v\n", common.CurrentTime(), fromID, msg)
 	callback(msg, fromID)
 }
 
-var groupcallback func(NodeID, string, interface{}, int, string)
+var groupcallback func(NodeID, interface{}, int, string)
 
-func RegisterGroupCallback(callbackfunc func(NodeID, string, interface{}, int, string)) {
+func RegisterGroupCallback(callbackfunc func(NodeID, interface{}, int, string)) {
 	groupcallback = callbackfunc
 }
 
-func callGroupEvent(gid NodeID, mode string, n []*Node, p2pType int, Type string) {
+func callGroupEvent(gid NodeID, n []*Node, p2pType int, Type string) {
 	if groupcallback != nil {
-		fmt.Printf("==== callGroupEvent() ====, gid: %v, mode: %v, n: %v, p2pType: %v, Type: %v\n", gid, mode, n, p2pType, Type)
-		groupcallback(gid, mode, n, p2pType, Type)
+		fmt.Printf("==== callGroupEvent() ====, gid: %v, n: %v, p2pType: %v, Type: %v\n", gid, n, p2pType, Type)
+		groupcallback(gid, n, p2pType, Type)
 	}
 }
 
@@ -998,7 +996,6 @@ func StoreGroupToDb(groupInfo *Group) error { //nooo
 	key := crypto.Keccak256Hash([]byte(strings.ToLower(fmt.Sprintf("%v", groupInfo.ID)))).Hex()
 	ac := new(Group)
 	ac.ID = groupInfo.ID
-	ac.Mode = groupInfo.Mode
 	ac.P2pType = groupInfo.P2pType
 	ac.Type = groupInfo.Type
 	ac.Nodes = make([]RpcNode, 0)
@@ -1251,7 +1248,6 @@ func RecoverGroupAll(SdkGroup map[NodeID]*Group) error { //nooo
 
 		gm := g.(*Group)
 		groupTmp := NewGroup()
-		groupTmp.Mode = gm.Mode
 		groupTmp.P2pType = gm.P2pType
 		groupTmp.Type = gm.Type
 		groupTmp.ID = gm.ID

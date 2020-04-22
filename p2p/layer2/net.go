@@ -26,8 +26,6 @@ import (
 )
 
 const (
-	Sdkprotocol_type  = discover.Sdkprotocol_type
-	ProtocolName      = "dcrm"
 	peerMsgCode       = iota
 	Sdk_msgCode
 
@@ -39,6 +37,9 @@ const (
 
 	broatcastFailTimes = 0 //30 Redo Send times( 30 * 2s = 60 s)
 	broatcastFailOnce  = 2
+
+	Sdkprotocol_type  = discover.Sdkprotocol_type
+	ProtocolName      = "dcrm"
 )
 
 var (
@@ -50,7 +51,6 @@ var (
 	selfid        discover.NodeID
 
 	dccpGroup *discover.Group
-	SdkGroup  map[discover.NodeID]*discover.Group = make(map[discover.NodeID]*discover.Group)
 
 	knownHash      mapset.Set // Set of transaction hashes known to be known by this peer
 	knownHashMutex sync.Mutex

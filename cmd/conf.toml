@@ -4,10 +4,6 @@
 Nodekey="bootnode.key"
 # port
 Addr=11920
-# group mode
-Group=0
-# nodes number in group
-Nodes=5
 
 # gdcrm config
 [gdcrm]

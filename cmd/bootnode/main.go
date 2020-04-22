@@ -25,18 +25,14 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	//"github.com/fusion/go-fusion/cmd/utils"
 	"github.com/fsn-dev/cryptoCoins/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discv5"
 	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
 	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
 )
 
 func main() {
 	var (
-		groupNum      = flag.Uint("group", uint(0), "group Number") //0:sdk, 1:one group, 2:two groups dcrm xp
-		groupNodesNum = flag.Uint("nodes", uint(0), "nodes Number in some group, must > 0")
 		listenAddr    = flag.String("addr", "", "listen address")
 		genKey        = flag.String("genkey", "", "generate a node key")
 		writeAddr     = flag.Bool("writeaddress", false, "write out the node's pubkey hash and quit")
@@ -44,30 +40,23 @@ func main() {
 		nodeKeyHex    = flag.String("nodekeyhex", "", "private key as hex (for testing)")
 		natdesc       = flag.String("nat", "none", "port mapping mechanism (any|none|upnp|pmp|extip:<IP>)")
 		netrestrict   = flag.String("netrestrict", "", "restrict network communication to the given IP networks (CIDR masks)")
-		runv5         = flag.Bool("v5", false, "run a v5 topic discovery bootnode")
 
 		nodeKey *ecdsa.PrivateKey
 		err     error
 	)
 	flag.Parse()
-	getConfig(groupNum, groupNodesNum, listenAddr, nodeKeyFile)
+	getConfig(listenAddr, nodeKeyFile)
 
-	if *groupNodesNum == 0 {
-		*groupNodesNum = 3
-	}
 	if *listenAddr == "" {
 		*listenAddr = ":4440"
 	}
-	fmt.Printf("nodeKeyFile: %v, listenAddr: %v, group: %v, nodes: %v\n", *nodeKeyFile, *listenAddr, *groupNum, *groupNodesNum)
+	fmt.Printf("nodeKeyFile: %v, listenAddr: %v\n", *nodeKeyFile, *listenAddr)
 	natm, err := nat.Parse(*natdesc)
 	if err != nil {
 		fmt.Errorf("-nat: %v", err)
 		return
 	}
 	switch {
-	case *groupNodesNum == 0:
-		fmt.Printf("Use -nodes must bigger than zero\n")
-		return
 	case *genKey != "":
 		nodeKey, err = crypto.GenerateKey()
 		if err != nil {
@@ -76,9 +65,6 @@ func main() {
 		if err = crypto.SaveECDSA(*genKey, nodeKey); err != nil {
 			//utils.Fatalf("%v", err)
 		}
-		return
-	case *nodeKeyFile == "" && *nodeKeyHex == "":
-		fmt.Printf("Use -nodekey or -nodekeyhex to specify a private key\n")
 		return
 	case *nodeKeyFile != "" && *nodeKeyHex != "":
 		fmt.Printf("Options -nodekey and -nodekeyhex are mutually exclusive\n")
@@ -127,27 +113,35 @@ func main() {
 		}
 	}
 
-	if *runv5 {
-		if _, err := discv5.ListenUDP(nodeKey, conn, realaddr, "", restrictList); err != nil {
-			//utils.Fatalf("%v", err)
-		}
-	} else {
-		cfg := discover.Config{
-			PrivateKey:   nodeKey,
-			AnnounceAddr: realaddr,
-			NetRestrict:  restrictList,
-		}
-		if _, err := discover.ListenUDP(conn, cfg); err != nil {
-			//utils.Fatalf("%v", err)
-		}
+	cfg := discover.Config{
+		PrivateKey:   nodeKey,
+		AnnounceAddr: realaddr,
+		NetRestrict:  restrictList,
+	}
+	if _, err := discover.ListenUDP(conn, cfg); err != nil {
+		//utils.Fatalf("%v", err)
 	}
 
-	// TODO: group
-	fmt.Printf("groupNum: %v, groupNodesNum: %v\n", *groupNum, *groupNodesNum)
-	if err := discover.InitGroup(int(*groupNum), int(*groupNodesNum)); err != nil {
-	}
+	discover.InitGroup()
 
 	select {}
+}
+
+func getConfig(listenAddr, nodeKeyFile *string) error {
+	var cf conf
+	var path string = "./conf.toml"
+	if _, err := toml.DecodeFile(path, &cf); err != nil {
+		return err
+	}
+	nkey := cf.Bootnode.Nodekey
+	pt := cf.Bootnode.Addr
+	if nkey != "" && *nodeKeyFile == "" {
+		*nodeKeyFile = nkey
+	}
+	if pt != 0 && *listenAddr == "" {
+		*listenAddr = fmt.Sprintf(":%v", pt)
+	}
+	return nil
 }
 
 type conf struct {
@@ -157,32 +151,5 @@ type conf struct {
 type bootnodeConf struct {
 	Nodekey string
 	Addr    uint
-	Group   uint
-	Nodes   uint
 }
 
-func getConfig(groupNum, groupNodesNum *uint, listenAddr, nodeKeyFile *string) error {
-	var cf conf
-	var path string = "./conf.toml"
-	if _, err := toml.DecodeFile(path, &cf); err != nil {
-		//fmt.Printf("%v\n", err)
-		return err
-	}
-	nkey := cf.Bootnode.Nodekey
-	pt := cf.Bootnode.Addr
-	gp := cf.Bootnode.Group
-	ns := cf.Bootnode.Nodes
-	if nkey != "" && *nodeKeyFile == "" {
-		*nodeKeyFile = nkey
-	}
-	if pt != 0 && *listenAddr == "" {
-		*listenAddr = fmt.Sprintf(":%v", pt)
-	}
-	if gp != 0 && *groupNum == 0 {
-		*groupNum = gp
-	}
-	if ns != 0 && *groupNodesNum == 0 {
-		*groupNodesNum = ns
-	}
-	return nil
-}

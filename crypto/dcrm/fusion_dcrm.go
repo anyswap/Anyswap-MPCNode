@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"github.com/fsn-dev/cryptoCoins/coins"
+	"github.com/fsn-dev/cryptoCoins/crypto/secp256k1"
+	"github.com/fsn-dev/cryptoCoins/crypto"
 	cryptocoinsconfig "github.com/fsn-dev/cryptoCoins/config"
 	"github.com/fsn-dev/cryptoCoins/coins/eos"
 	"github.com/fsn-dev/cryptoCoins/types"
@@ -327,7 +329,9 @@ func RecivReqAddr() {
 							go func(d ReqAddrData,reqda *dev.TxDataReqAddr,rad *dev.AcceptReqAddrData) {
 								nums := strings.Split(reqda.ThresHold, "/")
 								nodecnt, _ := strconv.Atoi(nums[1])
-								sigs := strings.Split(reqda.Sigs,":")
+								sigs := strings.Split(reqda.Sigs,"|")
+								_, enodes := dev.GetGroup(reqda.GroupId)
+								nodes := strings.Split(enodes, dev.SepSg)
 								/////////////////////tmp code //////////////////////
 								if reqda.Mode == "0" {
 									mp := []string{d.Key, cur_enode}
@@ -338,60 +342,73 @@ func RecivReqAddr() {
 
 									sstmp := s1
 									for j := 0; j < nodecnt; j++ {
-										tx2 := new(types.Transaction)
-										vs := common.FromHex(sigs[j])
-										if err := rlp.DecodeBytes(vs, tx2); err != nil {
-											return
-										}
+										en := strings.Split(sigs[j], "@")
+										for _, node := range nodes {
+										    node2 := dev.ParseNode(node)
+										    if strings.EqualFold(node2, en[0]) {
+											enodesigs := []rune(sigs[j])
+											sig := enodesigs[len(node):]
+											sigbit, _ := hex.DecodeString(string(sig[:]))
+											pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
+											if err != nil {
+											    return
+											}
+											
+											h := coins.NewCryptocoinHandler("FSN")
+											if h != nil {
+											    pubkey := hex.EncodeToString(pub)
+											    from, err := h.PublicKeyToAddress(pubkey)
+											    if err != nil {
+												return
+											    }
+											    
+											    //key-enode:GroupAccounts:5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
+											    ss += common.Sep
+											    ss += node2 
+											    ss += common.Sep
+											    ss += from
+											    
+											    sstmp += common.Sep
+											    sstmp += node2
+											    sstmp += common.Sep
+											    sstmp += from
+											    
+											    exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(from))
+											    if exsit == false {
+												kdtmp := dev.KeyData{Key: []byte(strings.ToLower(from)), Data: d.Key}
+												dev.PubKeyDataChan <- kdtmp
+												dev.LdbPubKeyData.WriteMap(strings.ToLower(from), []byte(d.Key))
+											    } else {
+												//
+												found := false
+												keys := strings.Split(string(da.([]byte)),":")
+												for _,v := range keys {
+												    if strings.EqualFold(v,d.Key) {
+													found = true
+													break
+												    }
+												}
+												//
 
-										signer := types.NewEIP155Signer(big.NewInt(30400)) //
-										from2, err := types.Sender(signer, tx2)
-										if err != nil {
-										    return
-										}
-
-										//key-enode:GroupAccounts:5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
-										eid := string(tx2.Data())
-										acc := from2.Hex()
-										ss += common.Sep
-										ss += eid
-										ss += common.Sep
-										ss += acc
-										
-										sstmp += common.Sep
-										sstmp += eid
-										sstmp += common.Sep
-										sstmp += acc
-										
-										exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(acc))
-										if exsit == false {
-										    kdtmp := dev.KeyData{Key: []byte(strings.ToLower(acc)), Data: d.Key}
-										    dev.PubKeyDataChan <- kdtmp
-										    dev.LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(d.Key))
-										} else {
-										    //
-										    found := false
-										    keys := strings.Split(string(da.([]byte)),":")
-										    for _,v := range keys {
-											if strings.EqualFold(v,d.Key) {
-											    found = true
-											    break
+												if !found {
+												    da2 := string(da.([]byte)) + ":" + d.Key
+												    kdtmp := dev.KeyData{Key: []byte(strings.ToLower(from)), Data: da2}
+												    dev.PubKeyDataChan <- kdtmp
+												    dev.LdbPubKeyData.WriteMap(strings.ToLower(from), []byte(da2))
+												}
+											    }
 											}
 										    }
-										    //
-
-										    if !found {
-											da2 := string(da.([]byte)) + ":" + d.Key
-											kdtmp := dev.KeyData{Key: []byte(strings.ToLower(acc)), Data: da2}
-											dev.PubKeyDataChan <- kdtmp
-											dev.LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(da2))
-										    }
 										}
+
 									}
 
 									dev.SendMsgToDcrmGroup(ss, reqda.GroupId)
 									fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n", common.CurrentTime(), ss, d.Key)
 									rad.Sigs = sstmp
+									if dev.SaveAcceptReqAddrData(rad) != nil { //re-save
+									    return
+									}
 								} else {
 									    exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(d.Account))
 									    if exsit == false {

@@ -330,6 +330,7 @@ func RecivReqAddr() {
 								nums := strings.Split(reqda.ThresHold, "/")
 								nodecnt, _ := strconv.Atoi(nums[1])
 								sigs := strings.Split(reqda.Sigs,"|")
+								//SigN = enode://xxxxxxxx@ip:portxxxxxxxxxxxxxxxxxxxxxx
 								_, enodes := dev.GetGroup(reqda.GroupId)
 								nodes := strings.Split(enodes, dev.SepSg)
 								/////////////////////tmp code //////////////////////
@@ -345,7 +346,8 @@ func RecivReqAddr() {
 										en := strings.Split(sigs[j], "@")
 										for _, node := range nodes {
 										    node2 := dev.ParseNode(node)
-										    if strings.EqualFold(node2, en[0]) {
+										    enId := strings.Split(en[0],"//")
+										    if strings.EqualFold(node2, enId[1]) {
 											enodesigs := []rune(sigs[j])
 											sig := enodesigs[len(node):]
 											sigbit, _ := hex.DecodeString(string(sig[:]))

@@ -350,9 +350,12 @@ func RecivReqAddr() {
 										    if strings.EqualFold(node2, enId[1]) {
 											enodesigs := []rune(sigs[j])
 											sig := enodesigs[len(node):]
-											sigbit, _ := hex.DecodeString(string(sig[:]))
+											fmt.Printf("%v=====================RecivReqAddr, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),j,string(sig[:]),data.Key)
+											//sigbit, _ := hex.DecodeString(string(sig[:]))
+											sigbit := common.FromHex(string(sig[:]))
 											pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
 											if err != nil {
+											    fmt.Printf("%v=====================RecivReqAddr, recover pubkey fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
 											    return
 											}
 											
@@ -361,6 +364,7 @@ func RecivReqAddr() {
 											    pubkey := hex.EncodeToString(pub)
 											    from, err := h.PublicKeyToAddress(pubkey)
 											    if err != nil {
+												fmt.Printf("%v=====================RecivReqAddr, pubkey to addr fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
 												return
 											    }
 											    

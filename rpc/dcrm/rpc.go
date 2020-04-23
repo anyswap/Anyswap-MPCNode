@@ -87,7 +87,7 @@ func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 	ret, tip, err := dcrm.AcceptReqAddr(raw)
 	fmt.Printf("%v ==========call rpc AcceptReqAddr from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
-		data["result"] = ""
+		data["result"] = "Failure"
 		return map[string]interface{}{
 			"Status": "Error",
 			"Tip":    tip,

@@ -3,7 +3,7 @@ package ec2
 import (
 	"math/big"
 
-	s256 "github.com/fsn-dev/cryptoCoins/crypto/secp256k1"
+	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
 )
 

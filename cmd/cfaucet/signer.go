@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 
-	ethcrypto "github.com/fsn-dev/cryptoCoins/crypto"
+	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
 )
 
 func SignTransaction(hash []string, privateKey *ecdsa.PrivateKey) (rsv []string, err error) {

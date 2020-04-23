@@ -24,7 +24,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fsn-dev/cryptoCoins/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"

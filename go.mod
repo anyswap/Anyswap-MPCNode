@@ -19,7 +19,7 @@ require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/docker/docker v1.13.1
 	github.com/eoscanada/eos-go v0.8.16
-	github.com/fsn-dev/cryptoCoins v0.0.0-20200419085652-7559c2f90131
+	github.com/fsn-dev/cryptoCoins v0.0.0-20200423033629-0506a41d1e72
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/golang/snappy v0.0.1
 	github.com/gorilla/mux v1.7.3

@@ -28,7 +28,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common/mclock"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/p2p/event"
-	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+	"github.com/fsn-dev/cryptoCoins/tools/rlp"
 )
 
 var (

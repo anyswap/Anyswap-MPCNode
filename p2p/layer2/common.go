@@ -24,7 +24,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsn-dev/cryptoCoins/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
@@ -128,8 +128,7 @@ func broadAddHash(hash common.Hash) {
 }
 
 func msgHash(msg string) common.Hash {
-	hashHex := crypto.Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
-	hash := common.HexToHash(hashHex)
+	hash := crypto.Keccak256Hash([]byte(strings.ToLower(msg)))
 	return hash
 }
 //-------- for broadcast end --------

@@ -24,11 +24,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/cryptoCoins/crypto"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
 	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
-	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+	"github.com/fsn-dev/cryptoCoins/tools/rlp"
 )
 
 const Version = 4

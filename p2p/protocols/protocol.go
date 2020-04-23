@@ -39,7 +39,7 @@ import (
 
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/metrics"
-	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+	"github.com/fsn-dev/cryptoCoins/tools/rlp"
 	//"github.com/fsn-dev/dcrm-walletService/swarm/spancontext"
 	//"github.com/fsn-dev/dcrm-walletService/swarm/tracing"
 )

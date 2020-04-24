@@ -444,7 +444,8 @@ type RpcReqWorker struct {
 	bc11              chan bool
 	bd11_1            chan bool
 
-	sid string //save the txhash
+	sid string //save the key
+	bnoreciv          chan bool
 
 	//ed
 	bedc11       chan bool
@@ -608,6 +609,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 		bsendsignres:   make(chan bool, 1),
 		bgaccs:            make(chan bool, 1),
 		bc1:               make(chan bool, 1),
+		bnoreciv:          make(chan bool, 1),
 		bd1_1:             make(chan bool, 1),
 		bc11:              make(chan bool, 1),
 		bkc:               make(chan bool, 1),
@@ -851,6 +853,9 @@ func (w *RpcReqWorker) Clear() {
 	}
 	if len(w.bc1) == 1 {
 		<-w.bc1
+	}
+	if len(w.bnoreciv) == 1 {
+		<-w.bnoreciv
 	}
 	if len(w.bd1_1) == 1 {
 		<-w.bd1_1
@@ -1168,6 +1173,9 @@ func (w *RpcReqWorker) Clear2() {
 	}
 	if len(w.bc1) == 1 {
 		<-w.bc1
+	}
+	if len(w.bnoreciv) == 1 {
+		<-w.bnoreciv
 	}
 	if len(w.bd1_1) == 1 {
 		<-w.bd1_1
@@ -2580,6 +2588,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	mm := strings.Split(res, Sep)
 	if len(mm) >= 2 {
 		//msg:  key-enode:C1:X1:X2....:Xn
+		//msg:  key-enode1:NoReciv:enode2:C1
 		DisMsg(res)
 		return true
 	}
@@ -4757,7 +4766,129 @@ func testEq(a, b []string) bool {
     return true
 }
 
+func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) {
+    w := workers[wid]
+    if w == nil {
+	return
+    }
+
+    var l *list.List
+    switch datatype {
+	case "AcceptReqAddrRes":
+	    l = w.msg_acceptreqaddrres
+	case "AcceptLockOutRes":
+	    l = w.msg_acceptlockoutres
+	case "SendLockOutRes":
+	    l = w.msg_sendlockoutres
+	case "AcceptSignRes":
+	    l = w.msg_acceptsignres 
+	case "SendSignRes":
+	    l = w.msg_sendsignres 
+	case "C1":
+	    l = w.msg_c1
+	case "D1":
+	    l = w.msg_d1_1
+	case "SHARE1":
+	    l = w.msg_share1
+	case "NTILDEH1H2":
+	    l = w.msg_zkfact
+	case "ZKUPROOF":
+	    l = w.msg_zku
+	case "MTAZK1PROOF":
+	    l = w.msg_mtazk1proof 
+	case "C11":
+	    l = w.msg_c11
+	case "KC":
+	    l = w.msg_kc
+	case "MKG":
+	    l = w.msg_mkg
+	case "MKW":
+	    l = w.msg_mkw
+	case "DELTA1":
+	    l = w.msg_delta1
+	case "D11":
+	    l = w.msg_d11_1
+	case "CommitBigVAB":
+	    l = w.msg_commitbigvab
+	case "ZKABPROOF":
+	    l = w.msg_zkabproof
+	case "CommitBigUT":
+	    l = w.msg_commitbigut
+	case "CommitBigUTD11":
+	    l = w.msg_commitbigutd11
+	case "S1":
+	    l = w.msg_s1
+	case "SS1":
+	    l = w.msg_ss1
+	case "EDC11":
+	    l = w.msg_edc11
+	case "EDZK":
+	    l = w.msg_edzk
+	case "EDD11":
+	    l = w.msg_edd11
+	case "EDSHARE1":
+	    l = w.msg_edshare1
+	case "EDCFSB":
+	    l = w.msg_edcfsb
+	case "EDC21":
+	    l = w.msg_edc21
+	case "EDZKR":
+	    l = w.msg_edzkr
+	case "EDD21":
+	    l = w.msg_edd21 
+	case "EDC31":
+	    l = w.msg_edc31
+	case "EDD31":
+	    l = w.msg_edd31
+	case "EDS":
+	    l = w.msg_eds 
+    }
+    
+    if l == nil {
+	return
+    }
+
+    if strings.EqualFold(ower,cur_enode) {
+	//TODO
+    }
+
+    mm := make([]string,0)
+    mm[0] = key + "-" + ower
+    mm[1] = datatype
+    var next *list.Element
+    for e := l.Front(); e != nil; e = next {
+	    next = e.Next()
+
+	    if e.Value == nil {
+		    continue
+	    }
+
+	    s := e.Value.(string)
+
+	    if s == "" {
+		    continue
+	    }
+
+	    tmp := strings.Split(s, Sep)
+	    tmp2 := tmp[0:2]
+	    if testEq(mm, tmp2) {
+		_, enodes := GetGroup(w.groupid)
+		nodes := strings.Split(enodes, SepSg)
+		for _, node := range nodes {
+		    node2 := ParseNode(node)
+		    if strings.EqualFold(node2,reqer) {
+			SendMsgToPeer(node,s)
+			break
+		    }
+		}
+
+		break
+	    }
+    }
+}
+
 //msg: key-enode:C1:X1:X2...:Xn
+//msg: key-enode1:NoReciv:enode2:C1
 func DisMsg(msg string) {
 
 	if msg == "" {
@@ -5052,6 +5183,12 @@ func DisMsg(msg string) {
 		if w.msg_sendsignres.Len() == (w.ThresHold - 1) {
 			w.bsendsignres <- true
 		}
+	case "NoReciv":
+		key := prexs[0]
+		enode1 := prexs[1]
+		enode2 := mm[2]
+		datatype := mm[3]
+		HandleNoReciv(key,enode1,enode2,datatype,w.id)
 	case "C1":
 		///bug
 		if w.msg_c1.Len() >= (w.NodeCnt - 1) {

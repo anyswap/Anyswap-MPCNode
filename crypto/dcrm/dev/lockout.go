@@ -959,7 +959,16 @@ func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice
 	common.Info("===================send C11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bc11)
 	common.Info("===================finish get C11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"C11",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC11Timeout)}
 		ch <- res
 		return nil, nil, nil
@@ -1088,7 +1097,16 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqW
 	}
 
 	_, tip, cherr := GetChannelValue(ch_t, w.bmtazk1proof)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"MTAZK1PROOF",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetMTAZK1PROOFTimeout)}
 		ch <- res
 		return nil, nil
@@ -1177,7 +1195,16 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RpcRe
 	common.Info("===================send KC finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bkc)
 	common.Info("===================finish get KC, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"KC",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetKCTimeout)}
 		ch <- res
 		return false
@@ -1858,8 +1885,8 @@ func DECDSASignRoundFour2(msgprex string, keytype string, save string, w *RpcReq
 	return mkg, mkg_mtazk2, mkw, mkw_mtazk2, true
 }
 
-func DECDSASignVerifyZKGammaW(cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zkfactproof map[string]*ec2.NtildeH1H2, mkg map[string]*big.Int, mkg_mtazk2 map[string]*ec2.MtAZK2Proof_nhh, mkw map[string]*big.Int, mkw_mtazk2 map[string]*ec2.MtAZK3Proof_nhh, ch chan interface{}) bool {
-	if cointype == "" || save == "" || w == nil || len(idSign) == 0 || len(ukc) == 0 || len(ukc3) == 0 || len(zkfactproof) == 0 || len(mkg) == 0 || len(mkw) == 0 || len(mkg_mtazk2) == 0 || len(mkw_mtazk2) == 0 {
+func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zkfactproof map[string]*ec2.NtildeH1H2, mkg map[string]*big.Int, mkg_mtazk2 map[string]*ec2.MtAZK2Proof_nhh, mkw map[string]*big.Int, mkw_mtazk2 map[string]*ec2.MtAZK3Proof_nhh, ch chan interface{}) bool {
+	if msgprex == "" || cointype == "" || save == "" || w == nil || len(idSign) == 0 || len(ukc) == 0 || len(ukc3) == 0 || len(zkfactproof) == 0 || len(mkg) == 0 || len(mkw) == 0 || len(mkg_mtazk2) == 0 || len(mkw_mtazk2) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
 		return false
@@ -1868,7 +1895,16 @@ func DECDSASignVerifyZKGammaW(cointype string, save string, w *RpcReqWorker, idS
 	// 2.9
 	// receive c_kGamma from proper node, MtA(k, gamma)   zk
 	_, tip, cherr := GetChannelValue(ch_t, w.bmkg)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"MKG",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetMKGTimeout)}
 		ch <- res
 		return false
@@ -1937,7 +1973,16 @@ func DECDSASignVerifyZKGammaW(cointype string, save string, w *RpcReqWorker, idS
 	// 2.10
 	// receive c_kw from proper node, MtA(k, w)    zk
 	_, tip, cherr = GetChannelValue(ch_t, w.bmkw)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"MKW",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetMKWTimeout)}
 		ch <- res
 		return false
@@ -2495,7 +2540,16 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 	common.Info("===================send DELTA1 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bdelta1)
 	common.Info("===================finish get DELTA1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"DELTA1",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all delta timeout.")}
 		ch <- res
 		return nil
@@ -2779,7 +2833,16 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 	common.Info("===================send D11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bd11_1)
 	common.Info("===================finish get D11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"D11",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all d11 fail.")}
 		ch <- res
 		return nil
@@ -3249,7 +3312,16 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	common.Info("===================send CommitBigVAB finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigvab)
 	common.Info("===================finish get CommitBigVAB, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigVAB",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigVAB timeout.")}
 		ch <- res
 		return nil, nil, nil, nil
@@ -3320,7 +3392,16 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	common.Info("===================send ZKABPROOF finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkabproof)
 	common.Info("===================finish get ZKABPROOF, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"ZKABPROOF",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all ZKABPROOF timeout.")}
 		ch <- res
 		return nil, nil
@@ -3684,7 +3765,16 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RpcReqWorker, idSig
 	common.Info("===================send CommitBigUT finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigut)
 	common.Info("===================finish get CommitBigUT, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUT",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigUT timeout.")}
 		ch <- res
 		return nil, nil
@@ -3830,7 +3920,16 @@ func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RpcReqW
 	common.Info("===================send CommitBigUTD11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigutd11)
 	common.Info("===================finish get CommitBigUTD11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUTD11",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigUTD11 fail.")}
 		ch <- res
 		return nil
@@ -4070,7 +4169,16 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RpcReqWorker, idS
 	common.Info("===================send SS1 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bss1)
 	common.Info("===================finish get SS1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"SS1",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ss1 timeout.")}
 		ch <- res
 		return nil
@@ -4455,7 +4563,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	}
 	common.Info("===================sign,round four finish===========================")
 
-	if DECDSASignVerifyZKGammaW(cointype, save, w, idSign, ukc, ukc3, zkfactproof, mkg, mkg_mtazk2, mkw, mkw_mtazk2, ch) != true {
+	if DECDSASignVerifyZKGammaW(msgprex,cointype, save, w, idSign, ukc, ukc3, zkfactproof, mkg, mkg_mtazk2, mkw, mkw_mtazk2, ch) != true {
 		return ""
 	}
 	common.Info("===================sign,verify zk gamma/w finish===========================")
@@ -4849,7 +4957,16 @@ func Sign_ed2(msgprex string, save string, message string, keytype string, pk st
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr := GetChannelValue(ch_t, w.bedc21)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDC21",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedc21 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c21 timeout.")}
 		ch <- res
@@ -4895,7 +5012,16 @@ func Sign_ed2(msgprex string, save string, message string, keytype string, pk st
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedzkr)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDZKR",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedzkr timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed zkr timeout.")}
 		ch <- res
@@ -4942,7 +5068,16 @@ func Sign_ed2(msgprex string, save string, message string, keytype string, pk st
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedd21)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDD21",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedd21 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d21 timeout.")}
 		ch <- res
@@ -5080,7 +5215,16 @@ func Sign_ed2(msgprex string, save string, message string, keytype string, pk st
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedc31)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDC31",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedc31 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c31 timeout.")}
 		ch <- res
@@ -5126,7 +5270,16 @@ func Sign_ed2(msgprex string, save string, message string, keytype string, pk st
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedd31)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDD31",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedd31 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d31 timeout.")}
 		ch <- res
@@ -5230,7 +5383,16 @@ func Sign_ed2(msgprex string, save string, message string, keytype string, pk st
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.beds)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDS",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.beds timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed s timeout.")}
 		ch <- res
@@ -5291,8 +5453,8 @@ func Sign_ed2(msgprex string, save string, message string, keytype string, pk st
 	signature := new([64]byte)
 	copy(signature[:], FinalRBytes[:])
 	copy(signature[32:], FinalS[:])
-	suss := ed25519.Verify(&pkfinal, []byte(message), signature)
-	fmt.Println("===========ed verify pass again=%v===============", suss)
+	suss2 := ed25519.Verify(&pkfinal, []byte(message), signature)
+	fmt.Println("===========ed verify pass again=%v===============", suss2)
 	//////
 
 	res := RpcDcrmRes{Ret: rx + ":" + sx, Tip: "", Err: nil}

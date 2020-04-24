@@ -20,6 +20,7 @@ import (
 	"bytes"
 	cryptorand "crypto/rand"
 	"crypto/sha512"
+	"container/list"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ import (
 	"time"
 	"encoding/json"
 
+	"sync"
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
@@ -921,7 +923,16 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr := GetChannelValue(ch_t, w.bedc11)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDC11",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedc11 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c11 timeout.")}
 		ch <- res
@@ -967,7 +978,16 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedzk)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDZK",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedzk timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed zk timeout.")}
 		ch <- res
@@ -1014,7 +1034,16 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedd11)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDD11",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedd11 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d11 timeout.")}
 		ch <- res
@@ -1162,7 +1191,16 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	}
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedshare1)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDSHARE1",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedshare1 timeout in keygenerate.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed share1 fail.")}
 		ch <- res
@@ -1215,7 +1253,16 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	SendMsgToDcrmGroup(ss, GroupId)
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedcfsb)
+	/////////////////////////request data from dcrm group
+	suss = false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDCFSB",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		logs.Debug("get w.bedcfsb timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed cfsb timeout.")}
 		ch <- res
@@ -1374,6 +1421,175 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	return true
 }
 
+func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeout int) bool {
+    w := workers[wid]
+    if w == nil {
+	return false
+    }
+
+    var l *list.List
+    var b chan bool
+    switch datatype {
+	case "AcceptReqAddrRes":
+	    l = w.msg_acceptreqaddrres
+	    b = w.bacceptreqaddrres
+	case "AcceptLockOutRes":
+	    l = w.msg_acceptlockoutres
+	    b = w.bacceptlockoutres
+	case "SendLockOutRes":
+	    l = w.msg_sendlockoutres
+	    b = w.bsendlockoutres
+	case "AcceptSignRes":
+	    l = w.msg_acceptsignres 
+	    b = w.bacceptsignres
+	case "SendSignRes":
+	    l = w.msg_sendsignres 
+	    b = w.bsendsignres
+	case "C1":
+	    l = w.msg_c1
+	    b = w.bc1
+	case "D1":
+	    l = w.msg_d1_1
+	    b = w.bd1_1
+	case "SHARE1":
+	    l = w.msg_share1
+	    b = w.bshare1
+	case "NTILDEH1H2":
+	    l = w.msg_zkfact
+	    b = w.bzkfact
+	case "ZKUPROOF":
+	    l = w.msg_zku
+	    b = w.bzku
+	case "MTAZK1PROOF":
+	    l = w.msg_mtazk1proof 
+	    b = w.bmtazk1proof
+	case "C11":
+	    l = w.msg_c11
+	    b = w.bc11
+	case "KC":
+	    l = w.msg_kc
+	    b = w.bkc
+	case "MKG":
+	    l = w.msg_mkg
+	    b = w.bmkg
+	case "MKW":
+	    l = w.msg_mkw
+	    b = w.bmkw
+	case "DELTA1":
+	    l = w.msg_delta1
+	    b = w.bdelta1
+	case "D11":
+	    l = w.msg_d11_1
+	    b = w.bd11_1
+	case "CommitBigVAB":
+	    l = w.msg_commitbigvab
+	    b = w.bcommitbigvab
+	case "ZKABPROOF":
+	    l = w.msg_zkabproof
+	    b = w.bzkabproof
+	case "CommitBigUT":
+	    l = w.msg_commitbigut
+	    b = w.bcommitbigut
+	case "CommitBigUTD11":
+	    l = w.msg_commitbigutd11
+	    b = w.bcommitbigutd11
+	case "S1":
+	    l = w.msg_s1
+	    b = w.bs1
+	case "SS1":
+	    l = w.msg_ss1
+	    b = w.bss1
+	case "EDC11":
+	    l = w.msg_edc11
+	    b = w.bedc11
+	case "EDZK":
+	    l = w.msg_edzk
+	    b = w.bedzk
+	case "EDD11":
+	    l = w.msg_edd11
+	    b = w.bedd11
+	case "EDSHARE1":
+	    l = w.msg_edshare1
+	    b = w.bedshare1
+	case "EDCFSB":
+	    l = w.msg_edcfsb
+	    b = w.bedcfsb
+	case "EDC21":
+	    l = w.msg_edc21
+	    b = w.bedc21
+	case "EDZKR":
+	    l = w.msg_edzkr
+	    b = w.bedzkr
+	case "EDD21":
+	    l = w.msg_edd21 
+	    b = w.bedd21
+	case "EDC31":
+	    l = w.msg_edc31
+	    b = w.bedc31
+	case "EDD31":
+	    l = w.msg_edd31
+	    b = w.bedd31
+	case "EDS":
+	    l = w.msg_eds 
+	    b = w.beds
+    }
+
+    if l == nil {
+	return false
+    }
+   
+    suss := false
+    var wg sync.WaitGroup
+    _, enodes := GetGroup(w.groupid)
+    nodes := strings.Split(enodes, SepSg)
+    for _, node := range nodes {
+	    found := false
+	    node2 := ParseNode(node)
+	    if strings.EqualFold(cur_enode,node2) {
+		continue
+	    }
+
+	    iter := l.Front() //////by type
+	    for iter != nil {
+		mdss := iter.Value.(string)
+		ms := strings.Split(mdss, Sep)
+		prexs := strings.Split(ms[0], "-")
+		node3 := prexs[1]
+		if strings.EqualFold(node3,node2) {
+		    found = true
+		    break
+		}
+		iter = iter.Next()
+	    }
+
+	    if !found {
+		wg.Add(1)
+		go func() {
+		    defer wg.Done()
+		    i := 0
+		    for i = 0;i < trytimes; i++ {
+			//enode1 no reciv enode2 c1 data
+			//key-enode1:NoReciv:enode2:C1
+			noreciv := msgprex + "-" + cur_enode + Sep + "NoReciv" + Sep + node2 + Sep + datatype   //by type
+			SendMsgToDcrmGroup(noreciv, w.groupid)
+			_, _, err := GetChannelValue(timeout, b) //wait 20 second     //by type
+			if err == nil {
+			    fmt.Printf("%v===================ReqDataFromGroup, req data success, key = %v, data = %v ========================\n",common.CurrentTime(),msgprex,noreciv)
+			    suss = true
+			    if len(b) == 0 {
+				b <- true  //add for exiting other threads
+			    }
+			    break
+			}
+		    }
+		}()
+	    }
+    }
+    wg.Wait()
+    fmt.Printf("%v===================ReqDataFromGroup, finish req data, key = %v, status = %v ========================\n",common.CurrentTime(),msgprex,suss)
+    return suss
+}
+
 func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
 	if w == nil || msgprex == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
@@ -1462,7 +1678,17 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	fmt.Printf("%v===================DECDSAGenKeyRoundOne,send C1 finish, key = %v====================\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bc1)
 	fmt.Printf("%v===================DECDSAGenKeyRoundOne,finish get C1,key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
+
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"C1",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 	    ///////add decdsa log
 	    cur_time := fmt.Sprintf("%v",common.CurrentTime())
 	    tmp := make([]NoRecivData,0)
@@ -1697,7 +1923,16 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	fmt.Printf("%v===================send D1 finish, key = %v====================\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bd1_1)
 	fmt.Printf("%v===================finish get D1, key = %v,err = %v====================\n",common.CurrentTime(),msgprex,cherr)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"D1",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 	    ///////add decdsa log
 	    cur_time = fmt.Sprintf("%v",common.CurrentTime())
 	    tmp := make([]NoRecivData,0)
@@ -1779,7 +2014,16 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 
 	// 2. Receive Personal Data
 	_, tip, cherr := GetChannelValue(ch_t, w.bshare1)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"SHARE1",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetSHARE1Timeout)}
 		ch <- res
 		return nil, nil, false
@@ -2131,7 +2375,16 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	fmt.Printf("%v===================send NTILDEH1H2 finish,key = %v===============\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
 	fmt.Printf("%v===================finish get NTILDEH1H2, key = %v,err = %v====================\n",common.CurrentTime(),msgprex,cherr)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 	    ///////add decdsa log
 	    cur_time = fmt.Sprintf("%v",common.CurrentTime())
 	    tmp := make([]NoRecivData,0)
@@ -2256,7 +2509,16 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	fmt.Printf("%v===================send ZKUPROOF finish, key = %v===================\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzku)
 	fmt.Printf("%v===================finish get ZKUPROOF, key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
+	/////////////////////////request data from dcrm group
+	suss := false
 	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"ZKUPROOF",3,10)
+	} else {
+	    suss = true
+	}
+	///////////////////////////////////
+
+	if !suss {
 	    ///////add decdsa log
 	    cur_time = fmt.Sprintf("%v",common.CurrentTime())
 	    tmp := make([]NoRecivData,0)

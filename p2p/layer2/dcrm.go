@@ -23,6 +23,7 @@ import (
 	"sort"
 	"time"
 
+	mapset "github.com/deckarep/golang-set"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
@@ -34,6 +35,7 @@ import (
 func init() {
 	emitter = NewEmitter()
 	discover.RegisterGroupCallback(recvGroupInfo)
+	knownHash = mapset.NewSet()
 }
 
 func NewEmitter() *Emitter {
@@ -87,10 +89,26 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			if err != nil {
 				fmt.Printf("%v ==== handle() ==== p2pBroatcast, Err: decode sdk msg err: %v, p2perror\n", common.CurrentTime(), err)
 			} else {
+				go func(ackmsg string) {
+					msghash := msgHash(string(recv))
+					p2p.Send(rw, msgCode_ack, msghash)
+				} (string(recv))
 				cdLen := getCDLen(string(recv))
 				fmt.Printf("%v ==== handle() ==== p2pBroatcast, Recv Sdk_callEvent(), Sdk_msgCode fromID: %v, msg: %v\n", common.CurrentTime(), peer.ID().String(), string(recv)[:cdLen])
 				go Sdk_callEvent(string(recv), peer.ID().String())
 			}
+			break
+		case msgCode_ack:
+			go func(msg p2p.Msg) {
+				var recv []byte
+				err := rlp.Decode(msg.Payload, &recv)
+				if err != nil {
+					fmt.Printf("%v ==== handle() ==== p2pBroatcast, Err: decode sdk msg err: %v, p2perror\n", common.CurrentTime(), err)
+				} else {
+					fmt.Printf("%v ==== handle() ==== p2pBroatcast, recv ack, hash: %v\n", common.CurrentTime(), common.BytesToHash(recv))
+					broadAddHash(common.BytesToHash(recv))
+				}
+			}(msg)
 			break
 		default:
 			fmt.Println("unkown msg code")
@@ -162,25 +180,24 @@ func p2pSendMsg(node discover.RpcNode, msgCode uint64, msg string) error {
 	}
 	fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, node %v:%v %v, msg: %v\n", common.CurrentTime(), node.IP, node.UDP, node.ID, msg[:cdLen])
 	err := errors.New("p2pSendMsg err")
-	for {
-		emitter.Lock()
-		p := emitter.peers[node.ID]
-		if p != nil {
-			if err = p2p.Send(p.ws, msgCode, msg); err != nil {
-				err = p2p.Send(p.ws, msgCode, msg)
-			}
-			if err == nil {
-				emitter.Unlock()
-				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, node %v:%v %v, msg: %v, send success\n", common.CurrentTime(), node.IP, node.UDP, node.ID, msg[:cdLen])
-				return nil
-			} else {
-				fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, node %v:%v %v, msg: %v, send fail p2perror\n", common.CurrentTime(), node.IP, node.UDP, node.ID, msg[:cdLen])
-			}
-		} else {
-			fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, nodeID: %v, peer not exist p2perror continue\n", common.CurrentTime(), node.ID)
-		}
-		emitter.Unlock()
+	emitter.Lock()
+	p := emitter.peers[node.ID]
+	if p != nil {
+		p2p.Send(p.ws, msgCode, msg)
+		fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, node %v:%v %v, msg: %v, send\n", common.CurrentTime(), node.IP, node.UDP, node.ID, msg[:cdLen])
 	}
+	emitter.Unlock()
+	go func(node discover.RpcNode, msg string) {
+		time.Sleep(time.Duration(timeout_broadcastAck) * time.Second)
+		msghash := msgHash(msg)
+		if broadWithHash(msghash) {
+			fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, node %v:%v %v, msg: %v, send Success recv ack\n", common.CurrentTime(), node.IP, node.UDP, node.ID, msg[:cdLen])
+			return
+		}
+		fmt.Printf("%v ==== p2pSendMsg() ==== p2pBroatcast, node %v:%v %v, msg: %v, send fail, recv noack, call SendMsgToPeer\n", common.CurrentTime(), node.IP, node.UDP, node.ID, msg[:cdLen])
+		enode := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
+		SendMsgToPeer(enode, msg)
+	}(node, msg)
 	return err
 }
 

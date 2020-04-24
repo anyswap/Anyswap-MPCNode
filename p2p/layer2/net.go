@@ -28,6 +28,7 @@ import (
 const (
 	peerMsgCode       = iota
 	Sdk_msgCode
+	msgCode_ack
 
 	ProtocolVersion      = 1
 	ProtocolVersionStr   = "1"
@@ -38,6 +39,7 @@ const (
 	broatcastFailTimes = 0 //30 Redo Send times( 30 * 2s = 60 s)
 	broatcastFailOnce  = 2
 
+	timeout_broadcastAck = 5 //second
 	Sdkprotocol_type  = discover.Sdkprotocol_type
 	ProtocolName      = "dcrm"
 )

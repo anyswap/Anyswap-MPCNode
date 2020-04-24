@@ -23,10 +23,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"os"
-	"os/user"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -5666,65 +5662,40 @@ func DisMsg(msg string) {
 }
 
 func GetGroupDir() string { //TODO
-	dir := DefaultDataDir()
+	dir := common.DefaultDataDir()
 	//dir += "/dcrmdata/dcrmdb" + GetSelfEnode() + "group"
 	dir += "/dcrmdata/dcrmdb" + discover.GetLocalID().String() + "group"
 	return dir
 }
 
 func GetDbDir() string {
-	dir := DefaultDataDir()
+	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb" + cur_enode
 	return dir
 }
 
 func GetAllAccountsDir() string {
-	dir := DefaultDataDir()
+	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/allaccounts" + cur_enode
 	return dir
 }
 
 func GetAcceptLockOutDir() string {
-	dir := DefaultDataDir()
+	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb/acceptlockout" + cur_enode
 	return dir
 }
 
 func GetAcceptReqAddrDir() string {
-	dir := DefaultDataDir()
+	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb/acceptreqaddr" + cur_enode
 	return dir
 }
 
 func GetGAccsDir() string {
-	dir := DefaultDataDir()
+	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb/gaccs" + cur_enode
 	return dir
-}
-
-func homeDir() string {
-	if home := os.Getenv("HOME"); home != "" {
-		return home
-	}
-	if usr, err := user.Current(); err == nil {
-		return usr.HomeDir
-	}
-	return ""
-}
-
-func DefaultDataDir() string {
-	home := homeDir()
-	if home != "" {
-		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "dcrm-walletservice")
-		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "dcrm-walletservice")
-		} else {
-			return filepath.Join(home, ".dcrm-walletservice")
-		}
-	}
-	// As we cannot guess a stable location, return empty and handle later
-	return ""
 }
 
 type PubAccounts struct {

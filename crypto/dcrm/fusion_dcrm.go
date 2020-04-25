@@ -671,28 +671,28 @@ func AcceptLockOut(raw string) (string, string, error) {
 	tx := new(types.Transaction)
 	raws := common.FromHex(raw)
 	if err := rlp.DecodeBytes(raws, tx); err != nil {
-		return "", "raw data error", err
+		return "Failure", "raw data error", err
 	}
 
 	signer := types.NewEIP155Signer(big.NewInt(30400)) //
 	from, err := types.Sender(signer, tx)
 	if err != nil {
-	    return "", "recover fusion account fail from raw data,maybe raw data error", err
+	    return "Failure", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
 	acceptlo := dev.TxDataAcceptLockOut{}
 	err = json.Unmarshal(tx.Data(), &acceptlo)
 	if err != nil {
-	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
+	    return "Failure", "recover tx.data json string fail from raw data,maybe raw data error", err
 	}
 
 	//ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept:timestamp
 	if acceptlo.TxType != "ACCEPTLOCKOUT" {
-	    return "", "transaction data format error,it is not ACCEPTLOCKOUT tx", fmt.Errorf("tx.data error,it is not ACCEPTLOCKOUT tx.")
+	    return "Failure", "transaction data format error,it is not ACCEPTLOCKOUT tx", fmt.Errorf("tx.data error,it is not ACCEPTLOCKOUT tx.")
 	}
 
 	if acceptlo.Accept != "AGREE" && acceptlo.Accept != "DISAGREE" {
-	    return "", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
+	    return "Failure", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
 	}
 
 	status := "Pending"
@@ -706,7 +706,7 @@ func AcceptLockOut(raw string) (string, string, error) {
 	////bug,check valid accepter
 	exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(from.Hex()))
 	if exsit == false {
-		return "", "dcrm back-end internal error:get lockout data from db fail", fmt.Errorf("get lockout data from db fail")
+		return "Failure", "dcrm back-end internal error:get lockout data from db fail", fmt.Errorf("get lockout data from db fail")
 	}
 
 	check := false
@@ -780,33 +780,27 @@ func AcceptLockOut(raw string) (string, string, error) {
 	}
 
 	if !check {
-		return "", "invalid accepter", fmt.Errorf("invalid accepter")
+		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	}
 
 	//ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept:timestamp
 	exsit,da = dev.GetValueFromPubKeyData(acceptlo.Key)
 	///////
 	if exsit == false {
-		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
 	ac,ok := da.(*dev.AcceptLockOutData)
 	if ok == false {
-		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
 	if ac == nil {
-		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
 	if ac.Mode == "1" {
-		return "", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
-	}
-
-	key2 := dev.Keccak256Hash([]byte(strings.ToLower(ac.DcrmFrom))).Hex()
-	pubdata, tip, err := GetPubKeyData(key2, ac.Account, ac.Cointype)
-	if err != nil {
-		return "", tip, err
+		return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
 	}
 
 	///////
@@ -835,17 +829,17 @@ func AcceptLockOut(raw string) (string, string, error) {
 
 	w, err := dev.FindWorker(acceptlo.Key)
 	if err != nil {
-	    return "",err.Error(),err
+	    return "Failure",err.Error(),err
 	}
 
 	id,_ := dev.GetWorkerId(w)
 	ars := dev.GetAllReplyFromGroup(id,ac.GroupId,dev.Rpc_LOCKOUT,ac.Initiator)
-	tip, err = dev.AcceptLockOut(ac.Initiator,ac.Account, ac.GroupId, ac.Nonce, ac.DcrmFrom, ac.LimitNum, "false", accept, status, "", "", "", ars, ac.WorkId)
+	tip, err := dev.AcceptLockOut(ac.Initiator,ac.Account, ac.GroupId, ac.Nonce, ac.DcrmFrom, ac.LimitNum, "false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
-		return "", tip, err
+		return "Failure", tip, err
 	}
 
-	return pubdata, "", nil
+	return "Success", "", nil
 }
 
 func AcceptSign(raw string) (string, string, error) {

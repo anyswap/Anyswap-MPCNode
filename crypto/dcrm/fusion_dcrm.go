@@ -846,28 +846,28 @@ func AcceptSign(raw string) (string, string, error) {
 	tx := new(types.Transaction)
 	raws := common.FromHex(raw)
 	if err := rlp.DecodeBytes(raws, tx); err != nil {
-		return "", "raw data error", err
+		return "Failure", "raw data error", err
 	}
 
 	signer := types.NewEIP155Signer(big.NewInt(30400)) //
 	from, err := types.Sender(signer, tx)
 	if err != nil {
-	    return "", "recover fusion account fail from raw data,maybe raw data error", err
+	    return "Failure", "recover fusion account fail from raw data,maybe raw data error", err
 	}
 
 	acceptsig := dev.TxDataAcceptSign{}
 	err = json.Unmarshal(tx.Data(), &acceptsig)
 	if err != nil {
-	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
+	    return "Failure", "recover tx.data json string fail from raw data,maybe raw data error", err
 	}
 
 	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
 	if acceptsig.TxType != "ACCEPTSIGN" {
-	    return "", "transaction data format error,it is not ACCEPTSIGN tx", fmt.Errorf("tx.data error,it is not ACCEPTSIGN tx.")
+	    return "Failure", "transaction data format error,it is not ACCEPTSIGN tx", fmt.Errorf("tx.data error,it is not ACCEPTSIGN tx.")
 	}
 
 	if acceptsig.Accept != "AGREE" && acceptsig.Accept != "DISAGREE" {
-	    return "", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
+	    return "Failure", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
 	}
 
 	status := "Pending"
@@ -881,7 +881,7 @@ func AcceptSign(raw string) (string, string, error) {
 	////bug,check valid accepter
 	exsit,da := dev.GetValueFromPubKeyData(strings.ToLower(from.Hex()))
 	if exsit == false {
-		return "", "dcrm back-end internal error:get sign data from db fail", fmt.Errorf("get sign data from db fail")
+		return "Failure", "dcrm back-end internal error:get sign data from db fail", fmt.Errorf("get sign data from db fail")
 	}
 
 	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
@@ -956,33 +956,27 @@ func AcceptSign(raw string) (string, string, error) {
 	}
 
 	if !check {
-	    return "", "invalid accepter", fmt.Errorf("invalid accepter")
+	    return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	}
 
 	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
 	exsit,da = dev.GetValueFromPubKeyData(acceptsig.Key)
 	///////
 	if exsit == false {
-		return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
 	ac,ok := da.(*dev.AcceptSignData)
 	if ok == false {
-	    return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
 	if ac == nil {
-	    return "", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
 	if ac.Mode == "1" {
-	    return "", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
-	}
-
-	dcrmpks, _ := hex.DecodeString(ac.PubKey)
-	pubdata, tip, err := GetPubKeyData(string(dcrmpks[:]), ac.Account,"ALL")
-	if err != nil {
-		return "", tip, err
+	    return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
 	}
 
 	///////
@@ -1011,19 +1005,19 @@ func AcceptSign(raw string) (string, string, error) {
 
 	w, err := dev.FindWorker(acceptsig.Key)
 	if err != nil {
-	    return "",err.Error(),err
+	    return "Failure",err.Error(),err
 	}
 
 	id,_ := dev.GetWorkerId(w)
 	ars := dev.GetAllReplyFromGroup(id,ac.GroupId,dev.Rpc_SIGN,ac.Initiator)
 	
 	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
-	tip, err = dev.AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.UnsignHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
+	tip, err := dev.AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.UnsignHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
-		return "", tip, err
+		return "Failure", tip, err
 	}
 
-	return pubdata, "", nil
+	return "Success", "", nil
 }
 
 type LockOutData struct {

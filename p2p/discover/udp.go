@@ -28,7 +28,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
 	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
-	"github.com/fsn-dev/cryptoCoins/tools/rlp"
+	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
 )
 
 // Errors
@@ -592,15 +592,33 @@ func decodePacket(buf []byte) (packet, NodeID, []byte, error) {
 		req = new(findnode)
 	case neighborsPacket:
 		req = new(neighbors)
+	case Sdk_findGroupPacket:
+		req = new(findgroup)
+	case Dcrm_findGroupPacket:
+		req = new(findgroup)
+	case Xp_findGroupPacket:
+		req = new(findgroup)
+	case Dcrm_groupPacket:
+		req = new(Group)
 	case Sdk_groupPacket:
+		req = new(Group)
+	case Xp_groupPacket:
+		req = new(Group)
+	case Dcrm_groupInfoPacket:
 		req = new(Group)
 	case PeerMsgPacket:
 		req = new(message)
-	case PeerSdkPacket:
-		req = new(messageNormal)
+	case getDcrmPacket:
+		req = new(getdcrmmessage)
 	case getSdkPacket:
 		req = new(getdcrmmessage)
+	case Xp_getCCPacket:
+		req = new(getdcrmmessage)
+	case gotDcrmPacket:
+		req = new(dcrmmessage)
 	case gotSdkPacket:
+		req = new(dcrmmessage)
+	case gotXpPacket:
 		req = new(dcrmmessage)
 	case Ack_Packet:
 		req = new(Ack)

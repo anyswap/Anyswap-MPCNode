@@ -86,9 +86,10 @@ type Table struct {
 type transport interface {
 	ping(NodeID, *net.UDPAddr) error
 	findnode(toid NodeID, addr *net.UDPAddr, target NodeID) ([]*Node, error)
+	findgroup(gid, toid NodeID, addr *net.UDPAddr, target NodeID, p2pType int) ([]*Node, error)
 	sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) error
 	sendMsgToPeer(toid NodeID, toaddr *net.UDPAddr, msg string) error
-	sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int, normal bool) (string, error)
+	sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) (string, error)
 	close()
 }
 
@@ -719,6 +720,8 @@ func pushNode(list []*Node, n *Node, max int) ([]*Node, *Node) {
 func deleteNode(list []*Node, n *Node) []*Node {
 	for i := range list {
 		if list[i].ID == n.ID {
+			//TODO: group
+			//setGroup(n, "remove")
 			return append(list[:i], list[i+1:]...)
 		}
 	}

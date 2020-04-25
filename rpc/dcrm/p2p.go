@@ -83,7 +83,7 @@ func (this *Service) CreateSDKGroup(threshold string, enodes []string) map[strin
 		fmt.Printf("==== CreateSDKGroup() ====, CheckAddPeer err: %v\n", err)
 		return packageResult(FAIL, err.Error(), err.Error(), ret)
 	}
-	gid, count, retErr := layer2.CreateSDKGroup(enodes)
+	gid, count, retErr := layer2.CreateSDKGroup(threshold, enodes)
 	if retErr != "" {
 		status := FAIL
 		fmt.Printf("==== CreateSDKGroup() ====, CreateSDKGroup tip: %v, err: %v\n", retErr, retErr)

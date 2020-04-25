@@ -1185,6 +1185,24 @@ func LockOut(raw string) (string, string, error) {
 	}
 	////
 
+	//check mode
+	key2 := dev.Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+	exsit,da := dev.GetValueFromPubKeyData(key2)
+	if exsit == false {
+		return "", "dcrm back-end internal error:get data from db fail in func lockout", fmt.Errorf("dcrm back-end internal error:get data from db fail in lockout")
+	}
+
+	pubs,ok := da.(*dev.PubKeyData)
+	if pubs == nil || ok == false {
+		return "", "dcrm back-end internal error:get data from db fail in func lockout", fmt.Errorf("dcrm back-end internal error:get data from db fail in func lockout")
+	}
+
+	if pubs.Mode != mode {
+	    return "","can not lockout with different mode in dcrm addr.",fmt.Errorf("can not lockout with different mode in dcrm addr.")
+	}
+
+	//
+
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
 	data := LockOutData{Account:from.Hex(),Nonce:fmt.Sprintf("%v", Nonce),JsonStr:string(tx.Data()),Key: key}
 	LockOutCh <- data

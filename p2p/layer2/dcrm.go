@@ -256,6 +256,10 @@ func recvGroupInfo(gid discover.NodeID, req interface{}, p2pType int, Type strin
 	discover.RecoverGroupAll(discover.SDK_groupList) // Group
 }
 
+func InitP2pDir() {
+	discover.InitP2pDir()
+}
+
 func InitIPPort(port int) {
 	discover.InitIP(getLocalIP(), uint16(port))
 }

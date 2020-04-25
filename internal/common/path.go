@@ -19,8 +19,13 @@ package common
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
+)
+
+var (
+	datadir string
 )
 
 // MakeName creates a node name that follows the ethereum convention
@@ -47,3 +52,53 @@ func AbsolutePath(datadir string, filename string) string {
 	}
 	return filepath.Join(datadir, filename)
 }
+
+func InitDir(dir string) {
+	if dir == "" {
+		datadir = DefaultDataDir()
+		fmt.Printf("==== InitDir() ====, datadir: %v\n", datadir)
+		return
+	}
+	if filepath.IsAbs(dir) {
+		datadir = dir
+	} else {
+		pwdDir, _ := os.Getwd()
+		datadir = filepath.Join(pwdDir, dir)
+		if FileExist(datadir) != true {
+			os.Mkdir(datadir, os.ModePerm)
+		}
+	}
+	fmt.Printf("==== InitDir() ====, datadir: %v\n", datadir)
+}
+
+// DefaultDataDir is the default data directory to use for the databases and other
+// persistence requirements.
+func DefaultDataDir() string {
+	if datadir != "" {
+		return datadir
+	}
+	// Try to place the data folder in the user's home dir
+	home := homeDir()
+	if home != "" {
+		if runtime.GOOS == "darwin" {
+			return filepath.Join(home, "Library", "dcrm-walletservice")
+		} else if runtime.GOOS == "windows" {
+			return filepath.Join(home, "AppData", "Roaming", "dcrm-walletservice")
+		} else {
+			return filepath.Join(home, ".dcrm-walletservice")
+		}
+	}
+	// As we cannot guess a stable location, return empty and handle later
+	return ""
+}
+
+func homeDir() string {
+	if home := os.Getenv("HOME"); home != "" {
+		return home
+	}
+	if usr, err := user.Current(); err == nil {
+		return usr.HomeDir
+	}
+	return ""
+}
+

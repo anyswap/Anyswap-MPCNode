@@ -24,6 +24,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
@@ -57,6 +58,7 @@ var (
 	bootnodes string
 	keyfile   string
 	genKey    string
+	datadir   string
 	app       = cli.NewApp()
 )
 
@@ -84,6 +86,7 @@ func init() {
 		cli.StringFlag{Name: "bootnodes", Value: "", Usage: "boot node", Destination: &bootnodes},
 		cli.StringFlag{Name: "nodekey", Value: "", Usage: "private key filename", Destination: &keyfile},
 		cli.StringFlag{Name: "genkey", Value: "", Usage: "generate a node key", Destination: &genKey},
+		cli.StringFlag{Name: "datadir", Value: "", Usage: "data dir", Destination: &datadir},
 	}
 }
 
@@ -114,6 +117,8 @@ func getConfig() error {
 }
 
 func startP2pNode(c *cli.Context) error {
+	common.InitDir(datadir)
+	layer2.InitP2pDir()
 	getConfig()
 	if port == 0 {
 		port = 4441

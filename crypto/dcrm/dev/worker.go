@@ -4853,8 +4853,10 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
     }
 
     mm := make([]string,0)
-    mm[0] = key + "-" + ower
-    mm[1] = datatype
+    mm = append(mm,key + "-" + ower)
+    mm = append(mm,datatype)
+    //mm[0] = key + "-" + ower
+    //mm[1] = datatype
     var next *list.Element
     for e := l.Front(); e != nil; e = next {
 	    next = e.Next()

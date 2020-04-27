@@ -2088,7 +2088,7 @@ type SignCurNodeInfo struct {
 	Key       string
 	Account   string
 	PubKey   string
-	UnsignHash   string
+	MsgHash   string
 	KeyType   string
 	GroupId   string
 	Nonce     string
@@ -2184,9 +2184,9 @@ func GetCurNodeSignInfo(geter_acc string) (string, string, error) {
 		}
 
 		//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
-		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.UnsignHash + ":" + ac3.Keytype + ":" + ac3.GroupId + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
+		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.MsgHash + ":" + ac3.Keytype + ":" + ac3.GroupId + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
 
-		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, UnsignHash:ac3.UnsignHash, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, LimitNum: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
+		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, MsgHash:ac3.MsgHash, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, LimitNum: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
 		ret2, _ := json.Marshal(los)
 		ret = append(ret, string(ret2))
 	    }
@@ -2444,8 +2444,8 @@ type TxDataAcceptSign struct {
     TimeStamp string
 }
 
-func AcceptSign(initiator string,account string, pubkey string,unsignhash string,keytype string,groupid string, nonce string,threshold string,mode string, deal string, accept string, status string, rsv string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + unsignhash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
+func AcceptSign(initiator string,account string, pubkey string,msghash string,keytype string,groupid string, nonce string,threshold string,mode string, deal string, accept string, status string, rsv string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + msghash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
@@ -2504,7 +2504,7 @@ func AcceptSign(initiator string,account string, pubkey string,unsignhash string
 		wid = workid
 	}
 
-	ac2 := &AcceptSignData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey: ac.PubKey, UnsignHash: ac.UnsignHash,Keytype: ac.Keytype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, Rsv: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+	ac2 := &AcceptSignData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey: ac.PubKey, MsgHash: ac.MsgHash,Keytype: ac.Keytype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, Rsv: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
 
 	e, err := Encode2(ac2)
 	if err != nil {
@@ -2550,7 +2550,7 @@ type TxDataLockOut struct {
 type TxDataSign struct {
     TxType string
     PubKey string
-    UnsignHash string
+    MsgHash string
     Keytype string
     GroupId string
     ThresHold string
@@ -2972,7 +2972,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			
 			w := workers[workid]
 			w.sid = rr.Nonce
-			//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+			//msg = fusionaccount:pubkey:msghash:keytype:groupid:nonce:threshold:mode:key:timestamp
 			sigmsg := SignSendMsgToDcrm{}
 			err = json.Unmarshal([]byte(rr.Msg), &sigmsg)
 			if err != nil {
@@ -3011,11 +3011,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
-				AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Pending", "", "", "", nil,wid)
+				AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Pending", "", "", "", nil,wid)
 			} else {
 				cur_nonce, _, _ := GetSignNonce(sigmsg.Account)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
-				//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+				//msg = fusionaccount:pubkey:msghash:keytype:groupid:nonce:threshold:mode:key:timestamp
 				new_nonce_num, _ := new(big.Int).SetString(sigmsg.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 					_, err = SetSignNonce(sigmsg.Account,sigmsg.Nonce)
@@ -3029,10 +3029,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
-				//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
-				ac := &AcceptSignData{Initiator:self.sender,Account: sigmsg.Account, GroupId: sig.GroupId, Nonce: sigmsg.Nonce, PubKey: sig.PubKey, UnsignHash: sig.UnsignHash, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
+				//msg = fusionaccount:pubkey:msghash:keytype:groupid:nonce:threshold:mode:key:timestamp
+				ac := &AcceptSignData{Initiator:self.sender,Account: sigmsg.Account, GroupId: sig.GroupId, Nonce: sigmsg.Nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
 				err := SaveAcceptSignData(ac)
-				fmt.Printf("%v ===================finish call SaveAcceptSignData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,pubkey = %v,unsignhash = %v,keytype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, sigmsg.Account, sig.GroupId, sigmsg.Nonce, sig.PubKey, sig.UnsignHash, sig.Keytype, sig.ThresHold, sig.Mode, rr.Nonce)
+				fmt.Printf("%v ===================finish call SaveAcceptSignData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,pubkey = %v,msghash = %v,keytype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, sigmsg.Account, sig.GroupId, sigmsg.Nonce, sig.PubKey, sig.MsgHash, sig.Keytype, sig.ThresHold, sig.Mode, rr.Nonce)
 				if err != nil {
 					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set AcceptSignData fail in RecvMsg.Run", Err: fmt.Errorf("set AcceptSignData fail in recvmsg.run")}
 					ch <- res2
@@ -3066,7 +3066,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 			}
 
-			//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+			//msg = fusionaccount:pubkey:msghash:keytype:groupid:nonce:threshold:mode:key:timestamp
 			////bug
 			if sig.Mode == "0" { // self-group
 				////
@@ -3099,10 +3099,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply == false {
 								tip = "don't accept sign"
-								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
+								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
 							} else {
 								tip = ""
-								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Pending", "", "", "", ars,wid)
+								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Pending", "", "", "", ars,wid)
 							}
 
 							///////
@@ -3112,7 +3112,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							fmt.Printf("%v ================== (self *RecvMsg) Run() , agree wait timeout. key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
 							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
 							//bug: if self not accept and timeout
-							AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
+							AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
 							reply = false
 							tip = "get other node accept sign result timeout"
 							//
@@ -3135,7 +3135,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					//////////////////////sign result start/////////////////////////
 					if tip == "get other node accept sign result timeout" {
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
-						AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
+						AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
 					} else {
 						/////////////TODO tmp
 						//sid-enode:SendSignRes:Success:rsv
@@ -3153,10 +3153,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
 						if err != nil {
 							tip = "get other node terminal accept sign result timeout" ////bug
-							AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars,wid)
+							AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars,wid)
 						} else if w.msg_sendsignres.Len() != (w.ThresHold - 1) {
 							fmt.Printf("%v ================RecvMsg,the result SendSignRes msg from other nodes fail,key = %v =======================\n", common.CurrentTime(), rr.Nonce)
-							AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,wid)
+							AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,wid)
 						} else {
 							reply2 := "false"
 							lohash := ""
@@ -3176,10 +3176,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply2 == "true" {
 								fmt.Printf("%v ================RecvMsg,the terminal sign res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars,wid)
+								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars,wid)
 							} else {
 								fmt.Printf("%v ================RecvMsg,the terminal sign res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash,lohash, ars,wid)
+								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash,lohash, ars,wid)
 							}
 						}
 						/////////////////////
@@ -3197,14 +3197,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				if !strings.EqualFold(cur_enode, self.sender) { //no self send
 					ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
-					AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,wid)
+					AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,wid)
 				}
 			}
 
 			rch := make(chan interface{}, 1)
-			//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+			//msg = fusionaccount:pubkey:msghash:keytype:groupid:nonce:threshold:mode:key:timestamp
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , start call sign,key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
-			sign(w.sid, sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sigmsg.Nonce,sig.Mode,rch)
+			sign(w.sid, sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sigmsg.Nonce,sig.Mode,rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish call sign,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get sign return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
@@ -3217,7 +3217,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			//////////////////////sign result start/////////////////////////
 			ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
 			if tip == "get other node accept sign result timeout" {
-				AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip,cherr.Error(),ars,wid)
+				AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip,cherr.Error(),ars,wid)
 			} else {
 				/////////////TODO tmp
 				//sid-enode:SendSignRes:Success:rsv
@@ -3234,10 +3234,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				fmt.Printf("%v ================RecvMsg.Run,the SendSignRes result from other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 				if err != nil {
 					tip = "get other node terminal accept sign result timeout" ////bug
-					AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars, wid)
+					AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars, wid)
 				} else if w.msg_sendsignres.Len() != (w.ThresHold - 1) {
 					fmt.Printf("%v ================RecvMsg.Run,the SendSignRes result from other nodes fail,key = %v =============\n", common.CurrentTime(), rr.Nonce)
-					AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, wid)
+					AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, wid)
 				} else {
 					reply2 := "false"
 					lohash := ""
@@ -3257,10 +3257,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 					if reply2 == "true" {
 						fmt.Printf("%v ================RecvMsg,the terminal sign res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-						AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars, wid)
+						AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars, wid)
 					} else {
 						fmt.Printf("%v ================RecvMsg,the terminal sign res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-						AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash, lohash, ars, wid)
+						AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash, lohash, ars, wid)
 					}
 				}
 				/////////////////////
@@ -3631,6 +3631,17 @@ func Encode2(obj interface{}) (string, error) {
 			return "", err1
 		}
 		return buff.String(), nil*/
+	case *AcceptSignData:
+		ch := obj.(*AcceptSignData)
+
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+
+		err1 := enc.Encode(ch)
+		if err1 != nil {
+		    return "", err1
+		}
+		return buff.String(), nil
 	default:
 		return "", fmt.Errorf("encode obj fail.")
 	}
@@ -3711,6 +3722,21 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		}
 
 		return &res, nil*/
+	}
+
+	if datatype == "AcceptSignData" {
+		var data bytes.Buffer
+		data.Write([]byte(s))
+
+		dec := gob.NewDecoder(&data)
+
+		var res AcceptSignData
+		err := dec.Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
 	}
 
 	return nil, fmt.Errorf("decode obj fail.")
@@ -4068,7 +4094,7 @@ func (self *SignSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	    return false
 	}
 
-	AcceptSign(cur_enode,self.Account, sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId, self.Nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "", "", nil, workid)
+	AcceptSign(cur_enode,self.Account, sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId, self.Nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "", "", nil, workid)
 	
 	for i := 0; i < ReSendTimes; i++ {
 		test := Keccak256Hash([]byte(strings.ToLower(res))).Hex()
@@ -4113,7 +4139,7 @@ func (self *SignSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	time.Sleep(time.Duration(1) * time.Second)
 	ars := GetAllReplyFromGroup(-1,sig.GroupId,Rpc_SIGN,cur_enode)
-	AcceptSign(cur_enode,self.Account,sig.PubKey,sig.UnsignHash,sig.Keytype,sig.GroupId, self.Nonce,sig.ThresHold,sig.Mode,"", "","","","","", ars,workid)
+	AcceptSign(cur_enode,self.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId, self.Nonce,sig.ThresHold,sig.Mode,"", "","","","","", ars,workid)
 	fmt.Printf("%v ===================SignSendMsgToDcrm.Run, finish agree this sign oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
 	
 	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)
@@ -4460,7 +4486,7 @@ type AcceptSignData struct {
 	GroupId   string
 	Nonce     string
 	PubKey  string
-	UnsignHash    string
+	MsgHash    string
 	Keytype  string
 	LimitNum  string
 	Mode      string
@@ -4480,19 +4506,21 @@ type AcceptSignData struct {
 
 func SaveAcceptSignData(ac *AcceptSignData) error {
 	if ac == nil {
-		return fmt.Errorf("no accept data.")
+	    return fmt.Errorf("no accept data.")
 	}
 
 	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Nonce + ":" + ac.PubKey + ":" + ac.UnsignHash + ":" + ac.Keytype + ":" + ac.GroupId + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Nonce + ":" + ac.PubKey + ":" + ac.MsgHash + ":" + ac.Keytype + ":" + ac.GroupId + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
 
 	alos, err := Encode2(ac)
 	if err != nil {
-		return err
+	    fmt.Printf("%v========================SaveAcceptSignData,enode err = %v ================================\n",common.CurrentTime(),err)
+	    return err
 	}
 
 	ss, err := Compress([]byte(alos))
 	if err != nil {
+	    fmt.Printf("%v========================SaveAcceptSignData,compress err = %v ================================\n",common.CurrentTime(),err)
 		return err
 	}
 

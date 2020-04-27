@@ -861,7 +861,7 @@ func AcceptSign(raw string) (string, string, error) {
 	    return "Failure", "recover tx.data json string fail from raw data,maybe raw data error", err
 	}
 
-	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
+	//ACCEPTSIGN:account:pubkey:msghash:keytype:groupid:nonce:threshold:mode:accept:timestamp
 	if acceptsig.TxType != "ACCEPTSIGN" {
 	    return "Failure", "transaction data format error,it is not ACCEPTSIGN tx", fmt.Errorf("tx.data error,it is not ACCEPTSIGN tx.")
 	}
@@ -959,7 +959,7 @@ func AcceptSign(raw string) (string, string, error) {
 	    return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	}
 
-	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
+	//ACCEPTSIGN:account:pubkey:msghash:keytype:groupid:nonce:threshold:mode:accept:timestamp
 	exsit,da = dev.GetValueFromPubKeyData(acceptsig.Key)
 	///////
 	if exsit == false {
@@ -1011,8 +1011,8 @@ func AcceptSign(raw string) (string, string, error) {
 	id,_ := dev.GetWorkerId(w)
 	ars := dev.GetAllReplyFromGroup(id,ac.GroupId,dev.Rpc_SIGN,ac.Initiator)
 	
-	//ACCEPTSIGN:account:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:accept:timestamp
-	tip, err := dev.AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.UnsignHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
+	//ACCEPTSIGN:account:pubkey:msghash:keytype:groupid:nonce:threshold:mode:accept:timestamp
+	tip, err := dev.AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.MsgHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 		return "Failure", tip, err
 	}
@@ -1231,7 +1231,7 @@ func Sign(raw string) (string, string, error) {
 	}
 
 	pubkey := sig.PubKey
-	hash := sig.UnsignHash
+	hash := sig.MsgHash
 	keytype := sig.Keytype
 	groupid := sig.GroupId
 	threshold := sig.ThresHold
@@ -1287,10 +1287,10 @@ func RecivSign() {
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 					_, err := dev.SetSignNonce(data.Account,data.Nonce)
 					if err == nil {
-						fmt.Printf("%v ==============================RecivSign, SetSignNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)
+						fmt.Printf("%v ==============================RecivSign, SetSignNonce, err = %v,pubkey = %v, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, sig.PubKey, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)
 					    ars := dev.GetAllReplyFromGroup(-1,sig.GroupId,dev.Rpc_SIGN,cur_enode)
 
-					    ac := &dev.AcceptSignData{Initiator:cur_enode,Account: data.Account, GroupId: sig.GroupId, Nonce: data.Nonce, PubKey: sig.PubKey, UnsignHash: sig.UnsignHash, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+					    ac := &dev.AcceptSignData{Initiator:cur_enode,Account: data.Account, GroupId: sig.GroupId, Nonce: data.Nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := dev.SaveAcceptSignData(ac)
 						if err == nil {
 							fmt.Printf("%v ==============================RecivSign,finish call SaveAcceptSignData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)

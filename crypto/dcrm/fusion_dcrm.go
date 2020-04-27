@@ -1283,6 +1283,24 @@ func Sign(raw string) (string, string, error) {
 	}
 	////
 
+	//check mode
+	dcrmpks, _ := hex.DecodeString(pubkey)
+	exsit,da := dev.GetValueFromPubKeyData(string(dcrmpks[:]))
+	if exsit == false {
+		return "", "dcrm back-end internal error:get data from db fail in func sign", fmt.Errorf("dcrm back-end internal error:get data from db fail in sign")
+	}
+
+	pubs,ok := da.(*dev.PubKeyData)
+	if pubs == nil || ok == false {
+		return "", "dcrm back-end internal error:get data from db fail in func sign", fmt.Errorf("dcrm back-end internal error:get data from db fail in func sign")
+	}
+
+	if pubs.Mode != mode {
+	    return "","can not sign with different mode in pubkey.",fmt.Errorf("can not sign with different mode in pubkey.")
+	}
+
+	//
+
 	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
 	key := dev.Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + hash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	data := SignData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}

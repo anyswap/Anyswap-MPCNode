@@ -79,6 +79,9 @@ var (
 	C1Data  = common.NewSafeMap(10)
 	DecdsaMap  = common.NewSafeMap(10)
 	GAccs  = common.NewSafeMap(10)
+
+	reqdata_trytimes = 3
+	reqdata_timeout = 10
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {

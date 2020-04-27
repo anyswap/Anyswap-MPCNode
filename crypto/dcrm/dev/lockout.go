@@ -662,7 +662,7 @@ func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"C11",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"C11",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -765,7 +765,7 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqW
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"MTAZK1PROOF",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"MTAZK1PROOF",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -804,7 +804,7 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RpcRe
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"KC",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"KC",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1153,7 +1153,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"MKG",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"MKG",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1231,7 +1231,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 	/////////////////////////request data from dcrm group
 	suss = false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"MKW",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"MKW",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1516,7 +1516,7 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"DELTA1",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"DELTA1",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1669,7 +1669,7 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"D11",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"D11",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1927,7 +1927,7 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigVAB",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigVAB",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -2007,7 +2007,7 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"ZKABPROOF",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"ZKABPROOF",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -2245,7 +2245,7 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RpcReqWorker, idSig
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUT",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUT",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -2306,7 +2306,7 @@ func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RpcReqW
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUTD11",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUTD11",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -2458,7 +2458,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RpcReqWorker, idS
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"SS1",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"SS1",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}

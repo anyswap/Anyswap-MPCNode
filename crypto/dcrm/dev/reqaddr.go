@@ -926,7 +926,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDC11",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDC11",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -981,7 +981,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	/////////////////////////request data from dcrm group
 	suss = false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDZK",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDZK",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1037,7 +1037,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	/////////////////////////request data from dcrm group
 	suss = false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDD11",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDD11",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1194,7 +1194,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	/////////////////////////request data from dcrm group
 	suss = false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDSHARE1",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDSHARE1",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1256,7 +1256,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	/////////////////////////request data from dcrm group
 	suss = false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDCFSB",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"EDCFSB",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1682,7 +1682,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"C1",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"C1",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -1926,7 +1926,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"D1",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"D1",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -2017,7 +2017,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"SHARE1",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"SHARE1",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -2378,7 +2378,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}
@@ -2512,7 +2512,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"ZKUPROOF",3,10)
+	    suss = ReqDataFromGroup(msgprex,w.id,"ZKUPROOF",reqdata_trytimes,reqdata_timeout)
 	} else {
 	    suss = true
 	}

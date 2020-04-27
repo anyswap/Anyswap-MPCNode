@@ -329,12 +329,20 @@ func RecivReqAddr() {
 							go func(d ReqAddrData,reqda *dev.TxDataReqAddr,rad *dev.AcceptReqAddrData) {
 								nums := strings.Split(reqda.ThresHold, "/")
 								nodecnt, _ := strconv.Atoi(nums[1])
+								if nodecnt <= 1 {
+								    return
+								}
+
 								sigs := strings.Split(reqda.Sigs,"|")
 								//SigN = enode://xxxxxxxx@ip:portxxxxxxxxxxxxxxxxxxxxxx
 								_, enodes := dev.GetGroup(reqda.GroupId)
 								nodes := strings.Split(enodes, dev.SepSg)
 								/////////////////////tmp code //////////////////////
 								if reqda.Mode == "0" {
+								        if nodecnt != len(sigs) {
+									    return
+									}
+
 									mp := []string{d.Key, cur_enode}
 									enode := strings.Join(mp, "-")
 									s0 := "GroupAccounts"
@@ -347,12 +355,24 @@ func RecivReqAddr() {
 										for _, node := range nodes {
 										    node2 := dev.ParseNode(node)
 										    enId := strings.Split(en[0],"//")
+										    if len(enId) < 2 {
+											return
+										    }
+
 										    if strings.EqualFold(node2, enId[1]) {
 											enodesigs := []rune(sigs[j])
+											if len(enodesigs) <= len(node) {
+											    return
+											}
+
 											sig := enodesigs[len(node):]
 											fmt.Printf("%v=====================RecivReqAddr, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),j,string(sig[:]),data.Key)
 											//sigbit, _ := hex.DecodeString(string(sig[:]))
 											sigbit := common.FromHex(string(sig[:]))
+											if sigbit == nil {
+											    return
+											}
+
 											pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
 											if err != nil {
 											    fmt.Printf("%v=====================RecivReqAddr, recover pubkey fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)

@@ -1634,6 +1634,10 @@ func Call(msg interface{}, enode string) {
 		    }
 
 		    rats := logs.RecivAcceptRes
+		    if rats == nil {
+			return
+		    }
+
 		    rat := RecivAcceptResTime{RecivTime:cur_time,Reply:s}
 		    rats = append(rats,rat)
 		    logs.RecivAcceptRes = rats
@@ -1657,6 +1661,10 @@ func Call(msg interface{}, enode string) {
 		    }
 
 		    rats := logs.RecivDcrm
+		    if rats == nil {
+			return
+		    }
+
 		    rat := RecivDcrmTime{Round:"C1",RecivTime:cur_time,Msg:ss}
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
@@ -1680,6 +1688,10 @@ func Call(msg interface{}, enode string) {
 		    }
 
 		    rats := logs.RecivDcrm
+		    if rats == nil {
+			return
+		    }
+
 		    rat := RecivDcrmTime{Round:"D1",RecivTime:cur_time,Msg:ss}
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
@@ -1703,6 +1715,10 @@ func Call(msg interface{}, enode string) {
 		    }
 
 		    rats := logs.RecivDcrm
+		    if rats == nil {
+			return
+		    }
+
 		    rat := RecivDcrmTime{Round:"SHARE1",RecivTime:cur_time,Msg:ss}
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
@@ -1726,6 +1742,10 @@ func Call(msg interface{}, enode string) {
 		    }
 
 		    rats := logs.RecivDcrm
+		    if rats == nil {
+			return
+		    }
+
 		    rat := RecivDcrmTime{Round:"NTILDEH1H2",RecivTime:cur_time,Msg:ss}
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
@@ -1749,6 +1769,10 @@ func Call(msg interface{}, enode string) {
 		    }
 
 		    rats := logs.RecivDcrm
+		    if rats == nil {
+			return
+		    }
+
 		    rat := RecivDcrmTime{Round:"ZKUPROOF",RecivTime:cur_time,Msg:ss}
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats

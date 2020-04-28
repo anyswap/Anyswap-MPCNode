@@ -1457,9 +1457,24 @@ func findmsg(l *list.List,node string) bool {
     found := false
     iter := l.Front() //////by type
     for iter != nil {
-	mdss := iter.Value.(string)
+	if iter.Value == nil {
+	    iter = iter.Next()
+	    continue
+	}
+
+	mdss,ok := iter.Value.(string)
+	if ok == false {
+	    iter = iter.Next()
+	    continue
+	}
+
 	ms := strings.Split(mdss, Sep)
 	prexs := strings.Split(ms[0], "-")
+	if len(prexs) < 2 {
+	    iter = iter.Next()
+	    continue
+	}
+
 	node2 := prexs[1]
 	if strings.EqualFold(node2,node) {
 	    found = true

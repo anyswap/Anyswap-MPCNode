@@ -71,7 +71,7 @@ func Start() {
 		}
 
 		if j == 0 {
-		    sigbit := common.FromHex("0x1ef33f72c7894bc0ff130b3de4db8575adad59d506c762902a2381f1a13ca89a6dfb32b2d2273a3ac69a5b43964b38efab7135a502d41104bc5fc8cc97db97021b")
+		    sigbit := common.FromHex("0x1ef33f72c7894bc0ff130b3de4db8575adad59d506c762902a2381f1a13ca89a6dfb32b2d2273a3ac69a5b43964b38efab7135a502d41104bc5fc8cc97db970200")
 		    if sigbit == nil {
 		    return
 		    }

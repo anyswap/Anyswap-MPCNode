@@ -146,7 +146,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			break
 		    }
 		    
-		    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
 
 		if ok2 == false {
@@ -278,7 +278,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		break
 	    }
 	    
-	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 
 	if ok == false {

@@ -244,7 +244,7 @@ func sign_ec(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmp
 	    
 	    w := workers[id]
 	    w.Clear2()
-	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 	return bak_sig
 }
@@ -522,7 +522,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			}
 			w := workers[id]
 			w.Clear2()
-			time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+			time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
 		if flag == false {
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:eos dcrm sign fail", Err: GetRetErr(ErrDcrmSigFail)}
@@ -575,14 +575,14 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			if cherr != nil {
 				w := workers[id]
 				w.Clear2()
-				time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+				time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 				continue
 			}
 			//if ret != "" && eos.IsCanonical([]byte(ret)) == true
 			if ret == "" {
 				w := workers[id]
 				w.Clear2()
-				time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+				time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 				continue
 			}
 			b, _ := hex.DecodeString(ret)
@@ -593,7 +593,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			}
 			w := workers[id]
 			w.Clear2()
-			time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+			time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
 		logs.Debug("======== dcrm_sign evt", "got rsv flag", flag, "ret", ret, "", "========")
 		if flag == false {
@@ -626,7 +626,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		
 		w := workers[id]
 		w.Clear2()
-		time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	    }
 	    return bak_sig
 	}
@@ -3085,7 +3085,7 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointyp
 	    
 	    w := workers[id]
 	    w.Clear2()
-	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 	return bak_sig
 }
@@ -3130,7 +3130,7 @@ func sign_ed(msgprex string,txhash string,save string, pk string, keytype string
 	    
 	    w := workers[id]
 	    w.Clear2()
-	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 	return bak_sig
 }

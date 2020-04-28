@@ -51,8 +51,8 @@ var (
 	SepDel  = "dcrmsepdel"
 
 	PaillierKeyLength        = 2048
-	sendtogroup_lilo_timeout = 800
-	sendtogroup_timeout      = 800
+	sendtogroup_lilo_timeout = 1400
+	sendtogroup_timeout      = 1400
 	ch_t                     = 40
 	lock5                    sync.Mutex
 	lock                     sync.Mutex
@@ -82,7 +82,7 @@ var (
 
 	reqdata_trytimes = 5
 	reqdata_timeout = 20
-	recalc_times = 5
+	recalc_times = 10 
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {

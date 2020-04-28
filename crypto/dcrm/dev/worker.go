@@ -51,9 +51,9 @@ var (
 	SepDel  = "dcrmsepdel"
 
 	PaillierKeyLength        = 2048
-	sendtogroup_lilo_timeout = 600
-	sendtogroup_timeout      = 600
-	ch_t                     = 60
+	sendtogroup_lilo_timeout = 800
+	sendtogroup_timeout      = 800
+	ch_t                     = 40
 	lock5                    sync.Mutex
 	lock                     sync.Mutex
 
@@ -80,8 +80,9 @@ var (
 	DecdsaMap  = common.NewSafeMap(10)
 	GAccs  = common.NewSafeMap(10)
 
-	reqdata_trytimes = 3
-	reqdata_timeout = 10
+	reqdata_trytimes = 5
+	reqdata_timeout = 20
+	recalc_times = 5 
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {
@@ -669,7 +670,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
 func (w *RpcReqWorker) Clear() {
 
-    	fmt.Printf("%v======================RpcReqWorker.Clear, w.id = %v, w.groupid = %v, key = %v ==========================\n",common.CurrentTime(),w.id,w.groupid,w.sid)
+    	//fmt.Printf("%v======================RpcReqWorker.Clear, w.id = %v, w.groupid = %v, key = %v ==========================\n",common.CurrentTime(),w.id,w.groupid,w.sid)
 	w.sid = ""
 	w.groupid = ""
 	w.limitnum = ""
@@ -1031,7 +1032,7 @@ func (w *RpcReqWorker) Clear() {
 }
 
 func (w *RpcReqWorker) Clear2() {
-	fmt.Println("===========RpcReqWorker.Clear2,w.id = %s ===================", w.id)
+	//fmt.Println("===========RpcReqWorker.Clear2,w.id = %s ===================", w.id)
 	var next *list.Element
 
 	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
@@ -1414,11 +1415,11 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	if exist == false {
 	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:fmt.Sprintf("%v",common.CurrentTime()),RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 	    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
-	    fmt.Printf("%v ===============DcrmCall,write map success,key = %v=================\n", common.CurrentTime(),rr.Nonce)
+	    //fmt.Printf("%v ===============DcrmCall,write map success,key = %v=================\n", common.CurrentTime(),rr.Nonce)
 	} else {
 	    logs,ok := log.(*DecdsaLog)
 	    if ok == false {
-		fmt.Printf("%v ===============DcrmCall,ok is false, key = %v=================\n", common.CurrentTime(),rr.Nonce)
+		//fmt.Printf("%v ===============DcrmCall,ok is false, key = %v=================\n", common.CurrentTime(),rr.Nonce)
 		ret := ("fail" + Sep + "decdsa log no exist" + Sep + "dcrm back-end internal error:decdsa log no exist" + Sep + "decdsa log no exist") //TODO "no-data"
 		ch <- ret
 		return ch
@@ -1426,7 +1427,7 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 
 	    logs.DcrmCallTime = fmt.Sprintf("%v",common.CurrentTime())
 	    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
-	    fmt.Printf("%v ===============DcrmCall,write map success,key = %v=================\n", common.CurrentTime(),rr.Nonce)
+	    //fmt.Printf("%v ===============DcrmCall,write map success,key = %v=================\n", common.CurrentTime(),rr.Nonce)
 	}
 	/////////////////
 
@@ -1438,9 +1439,9 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	rch := make(chan interface{}, 1)
 	req := RpcReq{rpcdata: &v, ch: rch}
 	RpcReqQueue <- req
-	fmt.Printf("%v =============DcrmCall, finish send req to Queue,msg hash = %v,key = %v =======================\n", common.CurrentTime(), test, rr.Nonce)
+	//fmt.Printf("%v =============DcrmCall, finish send req to Queue,msg hash = %v,key = %v =======================\n", common.CurrentTime(), test, rr.Nonce)
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, rch)
-	fmt.Printf("%v =============DcrmCall, ret = %v,err = %v,msg hash = %v,key = %v =======================\n", common.CurrentTime(), chret, cherr, test, rr.Nonce)
+	//fmt.Printf("%v =============DcrmCall, ret = %v,err = %v,msg hash = %v,key = %v =======================\n", common.CurrentTime(), chret, cherr, test, rr.Nonce)
 	if cherr != nil {
 		//fail:chret:tip:error
 		ret := ("fail" + Sep + chret + Sep + tip + Sep + cherr.Error())
@@ -1624,7 +1625,7 @@ func Call(msg interface{}, enode string) {
 		    tmp = append(tmp,rat)
 		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:tmp,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
 		} else {
 		    logs,ok := log.(*DecdsaLog)
 		    if ok == false {
@@ -1637,7 +1638,7 @@ func Call(msg interface{}, enode string) {
 		    rats = append(rats,rat)
 		    logs.RecivAcceptRes = rats
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
 		}
 	    case "C1":
 		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
@@ -1647,7 +1648,7 @@ func Call(msg interface{}, enode string) {
 		    tmp = append(tmp,rat)
 		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is C1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is C1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
 		} else {
 		    logs,ok := log.(*DecdsaLog)
 		    if ok == false {
@@ -1660,7 +1661,7 @@ func Call(msg interface{}, enode string) {
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is C1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is C1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
 		}
 	    case "D1":
 		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
@@ -1670,7 +1671,7 @@ func Call(msg interface{}, enode string) {
 		    tmp = append(tmp,rat)
 		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is D1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is D1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
 		} else {
 		    logs,ok := log.(*DecdsaLog)
 		    if ok == false {
@@ -1683,7 +1684,7 @@ func Call(msg interface{}, enode string) {
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is D1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is D1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
 		}
 	    case "SHARE1":
 		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
@@ -1693,7 +1694,7 @@ func Call(msg interface{}, enode string) {
 		    tmp = append(tmp,rat)
 		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is SHARE1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is SHARE1,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
 		} else {
 		    logs,ok := log.(*DecdsaLog)
 		    if ok == false {
@@ -1706,7 +1707,7 @@ func Call(msg interface{}, enode string) {
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is SHARE1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is SHARE1,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
 		}
 	    case "NTILDEH1H2":
 		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
@@ -1716,7 +1717,7 @@ func Call(msg interface{}, enode string) {
 		    tmp = append(tmp,rat)
 		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
 		} else {
 		    logs,ok := log.(*DecdsaLog)
 		    if ok == false {
@@ -1729,7 +1730,7 @@ func Call(msg interface{}, enode string) {
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
 		}
 	    case "ZKUPROOF":
 		log, exist := DecdsaMap.ReadMap(strings.ToLower(prexs[0]))
@@ -1739,7 +1740,7 @@ func Call(msg interface{}, enode string) {
 		    tmp = append(tmp,rat)
 		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:tmp,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is ZKUPROOF,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is ZKUPROOF,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),s,prexs[0])
 		} else {
 		    logs,ok := log.(*DecdsaLog)
 		    if ok == false {
@@ -1752,7 +1753,7 @@ func Call(msg interface{}, enode string) {
 		    rats = append(rats,rat)
 		    logs.RecivDcrm = rats
 		    DecdsaMap.WriteMap(strings.ToLower(prexs[0]),logs)
-		    fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
+		    //fmt.Printf("%v ===============Call,write map success,code is NTILDEH1H2,exist is true,key = %v=================\n", common.CurrentTime(),prexs[0])
 		}
 	    default:
 		    fmt.Println("unkown msg code")
@@ -2619,7 +2620,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			wid = workid
 		}
 
-		fmt.Printf("%v ===================RecvMsg.Run,the msg is not key-enode:C1:X1:X2...Xn, msg hash = %v,wid = %v,key = %v ==============================\n", common.CurrentTime(), test, wid, rr.Nonce)
+		//fmt.Printf("%v ===================RecvMsg.Run,the msg is not key-enode:C1:X1:X2...Xn, msg hash = %v,wid = %v,key = %v ==============================\n", common.CurrentTime(), test, wid, rr.Nonce)
 
 		//rpc_lockout
 		if rr.MsgType == "rpc_lockout" {
@@ -2660,7 +2661,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			w.limitnum = lo.ThresHold
 			gcnt, _ := GetGroup(w.groupid)
 			w.NodeCnt = gcnt
-			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
+			//fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
 			w.ThresHold = w.NodeCnt
 
 			nums := strings.Split(w.limitnum, "/")
@@ -2678,7 +2679,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			w.DcrmFrom = lo.DcrmAddr
 
-			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
+			//fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
 				AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Pending", "", "", "", nil, wid)
@@ -2732,7 +2733,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							kd := KeyData{Key: []byte(dcrmpub), Data: ss3}
 							PubKeyDataChan <- kd
 							LdbPubKeyData.WriteMap(dcrmpub, pubs3)
-							fmt.Printf("%v ==============================RecvMsg.Run,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(),rr.Nonce)
+							//fmt.Printf("%v ==============================RecvMsg.Run,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(),rr.Nonce)
 						    }
 						}
 					    }
@@ -2803,7 +2804,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				<-timeout
 
-				fmt.Printf("%v ================== (self *RecvMsg) Run() , the terminal accept lockout result = %v,key = %v,============================\n", common.CurrentTime(), reply, rr.Nonce)
+				//fmt.Printf("%v ================== (self *RecvMsg) Run() , the terminal accept lockout result = %v,key = %v,============================\n", common.CurrentTime(), reply, rr.Nonce)
 
 				if reply == false {
 					//////////////////////lockout result start/////////////////////////
@@ -2821,15 +2822,15 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						s2 := "don't accept lockout."
 						ss := enode + Sep + s0 + Sep + s1 + Sep + s2
 						SendMsgToDcrmGroup(ss, w.groupid)
-						fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+						//fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 						_, _, err := GetChannelValue(ch_t, w.bsendlockoutres)
-						fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes, err = %v,key = %v =============\n", common.CurrentTime(), err, rr.Nonce)
+						//fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes, err = %v,key = %v =============\n", common.CurrentTime(), err, rr.Nonce)
 						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
 						if err != nil {
 							tip = "get other node terminal accept lockout result timeout" ////bug
 							AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, wid)
 						} else if w.msg_sendlockoutres.Len() != (w.ThresHold - 1) {
-							fmt.Printf("%v ================RecvMsg,the result SendLockOutRes msg from other nodes fail,key = %v =======================\n", common.CurrentTime(), rr.Nonce)
+							//fmt.Printf("%v ================RecvMsg,the result SendLockOutRes msg from other nodes fail,key = %v =======================\n", common.CurrentTime(), rr.Nonce)
 							AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
 						} else {
 							reply2 := "false"
@@ -2851,10 +2852,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							}
 
 							if reply2 == "true" {
-								fmt.Printf("%v ================RecvMsg,the terminal lockout res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+								//fmt.Printf("%v ================RecvMsg,the terminal lockout res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 								AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, wid)
 							} else {
-								fmt.Printf("%v ================RecvMsg,the terminal lockout res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+								//fmt.Printf("%v ================RecvMsg,the terminal lockout res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 								AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, wid)
 							}
 						}
@@ -2881,7 +2882,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			//msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold:mode:key:timestamp
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , start call validate_lockout,key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
 			validate_lockout(w.sid, lomsg.Account, lo.DcrmAddr, lo.Cointype, lo.Value, lo.DcrmTo, lomsg.Nonce, lo.Memo,rch)
-			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish call validate_lockout,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
+			//fmt.Printf("%v ================== (self *RecvMsg) Run() , finish call validate_lockout,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get validate_lockout return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
 			if chret != "" {
@@ -2905,14 +2906,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				s2 := cherr.Error()
 				ss := enode + Sep + s0 + Sep + s1 + Sep + s2
 				SendMsgToDcrmGroup(ss, w.groupid)
-				fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+				//fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 				_, _, err := GetChannelValue(ch_t, w.bsendlockoutres)
-				fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+				//fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 				if err != nil {
 					tip = "get other node terminal accept lockout result timeout" ////bug
 					AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, wid)
 				} else if w.msg_sendlockoutres.Len() != (w.ThresHold - 1) {
-					fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes fail,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+					//fmt.Printf("%v ================RecvMsg.Run,the SendLockOutRes result from other nodes fail,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 					AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, wid)
 				} else {
 					reply2 := "false"
@@ -2934,10 +2935,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 
 					if reply2 == "true" {
-						fmt.Printf("%v ================RecvMsg,the terminal lockout res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+						//fmt.Printf("%v ================RecvMsg,the terminal lockout res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 						AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, wid)
 					} else {
-						fmt.Printf("%v ================RecvMsg,the terminal lockout res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+						//fmt.Printf("%v ================RecvMsg,the terminal lockout res is fail. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 						AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, wid)
 					}
 				}
@@ -3338,7 +3339,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    }
 			}
 
-			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
+			//fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
 				AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "false", "Pending", "", "", "", nil, wid,"")
@@ -3348,7 +3349,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				new_nonce_num, _ := new(big.Int).SetString(reqmsg.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 					_, err = SetReqAddrNonce(reqmsg.Account, reqmsg.Nonce)
-					fmt.Printf("%v =======================RecvMsg.Run,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v =========================\n", common.CurrentTime(), reqmsg.Account, req.GroupId, req.ThresHold, req.Mode, reqmsg.Nonce, err, rr.Nonce)
+					//fmt.Printf("%v =======================RecvMsg.Run,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v =========================\n", common.CurrentTime(), reqmsg.Account, req.GroupId, req.ThresHold, req.Mode, reqmsg.Nonce, err, rr.Nonce)
 					if err != nil {
 						//TODO must set acceptreqaddr(.....)
 						res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set req addr nonce fail in RecvMsg.Run", Err: fmt.Errorf("set req addr nonce fail in recvmsg.run")}
@@ -3389,11 +3390,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				if exist == false {
 				    logs := &DecdsaLog{CurEnode:enodeinfo,GroupEnodes:groupinfo,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 				    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
-				    fmt.Printf("%v ===============RecvMsg.Run,write map success,exist is false,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,rr.Nonce)
+				    //fmt.Printf("%v ===============RecvMsg.Run,write map success,exist is false,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,rr.Nonce)
 				} else {
 				    logs,ok := log.(*DecdsaLog)
 				    if ok == false {
-					fmt.Printf("%v ===============RecvMsg.Run,ok if false, key = %v=================\n", common.CurrentTime(),rr.Nonce)
+					//fmt.Printf("%v ===============RecvMsg.Run,ok if false, key = %v=================\n", common.CurrentTime(),rr.Nonce)
 					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm log fail in RecvMsg.Run", Err: fmt.Errorf("get dcrm log fail in recvmsg.run")}
 					ch <- res2
 					return false
@@ -3402,7 +3403,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				    logs.CurEnode = enodeinfo
 				    logs.GroupEnodes = groupinfo
 				    DecdsaMap.WriteMap(strings.ToLower(rr.Nonce),logs)
-				    fmt.Printf("%v ===============RecvMsg.Run,write map success,exist is true,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,rr.Nonce)
+				    //fmt.Printf("%v ===============RecvMsg.Run,write map success,exist is true,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,rr.Nonce)
 				}
 				//////////////////
 
@@ -3453,7 +3454,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 
 					wtmp2 := workers[wid]
-					fmt.Printf("%v ================== (self *RecvMsg) Run(),wid = %v,key = %v ============================\n", common.CurrentTime(), wid, rr.Nonce)
+					//fmt.Printf("%v ================== (self *RecvMsg) Run(),wid = %v,key = %v ============================\n", common.CurrentTime(), wid, rr.Nonce)
 
 					for {
 						select {
@@ -3504,7 +3505,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				<-timeout
 
-				fmt.Printf("%v ================== (self *RecvMsg) Run(), the terminal accept req addr result = %v, key = %v ============================\n", common.CurrentTime(), reply, rr.Nonce)
+				//fmt.Printf("%v ================== (self *RecvMsg) Run(), the terminal accept req addr result = %v, key = %v ============================\n", common.CurrentTime(), reply, rr.Nonce)
 
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
 				if reply == false {
@@ -3531,7 +3532,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey, w.id = %v, w.groupid = %v, key = %v ============================\n", common.CurrentTime(), w.id,w.groupid,rr.Nonce)
 			dcrm_genPubKey(w.sid, reqmsg.Account, "ALL", rch, req.Mode, reqmsg.Nonce)
-			fmt.Printf("%v ================== (self *RecvMsg) Run(), finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
+			//fmt.Printf("%v ================== (self *RecvMsg) Run(), finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
 			if cherr != nil {

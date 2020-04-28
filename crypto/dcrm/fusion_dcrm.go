@@ -59,6 +59,53 @@ func Start() {
 	dev.InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
 	fmt.Printf("%v ==================dcrm.Start(),cur_enode = %v ====================\n", common.CurrentTime(), cur_enode)
+	
+	///////////only for test///////////////////
+	Sigs := "enode://e6e6240b78b4d1f293693e14042099ad86b7277824d23534ffef720c31470342b7daf0a34289913b837e2ec45aee68eaab62c7170c22eb5328324037f34ad7a6@47.92.168.85:133330x1ef33f72c7894bc0ff130b3de4db8575adad59d506c762902a2381f1a13ca89a6dfb32b2d2273a3ac69a5b43964b38efab7135a502d41104bc5fc8cc97db97021b|enode://fa93e6d82b859ddf5344ae39a6e1de3c38e0172f0678e0fda5b83cd245cbbabea5e89ff80c65dfac4aee25b93051b0e460388fb6c7f3ed5a368d501a48b96099@47.92.168.85:133310xd608be1aba865b699e0fc19c12172d8bd2c2f022a5f7b3a47fdfd613d2c330530283af5509355a2a19bd331a8018bf4cb2b6d9b645b4a911aa1e1f9fd0ab76b21c|enode://15dfed9e836d2259066921412413b295e6c97f3dddb9a1078a9f7778099a56bd00d31a248fd1d2853e7c09e2adefb8870f98b232220293c815d0b2610e8bcc6e@47.92.168.85:133320x88bda080e0a9ed3d851b9728bcd189ee1cb0eaa737b6d3eafd7fd566aa7f975c02fb58a188bef0239102fa69c8adf12499c75be097f9e5499e03133851543d6e1b"
+	sigs := strings.Split(Sigs,"|")
+	for j := 0; j < len(sigs); j++ {
+	    en := strings.Split(sigs[j], "@")
+		enId := strings.Split(en[0],"//")
+		if len(enId) < 2 {
+		    return
+		}
+
+		if j == 0 {
+		    sigbit := common.FromHex("0x1ef33f72c7894bc0ff130b3de4db8575adad59d506c762902a2381f1a13ca89a6dfb32b2d2273a3ac69a5b43964b38efab7135a502d41104bc5fc8cc97db97021b")
+		    if sigbit == nil {
+		    return
+		    }
+
+		    pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte("e6e6240b78b4d1f293693e14042099ad86b7277824d23534ffef720c31470342b7daf0a34289913b837e2ec45aee68eaab62c7170c22eb5328324037f34ad7a6")),sigbit)
+		    if err != nil {
+			fmt.Printf("%v==============dcrm.Start(),recover pubkey err = %v ===================\n",common.CurrentTime(),err)
+		    return
+		    }
+		    pubkey := hex.EncodeToString(pub)
+		    fmt.Printf("%v==============dcrm.Start(),recover pubkey = %v, pubkey str = %v ===================\n",common.CurrentTime(),pub,pubkey)
+		}
+	}
+
+	enode := "e6e6240b78b4d1f293693e14042099ad86b7277824d23534ffef720c31470342b7daf0a34289913b837e2ec45aee68eaab62c7170c22eb5328324037f34ad7a6"
+	a := []byte(enode)
+	b := crypto.Keccak256(a)
+	/*priv := "0x1da03e8cbf28a9d4ceca118516a1e3b985f8baa004d1fabfa7b1d7a0a6568fc4"
+	p1 := common.FromHex(priv) //FromHex
+	sig1, err := crypto.Sign(b,p1)
+	if err != nil {
+		panic(err)
+	}
+	sig11 := common.ToHex(sig1)
+	fmt.Printf("================b str(EncodeToString) = %v, b str(common.ToHex) = %v,sig11 = %v =======================\n", hex.EncodeToString(b),common.ToHex(b),"enode://0294fd278d8db6fe2c0a917dfb6f5777993ff4d31c5d7b44dc3228197dee180cbea39509c167914eabe2979d9167927843ebfd52dfebfbb0c50103ab1ee2a1b3@47.92.168.85:13335"+sig11)
+	p2,_ := hex.DecodeString(priv) //DecodeString
+	sig2, err := crypto.Sign(b,p2)
+	if err != nil {
+		panic(err)
+	}
+	sig22 := common.ToHex(sig2)
+	fmt.Printf("================b str(EncodeToString) = %v, b str(common.ToHex) = %v,sig22 = %v =======================\n", hex.EncodeToString(b),common.ToHex(b),"enode://0294fd278d8db6fe2c0a917dfb6f5777993ff4d31c5d7b44dc3228197dee180cbea39509c167914eabe2979d9167927843ebfd52dfebfbb0c50103ab1ee2a1b3@47.92.168.85:13335"+sig22)*/
+	fmt.Printf("================b str(EncodeToString) = %v, b str(common.ToHex) = %v =======================\n", hex.EncodeToString(b),common.ToHex(b))
+	////////////////////////////////////////
 }
 
 type DcrmAccountsBalanceRes struct {
@@ -289,7 +336,7 @@ func RecivReqAddr() {
 				new_nonce_num, _ := new(big.Int).SetString(data.Nonce, 10)
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 					_, err := dev.SetReqAddrNonce(data.Account,data.Nonce)
-					fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n", common.CurrentTime(), data.Account, req.GroupId, req.ThresHold,req.Mode, data.Nonce, err, data.Key)
+					//fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n", common.CurrentTime(), data.Account, req.GroupId, req.ThresHold,req.Mode, data.Nonce, err, data.Key)
 					if err == nil {
 					    ars := dev.GetAllReplyFromGroup(-1,req.GroupId,dev.Rpc_REQADDR,cur_enode)
 
@@ -314,14 +361,14 @@ func RecivReqAddr() {
 						    if exist == false {
 							logs := &dev.DecdsaLog{CurEnode:enodeinfo,GroupEnodes:groupinfo,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 							dev.DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
-							fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
+							//fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
 						    } else {
 							logs,ok := log.(*dev.DecdsaLog)
 							if ok == true {
 							    logs.CurEnode = enodeinfo
 							    logs.GroupEnodes = groupinfo
 							    dev.DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
-							    fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
+							    //fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
 							}
 						    }
 						    //////////////////
@@ -351,6 +398,7 @@ func RecivReqAddr() {
 
 									sstmp := s1
 									for j := 0; j < nodecnt; j++ {
+									    //fmt.Printf("%v==================RecivReqAddr, j = %v, sig data = %v, key = %v ==================\n",common.CurrentTime(),j,sigs[j],data.Key)
 										en := strings.Split(sigs[j], "@")
 										for _, node := range nodes {
 										    node2 := dev.ParseNode(node)
@@ -359,6 +407,7 @@ func RecivReqAddr() {
 											return
 										    }
 
+										    //fmt.Printf("%v==================RecivReqAddr, j = %v, sig data = %v, node = %v, node2 = %v, key = %v ==================\n",common.CurrentTime(),j,sigs[j],enId[1],node2,data.Key)
 										    if strings.EqualFold(node2, enId[1]) {
 											enodesigs := []rune(sigs[j])
 											if len(enodesigs) <= len(node) {
@@ -366,13 +415,13 @@ func RecivReqAddr() {
 											}
 
 											sig := enodesigs[len(node):]
-											fmt.Printf("%v=====================RecivReqAddr, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),j,string(sig[:]),data.Key)
 											//sigbit, _ := hex.DecodeString(string(sig[:]))
 											sigbit := common.FromHex(string(sig[:]))
 											if sigbit == nil {
 											    return
 											}
 
+											//fmt.Printf("%v=====================RecivReqAddr, j = %v, sig data = %v, hex raw sig = %v, raw sig = %v, key = %v ==================\n",common.CurrentTime(),j,sigs[j],string(sig[:]),string(sigbit),data.Key)
 											pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
 											if err != nil {
 											    fmt.Printf("%v=====================RecivReqAddr, recover pubkey fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
@@ -430,7 +479,7 @@ func RecivReqAddr() {
 									}
 
 									dev.SendMsgToDcrmGroup(ss, reqda.GroupId)
-									fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n", common.CurrentTime(), ss, d.Key)
+									//fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n", common.CurrentTime(), ss, d.Key)
 									rad.Sigs = sstmp
 									if dev.SaveAcceptReqAddrData(rad) != nil { //re-save
 									    return
@@ -1074,7 +1123,7 @@ func RecivLockOut() {
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 					_, err := dev.SetLockOutNonce(data.Account,data.Nonce)
 					if err == nil {
-						fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, groupid, threshold, mode, data.Nonce, data.Key)
+						//fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, groupid, threshold, mode, data.Nonce, data.Key)
 					    ars := dev.GetAllReplyFromGroup(-1,groupid,dev.Rpc_LOCKOUT,cur_enode)
 
 					    ac := &dev.AcceptLockOutData{Initiator:cur_enode,Account: data.Account, GroupId: groupid, Nonce: data.Nonce, DcrmFrom: dcrmaddr, DcrmTo: dcrmto, Value: value, Cointype: cointype, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
@@ -1108,7 +1157,7 @@ func RecivLockOut() {
 										    kd := dev.KeyData{Key: []byte(dcrmpub), Data: ss3}
 										    dev.PubKeyDataChan <- kd
 										    dev.LdbPubKeyData.WriteMap(dcrmpub, pubs3)
-										    fmt.Printf("%v ==============================RecivLockOut,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
+										    //fmt.Printf("%v ==============================RecivLockOut,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
 										    go func(d LockOutData) {
 											    for i := 0; i < 1; i++ {
 												    txhash, _, err2 := dev.SendLockOut(d.Account, d.Nonce, d.JsonStr,d.Key)

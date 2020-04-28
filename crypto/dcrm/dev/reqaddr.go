@@ -134,7 +134,21 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	cur_enode = GetSelfEnode()
 
 	if types.IsDefaultED25519(cointype) {
-		ok2 := KeyGenerate_ed(msgprex, ch, id, cointype)
+		ok2 := false
+		for j := 0;j < recalc_times;j++ { //try 20 times
+		    if len(ch) != 0 {
+			<-ch
+		    }
+
+		    wk.Clear2()
+		    ok2 = KeyGenerate_ed(msgprex, ch, id, cointype)
+		    if ok2 == true {
+			break
+		    }
+		    
+		    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+		}
+
 		if ok2 == false {
 			return
 		}
@@ -252,7 +266,21 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		return
 	}
 
-	ok := KeyGenerate_DECDSA(msgprex, ch, id, cointype)
+	ok := false
+	for j := 0;j < recalc_times;j++ { //try 20 times
+	    if len(ch) != 0 {
+		<-ch
+	    }
+
+	    wk.Clear2()
+	    ok = KeyGenerate_DECDSA(msgprex, ch, id, cointype)
+	    if ok == true {
+		break
+	    }
+	    
+	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	}
+
 	if ok == false {
 		return
 	}
@@ -1421,6 +1449,28 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	return true
 }
 
+func findmsg(l *list.List,node string) bool {
+    if l == nil || node == "" {
+	return false
+    }
+
+    found := false
+    iter := l.Front() //////by type
+    for iter != nil {
+	mdss := iter.Value.(string)
+	ms := strings.Split(mdss, Sep)
+	prexs := strings.Split(ms[0], "-")
+	node2 := prexs[1]
+	if strings.EqualFold(node2,node) {
+	    found = true
+	    break
+	}
+	iter = iter.Next()
+    }
+
+    return found
+}
+
 func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeout int) bool {
     w := workers[wid]
     if w == nil {
@@ -1543,38 +1593,45 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
     _, enodes := GetGroup(w.groupid)
     nodes := strings.Split(enodes, SepSg)
     for _, node := range nodes {
-	    found := false
 	    node2 := ParseNode(node)
 	    if strings.EqualFold(cur_enode,node2) {
 		continue
 	    }
 
-	    iter := l.Front() //////by type
-	    for iter != nil {
-		mdss := iter.Value.(string)
-		ms := strings.Split(mdss, Sep)
-		prexs := strings.Split(ms[0], "-")
-		node3 := prexs[1]
-		if strings.EqualFold(node3,node2) {
-		    found = true
-		    break
-		}
-		iter = iter.Next()
-	    }
-
+	    found := findmsg(l,node2)
 	    if !found {
 		wg.Add(1)
-		go func() {
+		go func(key string,ll *list.List,ower string,dt string,bb chan bool,times int,tt int) {
 		    defer wg.Done()
+
+		    //fmt.Printf("%v===================ReqDataFromGroup, key = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,ower,dt,times,tt)
 		    i := 0
-		    for i = 0;i < trytimes; i++ {
+		    for i = 0;i < times; i++ {
+			//fmt.Printf("%v===================ReqDataFromGroup, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
+			
+			if findmsg(ll,ower) {
+			    fmt.Printf("%v===================ReqDataFromGroup, find msg success, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
+			    
+			    _, _, err := GetChannelValue(tt, bb) //wait 20 second     //by type
+			    if err == nil {
+				fmt.Printf("%v===================ReqDataFromGroup, find msg success and get all data, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
+				suss = true
+				if len(b) == 0 {
+				    b <- true  //add for exiting other threads
+				}
+				break
+			    }
+			}
+
+			//fmt.Printf("%v===================ReqDataFromGroup, no find msg, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
+			
 			//enode1 no reciv enode2 c1 data
 			//key-enode1:NoReciv:enode2:C1
-			noreciv := msgprex + "-" + cur_enode + Sep + "NoReciv" + Sep + node2 + Sep + datatype   //by type
+			noreciv := key + "-" + cur_enode + Sep + "NoReciv" + Sep + ower + Sep + dt   //by type
 			SendMsgToDcrmGroup(noreciv, w.groupid)
-			_, _, err := GetChannelValue(timeout, b) //wait 20 second     //by type
+			_, _, err := GetChannelValue(tt, bb) //wait 20 second     //by type
 			if err == nil {
-			    fmt.Printf("%v===================ReqDataFromGroup, req data success, key = %v, data = %v ========================\n",common.CurrentTime(),msgprex,noreciv)
+			    fmt.Printf("%v===================ReqDataFromGroup, no find msg and get all data, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
 			    suss = true
 			    if len(b) == 0 {
 				b <- true  //add for exiting other threads
@@ -1582,7 +1639,7 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
 			    break
 			}
 		    }
-		}()
+		}(msgprex,l,node2,datatype,b,trytimes,timeout)
 	    }
     }
     wg.Wait()
@@ -2761,63 +2818,63 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 	if status != true {
 		return status
 	}
-	fmt.Printf("%v=================generate key,round one finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,round one finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	u1Shares, status := DECDSAGenKeyRoundTwo(msgprex, cointype, ch, w, u1Poly, ids)
 	if status != true {
 		return status
 	}
-	fmt.Printf("%v=================generate key,round two finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,round two finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, ids) == false {
 		return false
 	}
-	fmt.Printf("%v=================generate key,round three finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,round three finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	sstruct, ds, status := DECDSAGenKeyVerifyShareData(msgprex, cointype, ch, w, u1PolyG, u1Shares, ids)
 	if status != true {
 		return status
 	}
-	fmt.Printf("%v=================generate key,verify share data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,verify share data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	cs, udecom, status := DECDSAGenKeyVerifyCommitment(msgprex, cointype, ch, w, ds, commitU1G, ids)
 	if status != true {
 		return false
 	}
-	fmt.Printf("%v=================generate key,verify commitment finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,verify commitment finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	ug, status := DECDSAGenKeyCalcPubKey(msgprex, cointype, ch, w, udecom, ids)
 	if status != true {
 		return false
 	}
-	fmt.Printf("%v=================generate key,calc pubkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,calc pubkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	skU1, status := DECDSAGenKeyCalcPrivKey(msgprex, cointype, ch, w, sstruct, ids)
 	if status != true {
 		return false
 	}
-	fmt.Printf("%v=================generate key,calc privkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,calc privkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	u1NtildeH1H2, status := DECDSAGenKeyRoundFour(msgprex, ch, w)
 	if status != true {
 		return false
 	}
-	fmt.Printf("%v=================generate key,round four finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,round four finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeyRoundFive(msgprex, ch, w, u1) != true {
 		return false
 	}
-	fmt.Printf("%v=================generate key,round five finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,round five finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeyVerifyZKU(msgprex, cointype, ch, w, ids, ug) != true {
 		return false
 	}
-	fmt.Printf("%v=================generate key,verify zk of u1 finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,verify zk of u1 finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	if DECDSAGenKeySaveData(cointype, ids, w, ch, skU1, u1PaillierPk, u1PaillierSk, cs, u1NtildeH1H2) != true {
 		return false
 	}
-	fmt.Printf("%v=================generate key,save data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v=================generate key,save data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	//*******************!!!Distributed ECDSA End!!!**********************************
 	return true

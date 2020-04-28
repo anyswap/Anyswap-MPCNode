@@ -224,9 +224,29 @@ func sign_ec(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmp
 	fmt.Println("===================!!!Start!!!====================")
 
 	///////
-	bak_sig := Sign_ec2(msgprex, save, txhash, keytype, dcrmpkx, dcrmpky, ch, id)
-	return bak_sig
+	var ch1 = make(chan interface{}, 1)
+	var bak_sig string
+	for i:=0;i < recalc_times;i++ {
+	    if len(ch1) != 0 {
+		<-ch1
+	    }
 
+	    //fmt.Printf("%v=====================sign_ec, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
+	    bak_sig = Sign_ec2(msgprex, save, txhash, keytype, dcrmpkx, dcrmpky, ch1, id)
+	    ret, _, cherr := GetChannelValue(ch_t, ch1)
+	    //fmt.Printf("%v=====================sign_ec,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+	    if ret != "" && cherr == nil {
+		//fmt.Printf("%v=====================sign_ec,success sign, ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+		    res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+		    ch <- res
+		    break
+	    }
+	    
+	    w := workers[id]
+	    w.Clear2()
+	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	}
+	return bak_sig
 }
 
 func validate_lockout(wsid string, account string, dcrmaddr string, cointype string, value string, to string, nonce string, memo string,ch chan interface{}) {
@@ -481,13 +501,18 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		var tip string
 		var bak_sig string
 		//25-->1
-		for i := 0; i < 1; i++ {
+		for i := 0; i < recalc_times; i++ {
+			if len(ch1) != 0 {
+			    <-ch1
+			}
+
 			bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx2, dcrmpky2, ch1, id)
 			ret, tip, _ = GetChannelValue(ch_t, ch1)
 			//if ret != "" && eos.IsCanonical([]byte(ret)) == true
 			if ret == "" {
 				w := workers[id]
 				w.Clear2()
+				time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
 				continue
 			}
 			b, _ := hex.DecodeString(ret)
@@ -497,6 +522,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			}
 			w := workers[id]
 			w.Clear2()
+			time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
 		}
 		if flag == false {
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:eos dcrm sign fail", Err: GetRetErr(ErrDcrmSigFail)}
@@ -539,21 +565,24 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		var cherr error
 		var bak_sig string
 		//25-->1
-		for i := 0; i < 1; i++ {
+		for i := 0; i < recalc_times; i++ {
+			if len(ch1) != 0 {
+			    <-ch1
+			}
+
 			bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
 			ret, tip, cherr = GetChannelValue(ch_t, ch1)
 			if cherr != nil {
-				logs.Debug("======== dcrm_sign evt", "cherr", cherr)
-				time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
 				w := workers[id]
 				w.Clear2()
+				time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
 				continue
 			}
-			logs.Debug("======== dcrm_sign evt", "signature", ret, "", "========")
 			//if ret != "" && eos.IsCanonical([]byte(ret)) == true
 			if ret == "" {
 				w := workers[id]
 				w.Clear2()
+				time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
 				continue
 			}
 			b, _ := hex.DecodeString(ret)
@@ -564,6 +593,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			}
 			w := workers[id]
 			w.Clear2()
+			time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
 		}
 		logs.Debug("======== dcrm_sign evt", "got rsv flag", flag, "ret", ret, "", "========")
 		if flag == false {
@@ -576,8 +606,29 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		ch <- res
 		return bak_sig
 	} else {
-		bak_sig := Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx, dcrmpky, ch, id)
-		return bak_sig
+	    var ch1 = make(chan interface{}, 1)
+	    var bak_sig string
+	    for i:=0;i < recalc_times;i++ {
+		if len(ch1) != 0 {
+		    <-ch1
+		}
+
+		//fmt.Printf("%v=====================dcrm_sign, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
+		bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
+		ret, _, cherr := GetChannelValue(ch_t, ch1)
+		//fmt.Printf("%v=====================dcrm_sign,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+		if ret != "" && cherr == nil {
+		    //fmt.Printf("%v=====================dcrm_sign,success sign, ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+			res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+			ch <- res
+			break
+		}
+		
+		w := workers[id]
+		w.Clear2()
+		time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	    }
+	    return bak_sig
 	}
 
 	return ""
@@ -2670,7 +2721,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	ids := GetIds(cointype, w.groupid)
 	idSign := ids[:w.ThresHold]
 	mMtA, _ := new(big.Int).SetString(message, 16)
-	fmt.Printf("%v =============Sign_ec2, w.ThresHold = %v, key = %v ================\n", common.CurrentTime(), w.ThresHold, msgprex)
+	//fmt.Printf("%v =============Sign_ec2, w.ThresHold = %v, key = %v ================\n", common.CurrentTime(), w.ThresHold, msgprex)
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
@@ -2678,154 +2729,154 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	if skU1 == nil || w1 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,map privkey finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,map privkey finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	u1K, u1Gamma, commitU1GammaG := DECDSASignRoundOne(msgprex, w, idSign, ch)
 	if u1K == nil || u1Gamma == nil || commitU1GammaG == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round one finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round one finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	ukc, ukc2, ukc3 := DECDSASignPaillierEncrypt(cointype, save, w, idSign, u1K, ch)
 	if ukc == nil || ukc2 == nil || ukc3 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,paillier encrypt finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,paillier encrypt finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	zk1proof, zkfactproof := DECDSASignRoundTwo(msgprex, cointype, save, w, idSign, ch, u1K, ukc2, ukc3)
 	if zk1proof == nil || zkfactproof == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round two finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round two finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	if DECDSASignRoundThree(msgprex, cointype, save, w, idSign, ch, ukc) == false {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round three finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round three finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	if DECDSASignVerifyZKNtilde(msgprex, cointype, save, w, idSign, ch, ukc, ukc3, zk1proof, zkfactproof) == false {
 		return ""
 	}
-	fmt.Printf("%v===================sign,verify zk ntilde finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,verify zk ntilde finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	betaU1Star, betaU1, vU1Star, vU1 := GetRandomBetaV(PaillierKeyLength, w.ThresHold)
-	fmt.Printf("%v===================sign,get random betaU1Star/vU1Star finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,get random betaU1Star/vU1Star finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	mkg, mkg_mtazk2, mkw, mkw_mtazk2, status := DECDSASignRoundFour(msgprex, cointype, save, w, idSign, ukc, ukc3, zkfactproof, u1Gamma, w1, betaU1Star, vU1Star, ch)
 	if status != true {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round four finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round four finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	if DECDSASignVerifyZKGammaW(msgprex,cointype, save, w, idSign, ukc, ukc3, zkfactproof, mkg, mkg_mtazk2, mkw, mkw_mtazk2, ch) != true {
 		return ""
 	}
-	fmt.Printf("%v===================sign,verify zk gamma/w finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,verify zk gamma/w finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	u1PaillierSk := GetSelfPrivKey(cointype, idSign, w, save, ch)
 	if u1PaillierSk == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,get self privkey finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,get self privkey finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	alpha1 := DecryptCkGamma(cointype, idSign, w, u1PaillierSk, mkg, ch)
 	if alpha1 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,decrypt paillier(k)XGamma finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,decrypt paillier(k)XGamma finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	uu1 := DecryptCkW(cointype, idSign, w, u1PaillierSk, mkw, ch)
 	if uu1 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,decrypt paillier(k)Xw1 finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,decrypt paillier(k)Xw1 finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	delta1 := CalcDelta(alpha1, betaU1, ch, w.ThresHold)
 	if delta1 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,calc delta finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,calc delta finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	sigma1 := CalcSigma(uu1, vU1, ch, w.ThresHold)
 	if sigma1 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,calc sigma finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,calc sigma finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	deltaSum := DECDSASignRoundFive(msgprex, cointype, delta1, idSign, w, ch)
 	if deltaSum == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round five finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round five finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	u1GammaZKProof := DECDSASignRoundSix(msgprex, u1Gamma, commitU1GammaG, w, ch)
 	if u1GammaZKProof == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round six finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round six finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	ug := DECDSASignVerifyCommitment(cointype, w, idSign, commitU1GammaG, u1GammaZKProof, ch)
 	if ug == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,verify commitment finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,verify commitment finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	r, deltaGammaGy := Calc_r(cointype, w, idSign, ug, deltaSum, ch)
 	if r == nil || deltaGammaGy == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,calc r finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,calc r finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	// 5. calculate s
 	us1 := CalcUs(mMtA, u1K, r, sigma1)
-	fmt.Printf("%v===================sign,calc self s finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,calc self s finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	commitBigVAB1, commitbigvabs, rho1, l1 := DECDSASignRoundSeven(msgprex, r, deltaGammaGy, us1, w, ch)
 	if commitBigVAB1 == nil || commitbigvabs == nil || rho1 == nil || l1 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round seven finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round seven finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	u1zkABProof, zkabproofs := DECDSASignRoundEight(msgprex, r, deltaGammaGy, us1, l1, rho1, w, ch, commitBigVAB1)
 	if u1zkABProof == nil || zkabproofs == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round eight finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round eight finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	commitbigcom, BigVx, BigVy := DECDSASignVerifyBigVAB(cointype, w, commitbigvabs, zkabproofs, commitBigVAB1, u1zkABProof, idSign, r, deltaGammaGy, ch)
 	if commitbigcom == nil || BigVx == nil || BigVy == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,verify BigVAB finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,verify BigVAB finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	commitbiguts, commitBigUT1 := DECDSASignRoundNine(msgprex, cointype, w, idSign, mMtA, r, pkx, pky, BigVx, BigVy, rho1, commitbigcom, l1, ch)
 	if commitbiguts == nil || commitBigUT1 == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round nine finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round nine finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	commitbigutd11s := DECDSASignRoundTen(msgprex, commitBigUT1, w, ch)
 	if commitbigutd11s == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round ten finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round ten finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	if DECDSASignVerifyBigUTCommitment(cointype, commitbiguts, commitbigutd11s, commitBigUT1, w, idSign, ch, commitbigcom) != true {
 		return ""
 	}
-	fmt.Printf("%v===================sign,verify BigUT commitment finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,verify BigUT commitment finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	ss1s := DECDSASignRoundEleven(msgprex, cointype, w, idSign, ch, us1)
 	if ss1s == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,round eleven finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,round eleven finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	s := Calc_s(cointype, w, idSign, ss1s, ch)
 	if s == nil {
 		return ""
 	}
-	fmt.Printf("%v===================sign,calc s finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,calc s finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	// 3. justify the s
 	bb := false
@@ -2841,7 +2892,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 		ch <- res
 		return ""
 	}
-	fmt.Printf("%v===================sign,justify s finish, key = %v =====================\n",common.CurrentTime(),msgprex)
+	//fmt.Printf("%v===================sign,justify s finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	// **[End-Test]  verify signature with MtA
 	signature := new(ECDSASignature)
@@ -2945,10 +2996,10 @@ func EncryptMsg(msg string, enodeID string) (string, error) {
 }
 
 func DecryptMsg(cm string) (string, error) {
-	test := Keccak256Hash([]byte(strings.ToLower(cm))).Hex()
+	//test := Keccak256Hash([]byte(strings.ToLower(cm))).Hex()
 	nodeKey, errkey := crypto.LoadECDSA(KeyFile)
 	if errkey != nil {
-		fmt.Printf("%v =========DecryptMsg finish crypto.LoadECDSA,err = %v,keyfile = %v,msg hash = %v =================\n", common.CurrentTime(), errkey, KeyFile, test)
+		//fmt.Printf("%v =========DecryptMsg finish crypto.LoadECDSA,err = %v,keyfile = %v,msg hash = %v =================\n", common.CurrentTime(), errkey, KeyFile, test)
 		return "", errkey
 	}
 
@@ -2956,7 +3007,7 @@ func DecryptMsg(cm string) (string, error) {
 	var m []byte
 	m, err := prv.Decrypt([]byte(cm), nil, nil)
 	if err != nil {
-		fmt.Printf("%v =========DecryptMsg finish prv.Decrypt,err = %v,keyfile = %v,msg hash = %v =================\n", common.CurrentTime(), err, KeyFile, test)
+		//fmt.Printf("%v =========DecryptMsg finish prv.Decrypt,err = %v,keyfile = %v,msg hash = %v =================\n", common.CurrentTime(), err, KeyFile, test)
 		return "", err
 	}
 
@@ -2971,7 +3022,7 @@ func SendMsgToPeer(enodes string, msg string) {
 	en := strings.Split(string(enodes[8:]), "@")
 	cm, err := EncryptMsg(msg, en[0])
 	if err != nil {
-		fmt.Printf("%v =========SendMsgToPeer,encrypt msg fail,err = %v =================\n", common.CurrentTime(), err)
+		//fmt.Printf("%v =========SendMsgToPeer,encrypt msg fail,err = %v =================\n", common.CurrentTime(), err)
 		return
 	}
 
@@ -3005,7 +3056,28 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointyp
 
 	logs.Debug("===================!!!Start!!!====================")
 
-	bak_sig := Sign_ed(msgprex, save, txhash, cointype, pk, ch, id)
+	var ch1 = make(chan interface{}, 1)
+	var bak_sig string
+	for i:=0;i < recalc_times;i++ {
+	    if len(ch1) != 0 {
+		<-ch1
+	    }
+
+	    //fmt.Printf("%v=====================dcrm_sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
+	    bak_sig = Sign_ed(msgprex, save, txhash, cointype, pk, ch1, id)
+	    ret, _, cherr := GetChannelValue(ch_t, ch1)
+	    //fmt.Printf("%v=====================dcrm_sign_ed,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+	    if ret != "" && cherr == nil {
+		//fmt.Printf("%v=====================dcrm_sign_ed,success sign, ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+		    res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+		    ch <- res
+		    break
+	    }
+	    
+	    w := workers[id]
+	    w.Clear2()
+	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	}
 	return bak_sig
 }
 
@@ -3029,7 +3101,28 @@ func sign_ed(msgprex string,txhash string,save string, pk string, keytype string
 
 	logs.Debug("===================!!!Start!!!====================")
 
-	bak_sig := Sign_ed(msgprex, save, txhash, keytype, pk, ch, id)
+	var ch1 = make(chan interface{}, 1)
+	var bak_sig string
+	for i:=0;i < recalc_times;i++ {
+	    if len(ch1) != 0 {
+		<-ch1
+	    }
+
+	    //fmt.Printf("%v=====================sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
+	    bak_sig = Sign_ed(msgprex, save, txhash, keytype, pk, ch1, id)
+	    ret, _, cherr := GetChannelValue(ch_t, ch1)
+	    //fmt.Printf("%v=====================sign_ed,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+	    if ret != "" && cherr == nil {
+		//fmt.Printf("%v=====================sign_ed,success sign, ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
+		    res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+		    ch <- res
+		    break
+	    }
+	    
+	    w := workers[id]
+	    w.Clear2()
+	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	}
 	return bak_sig
 }
 

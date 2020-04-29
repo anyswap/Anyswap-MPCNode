@@ -51,9 +51,9 @@ var (
 	SepDel  = "dcrmsepdel"
 
 	PaillierKeyLength        = 2048
-	sendtogroup_lilo_timeout = 1400
-	sendtogroup_timeout      = 1400
-	ch_t                     = 40
+	sendtogroup_lilo_timeout = 130000  
+	sendtogroup_timeout      = 130000
+	ch_t                     = 100
 	lock5                    sync.Mutex
 	lock                     sync.Mutex
 
@@ -80,9 +80,9 @@ var (
 	DecdsaMap  = common.NewSafeMap(10)
 	GAccs  = common.NewSafeMap(10)
 
-	reqdata_trytimes = 5
-	reqdata_timeout = 20
-	recalc_times = 10 
+	reqdata_trytimes = 20
+	reqdata_timeout = 60
+	recalc_times = 100
 )
 
 func RegP2pGetGroupCallBack(f func(string) (int, string)) {
@@ -670,7 +670,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
 func (w *RpcReqWorker) Clear() {
 
-    	//fmt.Printf("%v======================RpcReqWorker.Clear, w.id = %v, w.groupid = %v, key = %v ==========================\n",common.CurrentTime(),w.id,w.groupid,w.sid)
+    	fmt.Printf("%v======================RpcReqWorker.Clear, w.id = %v, w.groupid = %v, key = %v ==========================\n",common.CurrentTime(),w.id,w.groupid,w.sid)
 	w.sid = ""
 	w.groupid = ""
 	w.limitnum = ""
@@ -1032,7 +1032,7 @@ func (w *RpcReqWorker) Clear() {
 }
 
 func (w *RpcReqWorker) Clear2() {
-	//fmt.Println("===========RpcReqWorker.Clear2,w.id = %s ===================", w.id)
+	fmt.Printf("%v================= RpcReqWorker.Clear2, w.id = %v ===================\n",common.CurrentTime(),w.id)
 	var next *list.Element
 
 	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
@@ -5246,18 +5246,18 @@ func DisMsg(msg string) {
 	case "C1":
 		///bug
 		if w.msg_c1.Len() >= w.NodeCnt {
-			fmt.Println("=================Get C1 fail 11111,msg =%v,prex =%s================", msg, prexs[0])
+			fmt.Printf("%v=================Get C1 fail,w.msg_c1 was full, msg =%v, key =%v ================\n", common.CurrentTime(),msg, prexs[0])
 			return
 		}
 		///
 		if Find(w.msg_c1, msg) {
-			fmt.Println("=================C1 has exsit,msg=%v,prex =%s================", msg, prexs[0])
+			fmt.Printf("%v=================C1 has exsit, msg=%v, key =%v ================\n", common.CurrentTime(),msg,prexs[0])
 			return
 		}
 
-		//fmt.Println("=================Get C1 msg =%v,prex =%s===================",msg,prexs[0])
+		fmt.Printf("%v=================DisMsg, before pushback, w.msg_c1 len = %v, w.NodeCnt = %v, key = %v===================",common.CurrentTime(),w.msg_c1.Len(),w.NodeCnt,prexs[0])
 		w.msg_c1.PushBack(msg)
-		fmt.Printf("%v======================DisMsg, w.msg_c1 len = %v, w.NodeCnt = %v, key = %v =======================\n",common.CurrentTime(),w.msg_c1.Len(),w.NodeCnt,prexs[0])
+		fmt.Printf("%v======================DisMsg, after pushback, w.msg_c1 len = %v, w.NodeCnt = %v, key = %v =======================\n",common.CurrentTime(),w.msg_c1.Len(),w.NodeCnt,prexs[0])
 		if w.msg_c1.Len() == w.NodeCnt {
 			fmt.Printf("%v======================DisMsg, Get All C1,w.msg_c1 len = %v, w.NodeCnt = %v, key = %v =======================\n",common.CurrentTime(),w.msg_c1.Len(),w.NodeCnt,prexs[0])
 			w.bc1 <- true
@@ -5272,7 +5272,9 @@ func DisMsg(msg string) {
 			return
 		}
 
+		fmt.Printf("%v=================DisMsg, before pushback, w.msg_d1_1 len = %v, w.NodeCnt = %v, key = %v===================",common.CurrentTime(),w.msg_d1_1.Len(),w.NodeCnt,prexs[0])
 		w.msg_d1_1.PushBack(msg)
+		fmt.Printf("%v======================DisMsg, after pushback, w.msg_d1_1 len = %v, w.NodeCnt = %v, key = %v =======================\n",common.CurrentTime(),w.msg_d1_1.Len(),w.NodeCnt,prexs[0])
 		if w.msg_d1_1.Len() == w.NodeCnt {
 			common.Info("===================Get All D1 ", "msg hash = ", test, "prex = ", prexs[0], "", "====================")
 			w.bd1_1 <- true

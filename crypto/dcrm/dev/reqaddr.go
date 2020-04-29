@@ -136,16 +136,17 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	if types.IsDefaultED25519(cointype) {
 		ok2 := false
 		for j := 0;j < recalc_times;j++ { //try 20 times
+		    fmt.Printf("%v===============dcrm_genPubKey, it is ed25519,recalc j = %v, key = %v ================\n",common.CurrentTime(),j,msgprex)
 		    if len(ch) != 0 {
 			<-ch
 		    }
 
-		    wk.Clear2()
 		    ok2 = KeyGenerate_ed(msgprex, ch, id, cointype)
 		    if ok2 == true {
 			break
 		    }
 		    
+		    wk.Clear2()
 		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
 
@@ -268,16 +269,17 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	ok := false
 	for j := 0;j < recalc_times;j++ { //try 20 times
+	    fmt.Printf("%v===============dcrm_genPubKey, recalc j = %v, key = %v ================\n",common.CurrentTime(),j,msgprex)
 	    if len(ch) != 0 {
 		<-ch
 	    }
 
-	    wk.Clear2()
 	    ok = KeyGenerate_DECDSA(msgprex, ch, id, cointype)
 	    if ok == true {
 		break
 	    }
 	    
+	    wk.Clear2()
 	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 

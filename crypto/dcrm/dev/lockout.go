@@ -227,6 +227,7 @@ func sign_ec(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmp
 	var ch1 = make(chan interface{}, 1)
 	var bak_sig string
 	for i:=0;i < recalc_times;i++ {
+	    fmt.Printf("%v===============sign_ec, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
 	    if len(ch1) != 0 {
 		<-ch1
 	    }
@@ -502,6 +503,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		var bak_sig string
 		//25-->1
 		for i := 0; i < recalc_times; i++ {
+			fmt.Printf("%v===============dcrm_sign, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
 			if len(ch1) != 0 {
 			    <-ch1
 			}
@@ -566,6 +568,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		var bak_sig string
 		//25-->1
 		for i := 0; i < recalc_times; i++ {
+			fmt.Printf("%v===============dcrm_sign, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
 			if len(ch1) != 0 {
 			    <-ch1
 			}
@@ -609,6 +612,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 	    var ch1 = make(chan interface{}, 1)
 	    var bak_sig string
 	    for i:=0;i < recalc_times;i++ {
+		fmt.Printf("%v===============dcrm_sign, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
 		if len(ch1) != 0 {
 		    <-ch1
 		}
@@ -3068,6 +3072,7 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointyp
 	var ch1 = make(chan interface{}, 1)
 	var bak_sig string
 	for i:=0;i < recalc_times;i++ {
+	    fmt.Printf("%v===============dcrm_sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
 	    if len(ch1) != 0 {
 		<-ch1
 	    }
@@ -3113,6 +3118,7 @@ func sign_ed(msgprex string,txhash string,save string, pk string, keytype string
 	var ch1 = make(chan interface{}, 1)
 	var bak_sig string
 	for i:=0;i < recalc_times;i++ {
+	    fmt.Printf("%v===============sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
 	    if len(ch1) != 0 {
 		<-ch1
 	    }

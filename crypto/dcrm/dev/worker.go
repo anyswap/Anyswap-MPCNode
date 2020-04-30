@@ -2115,25 +2115,25 @@ type SignCurNodeInfo struct {
 	KeyType   string
 	GroupId   string
 	Nonce     string
-	LimitNum  string
+	ThresHold  string
 	Mode      string
 	TimeStamp string
 }
 
-func GetCurNodeSignInfo(geter_acc string) (string, string, error) {
+func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {
-	    return "","",nil
+	    return nil,"",nil
 	}
 
 	//check obj type
 	_,ok := da.([]byte)
 	if ok == false {
-	    return "","get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
+	    return nil,"get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
 	}
 	//
 
-	var ret []string
+	var ret []*SignCurNodeInfo
 	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
 	    exsit,data := GetValueFromPubKeyData(key)
@@ -2209,16 +2209,14 @@ func GetCurNodeSignInfo(geter_acc string) (string, string, error) {
 		//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
 		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.MsgHash + ":" + ac3.Keytype + ":" + ac3.GroupId + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
 
-		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, MsgHash:ac3.MsgHash, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, LimitNum: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
-		ret2, _ := json.Marshal(los)
-		ret = append(ret, string(ret2))
+		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, MsgHash:ac3.MsgHash, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
+		ret = append(ret, los)
 	    }
 	    ////
 	}
 
 	///////
-	ss := strings.Join(ret, "|")
-	return ss, "", nil
+	return ret, "", nil
 }
 
 func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce string, threshold string, mode string) (string, bool) {
@@ -4183,30 +4181,6 @@ func (self *SignSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	return true
 }
 
-type GetCurNodeSignInfoSendMsgToDcrm struct {
-	Account string //geter_acc
-}
-
-func (self *GetCurNodeSignInfoSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RpcMaxWorker {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id fail", Err: GetRetErr(ErrGetWorkerIdError)}
-		ch <- res
-		return false
-	}
-
-	ret, tip, err := GetCurNodeSignInfo(self.Account)
-	if err != nil {
-		res2 := RpcDcrmRes{Ret: "", Tip: tip, Err: err}
-		ch <- res2
-		return false
-	}
-
-	res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
-	ch <- res2
-
-	return true
-}
-
 type RpcType int32
 
 const (
@@ -4559,42 +4533,6 @@ func SendSign(acc string, nonce string, txdata string, key string) (string, stri
 	RpcReqQueueCache <- req
 	chret, tip, cherr := GetChannelValue(600, req.ch)
 
-	if cherr != nil {
-		return chret, tip, cherr
-	}
-
-	return chret, "", nil
-}
-
-func SendReqToGroup(msg string, rpctype string) (string, string, error) {
-	var req RpcReq
-	var keytest string
-	switch rpctype {
-	case "rpc_get_cur_node_sign_info":
-		v := GetCurNodeSignInfoSendMsgToDcrm{Account: msg}
-		rch := make(chan interface{}, 1)
-		req = RpcReq{rpcdata: &v, ch: rch}
-		break
-	default:
-		return "", "", nil
-	}
-
-	var t int
-	if rpctype == "rpc_lockout" {
-		t = sendtogroup_lilo_timeout
-	} else {
-		t = sendtogroup_timeout
-	}
-
-	//RpcReqQueue <- req
-	RpcReqQueueCache <- req
-	if rpctype == "rpc_lockout" || rpctype == "rpc_req_dcrmaddr" {
-		common.Info("=======================call dev.SendReqToGroup,send reqaddr req to Queue Cache finish.", "key = ", keytest, "", "==========================")
-	}
-	chret, tip, cherr := GetChannelValue(t, req.ch)
-	if rpctype == "rpc_lockout" || rpctype == "rpc_req_dcrmaddr" {
-		common.Info("=======================call dev.SendReqToGroup,calc dcrm addrs finish.", "ret = ", chret, "tip = ", tip, "cherr = ", cherr, "key = ", keytest, "", "==========================")
-	}
 	if cherr != nil {
 		return chret, tip, cherr
 	}

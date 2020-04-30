@@ -238,82 +238,6 @@ func ExsitPubKey(account string, cointype string) (string, bool) {
 	return pubkey, true
 }
 
-func SendReqToGroup(msg string, rpctype string) (string, string, error) {
-	if strings.EqualFold(rpctype, "rpc_req_dcrmaddr") {
-		//msg = account:cointype:groupid:nonce:threshold:mode:tx1:tx2:tx3...:txn
-		msgs := strings.Split(msg, ":")
-		if len(msgs) < 6 {
-			return "", "dcrm back-end internal parameter error in func SendReqToGroup", fmt.Errorf("param error.")
-		}
-
-		//coin := "ALL"
-		if !types.IsDefaultED25519(msgs[1]) {
-			//coin = msgs[1]
-			msgs[1] = "ALL"
-		}
-
-		str := strings.Join(msgs, ":")
-
-		//account:cointype:groupid:nonce:threshold:mode:tx1:tx2:tx3....:txn
-		//str := msgs[0] + ":" + coin + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]
-		ret, tip, err := dev.SendReqToGroup(str, rpctype)
-		if err != nil || ret == "" {
-			return "", tip, err
-		}
-
-		pubkeyhex := ret
-		keytest := dev.Keccak256Hash([]byte(strings.ToLower(msgs[0] + ":" + msgs[1] + ":" + msgs[2] + ":" + msgs[3] + ":" + msgs[4] + ":" + msgs[5]))).Hex()
-		common.Info("====================call dcrm.SendReqToGroup,finish calc dcrm addrs, ", "pubkey = ", ret, "key = ", keytest, "", "=======================")
-
-		var m interface{}
-		if !strings.EqualFold(msgs[1], "ALL") {
-			h := coins.NewCryptocoinHandler(msgs[1])
-			if h == nil {
-				return "", "cointype is not supported", fmt.Errorf("req addr fail.cointype is not supported.")
-			}
-
-			ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-			if err != nil {
-				return "", "get dcrm addr fail from pubkey:" + pubkeyhex, err
-			}
-
-			m = &DcrmAddrRes{Account: msgs[0], PubKey: pubkeyhex, DcrmAddr: ctaddr, Cointype: msgs[1]}
-			b, _ := json.Marshal(m)
-			return string(b), "", nil
-		}
-
-		addrmp := make(map[string]string)
-		for _, ct := range coins.Cointypes {
-			if strings.EqualFold(ct, "ALL") {
-				continue
-			}
-
-			h := coins.NewCryptocoinHandler(ct)
-			if h == nil {
-				continue
-			}
-			ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-			if err != nil {
-				continue
-			}
-
-			addrmp[ct] = ctaddr
-		}
-
-		m = &DcrmPubkeyRes{Account: msgs[0], PubKey: pubkeyhex, DcrmAddress: addrmp}
-		b, _ := json.Marshal(m)
-		common.Info("====================call dcrm.SendReqToGroup,finish calc dcrm addrs,get all dcrm addrs. ", "addrs = ", string(b), "key = ", keytest, "", "=======================")
-		return string(b), "", nil
-	}
-
-	ret, tip, err := dev.SendReqToGroup(msg, rpctype)
-	if err != nil || ret == "" {
-		return "", tip, err
-	}
-
-	return ret, "", nil
-}
-
 type ReqAddrData struct {
 	Account   string
 	Nonce     string
@@ -1624,14 +1548,14 @@ func GetCurNodeLockOutInfo(account string) (*CurNodeLockOutInfoResult, string, e
     return ret,tip,err
 }
 
-func GetCurNodeSignInfo(geter_acc string) ([]string, string, error) {
-	reply, tip, err := SendReqToGroup(geter_acc, "rpc_get_cur_node_sign_info")
-	if reply == "" || err != nil {
-	    return nil, tip, err
-	}
+type CurNodeSignInfoResult struct {
+    Result []*dev.SignCurNodeInfo
+}
 
-	ss := strings.Split(reply, "|")
-	return ss, "", nil
+func GetCurNodeSignInfo(account string) (*CurNodeSignInfoResult, string, error) {
+    res,tip,err := dev.GetCurNodeSignInfo(account)
+    ret := &CurNodeSignInfoResult{Result:res}
+    return ret,tip,err
 }
 
 func init() {

@@ -392,28 +392,22 @@ func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{
 func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
 	fmt.Printf("%v ==============call rpc GetCurNodeSignInfo from web,account = %v ================\n", common.CurrentTime(), account)
 
-	data := make(map[string]interface{})
 	s, tip, err := dcrm.GetCurNodeSignInfo(account)
 	fmt.Printf("%v ==============finish call rpc GetCurNodeSignInfo ,ret = %v,err = %v, account = %v ================\n", common.CurrentTime(), s, err, account)
 	if err != nil {
-		data["result"] = ""
 		return map[string]interface{}{
 			"Status": "Error",
 			"Tip":    tip,
 			"Error":  err.Error(),
-			"Data":   data,
+			"Data":   "",
 		}
-	}
-
-	for k, v := range s {
-		data[strconv.Itoa(k)] = v
 	}
 
 	return map[string]interface{}{
 		"Status": "Success",
 		"Tip":    "",
 		"Error":  "",
-		"Data":   data,
+		"Data":   s,
 	}
 }
 

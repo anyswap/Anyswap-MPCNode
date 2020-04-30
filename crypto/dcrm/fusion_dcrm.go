@@ -1528,34 +1528,19 @@ func GetSignNonce(account string) (string, string, error) {
 	return nonce, "", nil
 }
 
-type CurNodeReqAddrInfoResult struct {
-    Result []*dev.ReqAddrReply
-}
-
-func GetCurNodeReqAddrInfo(account string) (*CurNodeReqAddrInfoResult, string, error) {
+func GetCurNodeReqAddrInfo(account string) ([]*dev.ReqAddrReply, string, error) {
     res,tip,err := dev.GetCurNodeReqAddrInfo(account)
-    ret := &CurNodeReqAddrInfoResult{Result:res}
-    return ret,tip,err
+    return res,tip,err
 }
 
-type CurNodeLockOutInfoResult struct {
-    Result []*dev.LockOutCurNodeInfo
-}
-
-func GetCurNodeLockOutInfo(account string) (*CurNodeLockOutInfoResult, string, error) {
+func GetCurNodeLockOutInfo(account string) ([]*dev.LockOutCurNodeInfo, string, error) {
     res,tip,err := dev.GetCurNodeLockOutInfo(account)
-    ret := &CurNodeLockOutInfoResult{Result:res}
-    return ret,tip,err
+    return res,tip,err
 }
 
-type CurNodeSignInfoResult struct {
-    Result []*dev.SignCurNodeInfo
-}
-
-func GetCurNodeSignInfo(account string) (*CurNodeSignInfoResult, string, error) {
+func GetCurNodeSignInfo(account string) ([]*dev.SignCurNodeInfo, string, error) {
     res,tip,err := dev.GetCurNodeSignInfo(account)
-    ret := &CurNodeSignInfoResult{Result:res}
-    return ret,tip,err
+    return res,tip,err
 }
 
 func init() {

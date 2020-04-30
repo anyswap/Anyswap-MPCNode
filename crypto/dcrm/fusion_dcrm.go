@@ -1604,14 +1604,14 @@ func GetSignNonce(account string) (string, string, error) {
 	return nonce, "", nil
 }
 
-func GetCurNodeReqAddrInfo(geter_acc string) ([]string, string, error) {
-	reply, tip, err := SendReqToGroup(geter_acc, "rpc_get_cur_node_reqaddr_info")
-	if reply == "" || err != nil {
-		return nil, tip, err
-	}
+type CurNodeReqAddrInfoResult struct {
+    Result []*dev.ReqAddrReply
+}
 
-	ss := strings.Split(reply, "|")
-	return ss, "", nil
+func GetCurNodeReqAddrInfo(account string) (*CurNodeReqAddrInfoResult, string, error) {
+    res,tip,err := dev.GetCurNodeReqAddrInfo(account)
+    ret := &CurNodeReqAddrInfoResult{Result:res}
+    return ret,tip,err
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) ([]string, string, error) {

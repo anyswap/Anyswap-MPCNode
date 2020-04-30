@@ -348,28 +348,22 @@ func (this *Service) GetSignNonce(account string) map[string]interface{} {
 func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{} {
 	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v ================\n", common.CurrentTime(), account)
 
-	data := make(map[string]interface{})
 	s, tip, err := dcrm.GetCurNodeReqAddrInfo(account)
 	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v,ret = %v,err = %v ================\n", common.CurrentTime(), account, s, err)
 	if err != nil {
-		data["result"] = ""
 		return map[string]interface{}{
 			"Status": "Error",
 			"Tip":    tip,
 			"Error":  err.Error(),
-			"Data":   data,
+			"Data":   "",
 		}
-	}
-
-	for k, v := range s {
-		data[strconv.Itoa(k)] = v
 	}
 
 	return map[string]interface{}{
 		"Status": "Success",
 		"Tip":    "",
 		"Error":  "",
-		"Data":   data,
+		"Data":   s,
 	}
 }
 

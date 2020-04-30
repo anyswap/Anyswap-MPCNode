@@ -1614,14 +1614,14 @@ func GetCurNodeReqAddrInfo(account string) (*CurNodeReqAddrInfoResult, string, e
     return ret,tip,err
 }
 
-func GetCurNodeLockOutInfo(geter_acc string) ([]string, string, error) {
-	reply, tip, err := SendReqToGroup(geter_acc, "rpc_get_cur_node_lockout_info")
-	if reply == "" || err != nil {
-		return nil, tip, err
-	}
+type CurNodeLockOutInfoResult struct {
+    Result []*dev.LockOutCurNodeInfo
+}
 
-	ss := strings.Split(reply, "|")
-	return ss, "", nil
+func GetCurNodeLockOutInfo(account string) (*CurNodeLockOutInfoResult, string, error) {
+    res,tip,err := dev.GetCurNodeLockOutInfo(account)
+    ret := &CurNodeLockOutInfoResult{Result:res}
+    return ret,tip,err
 }
 
 func GetCurNodeSignInfo(geter_acc string) ([]string, string, error) {

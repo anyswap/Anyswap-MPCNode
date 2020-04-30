@@ -2121,15 +2121,6 @@ type SignCurNodeInfo struct {
 }
 
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
-    //////test only
-    var ret2 []*SignCurNodeInfo
-    los1 := &SignCurNodeInfo{Key: "11111", Account: "xxxxx", PubKey:"xxxx", MsgHash:"xxxx", KeyType:"xxxx", GroupId: "xxxx", Nonce: "xxxxx", ThresHold: "xxxx", Mode: "xxxx", TimeStamp: "xxxxx"}
-    ret2 = append(ret2, los1)
-    los2 := &SignCurNodeInfo{Key: "2222", Account: "xxxxx", PubKey:"xxxx", MsgHash:"xxxx", KeyType:"xxxx", GroupId: "xxxx", Nonce: "xxxxx", ThresHold: "xxxx", Mode: "xxxx", TimeStamp: "xxxxx"}
-    ret2 = append(ret2, los2)
-    return ret2,"",nil
-    ///////////////
-
 	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {
 	    return nil,"",nil

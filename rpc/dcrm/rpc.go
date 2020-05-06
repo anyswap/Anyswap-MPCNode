@@ -46,7 +46,7 @@ type Service struct{}
 // raw: tx raw data
 //return pubkey and coins addr
 func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数名首字母必须大写
-	fmt.Printf("%v ==========call rpc ReqDcrmAddr from web,raw = %v ===========\n", common.CurrentTime(), raw)
+	//fmt.Printf("%v ==========call rpc ReqDcrmAddr from web,raw = %v ===========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
 	if raw == "" {
@@ -60,7 +60,7 @@ func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数�
 	}
 
 	ret, tip, err := dcrm.ReqDcrmAddr(raw)
-	fmt.Printf("%v ==========call rpc ReqDcrmAddr finish,ret = %v,tip = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), ret, tip, err, raw)
+	//fmt.Printf("%v ==========call rpc ReqDcrmAddr finish,ret = %v,tip = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -156,11 +156,11 @@ func (this *Service) AcceptSign(raw string) map[string]interface{} {
 }
 
 func (this *Service) LockOut(raw string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc LockOut from web,raw = %v ===========\n", common.CurrentTime(), raw)
+	//fmt.Printf("%v ==========call rpc LockOut from web,raw = %v ===========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
 	txhash, tip, err := dcrm.LockOut(raw)
-	fmt.Printf("%v ==========finish call rpc LockOut from web,txhash = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), txhash, err, raw)
+	//fmt.Printf("%v ==========finish call rpc LockOut from web,txhash = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), txhash, err, raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -181,11 +181,11 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) Sign(raw string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc Sign from web,raw = %v ===========\n", common.CurrentTime(), raw)
+	//fmt.Printf("%v ==========call rpc Sign from web,raw = %v ===========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
 	rsv, tip, err := dcrm.Sign(raw)
-	fmt.Printf("%v ==========finish call rpc Sign from web, rsv = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), rsv, err, raw)
+	//fmt.Printf("%v ==========finish call rpc Sign from web, rsv = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), rsv, err, raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -242,8 +242,7 @@ func (this *Service) GetBalance(account string, cointype string, dcrmaddr string
 }
 
 func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
-	common.Info("==============call rpc.GetReqAddrNonce from web================", "account = ", account)
-	fmt.Println("%v =========call rpc.GetReqAddrNonce from web,account = %v =================", common.CurrentTime(), account)
+	//fmt.Println("%v =========call rpc.GetReqAddrNonce from web,account = %v =================", common.CurrentTime(), account)
 
 	data := make(map[string]interface{})
 	if account == "" {
@@ -257,8 +256,7 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
 	}
 
 	ret, tip, err := dcrm.GetReqAddrNonce(account)
-	common.Info("==========call rpc.GetReqAddrNonce finish===========", "account = ", account, "ret = ", ret, "tip = ", tip, "err = ", err)
-	fmt.Println("%v =========call rpc.GetReqAddrNonce finish,account = %v,ret = %v,tip = %v,err = %v =================", common.CurrentTime(), account, ret, tip, err)
+	//fmt.Println("%v =========call rpc.GetReqAddrNonce finish,account = %v,ret = %v,tip = %v,err = %v =================", common.CurrentTime(), account, ret, tip, err)
 
 	if err != nil {
 		data["result"] = "0"
@@ -280,7 +278,6 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetLockOutNonce(account string) map[string]interface{} {
-	common.Info("==============call rpc GetLockOutNonce from web================")
 
 	data := make(map[string]interface{})
 	if account == "" {

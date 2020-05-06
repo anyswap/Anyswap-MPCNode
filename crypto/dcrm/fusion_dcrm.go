@@ -612,7 +612,7 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	    tmp = append(tmp,rat)
 	    logs := &dev.DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:tmp,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
 	    dev.DecdsaMap.WriteMap(strings.ToLower(acceptreq.Key),logs)
-	    fmt.Printf("%v ===============AcceptReqAddr,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,acceptreq.Key)
+	    //fmt.Printf("%v ===============AcceptReqAddr,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,acceptreq.Key)
 	} else {
 	    logs,ok := log.(*dev.DecdsaLog)
 	    if ok == false {
@@ -625,12 +625,12 @@ func AcceptReqAddr(raw string) (string, string, error) {
 	    rats = append(rats,rat)
 	    logs.SendAcceptRes = rats
 	    dev.DecdsaMap.WriteMap(strings.ToLower(acceptreq.Key),logs)
-	    fmt.Printf("%v ===============AcceptReqAddr,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),acceptreq.Key)
+	    //fmt.Printf("%v ===============AcceptReqAddr,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),acceptreq.Key)
 	}
 	///////////////////////
 
 	dev.DisMsg(ss)
-	fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), acceptreq.Key)
+	//fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), acceptreq.Key)
 	////fix bug: get C1 timeout
 	_, enodes := dev.GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, dev.SepSg)
@@ -805,7 +805,7 @@ func AcceptLockOut(raw string) (string, string, error) {
 	ss2 := enode + dev.Sep + s0 + dev.Sep + s1 + dev.Sep + s2
 	dev.SendMsgToDcrmGroup(ss2, ac.GroupId)
 	dev.DisMsg(ss2)
-	fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptlo.Key)
+	//fmt.Printf("%v ================== AcceptLockOut , finish send AcceptLockOutRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptlo.Key)
 	////fix bug: get C11 timeout
 	_, enodes := dev.GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, dev.SepSg)
@@ -1561,7 +1561,7 @@ func init() {
 }
 
 func Call(msg interface{}) {
-	fmt.Println("===========dcrm.Call,msg =%v==============", msg)
+	//fmt.Println("===========dcrm.Call,msg =%v==============", msg)
 	s := msg.(string)
 	SetUpMsgList(s)
 }
@@ -1569,7 +1569,7 @@ func Call(msg interface{}) {
 var parts  = common.NewSafeMap(10)
 
 func receiveGroupInfo(msg interface{}) {
-	fmt.Println("===========receiveGroupInfo==============", "msg", msg)
+	//fmt.Println("===========receiveGroupInfo==============", "msg", msg)
 	cur_enode = p2pdcrm.GetSelfID()
 
 	m := strings.Split(msg.(string), "|")

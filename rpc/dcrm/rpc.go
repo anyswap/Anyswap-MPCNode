@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
+	"github.com/fsn-dev/dcrm-walletService/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
@@ -84,7 +84,7 @@ func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc AcceptReqAddr from web,raw = %v==========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
-	ret, tip, err := dcrm.AcceptReqAddr(raw)
+	ret, tip, err := dcrm.RpcAcceptReqAddr(raw)
 	fmt.Printf("%v ==========call rpc AcceptReqAddr from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
@@ -109,7 +109,7 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc AcceptLockOut from web,raw = %v==========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
-	ret, tip, err := dcrm.AcceptLockOut(raw)
+	ret, tip, err := dcrm.RpcAcceptLockOut(raw)
 	fmt.Printf("%v ==========call rpc AcceptLockOut from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
@@ -134,7 +134,7 @@ func (this *Service) AcceptSign(raw string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
-	ret, tip, err := dcrm.AcceptSign(raw)
+	ret, tip, err := dcrm.RpcAcceptSign(raw)
 	fmt.Printf("%v ==========call rpc AcceptSign from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"

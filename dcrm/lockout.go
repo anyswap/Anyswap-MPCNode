@@ -14,7 +14,7 @@
  *
  */
 
-package dev
+package dcrm 
 
 import (
 	"bytes"
@@ -27,18 +27,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ed"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/signing"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 
-	//"github.com/syndtr/goleveldb/leveldb"
-	//    "github.com/fsn-dev/dcrm-walletService/ethdb"
 	"crypto/ecdsa"
 	crand "crypto/rand"
 	"runtime/debug"
 
-	//"github.com/btcsuite/btcd/btcec"
 	"github.com/agl/ed25519"
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/cryptoCoins/coins"
@@ -173,7 +172,7 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 		s0 := "SendSignRes"
 		s1 := "Success"
 		s2 := rsv
-		ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 		SendMsgToDcrmGroup(ss, w.groupid)
 		///////////////
 
@@ -419,7 +418,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 		s0 := "SendLockOutRes"
 		s1 := "Success"
 		s2 := lockout_tx_hash
-		ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 		SendMsgToDcrmGroup(ss, w.groupid)
 		///////////////
 
@@ -685,23 +684,23 @@ func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice
 		return nil, nil, nil
 	}
 
-	u1K, u1Gamma, commitU1GammaG := DECDSA_Sign_RoundOne()
+	u1K, u1Gamma, commitU1GammaG := signing.DECDSA_Sign_RoundOne()
 	// 4. Broadcast
 	//	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
 	mp := []string{msgprex, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "C11"
 	s1 := string(commitU1GammaG.C.Bytes())
-	ss := enode + Sep + s0 + Sep + s1
+	ss := enode + common.Sep + s0 + common.Sep + s1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
 	////fix bug: get C11 timeout
 	_, enodestmp := GetGroup(w.groupid)
-	nodestmp := strings.Split(enodestmp, SepSg)
+	nodestmp := strings.Split(enodestmp, common.Sep2)
 	for _, node := range nodestmp {
 	    node2 := ParseNode(node)
-	    c1data := msgprex + "-" + node2 + Sep + "C11"
+	    c1data := msgprex + "-" + node2 + common.Sep + "C11"
 	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
 	    if exist {
 		DisMsg(c1.(string))
@@ -750,14 +749,14 @@ func DECDSASignPaillierEncrypt(cointype string, save string, w *RpcReqWorker, id
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save paillier pk fail")}
 				ch <- res
 				return nil, nil, nil
 			}
 
-			u1KCipher, u1R, _ := DECDSA_Sign_Paillier_Encrypt(u1PaillierPk, u1K)
+			u1KCipher, u1R, _ := signing.DECDSA_Sign_Paillier_Encrypt(u1PaillierPk, u1K)
 			ukc[en[0]] = u1KCipher
 			ukc2[en[0]] = u1R
 			ukc3[en[0]] = u1PaillierPk
@@ -782,7 +781,7 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqW
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 
-		u1zkFactProof := GetZkFactProof(save, GetRealByUid(cointype,w,id), w.NodeCnt)
+		u1zkFactProof := signing.GetZkFactProof(save, GetRealByUid(cointype,w,id), w.NodeCnt)
 		if u1zkFactProof == nil {
 			fmt.Println("=================Sign_ec2,u1zkFactProof is nil. Nonce =%s=====================", msgprex)
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get ntildeh1h2 fail")}
@@ -799,10 +798,10 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqW
 
 		zkfactproof[en[0]] = u1zkFactProof
 		if IsCurNode(enodes, cur_enode) {
-			u1u1MtAZK1Proof := DECDSA_Sign_MtAZK1Prove(u1K, ukc2[en[0]], ukc3[en[0]], u1zkFactProof)
+			u1u1MtAZK1Proof := signing.DECDSA_Sign_MtAZK1Prove(u1K, ukc2[en[0]], ukc3[en[0]], u1zkFactProof)
 			zk1proof[en[0]] = u1u1MtAZK1Proof
 		} else {
-			u1u1MtAZK1Proof := DECDSA_Sign_MtAZK1Prove(u1K, ukc2[cur_enode], ukc3[cur_enode], u1zkFactProof)
+			u1u1MtAZK1Proof := signing.DECDSA_Sign_MtAZK1Prove(u1K, ukc2[cur_enode], ukc3[cur_enode], u1zkFactProof)
 			mp := []string{msgprex, cur_enode}
 			enode := strings.Join(mp, "-")
 			s0 := "MTAZK1PROOF"
@@ -812,7 +811,7 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqW
 			s4 := string(u1u1MtAZK1Proof.S.Bytes())
 			s5 := string(u1u1MtAZK1Proof.S1.Bytes())
 			s6 := string(u1u1MtAZK1Proof.S2.Bytes())
-			ss := enode + Sep + s0 + Sep + s1 + Sep + s2 + Sep + s3 + Sep + s4 + Sep + s5 + Sep + s6
+			ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4 + common.Sep + s5 + common.Sep + s6
 			SendMsgToPeer(enodes, ss)
 		}
 	}
@@ -849,7 +848,7 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RpcRe
 	enode := strings.Join(mp, "-")
 	s0 := "KC"
 	s1 := string(ukc[cur_enode].Bytes())
-	ss := enode + Sep + s0 + Sep + s1
+	ss := enode + common.Sep + s0 + common.Sep + s1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
@@ -897,7 +896,7 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RpcRe
 		}
 
 		for _, v := range kcs {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			if len(mm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_kc fail")}
 				ch <- res
@@ -949,7 +948,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 		}
 
 		for _, v := range mtazk1s {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			if len(mm) < 8 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_mtazk1proof fail")}
 				ch <- res
@@ -984,7 +983,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 			}
 
 			//delete zkfactor,add ntilde h1 h2
-			u1rlt1 := DECDSA_Sign_MtAZK1Verify(zk1proof[cur_enode], ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode])
+			u1rlt1 := signing.DECDSA_Sign_MtAZK1Verify(zk1proof[cur_enode], ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode])
 			if !u1rlt1 {
 				fmt.Println("============sign,111111111,verify mtazk1proof fail===================")
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
@@ -1012,7 +1011,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 				return false
 			}
 
-			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				fmt.Println("============sign,22222222,verify mtazk1proof fail===================")
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
@@ -1033,7 +1032,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 				return false
 			}
 
-			u1rlt1 := DECDSA_Sign_MtAZK1Verify(zk1proof[en[0]], ukc[en[0]], u1PaillierPk, zkfactproof[cur_enode])
+			u1rlt1 := signing.DECDSA_Sign_MtAZK1Verify(zk1proof[en[0]], ukc[en[0]], u1PaillierPk, zkfactproof[cur_enode])
 			if !u1rlt1 {
 				fmt.Println("============sign,333333333,verify mtazk1proof fail===================")
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
@@ -1061,22 +1060,22 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 				ch <- res
 				return nil, nil, nil, nil, false
 			}
 
-			u1KGamma1Cipher := DECDSA_Sign_Paillier_HomoMul(u1PaillierPk, ukc[en[0]], u1Gamma)
+			u1KGamma1Cipher := signing.DECDSA_Sign_Paillier_HomoMul(u1PaillierPk, ukc[en[0]], u1Gamma)
 			if betaU1Star[k] == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get betaU1Star fail")}
 				ch <- res
 				return nil, nil, nil, nil, false
 			}
 
-			beta1U1StarCipher, u1BetaR1, _ := DECDSA_Sign_Paillier_Encrypt(u1PaillierPk, betaU1Star[k])
-			u1KGamma1Cipher = DECDSA_Sign_Paillier_HomoAdd(u1PaillierPk, u1KGamma1Cipher, beta1U1StarCipher) // send to u1
+			beta1U1StarCipher, u1BetaR1, _ := signing.DECDSA_Sign_Paillier_Encrypt(u1PaillierPk, betaU1Star[k])
+			u1KGamma1Cipher = signing.DECDSA_Sign_Paillier_HomoAdd(u1PaillierPk, u1KGamma1Cipher, beta1U1StarCipher) // send to u1
 
 			u1u1MtAZK2Proof := ec2.MtAZK2Prove_nhh(u1Gamma, betaU1Star[k], u1BetaR1, ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode])
 			mkg[en[0]] = u1KGamma1Cipher
@@ -1084,23 +1083,23 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 			continue
 		}
 
-		u2PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
+		u2PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 		if u2PaillierPk == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 			ch <- res
 			return nil, nil, nil, nil, false
 		}
 
-		u2KGamma1Cipher := DECDSA_Sign_Paillier_HomoMul(u2PaillierPk, ukc[en[0]], u1Gamma)
+		u2KGamma1Cipher := signing.DECDSA_Sign_Paillier_HomoMul(u2PaillierPk, ukc[en[0]], u1Gamma)
 		if betaU1Star[k] == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get betaU1Star fail")}
 			ch <- res
 			return nil, nil, nil, nil, false
 		}
 
-		beta2U1StarCipher, u2BetaR1, _ := DECDSA_Sign_Paillier_Encrypt(u2PaillierPk, betaU1Star[k])
-		u2KGamma1Cipher = DECDSA_Sign_Paillier_HomoAdd(u2PaillierPk, u2KGamma1Cipher, beta2U1StarCipher) // send to u2
-		u2u1MtAZK2Proof := DECDSA_Sign_MtAZK2Prove(u1Gamma, betaU1Star[k], u2BetaR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
+		beta2U1StarCipher, u2BetaR1, _ := signing.DECDSA_Sign_Paillier_Encrypt(u2PaillierPk, betaU1Star[k])
+		u2KGamma1Cipher = signing.DECDSA_Sign_Paillier_HomoAdd(u2PaillierPk, u2KGamma1Cipher, beta2U1StarCipher) // send to u2
+		u2u1MtAZK2Proof := signing.DECDSA_Sign_MtAZK2Prove(u1Gamma, betaU1Star[k], u2BetaR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
 		mp := []string{msgprex, cur_enode}
 		enode := strings.Join(mp, "-")
 		s0 := "MKG"
@@ -1117,7 +1116,7 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		s10 := string(u2u1MtAZK2Proof.T1.Bytes())
 		s11 := string(u2u1MtAZK2Proof.T2.Bytes())
 		///////
-		ss := enode + Sep + s0 + Sep + s1 + Sep + s2 + Sep + s3 + Sep + s4 + Sep + s5 + Sep + s6 + Sep + s7 + Sep + s8 + Sep + s9 + Sep + s10 + Sep + s11
+		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4 + common.Sep + s5 + common.Sep + s6 + common.Sep + s7 + common.Sep + s8 + common.Sep + s9 + common.Sep + s10 + common.Sep + s11
 		SendMsgToPeer(enodes, ss)
 	}
 
@@ -1129,45 +1128,45 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 				ch <- res
 				return nil, nil, nil, nil, false
 			}
 
-			u1Kw1Cipher := DECDSA_Sign_Paillier_HomoMul(u1PaillierPk, ukc[en[0]], w1)
+			u1Kw1Cipher := signing.DECDSA_Sign_Paillier_HomoMul(u1PaillierPk, ukc[en[0]], w1)
 			if vU1Star[k] == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get vU1Star fail")}
 				ch <- res
 				return nil, nil, nil, nil, false
 			}
 
-			v1U1StarCipher, u1VR1, _ := DECDSA_Sign_Paillier_Encrypt(u1PaillierPk, vU1Star[k])
-			u1Kw1Cipher = DECDSA_Sign_Paillier_HomoAdd(u1PaillierPk, u1Kw1Cipher, v1U1StarCipher)                                       // send to u1
-			u1u1MtAZK2Proof2 := DECDSA_Sign_MtAZK3Prove(w1, vU1Star[k], u1VR1, ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode]) //Fusion_dcrm question 8
+			v1U1StarCipher, u1VR1, _ := signing.DECDSA_Sign_Paillier_Encrypt(u1PaillierPk, vU1Star[k])
+			u1Kw1Cipher = signing.DECDSA_Sign_Paillier_HomoAdd(u1PaillierPk, u1Kw1Cipher, v1U1StarCipher)                                       // send to u1
+			u1u1MtAZK2Proof2 := signing.DECDSA_Sign_MtAZK3Prove(w1, vU1Star[k], u1VR1, ukc[cur_enode], ukc3[cur_enode], zkfactproof[cur_enode]) //Fusion_dcrm question 8
 			mkw[en[0]] = u1Kw1Cipher
 			mkw_mtazk2[en[0]] = u1u1MtAZK2Proof2
 			continue
 		}
 
-		u2PaillierPk := GetPaillierPk(save, GetRealByUid(cointype,w,id))
+		u2PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 		if u2PaillierPk == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 			ch <- res
 			return nil, nil, nil, nil, false
 		}
 
-		u2Kw1Cipher := DECDSA_Sign_Paillier_HomoMul(u2PaillierPk, ukc[en[0]], w1)
+		u2Kw1Cipher := signing.DECDSA_Sign_Paillier_HomoMul(u2PaillierPk, ukc[en[0]], w1)
 		if vU1Star[k] == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get vU1Star fail")}
 			ch <- res
 			return nil, nil, nil, nil, false
 		}
 
-		v2U1StarCipher, u2VR1, _ := DECDSA_Sign_Paillier_Encrypt(u2PaillierPk, vU1Star[k])
-		u2Kw1Cipher = DECDSA_Sign_Paillier_HomoAdd(u2PaillierPk, u2Kw1Cipher, v2U1StarCipher) // send to u2
-		u2u1MtAZK2Proof2 := DECDSA_Sign_MtAZK3Prove(w1, vU1Star[k], u2VR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
+		v2U1StarCipher, u2VR1, _ := signing.DECDSA_Sign_Paillier_Encrypt(u2PaillierPk, vU1Star[k])
+		u2Kw1Cipher = signing.DECDSA_Sign_Paillier_HomoAdd(u2PaillierPk, u2Kw1Cipher, v2U1StarCipher) // send to u2
+		u2u1MtAZK2Proof2 := signing.DECDSA_Sign_MtAZK3Prove(w1, vU1Star[k], u2VR1, ukc[en[0]], u2PaillierPk, zkfactproof[cur_enode])
 
 		mp := []string{msgprex, cur_enode}
 		enode := strings.Join(mp, "-")
@@ -1190,7 +1189,7 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		s13 := string(u2u1MtAZK2Proof2.T2.Bytes())
 		///////
 
-		ss := enode + Sep + s0 + Sep + s1 + Sep + s2 + Sep + s3 + Sep + s4 + Sep + s5 + Sep + s6 + Sep + s7 + Sep + s8 + Sep + s9 + Sep + s10 + Sep + s11 + Sep + s12 + Sep + s13
+		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4 + common.Sep + s5 + common.Sep + s6 + common.Sep + s7 + common.Sep + s8 + common.Sep + s9 + common.Sep + s10 + common.Sep + s11 + common.Sep + s12 + common.Sep + s13
 		SendMsgToPeer(enodes, ss)
 	}
 
@@ -1252,7 +1251,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 			continue
 		}
 		for _, v := range mkgs {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			if len(mm) < 13 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_mkg fail")}
 				ch <- res
@@ -1330,7 +1329,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 			continue
 		}
 		for _, v := range mkws {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			if len(mm) < 15 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_mkw fail")}
 				ch <- res
@@ -1382,7 +1381,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 		}
 
 		//
-		rlt111 := DECDSA_Sign_MtAZK2Verify(mkg_mtazk2[en[0]], ukc[cur_enode], mkg[en[0]], ukc3[cur_enode], zkfactproof[en[0]])
+		rlt111 := signing.DECDSA_Sign_MtAZK2Verify(mkg_mtazk2[en[0]], ukc[cur_enode], mkg[en[0]], ukc3[cur_enode], zkfactproof[en[0]])
 		if !rlt111 {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMKGFail)}
 			ch <- res
@@ -1395,7 +1394,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 			return false
 		}
 
-		rlt112 := DECDSA_Sign_MtAZK3Verify(mkw_mtazk2[en[0]], ukc[cur_enode], mkw[en[0]], ukc3[cur_enode], zkfactproof[en[0]])
+		rlt112 := signing.DECDSA_Sign_MtAZK3Verify(mkw_mtazk2[en[0]], ukc[cur_enode], mkw[en[0]], ukc3[cur_enode], zkfactproof[en[0]])
 		if !rlt112 {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("mkw mtazk2 verify fail.")}
 			ch <- res
@@ -1432,7 +1431,7 @@ func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, s
 		}
 	}
 
-	u1PaillierSk := GetPaillierSk(save,GetRealByUid(cointype,w,uid)) //get self privkey
+	u1PaillierSk := signing.GetPaillierSk(save,GetRealByUid(cointype,w,uid)) //get self privkey
 	if u1PaillierSk == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get sk fail.")}
 		ch <- res
@@ -1461,7 +1460,7 @@ func DecryptCkGamma(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, u
 
 		////////
 		en := strings.Split(string(enodes[8:]), "@")
-		alpha1U1, _ := DECDSA_Sign_Paillier_Decrypt(u1PaillierSk, mkg[en[0]])
+		alpha1U1, _ := signing.DECDSA_Sign_Paillier_Decrypt(u1PaillierSk, mkg[en[0]])
 		alpha1[k] = alpha1U1
 	}
 
@@ -1490,7 +1489,7 @@ func DecryptCkW(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, u1Pai
 
 		////////
 		en := strings.Split(string(enodes[8:]), "@")
-		u1U1, _ := DECDSA_Sign_Paillier_Decrypt(u1PaillierSk, mkw[en[0]])
+		u1U1, _ := signing.DECDSA_Sign_Paillier_Decrypt(u1PaillierSk, mkw[en[0]])
 		uu1[k] = u1U1
 	}
 
@@ -1558,11 +1557,11 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 	s0 := "DELTA1"
 	zero, _ := new(big.Int).SetString("0", 10)
 	if delta1.Cmp(zero) < 0 { //bug
-		s1 = "0" + SepDel + string(delta1.Bytes())
+		s1 = "0" + common.SepDel + string(delta1.Bytes())
 	} else {
 		s1 = string(delta1.Bytes())
 	}
-	ss := enode + Sep + s0 + Sep + s1
+	ss := enode + common.Sep + s0 + common.Sep + s1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
@@ -1621,7 +1620,7 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 		}
 
 		for _, v := range dels {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			if len(mm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_delta1 fail.")}
 				ch <- res
@@ -1631,7 +1630,7 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 			prex := mm[0]
 			prexs := strings.Split(prex, "-")
 			if prexs[len(prexs)-1] == en[0] {
-				tmps := strings.Split(mm[2], SepDel)
+				tmps := strings.Split(mm[2], common.SepDel)
 				if len(tmps) == 2 {
 					del := new(big.Int).SetBytes([]byte(tmps[1]))
 					del = new(big.Int).Sub(zero, del) //bug:-xxxxxxx
@@ -1700,7 +1699,7 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 		return nil
 	}
 
-	u1GammaZKProof := DECDSA_Key_ZkUProve(u1Gamma)
+	u1GammaZKProof := keygen.DECDSA_Key_ZkUProve(u1Gamma)
 
 	// 3. Broadcast
 	// commitU1GammaG.D, commitU2GammaG.D, commitU3GammaG.D
@@ -1710,12 +1709,12 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 	dlen := len(commitU1GammaG.D)
 	s1 := strconv.Itoa(dlen)
 
-	ss := enode + Sep + s0 + Sep + s1 + Sep
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep
 	for _, d := range commitU1GammaG.D {
 		ss += string(d.Bytes())
-		ss += Sep
+		ss += common.Sep
 	}
-	ss += string(u1GammaZKProof.E.Bytes()) + Sep + string(u1GammaZKProof.S.Bytes()) + Sep
+	ss += string(u1GammaZKProof.E.Bytes()) + common.Sep + string(u1GammaZKProof.S.Bytes()) + common.Sep
 	ss = ss + "NULL"
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
@@ -1787,7 +1786,7 @@ func DECDSASignVerifyCommitment(cointype string, w *RpcReqWorker, idSign sortabl
 	// for all nodes, construct the commitment by the receiving C and D
 	var udecom = make(map[string]*ec2.Commitment)
 	for _, v := range c11s {
-		mm := strings.Split(v, Sep)
+		mm := strings.Split(v, common.Sep)
 		if len(mm) < 3 {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_c11 fail.")}
 			ch <- res
@@ -1797,7 +1796,7 @@ func DECDSASignVerifyCommitment(cointype string, w *RpcReqWorker, idSign sortabl
 		prex := mm[0]
 		prexs := strings.Split(prex, "-")
 		for _, vv := range d11s {
-			mmm := strings.Split(vv, Sep)
+			mmm := strings.Split(vv, common.Sep)
 			if len(mmm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d11 fail.")}
 				ch <- res
@@ -1834,7 +1833,7 @@ func DECDSASignVerifyCommitment(cointype string, w *RpcReqWorker, idSign sortabl
 	var zkuproof = make(map[string]*ec2.ZkUProof)
 	zkuproof[cur_enode] = u1GammaZKProof
 	for _, vv := range d11s {
-		mmm := strings.Split(vv, Sep)
+		mmm := strings.Split(vv, common.Sep)
 		prex2 := mmm[0]
 		prexs2 := strings.Split(prex2, "-")
 		dlen, _ := strconv.Atoi(mmm[2])
@@ -1876,7 +1875,7 @@ func DECDSASignVerifyCommitment(cointype string, w *RpcReqWorker, idSign sortabl
 			return nil
 		}
 
-		if DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
+		if keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
 			ch <- res
 			return nil
@@ -1896,9 +1895,9 @@ func DECDSASignVerifyCommitment(cointype string, w *RpcReqWorker, idSign sortabl
 		////////
 
 		en := strings.Split(string(enodes[8:]), "@")
-		_, u1GammaG := DECDSA_Key_DeCommit(udecom[en[0]])
+		_, u1GammaG := signing.DECDSA_Key_DeCommit(udecom[en[0]])
 		ug[en[0]] = u1GammaG
-		if DECDSA_Key_ZkUVerify(u1GammaG, zkuproof[en[0]]) == false {
+		if keygen.DECDSA_Key_ZkUVerify(u1GammaG, zkuproof[en[0]]) == false {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify zkuproof fail.")}
 			ch <- res
 			return nil
@@ -1952,7 +1951,7 @@ func Calc_r(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, ug map[st
 		GammaGSumx, GammaGSumy = secp256k1.S256().Add(GammaGSumx, GammaGSumy, (ug[en[0]])[0], (ug[en[0]])[1])
 	}
 
-	r, deltaGammaGy := DECDSA_Sign_Calc_r(deltaSum, GammaGSumx, GammaGSumy)
+	r, deltaGammaGy := signing.DECDSA_Sign_Calc_r(deltaSum, GammaGSumx, GammaGSumy)
 
 	zero, _ := new(big.Int).SetString("0", 10)
 	if r.Cmp(zero) == 0 {
@@ -1971,13 +1970,13 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 		return nil, nil, nil, nil
 	}
 
-	commitBigVAB1, rho1, l1 := DECDSA_Sign_Round_Seven(r, deltaGammaGy, us1)
+	commitBigVAB1, rho1, l1 := signing.DECDSA_Sign_Round_Seven(r, deltaGammaGy, us1)
 
 	mp := []string{msgprex, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "CommitBigVAB"
 	s1 := string(commitBigVAB1.C.Bytes())
-	ss := enode + Sep + s0 + Sep + s1
+	ss := enode + common.Sep + s0 + common.Sep + s1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
@@ -2026,7 +2025,7 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	}
 
 	// *** Round 5B
-	u1zkABProof := DECDSA_Sign_ZkABProve(rho1, l1, us1, []*big.Int{r, deltaGammaGy})
+	u1zkABProof := signing.DECDSA_Sign_ZkABProve(rho1, l1, us1, []*big.Int{r, deltaGammaGy})
 
 	mp := []string{msgprex, cur_enode}
 	enode := strings.Join(mp, "-")
@@ -2034,30 +2033,30 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	dlen := len(commitBigVAB1.D)
 	s1 := strconv.Itoa(dlen)
 
-	ss := enode + Sep + s0 + Sep + s1 + Sep
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep
 	for _, d := range commitBigVAB1.D {
 		ss += string(d.Bytes())
-		ss += Sep
+		ss += common.Sep
 	}
 
 	dlen = len(u1zkABProof.Alpha)
 	s22 := strconv.Itoa(dlen)
-	ss += (s22 + Sep)
+	ss += (s22 + common.Sep)
 	for _, alp := range u1zkABProof.Alpha {
 		ss += string(alp.Bytes())
-		ss += Sep
+		ss += common.Sep
 	}
 
 	dlen = len(u1zkABProof.Beta)
 	s3 := strconv.Itoa(dlen)
-	ss += (s3 + Sep)
+	ss += (s3 + common.Sep)
 	for _, bet := range u1zkABProof.Beta {
 		ss += string(bet.Bytes())
-		ss += Sep
+		ss += common.Sep
 	}
 
 	//ss = prex-enode:ZKABPROOF:dlen:d1:d2:...:dl:alplen:a1:a2:....aalp:betlen:b1:b2:...bbet:t:u:NULL
-	ss += (string(u1zkABProof.T.Bytes()) + Sep + string(u1zkABProof.U.Bytes()) + Sep)
+	ss += (string(u1zkABProof.T.Bytes()) + common.Sep + string(u1zkABProof.U.Bytes()) + common.Sep)
 	ss = ss + "NULL"
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
@@ -2108,7 +2107,7 @@ func DECDSASignVerifyBigVAB(cointype string, w *RpcReqWorker, commitbigvabs []st
 
 	var commitbigcom = make(map[string]*ec2.Commitment)
 	for _, v := range commitbigvabs {
-		mm := strings.Split(v, Sep)
+		mm := strings.Split(v, common.Sep)
 		if len(mm) < 3 {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_commitbigvab fail.")}
 			ch <- res
@@ -2118,7 +2117,7 @@ func DECDSASignVerifyBigVAB(cointype string, w *RpcReqWorker, commitbigvabs []st
 		prex := mm[0]
 		prexs := strings.Split(prex, "-")
 		for _, vv := range zkabproofs {
-			mmm := strings.Split(vv, Sep)
+			mmm := strings.Split(vv, common.Sep)
 			if len(mmm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_zkabproof fail.")}
 				ch <- res
@@ -2155,7 +2154,7 @@ func DECDSASignVerifyBigVAB(cointype string, w *RpcReqWorker, commitbigvabs []st
 	zkabproofmap[cur_enode] = u1zkABProof
 
 	for _, vv := range zkabproofs {
-		mmm := strings.Split(vv, Sep)
+		mmm := strings.Split(vv, common.Sep)
 		prex2 := mmm[0]
 		prexs2 := strings.Split(prex2, "-")
 
@@ -2209,14 +2208,14 @@ func DECDSASignVerifyBigVAB(cointype string, w *RpcReqWorker, commitbigvabs []st
 		////////
 
 		en := strings.Split(string(enodes[8:]), "@")
-		if DECDSA_Key_Commitment_Verify(commitbigcom[en[0]]) == false {
+		if keygen.DECDSA_Key_Commitment_Verify(commitbigcom[en[0]]) == false {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commitbigvab fail.")}
 			ch <- res
 			return nil, nil, nil
 		}
 
-		_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
-		if DECDSA_Sign_ZkABVerify([]*big.Int{BigVAB1[2], BigVAB1[3]}, []*big.Int{BigVAB1[4], BigVAB1[5]}, []*big.Int{BigVAB1[0], BigVAB1[1]}, []*big.Int{r, deltaGammaGy}, zkabproofmap[en[0]]) == false {
+		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		if signing.DECDSA_Sign_ZkABVerify([]*big.Int{BigVAB1[2], BigVAB1[3]}, []*big.Int{BigVAB1[4], BigVAB1[5]}, []*big.Int{BigVAB1[0], BigVAB1[1]}, []*big.Int{r, deltaGammaGy}, zkabproofmap[en[0]]) == false {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify zkabproof fail.")}
 			ch <- res
 			return nil, nil, nil
@@ -2241,7 +2240,7 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RpcReqWorker, idSig
 	//	return nil, nil
 	//}
 
-	bigU1x, bigU1y := DECDSA_Sign_Round_Nine(mMtA, r, pkx, pky, BigVx, BigVy, rho1)
+	bigU1x, bigU1y := signing.DECDSA_Sign_Round_Nine(mMtA, r, pkx, pky, BigVx, BigVy, rho1)
 
 	// bigA23 = bigA2 + bigA3
 	var bigT1x, bigT1y *big.Int
@@ -2261,7 +2260,7 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RpcReqWorker, idSig
 			continue
 		}
 
-		_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
 		bigT1x = BigVAB1[2]
 		bigT1y = BigVAB1[3]
 		ind = k
@@ -2286,18 +2285,18 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RpcReqWorker, idSig
 			continue
 		}
 
-		_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
 		bigT1x, bigT1y = secp256k1.S256().Add(bigT1x, bigT1y, BigVAB1[2], BigVAB1[3])
 	}
 
-	commitBigUT1 := DECDSA_Sign_Round_Nine_Commitment(bigT1x, bigT1y, l1, bigU1x, bigU1y)
+	commitBigUT1 := signing.DECDSA_Sign_Round_Nine_Commitment(bigT1x, bigT1y, l1, bigU1x, bigU1y)
 
 	// Broadcast commitBigUT1.C
 	mp := []string{msgprex, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "CommitBigUT"
 	s1 := string(commitBigUT1.C.Bytes())
-	ss := enode + Sep + s0 + Sep + s1
+	ss := enode + common.Sep + s0 + common.Sep + s1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
@@ -2354,10 +2353,10 @@ func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RpcReqW
 	dlen := len(commitBigUT1.D)
 	s1 := strconv.Itoa(dlen)
 
-	ss := enode + Sep + s0 + Sep + s1 + Sep
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep
 	for _, d := range commitBigUT1.D {
 		ss += string(d.Bytes())
-		ss += Sep
+		ss += common.Sep
 	}
 	ss = ss + "NULL"
 	SendMsgToDcrmGroup(ss, w.groupid)
@@ -2409,7 +2408,7 @@ func DECDSASignVerifyBigUTCommitment(cointype string, commitbiguts []string, com
 
 	var commitbigutmap = make(map[string]*ec2.Commitment)
 	for _, v := range commitbiguts {
-		mm := strings.Split(v, Sep)
+		mm := strings.Split(v, common.Sep)
 		if len(mm) < 3 {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_commitbigut fail.")}
 			ch <- res
@@ -2419,7 +2418,7 @@ func DECDSASignVerifyBigUTCommitment(cointype string, commitbiguts []string, com
 		prex := mm[0]
 		prexs := strings.Split(prex, "-")
 		for _, vv := range commitbigutd11s {
-			mmm := strings.Split(vv, Sep)
+			mmm := strings.Split(vv, common.Sep)
 			if len(mmm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_commitbigutd11 fail.")}
 				ch <- res
@@ -2465,14 +2464,14 @@ func DECDSASignVerifyBigUTCommitment(cointype string, commitbiguts []string, com
 		////////
 
 		en := strings.Split(string(enodes[8:]), "@")
-		if DECDSA_Key_Commitment_Verify(commitbigutmap[en[0]]) == false {
+		if keygen.DECDSA_Key_Commitment_Verify(commitbigutmap[en[0]]) == false {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit big ut fail.")}
 			ch <- res
 			return false
 		}
 
-		_, BigUT1 := DECDSA_Key_DeCommit(commitbigutmap[en[0]])
-		_, BigVAB1 := DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		_, BigUT1 := signing.DECDSA_Key_DeCommit(commitbigutmap[en[0]])
+		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
 		if k == 0 {
 			bigTBx = BigUT1[2]
 			bigTBy = BigUT1[3]
@@ -2510,7 +2509,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RpcReqWorker, idS
 	enode := strings.Join(mp, "-")
 	s0 := "SS1"
 	s1 := string(us1.Bytes())
-	ss := enode + Sep + s0 + Sep + s1
+	ss := enode + common.Sep + s0 + common.Sep + s1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
@@ -2568,7 +2567,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RpcReqWorker, idS
 		}
 
 		for _, v := range uss1s {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			if len(mm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get ss1 fail.")}
 				ch <- res
@@ -2721,7 +2720,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 		return ""
 	}
 
-	mm := strings.Split(save, SepSave)
+	mm := strings.Split(save, common.SepSave)
 	if len(mm) == 0 {
 		fmt.Printf("%v =============Sign_ec2,get save data fail. save = %v,key = %v ================\n", common.CurrentTime(), save, msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
@@ -2772,7 +2771,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	}
 	//fmt.Printf("%v===================sign,verify zk ntilde finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
-	betaU1Star, betaU1, vU1Star, vU1 := GetRandomBetaV(PaillierKeyLength, w.ThresHold)
+	betaU1Star, betaU1, vU1Star, vU1 := signing.GetRandomBetaV(PaillierKeyLength, w.ThresHold)
 	//fmt.Printf("%v===================sign,get random betaU1Star/vU1Star finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	mkg, mkg_mtazk2, mkw, mkw_mtazk2, status := DECDSASignRoundFour(msgprex, cointype, save, w, idSign, ukc, ukc3, zkfactproof, u1Gamma, w1, betaU1Star, vU1Star, ch)
@@ -2841,7 +2840,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	//fmt.Printf("%v===================sign,calc r finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	// 5. calculate s
-	us1 := CalcUs(mMtA, u1K, r, sigma1)
+	us1 := signing.CalcUs(mMtA, u1K, r, sigma1)
 	//fmt.Printf("%v===================sign,calc self s finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	commitBigVAB1, commitbigvabs, rho1, l1 := DECDSASignRoundSeven(msgprex, r, deltaGammaGy, us1, w, ch)
@@ -2923,7 +2922,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 		invert = true
 	}
 
-	recid := DECDSA_Sign_Calc_v(r, deltaGammaGy, pkx, pky, signature.GetR(), signature.GetS(), hashBytes, invert)
+	recid := signing.DECDSA_Sign_Calc_v(r, deltaGammaGy, pkx, pky, signature.GetR(), signature.GetS(), hashBytes, invert)
 	////check v
 	ys := secp256k1.S256().Marshal(pkx,pky)
 	pubkeyhex := hex.EncodeToString(ys)
@@ -3798,7 +3797,7 @@ func DoubleHash(id string, cointype string) *big.Int {
 
 func GetEnodesByUid(uid *big.Int, cointype string, groupid string) string {
 	_, nodes := GetGroup(groupid)
-	others := strings.Split(nodes, SepSg)
+	others := strings.Split(nodes, common.Sep2)
 	for _, v := range others {
 		node2 := ParseNode(v) //bug??
 		id := DoubleHash(node2, cointype)
@@ -3827,7 +3826,7 @@ func (s sortableIDSSlice) Swap(i, j int) {
 func GetIds(cointype string, groupid string) sortableIDSSlice {
 	var ids sortableIDSSlice
 	_, nodes := GetGroup(groupid)
-	others := strings.Split(nodes, SepSg)
+	others := strings.Split(nodes, common.Sep2)
 	for _, v := range others {
 		node2 := ParseNode(v) //bug??
 		uid := DoubleHash(node2, cointype)
@@ -3840,7 +3839,7 @@ func GetIds(cointype string, groupid string) sortableIDSSlice {
 func GetIds2(keytype string, groupid string) sortableIDSSlice {
 	var ids sortableIDSSlice
 	_, nodes := GetGroup(groupid)
-	others := strings.Split(nodes, SepSg)
+	others := strings.Split(nodes, common.Sep2)
 	for _, v := range others {
 		node2 := ParseNode(v) //bug??
 		uid := DoubleHash2(node2, keytype)
@@ -3884,5 +3883,117 @@ func DoubleHash2(id string, keytype string) *big.Int {
 	// convert the hash ([]byte) to big.Int
 	digestBigInt := new(big.Int).SetBytes(digest)
 	return digestBigInt
+}
+
+type ECDSASignature struct {
+	r               *big.Int
+	s               *big.Int
+	recoveryParam   int32
+	roudFiveAborted bool
+}
+
+func (this *ECDSASignature) New() {
+}
+
+func (this *ECDSASignature) New2(r *big.Int, s *big.Int) {
+	this.r = r
+	this.s = s
+}
+
+func (this *ECDSASignature) New3(r *big.Int, s *big.Int, recoveryParam int32) {
+	this.r = r
+	this.s = s
+	this.recoveryParam = recoveryParam
+}
+
+func (this *ECDSASignature) GetRoudFiveAborted() bool {
+	return this.roudFiveAborted
+}
+
+func (this *ECDSASignature) SetRoudFiveAborted(roudFiveAborted bool) {
+	this.roudFiveAborted = roudFiveAborted
+}
+
+func (this *ECDSASignature) GetR() *big.Int {
+	return this.r
+}
+
+func (this *ECDSASignature) SetR(r *big.Int) {
+	this.r = r
+}
+
+func (this *ECDSASignature) GetS() *big.Int {
+	return this.s
+}
+
+func (this *ECDSASignature) SetS(s *big.Int) {
+	this.s = s
+}
+
+func (this *ECDSASignature) GetRecoveryParam() int32 {
+	return this.recoveryParam
+}
+
+func (this *ECDSASignature) SetRecoveryParam(recoveryParam int32) {
+	this.recoveryParam = recoveryParam
+}
+
+func Tool_DecimalByteSlice2HexString(DecimalSlice []byte) string {
+	var sa = make([]string, 0)
+	for _, v := range DecimalSlice {
+		sa = append(sa, fmt.Sprintf("%02X", v))
+	}
+	ss := strings.Join(sa, "")
+	return ss
+}
+
+func GetSignString(r *big.Int, s *big.Int, v int32, i int) string {
+	rr := r.Bytes()
+	sss := s.Bytes()
+
+	//bug
+	if len(rr) == 31 && len(sss) == 32 {
+		sigs := make([]byte, 65)
+		sigs[0] = byte(0)
+		signing.ReadBits(r, sigs[1:32])
+		signing.ReadBits(s, sigs[32:64])
+		sigs[64] = byte(i)
+		ret := Tool_DecimalByteSlice2HexString(sigs)
+		return ret
+	}
+	if len(rr) == 31 && len(sss) == 31 {
+		sigs := make([]byte, 65)
+		sigs[0] = byte(0)
+		sigs[32] = byte(0)
+		signing.ReadBits(r, sigs[1:32])
+		signing.ReadBits(s, sigs[33:64])
+		sigs[64] = byte(i)
+		ret := Tool_DecimalByteSlice2HexString(sigs)
+		return ret
+	}
+	if len(rr) == 32 && len(sss) == 31 {
+		sigs := make([]byte, 65)
+		sigs[32] = byte(0)
+		signing.ReadBits(r, sigs[0:32])
+		signing.ReadBits(s, sigs[33:64])
+		sigs[64] = byte(i)
+		ret := Tool_DecimalByteSlice2HexString(sigs)
+		return ret
+	}
+	//
+
+	n := len(rr) + len(sss) + 1
+	sigs := make([]byte, n)
+	signing.ReadBits(r, sigs[0:len(rr)])
+	signing.ReadBits(s, sigs[len(rr):len(rr)+len(sss)])
+
+	sigs[len(rr)+len(sss)] = byte(i)
+	ret := Tool_DecimalByteSlice2HexString(sigs)
+
+	return ret
+}
+
+func DECDSA_Sign_Verify_RSV(r *big.Int, s *big.Int, v int32, message string, pkx *big.Int, pky *big.Int) bool {
+	return signing.Verify2(r, s, v, message, pkx, pky)
 }
 

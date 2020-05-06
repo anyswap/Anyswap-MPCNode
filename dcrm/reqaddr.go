@@ -14,7 +14,7 @@
  *
  */
 
-package dev
+package dcrm 
 
 import (
 	"bytes"
@@ -31,11 +31,11 @@ import (
 	"encoding/json"
 
 	"sync"
-	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ed"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
@@ -156,7 +156,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		itertmp := workers[id].edpk.Front()
 		if itertmp == nil {
-			logs.Debug("get workers[id].edpk fail.")
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edpk fail", Err: GetRetErr(ErrGetGenPubkeyFail)}
 			ch <- res
 			return
@@ -165,7 +164,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		itertmp = workers[id].edsave.Front()
 		if itertmp == nil {
-			logs.Debug("get workers[id].edsave fail.")
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsave fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
 			ch <- res
 			return
@@ -510,381 +508,6 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 	return kd
 }
 
-/*func SaveAllAccountsToDb() {
-	for {
-		select {
-		case kd := <-AllAccountsChan:
-			dir := GetAllAccountsDir()
-			db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-			//bug
-			if err != nil {
-				for i := 0; i < 100; i++ {
-					db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-					if err == nil && db != nil {
-						break
-					}
-
-					time.Sleep(time.Duration(1000000))
-				}
-			}
-			//
-			if db != nil {
-				db.Put(kd.Key, []byte(kd.Data))
-				db.Close()
-			} else {
-				AllAccountsChan <- kd
-			}
-
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		}
-	}
-}
-
-func SaveReqAddrToDb() {
-	for {
-		select {
-		case kd := <-ReqAddrChan:
-			dir := GetAcceptReqAddrDir()
-			db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-			//bug
-			if err != nil {
-				for i := 0; i < 100; i++ {
-					db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-					if err == nil && db != nil {
-						break
-					}
-
-					time.Sleep(time.Duration(1000000))
-				}
-			}
-			//
-			if db != nil {
-				db.Put(kd.Key, []byte(kd.Data))
-				db.Close()
-			} else {
-				ReqAddrChan <- kd
-			}
-
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		}
-	}
-}
-
-func SaveLockOutToDb() {
-	for {
-		select {
-		case kd := <-LockOutChan:
-			dir := GetAcceptLockOutDir()
-			db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-			//bug
-			if err != nil {
-				for i := 0; i < 100; i++ {
-					db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-					if err == nil && db != nil {
-						break
-					}
-
-					time.Sleep(time.Duration(1000000))
-				}
-			}
-			//
-			if db != nil {
-				db.Put(kd.Key, []byte(kd.Data))
-				db.Close()
-			} else {
-				LockOutChan <- kd
-			}
-
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		}
-	}
-}
-
-func SaveGAccsDataToDb() {
-	for {
-		select {
-		case kd := <-GAccsDataChan:
-			dir := GetGAccsDir()
-			db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-			//bug
-			if err != nil {
-				for i := 0; i < 100; i++ {
-					db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-					if err == nil && db != nil {
-						break
-					}
-
-					time.Sleep(time.Duration(1000000))
-				}
-			}
-			//
-			if db != nil {
-				db.Put(kd.Key, []byte(kd.Data))
-				db.Close()
-			} else {
-				GAccsDataChan <- kd
-			}
-
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		}
-	}
-}
-
-func GetReqAddrValueFromDb(key string) []byte {
-	lock.Lock()
-	dir := GetAcceptReqAddrDir()
-	////////
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-	//
-	if db == nil {
-		lock.Unlock()
-		return nil
-	}
-
-	da, err := db.Get([]byte(key))
-	///////
-	if err != nil {
-		db.Close()
-		lock.Unlock()
-		return nil
-	}
-
-	db.Close()
-	lock.Unlock()
-	return da
-}
-
-func GetLockOutValueFromDb(key string) []byte {
-	lock5.Lock()
-	dir := GetAcceptLockOutDir()
-	////////
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-	//
-	if db == nil {
-		lock5.Unlock()
-		return nil
-	}
-
-	da, err := db.Get([]byte(key))
-	///////
-	if err != nil {
-		db.Close()
-		lock5.Unlock()
-		return nil
-	}
-
-	db.Close()
-	lock5.Unlock()
-	return da
-}
-
-func GetAllPendingReqAddrFromDb() *common.SafeMap {
-	kd := common.NewSafeMap(10)
-	fmt.Println("==============GetAllPendingReqAddrFromDb,start read from db===============")
-	dir := GetAcceptReqAddrDir()
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil && db != nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-	//
-	if db != nil {
-		fmt.Println("==============GetAllPendingReqAddrFromDb,open db success===============")
-		iter := db.NewIterator()
-		for iter.Next() {
-			key := string(iter.Key())
-			value := string(iter.Value())
-			ss, err := UnCompress(value)
-			if err != nil {
-				fmt.Println("==============GetAllPendingReqAddrFromDb,1111 err = %v===============", err)
-				continue
-			}
-
-			pubs, err := Decode2(ss, "AcceptReqAddrData")
-			if err != nil {
-				fmt.Println("==============GetAllPendingReqAddrFromDb,2222 err = %v===============", err)
-				continue
-			}
-
-			pd := pubs.(*AcceptReqAddrData)
-			if pd == nil {
-				continue
-			}
-
-			if pd.Deal == true || pd.Status == "Success" {
-				continue
-			}
-
-			if pd.Status != "Pending" {
-				continue
-			}
-
-			//kd[key] = iter.Value()
-			kd.WriteMap(key, iter.Value())
-		}
-		iter.Release()
-		db.Close()
-	}
-
-	return kd
-}
-
-func GetAllPendingLockOutFromDb() *common.SafeMap {
-	kd := common.NewSafeMap(10)
-	fmt.Println("==============GetAllPendingLockOutFromDb,start read from db===============")
-	dir := GetAcceptLockOutDir()
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil && db != nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-	//
-	if db != nil {
-		fmt.Println("==============GetAllPendingLockOutFromDb,open db success===============")
-		iter := db.NewIterator()
-		for iter.Next() {
-			key := string(iter.Key())
-			value := string(iter.Value())
-			ss, err := UnCompress(value)
-			if err != nil {
-				fmt.Println("==============GetAllPendingLockOutFromDb,1111 err = %v===============", err)
-				continue
-			}
-
-			pubs, err := Decode2(ss, "AcceptLockOutData")
-			if err != nil {
-				fmt.Println("==============GetAllPendingLockOutFromDb,2222 err = %v===============", err)
-				continue
-			}
-
-			pd := pubs.(*AcceptLockOutData)
-			if pd == nil {
-				continue
-			}
-
-			if pd.Deal == true || pd.Status == "Success" {
-				continue
-			}
-
-			if pd.Status != "Pending" {
-				continue
-			}
-
-			//kd[key] = iter.Value()
-			kd.WriteMap(key, iter.Value())
-		}
-		iter.Release()
-		db.Close()
-	}
-
-	return kd
-}
-
-func GetGAccsValueFromDb(key string) []byte {
-	lock.Lock()
-	dir := GetGAccsDir()
-	////////
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-	//
-	if db == nil {
-		lock.Unlock()
-		return nil
-	}
-
-	da, err := db.Get([]byte(key))
-	///////
-	if err != nil {
-		db.Close()
-		lock.Unlock()
-		return nil
-	}
-
-	db.Close()
-	lock.Unlock()
-	return da
-}
-
-func GetAllGAccsValueFromDb() *common.SafeMap {
-	kd := common.NewSafeMap(10)
-	dir := GetGAccsDir()
-	fmt.Printf("%v ==============GetAllGAccsValueFromDb,start read from db,dir = %v ===============\n", common.CurrentTime(), dir)
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
-			if err == nil && db != nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-
-	//
-	if db != nil {
-		fmt.Printf("%v ==============GetAllGAccsValueFromDb,open db success.dir = %v ===============\n", common.CurrentTime(), dir)
-		iter := db.NewIterator()
-		for iter.Next() {
-			key := string(iter.Key())
-			value := string(iter.Value())
-			kd.WriteMap(key, value)
-		}
-		iter.Release()
-		db.Close()
-	}
-
-	return kd
-}
-*/
-
 //ed
 //msgprex = hash
 func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string) bool {
@@ -905,7 +528,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	ns, _ := GetGroup(GroupId)
 	if ns != w.NodeCnt {
-		logs.Debug("KeyGenerate_ed,get nodes info error.")
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:the group is not ready", Err: GetRetErr(ErrGroupNotReady)}
 		ch <- res
 		return false
@@ -949,7 +571,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	s0 := "EDC11"
 	s1 := string(CPk[:])
 	ss := enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================kg ed round one,send msg,code is EDC11==================")
 	SendMsgToDcrmGroup(ss, GroupId)
 	DisMsg(ss)
 
@@ -964,14 +585,12 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		logs.Debug("get w.bedc11 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c11 timeout.")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edc11.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edc11 fail.")
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edc11 fail", Err: fmt.Errorf("get all ed c11 fail.")}
 		ch <- res
 		return false
@@ -1005,7 +624,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	s0 = "EDZK"
 	s1 = string(zkPk[:])
 	ss = enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================kg ed round one,send msg,code is EDZK==================")
 	SendMsgToDcrmGroup(ss, GroupId)
 	DisMsg(ss)
 
@@ -1020,14 +638,12 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		logs.Debug("get w.bedzk timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed zk timeout.")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edzk.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edzk fail.")
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get w.msg_edzk fail", Err: fmt.Errorf("get all ed zk fail.")}
 		ch <- res
 		return false
@@ -1062,7 +678,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	s0 = "EDD11"
 	s1 = string(DPk[:])
 	ss = enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================kg ed round one,send msg,code is EDD11==================")
 	SendMsgToDcrmGroup(ss, GroupId)
 	DisMsg(ss)
 
@@ -1077,14 +692,12 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		logs.Debug("get w.bedd11 timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d11 timeout.")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edd11.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edd11 fail.")
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get msg_edd11 fail", Err: fmt.Errorf("get all ed d11 fail.")}
 		ch <- res
 		return false
@@ -1200,7 +813,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		enodes := GetEnodesByUid(id, cointype, GroupId)
 
 		if enodes == "" {
-			logs.Debug("=========KeyGenerate_ed,don't find proper enodes========")
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get enode by uid fail", Err: GetRetErr(ErrGetEnodeByUIdFail)}
 			ch <- res
 			return false
@@ -1216,7 +828,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 				s0 := "EDSHARE1"
 				s1 := string(v[:])
 				ss := enode + common.Sep + s0 + common.Sep + s1
-				logs.Debug("================kg ed round two,send msg,code is EDSHARE1==================")
 				SendMsgToPeer(enodes, ss)
 				break
 			}
@@ -1234,15 +845,12 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		logs.Debug("get w.bedshare1 timeout in keygenerate.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed share1 fail.")}
 		ch <- res
 		return false
 	}
-	logs.Debug("================kg ed round two,receiv msg,code is EDSHARE1.==================")
 
 	if w.msg_edshare1.Len() != (w.NodeCnt-1) {
-		logs.Debug("get w.msg_edshare1 fail.")
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edshare1 fail", Err: fmt.Errorf("get all ed share1 fail.")}
 		ch <- res
 		return false
@@ -1282,7 +890,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	}
 	ss = ss + "NULL"
 
-	logs.Debug("================kg ed round two,send msg,code is EDCFSB==================")
 	SendMsgToDcrmGroup(ss, GroupId)
 	DisMsg(ss)
 
@@ -1297,14 +904,12 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		logs.Debug("get w.bedcfsb timeout.")
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed cfsb timeout.")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edcfsb.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edcfsb fail.")
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edcfsb fail", Err: fmt.Errorf("get all ed cfsb fail.")}
 		ch <- res
 		return false
@@ -1474,7 +1079,7 @@ func findmsg(l *list.List,node string) bool {
 	    continue
 	}
 
-	ms := strings.Split(mdss, Sep)
+	ms := strings.Split(mdss, common.Sep)
 	prexs := strings.Split(ms[0], "-")
 	if len(prexs) < 2 {
 	    iter = iter.Next()
@@ -1612,7 +1217,7 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
     suss := false
     var wg sync.WaitGroup
     _, enodes := GetGroup(w.groupid)
-    nodes := strings.Split(enodes, SepSg)
+    nodes := strings.Split(enodes, common.Sep2)
     for _, node := range nodes {
 	    node2 := ParseNode(node)
 	    if strings.EqualFold(cur_enode,node2) {
@@ -1648,7 +1253,7 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
 			
 			//enode1 no reciv enode2 c1 data
 			//key-enode1:NoReciv:enode2:C1
-			noreciv := key + "-" + cur_enode + Sep + "NoReciv" + Sep + ower + Sep + dt   //by type
+			noreciv := key + "-" + cur_enode + common.Sep + "NoReciv" + common.Sep + ower + common.Sep + dt   //by type
 			SendMsgToDcrmGroup(noreciv, w.groupid)
 			_, _, err := GetChannelValue(tt, bb) //wait 20 second     //by type
 			if err == nil {
@@ -1675,7 +1280,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 		return nil, nil, nil, nil, nil, nil, false
 	}
 
-	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk := DECDSA_Key_RoundOne(w.ThresHold, PaillierKeyLength)
+	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk := keygen.DECDSA_Key_RoundOne(w.ThresHold, PaillierKeyLength)
 	if u1PaillierPk == nil || u1PaillierSk == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen paillier key pair fail")}
 		ch <- res
@@ -1702,7 +1307,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	s3 := string(u1PaillierPk.N.Bytes())
 	s4 := string(u1PaillierPk.G.Bytes())
 	s5 := string(u1PaillierPk.N2.Bytes())
-	ss := enode + Sep + s0 + Sep + s1 + Sep + s2 + Sep + s3 + Sep + s4 + Sep + s5
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4 + common.Sep + s5
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
@@ -1711,7 +1316,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	log, exist := DecdsaMap.ReadMap(strings.ToLower(msgprex))
 	if exist == false {
 	    tmp := make([]SendDcrmTime,0)
-	    rat := SendDcrmTime{Round:"C1",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"C1",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    tmp = append(tmp,rat)
 	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:tmp,FailTime:"",FailInfo:"",No_Reciv:nil}
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -1726,7 +1331,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	    }
 
 	    rats := logs.SendDcrm
-	    rat := SendDcrmTime{Round:"C1",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"C1",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    rats = append(rats,rat)
 	    logs.SendDcrm = rats
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -1737,10 +1342,10 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	////fix bug: get C1 timeout
 	//fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle C1, w.groupid = %v, key = %v=================\n", common.CurrentTime(),w.groupid,msgprex)
 	_, enodestmp := GetGroup(w.groupid)
-	nodestmp := strings.Split(enodestmp, SepSg)
+	nodestmp := strings.Split(enodestmp, common.Sep2)
 	for _, node := range nodestmp {
 	    node2 := ParseNode(node)
-	    c1data := msgprex + "-" + node2 + Sep + "C1"
+	    c1data := msgprex + "-" + node2 + common.Sep + "C1"
 	    //fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle C1, w.groupid = %v, c1data = %v, key = %v=================\n", common.CurrentTime(),w.groupid,c1data,msgprex)
 	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
 	    if exist {
@@ -1784,7 +1389,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	    cnt, enodes := GetGroup(w.groupid)
 	    fmt.Printf("%v===================DECDSAGenKeyRoundOne,get current group info, group node cnt = %v, group id = %v, group enodes = %v, key = %v ====================\n",common.CurrentTime(),cnt,w.groupid,enodes,msgprex)
 
-	    nodes := strings.Split(enodes, SepSg)
+	    nodes := strings.Split(enodes, common.Sep2)
 	    for _, node := range nodes {
 		    found := false
 		    node2 := ParseNode(node)
@@ -1795,7 +1400,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 		    iter := w.msg_c1.Front()
 		    for iter != nil {
 			mdss := iter.Value.(string)
-			ms := strings.Split(mdss, Sep)
+			ms := strings.Split(mdss, common.Sep)
 			prexs := strings.Split(ms[0], "-")
 			node3 := prexs[1]
 			if strings.EqualFold(node3,node2) {
@@ -1806,7 +1411,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 		    }
 
 		    if !found {
-			c1data := msgprex + "-" + node2 + Sep + "C1"
+			c1data := msgprex + "-" + node2 + common.Sep + "C1"
 			noreciv := NoRecivData{Node:node,Msg:c1data}
 			tmp = append(tmp,noreciv)
 			fmt.Printf("%v=================== DECDSAGenKeyRoundOne,get C1 timeout, !!!!!!!!! No Reciv The C1 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),c1data,node,msgprex)
@@ -1860,7 +1465,7 @@ func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, 
 	// [notes]
 	// all nodes has their own id, in practival, we can take it as double hash of public key of fusion
 
-	u1Shares, err := DECDSA_Key_Vss(u1Poly, ids)
+	u1Shares, err := keygen.DECDSA_Key_Vss(u1Poly, ids)
 	if err != nil {
 		res := RpcDcrmRes{Ret: "", Err: err}
 		ch <- res
@@ -1888,21 +1493,21 @@ func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, 
 		}
 
 		for _, v := range u1Shares {
-			uid := DECDSA_Key_GetSharesId(v)
+			uid := keygen.DECDSA_Key_GetSharesId(v)
 			if uid != nil && uid.Cmp(id) == 0 {
 				mp := []string{msgprex, cur_enode}
 				enode := strings.Join(mp, "-")
 				s0 := "SHARE1"
 				s2 := string(v.Id.Bytes())
 				s3 := string(v.Share.Bytes())
-				ss := enode + Sep + s0 + Sep + s2 + Sep + s3
+				ss := enode + common.Sep + s0 + common.Sep + s2 + common.Sep + s3
 				SendMsgToPeer(enodes, ss)
 				///////add decdsa log
 				cur_time := fmt.Sprintf("%v",common.CurrentTime())
 				log, exist := DecdsaMap.ReadMap(strings.ToLower(msgprex))
 				if exist == false {
 				    tmp := make([]SendDcrmTime,0)
-				    rat := SendDcrmTime{Round:"SHARE1",SendTime:cur_time,Msg:enode + Sep + s0}
+				    rat := SendDcrmTime{Round:"SHARE1",SendTime:cur_time,Msg:enode + common.Sep + s0}
 				    tmp = append(tmp,rat)
 				    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:tmp,FailTime:"",FailInfo:"",No_Reciv:nil}
 				    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -1917,7 +1522,7 @@ func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, 
 				    }
 
 				    rats := logs.SendDcrm
-				    rat := SendDcrmTime{Round:"SHARE1",SendTime:cur_time,Msg:enode + Sep + s0}
+				    rat := SendDcrmTime{Round:"SHARE1",SendTime:cur_time,Msg:enode + common.Sep + s0}
 				    rats = append(rats,rat)
 				    logs.SendDcrm = rats
 				    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -1948,21 +1553,21 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	dlen := len(commitU1G.D)
 	s1 := strconv.Itoa(dlen)
 
-	ss := enode + Sep + s0 + Sep + s1 + Sep
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep
 	for _, d := range commitU1G.D {
 		ss += string(d.Bytes())
-		ss += Sep
+		ss += common.Sep
 	}
 
 	pglen := 2 * (len(u1PolyG.PolyG))
 	s4 := strconv.Itoa(pglen)
 
-	ss = ss + s4 + Sep
+	ss = ss + s4 + common.Sep
 
 	for _, p := range u1PolyG.PolyG {
 		for _, d := range p {
 			ss += string(d.Bytes())
-			ss += Sep
+			ss += common.Sep
 		}
 	}
 	ss = ss + "NULL"
@@ -1974,7 +1579,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	log, exist := DecdsaMap.ReadMap(strings.ToLower(msgprex))
 	if exist == false {
 	    tmp := make([]SendDcrmTime,0)
-	    rat := SendDcrmTime{Round:"D1",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"D1",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    tmp = append(tmp,rat)
 	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:tmp,FailTime:"",FailInfo:"",No_Reciv:nil}
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -1989,7 +1594,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	    }
 
 	    rats := logs.SendDcrm
-	    rat := SendDcrmTime{Round:"D1",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"D1",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    rats = append(rats,rat)
 	    logs.SendDcrm = rats
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -2020,7 +1625,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	    cnt, enodes := GetGroup(w.groupid)
 	    fmt.Printf("%v===================DECDSAGenKeyRoundThred,get current group info, group node cnt = %v, group id = %v, group enodes = %v, key = %v ====================\n",common.CurrentTime(),cnt,w.groupid,enodes,msgprex)
 
-	    nodes := strings.Split(enodes, SepSg)
+	    nodes := strings.Split(enodes, common.Sep2)
 	    for _, node := range nodes {
 		    found := false
 		    node2 := ParseNode(node)
@@ -2031,7 +1636,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 		    iter := w.msg_d1_1.Front()
 		    for iter != nil {
 			mdss := iter.Value.(string)
-			ms := strings.Split(mdss, Sep)
+			ms := strings.Split(mdss, common.Sep)
 			prexs := strings.Split(ms[0], "-")
 			node3 := prexs[1]
 			if strings.EqualFold(node3,node2) {
@@ -2042,7 +1647,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 		    }
 
 		    if !found {
-			d1data := msgprex + "-" + node2 + Sep + "D1"
+			d1data := msgprex + "-" + node2 + common.Sep + "D1"
 			noreciv := NoRecivData{Node:node,Msg:d1data}
 			tmp = append(tmp,noreciv)
 			fmt.Printf("%v=================== DECDSAGenKeyRoundThree,get D1 timeout, !!!!!!!!! No Reciv The D1 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),d1data,node,msgprex)
@@ -2127,7 +1732,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	}
 
 	for _, v := range shares {
-		mm := strings.Split(v, Sep)
+		mm := strings.Split(v, common.Sep)
 		//bug
 		if len(mm) < 4 {
 			fmt.Println("===================!!! KeyGenerate_ECDSA,fill ec2.ShareStruct map error. !!!,Nonce =%s ==================", msgprex)
@@ -2143,7 +1748,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	}
 
 	for _, v := range u1Shares {
-		uid := DECDSA_Key_GetSharesId(v)
+		uid := keygen.DECDSA_Key_GetSharesId(v)
 		if uid == nil {
 			continue
 		}
@@ -2173,7 +1778,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 
 	var upg = make(map[string]*ec2.PolyGStruct2)
 	for _, v := range ds {
-		mm := strings.Split(v, Sep)
+		mm := strings.Split(v, common.Sep)
 		dlen, _ := strconv.Atoi(mm[2])
 		if len(mm) < (4 + dlen) {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d1_1 data error")}
@@ -2223,7 +1828,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 			return nil, nil, false
 		}
 		//
-		if DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) == false {
+		if keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) == false {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
 			ch <- res
 			return nil, nil, false
@@ -2332,7 +1937,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 
 	var udecom = make(map[string]*ec2.Commitment)
 	for _, v := range cs {
-		mm := strings.Split(v, Sep)
+		mm := strings.Split(v, common.Sep)
 		if len(mm) < 3 {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
 			ch <- res
@@ -2342,7 +1947,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 		prex := mm[0]
 		prexs := strings.Split(prex, "-")
 		for _, vv := range ds {
-			mmm := strings.Split(vv, Sep)
+			mmm := strings.Split(vv, common.Sep)
 			//bug
 			if len(mmm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
@@ -2384,7 +1989,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 			ch <- res
 			return nil, nil, false
 		}
-		if DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
+		if keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrKeyGenVerifyCommitFail)}
 			ch <- res
 			return nil, nil, false
@@ -2406,7 +2011,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	// zk of paillier key
 	NtildeLength := 2048
 	// for u1
-	u1NtildeH1H2 := DECDSA_Key_GenerateNtildeH1H2(NtildeLength)
+	u1NtildeH1H2 := keygen.DECDSA_Key_GenerateNtildeH1H2(NtildeLength)
 	if u1NtildeH1H2 == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen ntilde h1 h2 fail.")}
 		ch <- res
@@ -2420,7 +2025,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	s1 := string(u1NtildeH1H2.Ntilde.Bytes())
 	s2 := string(u1NtildeH1H2.H1.Bytes())
 	s3 := string(u1NtildeH1H2.H2.Bytes())
-	ss := enode + Sep + s0 + Sep + s1 + Sep + s2 + Sep + s3
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 	///////add decdsa log
@@ -2428,7 +2033,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	log, exist := DecdsaMap.ReadMap(strings.ToLower(msgprex))
 	if exist == false {
 	    tmp := make([]SendDcrmTime,0)
-	    rat := SendDcrmTime{Round:"NTILDEH1H2",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"NTILDEH1H2",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    tmp = append(tmp,rat)
 	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:tmp,FailTime:"",FailInfo:"",No_Reciv:nil}
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -2443,7 +2048,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	    }
 
 	    rats := logs.SendDcrm
-	    rat := SendDcrmTime{Round:"NTILDEH1H2",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"NTILDEH1H2",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    rats = append(rats,rat)
 	    logs.SendDcrm = rats
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -2473,7 +2078,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	    cnt, enodes := GetGroup(w.groupid)
 	    fmt.Printf("%v===================DECDSAGenKeyRoundFour,get current group info, group node cnt = %v, group id = %v, group enodes = %v, key = %v ====================\n",common.CurrentTime(),cnt,w.groupid,enodes,msgprex)
 
-	    nodes := strings.Split(enodes, SepSg)
+	    nodes := strings.Split(enodes, common.Sep2)
 	    for _, node := range nodes {
 		    found := false
 		    node2 := ParseNode(node)
@@ -2484,7 +2089,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 		    iter := w.msg_zkfact.Front()
 		    for iter != nil {
 			mdss := iter.Value.(string)
-			ms := strings.Split(mdss, Sep)
+			ms := strings.Split(mdss, common.Sep)
 			prexs := strings.Split(ms[0], "-")
 			node3 := prexs[1]
 			if strings.EqualFold(node3,node2) {
@@ -2495,7 +2100,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 		    }
 
 		    if !found {
-			zkfactdata := msgprex + "-" + node2 + Sep + "NTILDEH1H2"
+			zkfactdata := msgprex + "-" + node2 + common.Sep + "NTILDEH1H2"
 			noreciv := NoRecivData{Node:node,Msg:zkfactdata}
 			tmp = append(tmp,noreciv)
 			fmt.Printf("%v=================== DECDSAGenKeyRoundFour,get NTILDEH1H2 timeout, !!!!!!!!! No Reciv The NTILDEH1H2 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),zkfactdata,node,msgprex)
@@ -2546,7 +2151,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	}
 
 	// zk of u
-	u1zkUProof := DECDSA_Key_ZkUProve(u1)
+	u1zkUProof := keygen.DECDSA_Key_ZkUProve(u1)
 
 	// 8. Broadcast zk
 	// u1zkUProof, u2zkUProof, u3zkUProof, u4zkUProof, u5zkUProof
@@ -2555,7 +2160,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	s0 := "ZKUPROOF"
 	s1 := string(u1zkUProof.E.Bytes())
 	s2 := string(u1zkUProof.S.Bytes())
-	ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 	///////add decdsa log
@@ -2563,7 +2168,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	log, exist := DecdsaMap.ReadMap(strings.ToLower(msgprex))
 	if exist == false {
 	    tmp := make([]SendDcrmTime,0)
-	    rat := SendDcrmTime{Round:"ZKUPROOF",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"ZKUPROOF",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    tmp = append(tmp,rat)
 	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:tmp,FailTime:"",FailInfo:"",No_Reciv:nil}
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -2578,7 +2183,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	    }
 
 	    rats := logs.SendDcrm
-	    rat := SendDcrmTime{Round:"ZKUPROOF",SendTime:cur_time,Msg:enode + Sep + s0}
+	    rat := SendDcrmTime{Round:"ZKUPROOF",SendTime:cur_time,Msg:enode + common.Sep + s0}
 	    rats = append(rats,rat)
 	    logs.SendDcrm = rats
 	    DecdsaMap.WriteMap(strings.ToLower(msgprex),logs)
@@ -2608,7 +2213,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	    cnt, enodes := GetGroup(w.groupid)
 	    fmt.Printf("%v===================DECDSAGenKeyRoundFive,get current group info, group node cnt = %v, group id = %v, group enodes = %v, key = %v ====================\n",common.CurrentTime(),cnt,w.groupid,enodes,msgprex)
 
-	    nodes := strings.Split(enodes, SepSg)
+	    nodes := strings.Split(enodes, common.Sep2)
 	    for _, node := range nodes {
 		    found := false
 		    node2 := ParseNode(node)
@@ -2619,7 +2224,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 		    iter := w.msg_zku.Front()
 		    for iter != nil {
 			mdss := iter.Value.(string)
-			ms := strings.Split(mdss, Sep)
+			ms := strings.Split(mdss, common.Sep)
 			prexs := strings.Split(ms[0], "-")
 			node3 := prexs[1]
 			if strings.EqualFold(node3,node2) {
@@ -2630,7 +2235,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 		    }
 
 		    if !found {
-			zkudata := msgprex + "-" + node2 + Sep + "ZKUPROOF"
+			zkudata := msgprex + "-" + node2 + common.Sep + "ZKUPROOF"
 			noreciv := NoRecivData{Node:node,Msg:zkudata}
 			tmp = append(tmp,noreciv)
 			fmt.Printf("%v=================== DECDSAGenKeyRoundFive,get ZKUPROOF timeout, !!!!!!!!! No Reciv The ZKUPROOF Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),zkudata,node,msgprex)
@@ -2700,14 +2305,14 @@ func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{},
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		for _, v := range zku {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			prex := mm[0]
 			prexs := strings.Split(prex, "-")
 			if prexs[len(prexs)-1] == en[0] {
 				e := new(big.Int).SetBytes([]byte(mm[2]))
 				s := new(big.Int).SetBytes([]byte(mm[3]))
 				zkUProof := &ec2.ZkUProof{E: e, S: s}
-				if !DECDSA_Key_ZkUVerify(ug[en[0]], zkUProof) {
+				if !keygen.DECDSA_Key_ZkUVerify(ug[en[0]], zkUProof) {
 					res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyZKUPROOFFail)}
 					ch <- res
 					return false
@@ -2730,11 +2335,11 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 
 	//save skU1/u1PaillierSk/u1PaillierPk/...
 	ss := string(skU1.Bytes())
-	ss = ss + SepSave
+	ss = ss + common.SepSave
 	s1 := u1PaillierSk.Length
 	s2 := string(u1PaillierSk.L.Bytes())
 	s3 := string(u1PaillierSk.U.Bytes())
-	ss = ss + s1 + SepSave + s2 + SepSave + s3 + SepSave
+	ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
 
 	for _, id := range ids {
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
@@ -2744,11 +2349,11 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 			s2 = string(u1PaillierPk.N.Bytes())
 			s3 = string(u1PaillierPk.G.Bytes())
 			s4 := string(u1PaillierPk.N2.Bytes())
-			ss = ss + s1 + SepSave + s2 + SepSave + s3 + SepSave + s4 + SepSave
+			ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave + s4 + common.SepSave
 			continue
 		}
 		for _, v := range cs {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			prex := mm[0]
 			prexs := strings.Split(prex, "-")
 			if prexs[len(prexs)-1] == en[0] {
@@ -2756,7 +2361,7 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 				s2 = mm[4]
 				s3 = mm[5]
 				s4 := mm[6]
-				ss = ss + s1 + SepSave + s2 + SepSave + s3 + SepSave + s4 + SepSave
+				ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave + s4 + common.SepSave
 				break
 			}
 		}
@@ -2785,16 +2390,16 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 			s1 = string(u1NtildeH1H2.Ntilde.Bytes())
 			s2 = string(u1NtildeH1H2.H1.Bytes())
 			s3 = string(u1NtildeH1H2.H2.Bytes())
-			ss = ss + s1 + SepSave + s2 + SepSave + s3 + SepSave
+			ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
 			continue
 		}
 
 		for _, v := range zkfacts {
-			mm := strings.Split(v, Sep)
+			mm := strings.Split(v, common.Sep)
 			prex := mm[0]
 			prexs := strings.Split(prex, "-")
 			if prexs[len(prexs)-1] == en[0] {
-				ss = ss + mm[2] + SepSave + mm[3] + SepSave + mm[4] + SepSave //for ntilde
+				ss = ss + mm[2] + common.SepSave + mm[3] + common.SepSave + mm[4] + common.SepSave //for ntilde
 				break
 			}
 		}

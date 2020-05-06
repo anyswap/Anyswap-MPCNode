@@ -14,17 +14,16 @@
  *
  */
 
-package common
+package keygen 
 
-const (
-	Sep9 = "dcrmsep9"
-	Sep  = "dcrmparm"
-	Sep2 = "dcrmmsg"
-	Sep10      = "dcrmsep10" //valatetx
-	Sep11      = "dcrmsep11"
-	Sep12      = "dcrmsep12"
-	MsgTypeSep = "caihaijundcrm"
-	SepOB      = "dccpmatchxvc"
-	SepSave = "dcrmsepsave"
-	SepDel  = "dcrmsepdel"
-)
+//import (
+//	"math/big"
+//
+//	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
+//	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+//)
+
+////////////////////////////////////
+
+
+////////////////////////////////////

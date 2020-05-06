@@ -23,7 +23,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm"
+	"github.com/fsn-dev/dcrm-walletService/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -31,7 +31,6 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
 	rpcdcrm "github.com/fsn-dev/dcrm-walletService/rpc/dcrm"
 	"gopkg.in/urfave/cli.v1"
-	//"github.com/fusion/go-fusion/crypto/dcrm/dev"
 )
 
 func main() {

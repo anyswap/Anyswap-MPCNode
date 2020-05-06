@@ -14,7 +14,7 @@
  *
  */
 
-package dev
+package dcrm 
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 
@@ -37,7 +37,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
@@ -45,11 +44,6 @@ import (
 )
 
 var (
-	Sep     = "dcrmparm"
-	SepSave = "dcrmsepsave"
-	SepSg   = "dcrmmsg"
-	SepDel  = "dcrmsepdel"
-
 	PaillierKeyLength        = 2048
 	sendtogroup_lilo_timeout = 130000  
 	sendtogroup_timeout      = 130000
@@ -65,8 +59,6 @@ var (
 	SendToPeer             func(string, string) error
 	ParseNode              func(string) string
 	GetEosAccount          func() (string, string, string)
-
-	KeyFile string
 
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 1000)
@@ -258,8 +250,8 @@ func IsInGroup(enode string, groupId string) bool {
 	}
 
 	fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v\n", groupId, enodes)
-	nodes := strings.Split(enodes, SepSg)
-	fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v, split: %v, nodes: %v\n", groupId, enodes, SepSg, nodes)
+	nodes := strings.Split(enodes, common.Sep2)
+	fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v, split: %v, nodes: %v\n", groupId, enodes, common.Sep2, nodes)
 	for _, node := range nodes {
 		fmt.Printf("==== dev.IsInGroup() ====, call ParseNode enode: %v\n", node)
 		node2 := ParseNode(node)
@@ -272,7 +264,6 @@ func IsInGroup(enode string, groupId string) bool {
 }
 
 func InitDev(keyfile string) {
-	KeyFile = keyfile
 	ReSendTimes = 1
 	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
 
@@ -302,7 +293,6 @@ var (
 	RpcReqQueue  chan RpcReq
 	workers      []*RpcReqWorker
 	//rpc-req
-	cur_enode string
 	//NodeCnt = 5
 	//ThresHold = 5
 )
@@ -1378,7 +1368,7 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 		DcrmCalls.WriteMap(s, "true")
 	} else {
 		common.Info("=============DcrmCall,already exsit in DcrmCalls and return ", "get msg len =", len(s), "sender node =", enode, "", "================")
-		ret := ("fail" + Sep + "already exsit in DcrmCalls" + Sep + "dcrm back-end internal error:already exsit in DcrmCalls" + Sep + "already exsit in DcrmCalls") //TODO "no-data"
+		ret := ("fail" + common.Sep + "already exsit in DcrmCalls" + common.Sep + "dcrm back-end internal error:already exsit in DcrmCalls" + common.Sep + "already exsit in DcrmCalls") //TODO "no-data"
 		ch <- ret
 		return ch
 	}
@@ -1387,7 +1377,7 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	////////
 	if s == "" {
 		//fail:chret:tip:error
-		ret := ("fail" + Sep + "no-data" + Sep + "dcrm back-end internal error:get msg fail" + Sep + "get msg fail") //TODO "no-data"
+		ret := ("fail" + common.Sep + "no-data" + common.Sep + "dcrm back-end internal error:get msg fail" + common.Sep + "get msg fail") //TODO "no-data"
 		ch <- ret
 		return ch
 	}
@@ -1395,7 +1385,7 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	res, err := UnCompress(s)
 	if err != nil {
 		//fail:chret:tip:error
-		ret := ("fail" + Sep + "no-data" + Sep + "dcrm back-end internal error:uncompress data fail in RecvMsg.Run" + Sep + "uncompress data fail in recvmsg.run") //TODO "no-data"
+		ret := ("fail" + common.Sep + "no-data" + common.Sep + "dcrm back-end internal error:uncompress data fail in RecvMsg.Run" + common.Sep + "uncompress data fail in recvmsg.run") //TODO "no-data"
 		ch <- ret
 		return ch
 	}
@@ -1403,7 +1393,7 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	r, err := Decode2(res, "SendMsg")
 	if err != nil {
 		//fail:chret:tip:error
-		ret := ("fail" + Sep + "no-data" + Sep + "dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run" + Sep + "decode data to SendMsg fail in recvmsg.run") //TODO "no-data"
+		ret := ("fail" + common.Sep + "no-data" + common.Sep + "dcrm back-end internal error:decode data to SendMsg fail in RecvMsg.Run" + common.Sep + "decode data to SendMsg fail in recvmsg.run") //TODO "no-data"
 		ch <- ret
 		return ch
 	}
@@ -1419,7 +1409,7 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	    logs,ok := log.(*DecdsaLog)
 	    if ok == false {
 		//fmt.Printf("%v ===============DcrmCall,ok is false, key = %v=================\n", common.CurrentTime(),rr.Nonce)
-		ret := ("fail" + Sep + "decdsa log no exist" + Sep + "dcrm back-end internal error:decdsa log no exist" + Sep + "decdsa log no exist") //TODO "no-data"
+		ret := ("fail" + common.Sep + "decdsa log no exist" + common.Sep + "dcrm back-end internal error:decdsa log no exist" + common.Sep + "decdsa log no exist") //TODO "no-data"
 		ch <- ret
 		return ch
 	    }
@@ -1443,13 +1433,13 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 	//fmt.Printf("%v =============DcrmCall, ret = %v,err = %v,msg hash = %v,key = %v =======================\n", common.CurrentTime(), chret, cherr, test, rr.Nonce)
 	if cherr != nil {
 		//fail:chret:tip:error
-		ret := ("fail" + Sep + chret + Sep + tip + Sep + cherr.Error())
+		ret := ("fail" + common.Sep + chret + common.Sep + tip + common.Sep + cherr.Error())
 		ch <- ret
 		return ch
 	}
 
 	//success:chret
-	ret := ("success" + Sep + chret)
+	ret := ("success" + common.Sep + chret)
 	ch <- ret
 	return ch
 }
@@ -1463,7 +1453,7 @@ func DcrmCallRet(msg interface{}, enode string) {
 		return
 	}
 
-	ss := strings.Split(res, Sep)
+	ss := strings.Split(res, common.Sep)
 	if len(ss) < 4 {
 		return
 	}
@@ -1599,7 +1589,7 @@ func Call(msg interface{}, enode string) {
 	    return
 	}
 
-	mm := strings.Split(s, Sep)
+	mm := strings.Split(s, common.Sep)
 	if len(mm) >= 2 {
 	    if len(mm) < 3 {
 		    return
@@ -1612,7 +1602,7 @@ func Call(msg interface{}, enode string) {
 	    }
 
 	    mmtmp := mm[0:2]
-	    ss := strings.Join(mmtmp, Sep)
+	    ss := strings.Join(mmtmp, common.Sep)
 
 	    msgCode := mm[1]
 	    switch msgCode {
@@ -2603,7 +2593,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		res = msgdata
 	}
 	////
-	mm := strings.Split(res, Sep)
+	mm := strings.Split(res, common.Sep)
 	if len(mm) >= 2 {
 		//msg:  key-enode:C1:X1:X2....:Xn
 		//msg:  key-enode1:NoReciv:enode2:C1
@@ -2838,7 +2828,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						s0 := "SendLockOutRes"
 						s1 := "Fail"
 						s2 := "don't accept lockout."
-						ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 						SendMsgToDcrmGroup(ss, w.groupid)
 						DisMsg(ss)
 						//fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
@@ -2857,7 +2847,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							iter := w.msg_sendlockoutres.Front()
 							for iter != nil {
 								mdss := iter.Value.(string)
-								ms := strings.Split(mdss, Sep)
+								ms := strings.Split(mdss, common.Sep)
 								//prexs := strings.Split(ms[0],"-")
 								//node := prexs[1]
 								if strings.EqualFold(ms[2], "Success") {
@@ -2882,7 +2872,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 					///////////////////////lockout result end////////////////////////
 
-					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept lockout.")}
+					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept lockout.")}
 					ch <- res2
 					return false
 				}
@@ -2905,7 +2895,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get validate_lockout return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
 			if chret != "" {
-				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType + Sep + chret, Tip: "", Err: nil}
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType + common.Sep + chret, Tip: "", Err: nil}
 				ch <- res2
 				return true
 			}
@@ -2923,7 +2913,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				s0 := "SendLockOutRes"
 				s1 := "Fail"
 				s2 := cherr.Error()
-				ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 				SendMsgToDcrmGroup(ss, w.groupid)
 				DisMsg(ss)
 				//fmt.Printf("%v ================RecvMsg.Run,send SendLockOutRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
@@ -2941,7 +2931,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					iter := w.msg_sendlockoutres.Front()
 					for iter != nil {
 						mdss := iter.Value.(string)
-						ms := strings.Split(mdss, Sep)
+						ms := strings.Split(mdss, common.Sep)
 						//prexs := strings.Split(ms[0],"-")
 						//node := prexs[1]
 						if strings.EqualFold(ms[2], "Success") {
@@ -2967,13 +2957,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			///////////////////////lockout result end////////////////////////
 
 			if cherr != nil {
-				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: cherr}
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: cherr}
 				ch <- res2
 				return false
 			}
 
 			fmt.Printf("%v ==============RecvMsg.Run,LockOut send tx to net fail, key = %v =======================\n", common.CurrentTime(), rr.Nonce)
-			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("send tx to net fail.")}
+			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("send tx to net fail.")}
 			ch <- res2
 			return true
 		}
@@ -3169,7 +3159,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						s0 := "SendSignRes"
 						s1 := "Fail"
 						s2 := "don't accept sign."
-						ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 						SendMsgToDcrmGroup(ss, w.groupid)
 						DisMsg(ss)
 						fmt.Printf("%v ================RecvMsg.Run,send SendSignRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
@@ -3188,7 +3178,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							iter := w.msg_sendsignres.Front()
 							for iter != nil {
 								mdss := iter.Value.(string)
-								ms := strings.Split(mdss, Sep)
+								ms := strings.Split(mdss, common.Sep)
 								if strings.EqualFold(ms[2], "Success") {
 									reply2 = "true"
 									lohash = ms[3]
@@ -3211,7 +3201,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					}
 					///////////////////////sign result end////////////////////////
 
-					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept sign.")}
+					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept sign.")}
 					ch <- res2
 					return false
 				}
@@ -3234,7 +3224,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get sign return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
 			if chret != "" {
-				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType + Sep + chret, Tip: "", Err: nil}
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType + common.Sep + chret, Tip: "", Err: nil}
 				ch <- res2
 				return true
 			}
@@ -3252,7 +3242,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				s0 := "SendSignRes"
 				s1 := "Fail"
 				s2 := cherr.Error()
-				ss := enode + Sep + s0 + Sep + s1 + Sep + s2
+				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 				SendMsgToDcrmGroup(ss, w.groupid)
 				DisMsg(ss)
 				fmt.Printf("%v ================RecvMsg.Run,send SendSignRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
@@ -3270,7 +3260,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					iter := w.msg_sendsignres.Front()
 					for iter != nil {
 						mdss := iter.Value.(string)
-						ms := strings.Split(mdss, Sep)
+						ms := strings.Split(mdss, common.Sep)
 						if strings.EqualFold(ms[2], "Success") {
 							reply2 = "true"
 							lohash = ms[3]
@@ -3294,12 +3284,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			///////////////////////sign result end////////////////////////
 
 			if cherr != nil {
-				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: cherr}
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: cherr}
 				ch <- res2
 				return false
 			}
 
-			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("sign fail.")}
+			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("sign fail.")}
 			ch <- res2
 			return true
 		}
@@ -3399,7 +3389,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				var enodeinfo string
 				groupinfo := make([]string,0)
 				_, enodes := GetGroup(w.groupid)
-				nodes := strings.Split(enodes, SepSg)
+				nodes := strings.Split(enodes, common.Sep2)
 				for _, node := range nodes {
 				    groupinfo = append(groupinfo,node)
 				    node2 := ParseNode(node)
@@ -3537,7 +3527,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, "don't accept req addr.", ars, wid,"")
 					}
 
-					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept req addr.")}
+					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept req addr.")}
 					ch <- res2
 					return false
 				}
@@ -3560,12 +3550,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
 				AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, wid,"")
-				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType, Tip: tip, Err: cherr}
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: cherr}
 				ch <- res2
 				return false
 			}
 
-			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + Sep + rr.MsgType + Sep + chret, Tip: "", Err: nil}
+			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType + common.Sep + chret, Tip: "", Err: nil}
 			ch <- res2
 			return true
 		}
@@ -3901,7 +3891,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		enode := strings.Join(mp, "-")
 		s0 := "AcceptReqAddrRes"
 		s1 := "true"
-		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
+		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + tt
 		SendMsgToDcrmGroup(ss, req.GroupId)
 		
 		//////////add decdsa log
@@ -3936,10 +3926,10 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
 		////fix bug: get C1 timeout
 		_, enodes := GetGroup(req.GroupId)
-		nodes := strings.Split(enodes, SepSg)
+		nodes := strings.Split(enodes, common.Sep2)
 		for _, node := range nodes {
 		    node2 := ParseNode(node)
-		    c1data := self.Key + "-" + node2 + Sep + "AcceptReqAddrRes"
+		    c1data := self.Key + "-" + node2 + common.Sep + "AcceptReqAddrRes"
 		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
 		    if exist {
 			DisMsg(c1.(string))
@@ -4036,17 +4026,17 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		enode := strings.Join(mp, "-")
 		s0 := "AcceptLockOutRes"
 		s1 := "true"
-		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
+		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + tt
 		SendMsgToDcrmGroup(ss, lo.GroupId)
 		DisMsg(ss)
 		//fmt.Printf("%v ================== LockOutSendMsgToDcrm.Run , finish send AcceptLockOutRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
 		
 		////fix bug: get C11 timeout
 		_, enodes := GetGroup(lo.GroupId)
-		nodes := strings.Split(enodes, SepSg)
+		nodes := strings.Split(enodes, common.Sep2)
 		for _, node := range nodes {
 		    node2 := ParseNode(node)
-		    c1data := self.Key + "-" + node2 + Sep + "AcceptLockOutRes"
+		    c1data := self.Key + "-" + node2 + common.Sep + "AcceptLockOutRes"
 		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
 		    if exist {
 			DisMsg(c1.(string))
@@ -4143,17 +4133,17 @@ func (self *SignSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		enode := strings.Join(mp, "-")
 		s0 := "AcceptSignRes"
 		s1 := "true"
-		ss := enode + Sep + s0 + Sep + s1 + Sep + tt
+		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + tt
 		SendMsgToDcrmGroup(ss, sig.GroupId)
 		DisMsg(ss)
 		//fmt.Printf("%v ================== SignSendMsgToDcrm.Run , finish send AcceptSignRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
 		
 		////fix bug: get C11 timeout
 		_, enodes := GetGroup(sig.GroupId)
-		nodes := strings.Split(enodes, SepSg)
+		nodes := strings.Split(enodes, common.Sep2)
 		for _, node := range nodes {
 		    node2 := ParseNode(node)
-		    c1data := self.Key + "-" + node2 + Sep + "AcceptSignRes"
+		    c1data := self.Key + "-" + node2 + common.Sep + "AcceptSignRes"
 		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
 		    if exist {
 			DisMsg(c1.(string))
@@ -4197,7 +4187,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 
     var ars []NodeReply
     _, enodes := GetGroup(gid)
-    nodes := strings.Split(enodes, SepSg)
+    nodes := strings.Split(enodes, common.Sep2)
     
     if wid < 0 || wid >= len(workers) {
 	for _, node := range nodes {
@@ -4234,7 +4224,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptlockoutres.Front()
 		for iter != nil {
 		    mdss := iter.Value.(string)
-		    ms := strings.Split(mdss, Sep)
+		    ms := strings.Split(mdss, common.Sep)
 		    prexs := strings.Split(ms[0], "-")
 		    node3 := prexs[1]
 		    if strings.EqualFold(node3,node2) {
@@ -4269,7 +4259,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptsignres.Front()
 		for iter != nil {
 		    mdss := iter.Value.(string)
-		    ms := strings.Split(mdss, Sep)
+		    ms := strings.Split(mdss, common.Sep)
 		    prexs := strings.Split(ms[0], "-")
 		    node3 := prexs[1]
 		    if strings.EqualFold(node3,node2) {
@@ -4304,7 +4294,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 	    iter := w.msg_acceptreqaddrres.Front()
 	    for iter != nil {
 		mdss := iter.Value.(string)
-		ms := strings.Split(mdss, Sep)
+		ms := strings.Split(mdss, common.Sep)
 		prexs := strings.Split(ms[0], "-")
 		node3 := prexs[1]
 		if strings.EqualFold(node3,node2) {
@@ -4800,11 +4790,11 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
 		    continue
 	    }
 
-	    tmp := strings.Split(s, Sep)
+	    tmp := strings.Split(s, common.Sep)
 	    tmp2 := tmp[0:2]
 	    if testEq(mm, tmp2) {
 		_, enodes := GetGroup(w.groupid)
-		nodes := strings.Split(enodes, SepSg)
+		nodes := strings.Split(enodes, common.Sep2)
 		for _, node := range nodes {
 		    node2 := ParseNode(node)
 		    if strings.EqualFold(node2,reqer) {
@@ -4830,7 +4820,7 @@ func DisMsg(msg string) {
 	//fmt.Printf("%v ===============DisMsg,get msg = %v,msg hash = %v,=================\n", common.CurrentTime(), msg, test)
 
 	//orderbook matchres
-	mm := strings.Split(msg, Sep)
+	mm := strings.Split(msg, common.Sep)
 	if len(mm) < 3 {
 		return
 	}
@@ -4875,7 +4865,7 @@ func DisMsg(msg string) {
 		}
 
 		mmtmp := mm[2:]
-		ss := strings.Join(mmtmp, Sep)
+		ss := strings.Join(mmtmp, common.Sep)
 		GAccs.WriteMap(strings.ToLower(key),[]byte(ss))
 		exsit,da := GetValueFromPubKeyData(key)
 		if exsit == true {
@@ -4897,7 +4887,7 @@ func DisMsg(msg string) {
 	if err != nil || w == nil {
 
 	    mmtmp := mm[0:2]
-	    ss := strings.Join(mmtmp, Sep)
+	    ss := strings.Join(mmtmp, common.Sep)
 	    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. ss = %v, msg = %v,key = %v=================\n", common.CurrentTime(), strings.ToLower(ss),msg,prexs[0])
 	    C1Data.WriteMap(strings.ToLower(ss),msg)
 
@@ -4937,7 +4927,7 @@ func DisMsg(msg string) {
 				continue
 			}
 
-			tmp := strings.Split(s, Sep)
+			tmp := strings.Split(s, common.Sep)
 			tmp2 := tmp[0:3]
 			//fmt.Printf("%v ===============DisMsg, msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
 			if testEq(mm2, tmp2) {
@@ -4998,7 +4988,7 @@ func DisMsg(msg string) {
 				continue
 			}
 
-			tmp := strings.Split(s, Sep)
+			tmp := strings.Split(s, common.Sep)
 			tmp2 := tmp[0:3]
 			//fmt.Printf("%v ===============DisMsg, msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
 			if testEq(mm2, tmp2) {
@@ -5068,7 +5058,7 @@ func DisMsg(msg string) {
 				continue
 			}
 
-			tmp := strings.Split(s, Sep)
+			tmp := strings.Split(s, common.Sep)
 			tmp2 := tmp[0:3]
 			//fmt.Printf("%v ===============DisMsg, msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
 			if testEq(mm2, tmp2) {
@@ -5402,7 +5392,6 @@ func DisMsg(msg string) {
 
 	//////////////////ed
 	case "EDC11":
-		logs.Debug("=========DisMsg,it is ed and it is EDC11.=============", "len msg_edc11", w.msg_edc11.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edc11.Len() >= w.NodeCnt {
 			return
@@ -5413,13 +5402,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edc11.PushBack(msg)
-		logs.Debug("=========DisMsg,EDC11 msg.=============", "len c11", w.msg_edc11.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edc11.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDC11 msg.=============")
 			w.bedc11 <- true
 		}
 	case "EDZK":
-		logs.Debug("=========DisMsg,it is ed and it is EDZK.=============", "len msg_edzk", w.msg_edzk.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edzk.Len() >= w.NodeCnt {
 			return
@@ -5430,13 +5416,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edzk.PushBack(msg)
-		logs.Debug("=========DisMsg,EDZK msg.=============", "len zk", w.msg_edzk.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edzk.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDZK msg.=============")
 			w.bedzk <- true
 		}
 	case "EDD11":
-		logs.Debug("=========DisMsg,it is ed and it is EDD11.=============", "len msg_edd11", w.msg_edd11.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edd11.Len() >= w.NodeCnt {
 			return
@@ -5447,13 +5430,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edd11.PushBack(msg)
-		logs.Debug("=========DisMsg,EDD11 msg.=============", "len d11", w.msg_edd11.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edd11.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDD11 msg.=============")
 			w.bedd11 <- true
 		}
 	case "EDSHARE1":
-		logs.Debug("=========DisMsg,it is ed and it is EDSHARE1.=============", "len msg_edshare1", w.msg_edshare1.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edshare1.Len() >= (w.NodeCnt-1) {
 			return
@@ -5464,13 +5444,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edshare1.PushBack(msg)
-		logs.Debug("=========DisMsg,EDSHARE1 msg.=============", "len share1", w.msg_edshare1.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edshare1.Len() == (w.NodeCnt-1) {
-			logs.Debug("=========DisMsg,get all EDSHARE1 msg.=============")
 			w.bedshare1 <- true
 		}
 	case "EDCFSB":
-		logs.Debug("=========DisMsg,it is ed and it is EDCFSB.=============", "len msg_edcfsb", w.msg_edcfsb.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edcfsb.Len() >= w.NodeCnt {
 			return
@@ -5481,13 +5458,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edcfsb.PushBack(msg)
-		logs.Debug("=========DisMsg,EDCFSB msg.=============", "len cfsb", w.msg_edcfsb.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edcfsb.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDCFSB msg.=============")
 			w.bedcfsb <- true
 		}
 	case "EDC21":
-		logs.Debug("=========DisMsg,it is ed and it is EDC21.=============", "len msg_edc21", w.msg_edc21.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edc21.Len() >= w.NodeCnt {
 			return
@@ -5498,13 +5472,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edc21.PushBack(msg)
-		logs.Debug("=========DisMsg,EDC21 msg.=============", "len c21", w.msg_edc21.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edc21.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDC21 msg.=============")
 			w.bedc21 <- true
 		}
 	case "EDZKR":
-		logs.Debug("=========DisMsg,it is ed and it is EDZKR.=============", "len msg_edzkr", w.msg_edzkr.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edzkr.Len() >= w.NodeCnt {
 			return
@@ -5515,13 +5486,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edzkr.PushBack(msg)
-		logs.Debug("=========DisMsg,EDZKR msg.=============", "len zkr", w.msg_edzkr.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edzkr.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDZKR msg.=============")
 			w.bedzkr <- true
 		}
 	case "EDD21":
-		logs.Debug("=========DisMsg,it is ed and it is EDD21.=============", "len msg_edd21", w.msg_edd21.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edd21.Len() >= w.NodeCnt {
 			return
@@ -5532,13 +5500,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edd21.PushBack(msg)
-		logs.Debug("=========DisMsg,EDD21 msg.=============", "len d21", w.msg_edd21.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edd21.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDD21 msg.=============")
 			w.bedd21 <- true
 		}
 	case "EDC31":
-		logs.Debug("=========DisMsg,it is ed and it is EDC31.=============", "len msg_edc31", w.msg_edc31.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edc31.Len() >= w.NodeCnt {
 			return
@@ -5549,13 +5514,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edc31.PushBack(msg)
-		logs.Debug("=========DisMsg,EDC31 msg.=============", "len c31", w.msg_edc31.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edc31.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDC31 msg.=============")
 			w.bedc31 <- true
 		}
 	case "EDD31":
-		logs.Debug("=========DisMsg,it is ed and it is EDD31.=============", "len msg_edd31", w.msg_edd31.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_edd31.Len() >= w.NodeCnt {
 			return
@@ -5566,13 +5528,10 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_edd31.PushBack(msg)
-		logs.Debug("=========DisMsg,EDD31 msg.=============", "len d31", w.msg_edd31.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_edd31.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDD31 msg.=============")
 			w.bedd31 <- true
 		}
 	case "EDS":
-		logs.Debug("=========DisMsg,it is ed and it is EDS.=============", "len msg_eds", w.msg_eds.Len(), "len msg", len(msg))
 		///bug
 		if w.msg_eds.Len() >= w.NodeCnt {
 			return
@@ -5583,9 +5542,7 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_eds.PushBack(msg)
-		logs.Debug("=========DisMsg,EDS msg.=============", "len s", w.msg_eds.Len(), "nodecnt-1", (w.NodeCnt - 1))
 		if w.msg_eds.Len() == w.NodeCnt {
-			logs.Debug("=========DisMsg,get all EDS msg.=============")
 			w.beds <- true
 		}
 		///////////////////

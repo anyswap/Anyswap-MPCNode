@@ -14,31 +14,58 @@
  *
  */
 
-package dev
+package keygen 
 
 import (
-	//"fmt"
-	//"bytes"
-	//"io"
-	//"time"
 	"math/big"
+	"crypto/rand"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ec2"
+	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	//"strconv"
-	//"strings"
-	//"github.com/fsn-dev/dcrm-walletService/crypto/dcrm/dev/lib/ed"
-	//"github.com/fsn-dev/dcrm-walletService/internal/common"
-	//"github.com/fsn-dev/cryptoCoins/coins/types"
-	//cryptorand "crypto/rand"
-	//"crypto/sha512"
-	//"encoding/hex"
-	//"github.com/fsn-dev/dcrm-walletService/ethdb"
-	//"github.com/fsn-dev/cryptoCoins/coins"
-	//"github.com/astaxie/beego/logs"
 )
 
 ////////////////////////////////////
+
+func GetRandomInt(length int) *big.Int {
+	// NewInt allocates and returns a new Int set to x.
+	/*one := big.NewInt(1)
+	// Lsh sets z = x << n and returns z.
+	maxi := new(big.Int).Lsh(one, uint(length))
+
+	// TODO: Random Seed, need to be replace!!!
+	// New returns a new Rand that uses random values from src to generate other random values.
+	// NewSource returns a new pseudo-random Source seeded with the given value.
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Rand sets z to a pseudo-random number in [0, n) and returns z.
+	rndNum := new(big.Int).Rand(rnd, maxi)*/
+	one := big.NewInt(1)
+	maxi := new(big.Int).Lsh(one, uint(length))
+	maxi = new(big.Int).Sub(maxi, one)
+	rndNum, err := rand.Int(rand.Reader, maxi)
+	if err != nil {
+		return nil
+	}
+
+	return rndNum
+}
+
+func GetRandomIntFromZn(n *big.Int) *big.Int {
+	var rndNumZn *big.Int
+	zero := big.NewInt(0)
+
+	for {
+		rndNumZn = GetRandomInt(n.BitLen())
+		if rndNumZn == nil {
+			return nil
+		}
+
+		if rndNumZn.Cmp(n) < 0 && rndNumZn.Cmp(zero) >= 0 {
+			break
+		}
+	}
+
+	return rndNumZn
+}
 
 func DECDSA_Key_RoundOne(ThresHold int, PaillierKeyLength int) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey) {
 	//1. generate their own "partial" private key secretly
@@ -65,7 +92,7 @@ func DECDSA_Key_RoundOne(ThresHold int, PaillierKeyLength int) (*big.Int, *ec2.P
 	return u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk
 }
 
-func DECDSA_Key_Vss(u1Poly *ec2.PolyStruct2, ids sortableIDSSlice) ([]*ec2.ShareStruct2, error) {
+func DECDSA_Key_Vss(u1Poly *ec2.PolyStruct2, ids []*big.Int) ([]*ec2.ShareStruct2, error) {
 	if u1Poly == nil {
 		return nil, nil
 	}
@@ -96,14 +123,6 @@ func DECDSA_Key_Commitment_Verify(com *ec2.Commitment) bool {
 	}
 
 	return com.Verify()
-}
-
-func DECDSA_Key_DeCommit(com *ec2.Commitment) (bool, []*big.Int) {
-	if com == nil {
-		return false, nil
-	}
-
-	return com.DeCommit()
 }
 
 func DECDSA_Key_GenerateNtildeH1H2(length int) *ec2.NtildeH1H2 {

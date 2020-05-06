@@ -2111,6 +2111,7 @@ type SignCurNodeInfo struct {
 	Account   string
 	PubKey   string
 	MsgHash   string
+	MsgContext   string
 	KeyType   string
 	GroupId   string
 	Nonce     string
@@ -2208,7 +2209,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
 		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.MsgHash + ":" + ac3.Keytype + ":" + ac3.GroupId + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
 
-		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, MsgHash:ac3.MsgHash, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
+		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, MsgHash:ac3.MsgHash, MsgContext:ac3.MsgContext, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
 		ret = append(ret, los)
 	    }
 	    ////
@@ -2524,7 +2525,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash string,ke
 		wid = workid
 	}
 
-	ac2 := &AcceptSignData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey: ac.PubKey, MsgHash: ac.MsgHash,Keytype: ac.Keytype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, Rsv: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+	ac2 := &AcceptSignData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey: ac.PubKey, MsgHash: ac.MsgHash, MsgContext:ac.MsgContext, Keytype: ac.Keytype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, Rsv: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
 
 	e, err := Encode2(ac2)
 	if err != nil {
@@ -2571,6 +2572,7 @@ type TxDataSign struct {
     TxType string
     PubKey string
     MsgHash string
+    MsgContext string
     Keytype string
     GroupId string
     ThresHold string
@@ -3052,7 +3054,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
 				//msg = fusionaccount:pubkey:msghash:keytype:groupid:nonce:threshold:mode:key:timestamp
-				ac := &AcceptSignData{Initiator:self.sender,Account: sigmsg.Account, GroupId: sig.GroupId, Nonce: sigmsg.Nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
+				ac := &AcceptSignData{Initiator:self.sender,Account: sigmsg.Account, GroupId: sig.GroupId, Nonce: sigmsg.Nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext: sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
 				err := SaveAcceptSignData(ac)
 				fmt.Printf("%v ===================finish call SaveAcceptSignData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,pubkey = %v,msghash = %v,keytype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, sigmsg.Account, sig.GroupId, sigmsg.Nonce, sig.PubKey, sig.MsgHash, sig.Keytype, sig.ThresHold, sig.Mode, rr.Nonce)
 				if err != nil {
@@ -4439,6 +4441,7 @@ type AcceptSignData struct {
 	Nonce     string
 	PubKey  string
 	MsgHash    string
+	MsgContext    string
 	Keytype  string
 	LimitNum  string
 	Mode      string

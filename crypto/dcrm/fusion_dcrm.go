@@ -1225,6 +1225,7 @@ func Sign(raw string) (string, string, error) {
 
 	pubkey := sig.PubKey
 	hash := sig.MsgHash
+	//context := sig.MsgContext
 	keytype := sig.Keytype
 	groupid := sig.GroupId
 	threshold := sig.ThresHold
@@ -1301,7 +1302,7 @@ func RecivSign() {
 						fmt.Printf("%v ==============================RecivSign, SetSignNonce, err = %v,pubkey = %v, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, sig.PubKey, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)
 					    ars := dev.GetAllReplyFromGroup(-1,sig.GroupId,dev.Rpc_SIGN,cur_enode)
 
-					    ac := &dev.AcceptSignData{Initiator:cur_enode,Account: data.Account, GroupId: sig.GroupId, Nonce: data.Nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+					    ac := &dev.AcceptSignData{Initiator:cur_enode,Account: data.Account, GroupId: sig.GroupId, Nonce: data.Nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext:sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := dev.SaveAcceptSignData(ac)
 						if err == nil {
 							fmt.Printf("%v ==============================RecivSign,finish call SaveAcceptSignData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)

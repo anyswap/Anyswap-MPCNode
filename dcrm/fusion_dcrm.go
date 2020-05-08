@@ -645,6 +645,15 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 		return "", err.Error(),err
 	}
 
+	ts, err := strconv.Atoi(nums[0])
+	if err != nil {
+		return "", err.Error(),err
+	}
+
+	if nodecnt < ts || ts < 2 {
+	    return "","threshold format error",fmt.Errorf("threshold format error")
+	}
+
 	Nonce := tx.Nonce()
 
 	////
@@ -1309,6 +1318,9 @@ func LockOut(raw string) (string, string, error) {
 	if err != nil {
 		return "", err.Error(),err
 	}
+	if nodecnt < limit || limit < 2 {
+	    return "","threshold format error",fmt.Errorf("threshold format error")
+	}
 
 	nc,_ := GetGroup(groupid)
 	if nc < limit || nc > nodecnt {
@@ -1399,6 +1411,9 @@ func Sign(raw string) (string, string, error) {
 	limit, err := strconv.Atoi(nums[0])
 	if err != nil {
 		return "", err.Error(),err
+	}
+	if nodecnt < limit || limit < 2 {
+	    return "","threshold format error",fmt.Errorf("threshold format error")
 	}
 
 	nc,_ := GetGroup(groupid)

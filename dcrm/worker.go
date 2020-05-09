@@ -133,6 +133,9 @@ type RpcReqWorker struct {
 	msg_ss1      *list.List
 	splitmsg_ss1 map[string]*list.List
 
+	msg_paillierkey      *list.List
+	splitmsg_paillierkey map[string]*list.List
+	
 	pkx  *list.List
 	pky  *list.List
 	save *list.List
@@ -159,6 +162,7 @@ type RpcReqWorker struct {
 	bcommitbigutd11   chan bool
 	bs1               chan bool
 	bss1              chan bool
+	bpaillierkey               chan bool
 	bc11              chan bool
 	bd11_1            chan bool
 
@@ -305,6 +309,8 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 		splitmsg_s1:               make(map[string]*list.List),
 		msg_ss1:                   list.New(),
 		splitmsg_ss1:              make(map[string]*list.List),
+		msg_paillierkey:                   list.New(),
+		splitmsg_paillierkey:              make(map[string]*list.List),
 		msg_acceptreqaddrres:      list.New(),
 		splitmsg_acceptreqaddrres: make(map[string]*list.List),
 		msg_acceptlockoutres:      list.New(),
@@ -337,6 +343,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 		bcommitbigutd11:   make(chan bool, 1),
 		bs1:               make(chan bool, 1),
 		bss1:              make(chan bool, 1),
+		bpaillierkey:              make(chan bool, 1),
 		bmkg:              make(chan bool, 1),
 		bmkw:              make(chan bool, 1),
 		bshare1:           make(chan bool, 1),
@@ -513,6 +520,11 @@ func (w *RpcReqWorker) Clear() {
 		w.msg_ss1.Remove(e)
 	}
 
+	for e := w.msg_paillierkey.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_paillierkey.Remove(e)
+	}
+
 	for e := w.pkx.Front(); e != nil; e = next {
 		next = e.Next()
 		w.pkx.Remove(e)
@@ -601,6 +613,9 @@ func (w *RpcReqWorker) Clear() {
 	}
 	if len(w.bss1) == 1 {
 		<-w.bss1
+	}
+	if len(w.bpaillierkey) == 1 {
+		<-w.bpaillierkey
 	}
 	if len(w.bmkg) == 1 {
 		<-w.bmkg
@@ -728,6 +743,7 @@ func (w *RpcReqWorker) Clear() {
 	w.splitmsg_commitbigutd11 = make(map[string]*list.List)
 	w.splitmsg_s1 = make(map[string]*list.List)
 	w.splitmsg_ss1 = make(map[string]*list.List)
+	w.splitmsg_paillierkey = make(map[string]*list.List)
 
 	if len(w.acceptWaitReqAddrChan) == 1 {
 		<-w.acceptWaitReqAddrChan
@@ -848,6 +864,11 @@ func (w *RpcReqWorker) Clear2() {
 		w.msg_ss1.Remove(e)
 	}
 
+	for e := w.msg_paillierkey.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_paillierkey.Remove(e)
+	}
+
 	for e := w.retres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.retres.Remove(e)
@@ -909,6 +930,9 @@ func (w *RpcReqWorker) Clear2() {
 	}
 	if len(w.bss1) == 1 {
 		<-w.bss1
+	}
+	if len(w.bpaillierkey) == 1 {
+		<-w.bpaillierkey
 	}
 	if len(w.bmkg) == 1 {
 		<-w.bmkg
@@ -1022,6 +1046,7 @@ func (w *RpcReqWorker) Clear2() {
 	w.splitmsg_d11_1 = make(map[string]*list.List)
 	w.splitmsg_s1 = make(map[string]*list.List)
 	w.splitmsg_ss1 = make(map[string]*list.List)
+	w.splitmsg_paillierkey = make(map[string]*list.List)
 
 	if len(w.acceptWaitReqAddrChan) == 1 {
 		<-w.acceptWaitReqAddrChan

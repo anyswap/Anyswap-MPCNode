@@ -1577,6 +1577,8 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
 	    l = w.msg_s1
 	case "SS1":
 	    l = w.msg_ss1
+	case "PaillierKey":
+	    l = w.msg_paillierkey
 	case "EDC11":
 	    l = w.msg_edc11
 	case "EDZK":
@@ -2223,6 +2225,22 @@ func DisMsg(msg string) {
 			common.Info("===================Get All SS1 ", "msg hash = ", test, "prex = ", prexs[0], "", "====================")
 			w.bss1 <- true
 		}
+	case "PaillierKey":
+		///bug
+		if w.msg_paillierkey.Len() >= w.ThresHold {
+			return
+		}
+		///
+		if Find(w.msg_paillierkey, msg) {
+			return
+		}
+
+		w.msg_paillierkey.PushBack(msg)
+		if w.msg_paillierkey.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All PaillierKey, key = %v====================\n",common.CurrentTime(),prexs[0])
+			w.bpaillierkey <- true
+		}
+
 
 	//////////////////ed
 	case "EDC11":

@@ -1057,6 +1057,9 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
 	case "SS1":
 	    l = w.msg_ss1
 	    b = w.bss1
+	case "PaillierKey":
+	    l = w.msg_paillierkey
+	    b = w.bpaillierkey
 	case "EDC11":
 	    l = w.msg_edc11
 	    b = w.bedc11
@@ -2218,7 +2221,7 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 	//save skU1/u1PaillierSk/u1PaillierPk/...
 	ss := string(skU1.Bytes())
 	ss = ss + common.SepSave
-	s1 := u1PaillierSk.Length
+	/*s1 := u1PaillierSk.Length
 	s2 := string(u1PaillierSk.L.Bytes())
 	s3 := string(u1PaillierSk.U.Bytes())
 	ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
@@ -2247,7 +2250,7 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 				break
 			}
 		}
-	}
+	}*/
 
 	zkfacts := make([]string, w.NodeCnt)
 	if w.msg_zkfact.Len() != w.NodeCnt {
@@ -2269,10 +2272,10 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			s1 = string(u1NtildeH1H2.Ntilde.Bytes())
-			s2 = string(u1NtildeH1H2.H1.Bytes())
-			s3 = string(u1NtildeH1H2.H2.Bytes())
-			ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
+		    s1 := string(u1NtildeH1H2.Ntilde.Bytes())
+		    s2 := string(u1NtildeH1H2.H1.Bytes())
+		    s3 := string(u1NtildeH1H2.H2.Bytes())
+		    ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
 			continue
 		}
 

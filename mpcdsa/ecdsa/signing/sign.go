@@ -341,7 +341,7 @@ func DECDSA_Sign_Calc_v(r, deltaGammaGy, pkx, pky, R, S *big.Int, hashBytes []by
 	return recid
 }
 
-/*func GetPaillierPk(save string, index int) *ec2.PublicKey {
+func GetPaillierPk(save string, index int) *ec2.PublicKey {
 	if save == "" || index < 0 {
 		return nil
 	}
@@ -376,7 +376,7 @@ func GetPaillierSk(save string, index int) *ec2.PrivateKey {
 	}
 
 	return nil
-}*/
+}
 
 //paillier question 2,delete zkfactor,add ntilde h1 h2
 func GetZkFactProof(save string, index int, NodeCnt int) *ec2.NtildeH1H2 {
@@ -386,8 +386,8 @@ func GetZkFactProof(save string, index int, NodeCnt int) *ec2.NtildeH1H2 {
 	}
 
 	mm := strings.Split(save, common.SepSave)
-	//s := 4 + 4*NodeCnt + 3*index ////????? TODO
-	s := 1 + 3*index ////????? TODO
+	s := 4 + 4*NodeCnt + 3*index ////????? TODO
+	//s := 1 + 3*index ////????? TODO
 	if len(mm) < (s + 3) {
 		fmt.Println("===============GetZkFactProof,get zkfactproof error,save = %s,index = %v ==============", save, index)
 		return nil

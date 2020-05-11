@@ -749,7 +749,8 @@ func DECDSASignPaillierEncrypt(cointype string, save string, w *RpcReqWorker, id
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk2(cointype,w,id)
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
+			//u1PaillierPk := GetPaillierPk2(cointype,w,id)
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save paillier pk fail")}
 				ch <- res
@@ -1011,8 +1012,8 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 				return false
 			}
 
-			//u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
-			u1PaillierPk := GetPaillierPk2(cointype,w,id)
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
+			//u1PaillierPk := GetPaillierPk2(cointype,w,id)
 			if u1PaillierPk == nil {
 				fmt.Println("============sign,22222222,verify mtazk1proof fail===================")
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
@@ -1061,7 +1062,8 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk2(cointype,w,id)
+			//u1PaillierPk := GetPaillierPk2(cointype,w,id)
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 				ch <- res
@@ -1084,8 +1086,8 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 			continue
 		}
 
-		//u2PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
-		u2PaillierPk := GetPaillierPk2(cointype,w,id)
+		u2PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
+		//u2PaillierPk := GetPaillierPk2(cointype,w,id)
 		if u2PaillierPk == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 			ch <- res
@@ -1130,7 +1132,8 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
-			u1PaillierPk := GetPaillierPk2(cointype,w,id)
+			//u1PaillierPk := GetPaillierPk2(cointype,w,id)
+			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 				ch <- res
@@ -1152,8 +1155,8 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 			continue
 		}
 
-		//u2PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
-		u2PaillierPk := GetPaillierPk2(cointype,w,id)
+		u2PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
+		//u2PaillierPk := GetPaillierPk2(cointype,w,id)
 		if u2PaillierPk == nil {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier pk fail")}
 			ch <- res
@@ -1408,7 +1411,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 	return true
 }
 
-/*func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, save string, ch chan interface{}) *ec2.PrivateKey {
+func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, save string, ch chan interface{}) *ec2.PrivateKey {
 	if cointype == "" || len(idSign) == 0 || w == nil || save == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1443,7 +1446,6 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 
 	return u1PaillierSk
 }
-*/
 
 func DecryptCkGamma(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, u1PaillierSk *ec2.PrivateKey, mkg map[string]*big.Int, ch chan interface{}) []*big.Int {
 	if cointype == "" || len(idSign) == 0 || w == nil || u1PaillierSk == nil || len(mkg) == 0 {
@@ -2810,7 +2812,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	//fmt.Printf("%v===================sign,map privkey finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
 	///////gen paillier key
-	u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
+	/*u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
 	mp := []string{msgprex, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "PaillierKey"
@@ -2835,7 +2837,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 		ch <- res
 		return ""
 	}
-
+*/
 	///////
 
 	u1K, u1Gamma, commitU1GammaG := DECDSASignRoundOne(msgprex, w, idSign, ch)
@@ -2880,7 +2882,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 	}
 	//fmt.Printf("%v===================sign,verify zk gamma/w finish, key = %v =====================\n",common.CurrentTime(),msgprex)
 
-	//u1PaillierSk := GetSelfPrivKey(cointype, idSign, w, save, ch)
+	u1PaillierSk := GetSelfPrivKey(cointype, idSign, w, save, ch)
 	if u1PaillierSk == nil {
 		return ""
 	}

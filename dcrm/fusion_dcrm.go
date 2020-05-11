@@ -1344,6 +1344,34 @@ func LockOut(raw string) (string, string, error) {
 	    return "","can not lockout with different mode in dcrm addr.",fmt.Errorf("can not lockout with different mode in dcrm addr.")
 	}
 
+	////bug:check accout
+	if pubs.Mode == "1" && !strings.EqualFold(pubs.Account,from.Hex()) {
+	    return "","invalid lockout account",fmt.Errorf("invalid lockout account")
+	}
+	
+	exsit,da = GetValueFromPubKeyData(pubs.Key)
+	if exsit == false {
+	    return "","no exist dcrm addr pubkey data",fmt.Errorf("no exist dcrm addr pubkey data")
+	}
+
+	if da == nil {
+	    return "","no exist dcrm addr pubkey data",fmt.Errorf("no exist dcrm addr pubkey data")
+	}
+
+	ac,ok := da.(*AcceptReqAddrData)
+	if ok == false {
+	    return "","no exist dcrm addr pubkey data",fmt.Errorf("no exist dcrm addr pubkey data")
+	}
+
+	if ac == nil {
+	    return "","no exist dcrm addr pubkey data",fmt.Errorf("no exist dcrm addr pubkey data")
+	}
+
+	if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
+	    return "","invalid lockout account",fmt.Errorf("invalid lockout account")
+	}
+	////////////////////
+
 	//
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()

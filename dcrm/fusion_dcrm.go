@@ -1298,10 +1298,10 @@ func LockOut(raw string) (string, string, error) {
 	threshold := lo.ThresHold
 	mode := lo.Mode
 	timestamp := lo.TimeStamp
-	memo := lo.Memo
+	//memo := lo.Memo
 	Nonce := tx.Nonce()
 
-	if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" || memo == "" {
+	if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
 

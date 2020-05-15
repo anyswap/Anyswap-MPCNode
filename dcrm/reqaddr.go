@@ -60,6 +60,7 @@ type PubKeyData struct {
 	KeyGenTime string
 	RefLockOutKeys string //key1:key2...
 	RefSignKeys string //key1:key2...
+	RefReShareKeys string //key1:key2...
 }
 
 func GetReqAddrNonce(account string) (string, string, error) {
@@ -2300,6 +2301,72 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 //ec2
 //msgprex = hash
 func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype string) bool {
+	///////for test only
+	/*u1,_ := new(big.Int).SetString("3334747394230983325243207970954899590842441253149295381558648242110081293330",10)
+	u2,_ := new(big.Int).SetString("69039181184174029818470298267328820110013585784220774880124345655174594749061",10)
+	u3,_ := new(big.Int).SetString("14867692866148859006086889155133300611365049455876397123617203957782293499325",10)
+	u4,_ := new(big.Int).SetString("84793511064568272149980886713210270911035531383314504494511304398691848103881",10)
+	u5,_ := new(big.Int).SetString("60841277345123397920834696016664146929546891435110670397947900149315293244142",10)
+
+	id1,_ := new(big.Int).SetString("53618612272167874423319834687974778412293696801310558561041950376332309251074",10)
+	id2,_ := new(big.Int).SetString("54921957341908846327991236707470353323420933608233375424223802952423356273424",10)
+	id3,_ := new(big.Int).SetString("55554820072087080797082013913708076641941533809080830582031668626477915287514",10)
+	id4,_ := new(big.Int).SetString("60318458834590464192620032882393176022119815649037676016914795650913223224233",10)
+	id5,_ := new(big.Int).SetString("115787261728302521653708661579759215305126272044286142279837734005010875313981",10)
+
+	sku1,_ := new(big.Int).SetString("31191155413895758490308293179882186383085667250661674133654187820857154180677",10)
+	sku2,_ := new(big.Int).SetString("47074940619208118544250574667751837749046355150235507843803424053911198813112",10)
+	sku3,_ := new(big.Int).SetString("64402190692031667657924912059763629636297143519526964063936831306627647090315",10)
+	sku4,_ := new(big.Int).SetString("34772545226428570215016578677967881376777770447360028779798133967936336399940",10)
+	sku5,_ := new(big.Int).SetString("79875137852131204821645001934236208017593200315324988641558008769062905261078",10)
+
+	new1,_ := new(big.Int).SetString("90217780269633436353718649612716896878738939932682742626484292501596677805232",10)
+	new2,_ := new(big.Int).SetString("93554831225468823981433198553360053376392622858513213953942577456307683005349",10)
+	new3,_ := new(big.Int).SetString("67669551554355372044987661383284795264612007389379970801351296782109151089056",10)
+	new4,_ := new(big.Int).SetString("109787550781396434316135992389074051324252963495214169195450555312304474730832",10)
+	new5,_ := new(big.Int).SetString("48263283217198287895944974605412009346944799039902513035658396575677600708148",10)
+	sk := u1
+	sk = new(big.Int).Add(sk, u2)
+	sk = new(big.Int).Add(sk, u3)
+	sk = new(big.Int).Add(sk, u4)
+	sk = new(big.Int).Add(sk, u5)
+	sk = new(big.Int).Mod(sk, secp256k1.S256().N)
+
+	shareU1 := &ec2.ShareStruct2{Id: id1, Share: sku1}
+	shareU2 := &ec2.ShareStruct2{Id: id2, Share: sku2}
+	shareU3 := &ec2.ShareStruct2{Id: id3, Share: sku3}
+	shareU4 := &ec2.ShareStruct2{Id: id4, Share: sku4}
+	shareU5 := &ec2.ShareStruct2{Id: id5, Share: sku5}
+
+	shares := []*ec2.ShareStruct2{shareU1, shareU2, shareU3, shareU4, shareU5}
+	computeSK, _ := ec2.Combine2(shares[:3])
+
+	fmt.Println("")
+	fmt.Println("[Key Generation][Test] verify vss.Combine:")
+	fmt.Println(sk)
+	fmt.Println(computeSK)
+
+	//newskU1 := new(big.Int).Mod(new1, secp256k1.S256().N)
+	//newskU2 := new(big.Int).Mod(new2, secp256k1.S256().N)
+	//newskU3 := new(big.Int).Mod(new3, secp256k1.S256().N)
+	//newskU4 := new(big.Int).Mod(new4, secp256k1.S256().N)
+	//newskU5 := new(big.Int).Mod(new5, secp256k1.S256().N)
+	
+	shareNewSkU1 := &ec2.ShareStruct2{Id: id1, Share: new1}
+	shareNewSkU2 := &ec2.ShareStruct2{Id: id2, Share: new2}
+	shareNewSkU3 := &ec2.ShareStruct2{Id: id3, Share: new3}
+	shareNewSkU4 := &ec2.ShareStruct2{Id: id4, Share: new4}
+	shareNewSkU5 := &ec2.ShareStruct2{Id: id5, Share: new5}
+
+	sharesNewSkU := []*ec2.ShareStruct2{shareNewSkU1, shareNewSkU2, shareNewSkU3, shareNewSkU4, shareNewSkU5}
+	computeNewSK, _ := ec2.Combine2(sharesNewSkU[:4])
+
+	fmt.Println("")
+	fmt.Println("测试,新的私钥分片，合起来，是否等于原来的私钥:")
+	fmt.Println(sk)
+	fmt.Println(computeNewSK)*/
+	////////////////////
+
 	if id < 0 || id >= RpcMaxWorker || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
@@ -2390,6 +2457,14 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 		return false
 	}
 	//fmt.Printf("%v=================generate key,save data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	fmt.Printf("%v=================generate key, u1 = %v, sku1 = %v, key = %v ===================\n",common.CurrentTime(),u1,skU1,msgprex)
+	for k,id := range ids {
+	    enodes := GetEnodesByUid(id, cointype, w.groupid)
+	    if IsCurNode(enodes, cur_enode) {
+		fmt.Printf("%v=================generate key, it is cur node,k = %v,id = %v, key = %v ===================\n",common.CurrentTime(),k,id,msgprex)
+	    }
+	    fmt.Printf("%v=================generate key, id = %v, key = %v ===================\n",common.CurrentTime(),id,msgprex)
+	}
 
 	//*******************!!!Distributed ECDSA End!!!**********************************
 	return true

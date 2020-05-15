@@ -70,11 +70,17 @@ type RpcReqWorker struct {
 	msg_acceptlockoutres      *list.List
 	splitmsg_acceptlockoutres map[string]*list.List
 
+	msg_acceptreshareres      *list.List
+	splitmsg_acceptreshareres map[string]*list.List
+
 	msg_acceptsignres      *list.List
 	splitmsg_acceptsignres map[string]*list.List
 
 	msg_sendlockoutres      *list.List
 	splitmsg_sendlockoutres map[string]*list.List
+
+	msg_sendreshareres      *list.List
+	splitmsg_sendreshareres map[string]*list.List
 
 	msg_sendsignres      *list.List
 	splitmsg_sendsignres map[string]*list.List
@@ -142,8 +148,10 @@ type RpcReqWorker struct {
 
 	bacceptreqaddrres chan bool
 	bacceptlockoutres chan bool
+	bacceptreshareres chan bool
 	bacceptsignres chan bool
 	bsendlockoutres   chan bool
+	bsendreshareres   chan bool
 	bsendsignres   chan bool
 	bgaccs            chan bool
 	bc1               chan bool
@@ -200,6 +208,8 @@ type RpcReqWorker struct {
 	acceptWaitReqAddrChan chan string
 	acceptLockOutChan     chan string
 	acceptWaitLockOutChan chan string
+	acceptReShareChan     chan string
+	acceptWaitReShareChan chan string
 	acceptSignChan     chan string
 	acceptWaitSignChan chan string
 }
@@ -315,10 +325,14 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 		splitmsg_acceptreqaddrres: make(map[string]*list.List),
 		msg_acceptlockoutres:      list.New(),
 		splitmsg_acceptlockoutres: make(map[string]*list.List),
+		msg_acceptreshareres:      list.New(),
+		splitmsg_acceptreshareres: make(map[string]*list.List),
 		msg_acceptsignres:      list.New(),
 		splitmsg_acceptsignres: make(map[string]*list.List),
 		msg_sendlockoutres:        list.New(),
 		splitmsg_sendlockoutres:   make(map[string]*list.List),
+		msg_sendreshareres:        list.New(),
+		splitmsg_sendreshareres:   make(map[string]*list.List),
 		msg_sendsignres:        list.New(),
 		splitmsg_sendsignres:   make(map[string]*list.List),
 
@@ -328,8 +342,10 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
 		bacceptreqaddrres: make(chan bool, 1),
 		bacceptlockoutres: make(chan bool, 1),
+		bacceptreshareres: make(chan bool, 1),
 		bacceptsignres: make(chan bool, 1),
 		bsendlockoutres:   make(chan bool, 1),
+		bsendreshareres:   make(chan bool, 1),
 		bsendsignres:   make(chan bool, 1),
 		bgaccs:            make(chan bool, 1),
 		bc1:               make(chan bool, 1),
@@ -388,6 +404,8 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 
 		acceptLockOutChan:     make(chan string, 1),
 		acceptWaitLockOutChan: make(chan string, 1),
+		acceptReShareChan:     make(chan string, 1),
+		acceptWaitReShareChan: make(chan string, 1),
 		acceptSignChan:     make(chan string, 1),
 		acceptWaitSignChan: make(chan string, 1),
 	}
@@ -410,6 +428,11 @@ func (w *RpcReqWorker) Clear() {
 		w.msg_acceptlockoutres.Remove(e)
 	}
 
+	for e := w.msg_acceptreshareres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_acceptreshareres.Remove(e)
+	}
+
 	for e := w.msg_acceptsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptsignres.Remove(e)
@@ -418,6 +441,11 @@ func (w *RpcReqWorker) Clear() {
 	for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendlockoutres.Remove(e)
+	}
+
+	for e := w.msg_sendreshareres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_sendreshareres.Remove(e)
 	}
 
 	for e := w.msg_sendsignres.Front(); e != nil; e = next {
@@ -566,11 +594,17 @@ func (w *RpcReqWorker) Clear() {
 	if len(w.bacceptlockoutres) == 1 {
 		<-w.bacceptlockoutres
 	}
+	if len(w.bacceptreshareres) == 1 {
+		<-w.bacceptreshareres
+	}
 	if len(w.bacceptsignres) == 1 {
 		<-w.bacceptsignres
 	}
 	if len(w.bsendlockoutres) == 1 {
 		<-w.bsendlockoutres
+	}
+	if len(w.bsendreshareres) == 1 {
+		<-w.bsendreshareres
 	}
 	if len(w.bsendsignres) == 1 {
 		<-w.bsendsignres
@@ -721,8 +755,10 @@ func (w *RpcReqWorker) Clear() {
 
 	//TODO
 	w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+	w.splitmsg_acceptreshareres = make(map[string]*list.List)
 	w.splitmsg_acceptsignres = make(map[string]*list.List)
 	w.splitmsg_sendlockoutres = make(map[string]*list.List)
+	w.splitmsg_sendreshareres = make(map[string]*list.List)
 	w.splitmsg_sendsignres = make(map[string]*list.List)
 	w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
 	w.splitmsg_c1 = make(map[string]*list.List)
@@ -757,6 +793,9 @@ func (w *RpcReqWorker) Clear() {
 	if len(w.acceptLockOutChan) == 1 {
 		<-w.acceptLockOutChan
 	}
+	if len(w.acceptReShareChan) == 1 {
+		<-w.acceptReShareChan
+	}
 	if len(w.acceptSignChan) == 1 {
 		<-w.acceptSignChan
 	}
@@ -779,6 +818,11 @@ func (w *RpcReqWorker) Clear2() {
 		w.msg_acceptlockoutres.Remove(e)
 	}
 
+	for e := w.msg_acceptreshareres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_acceptreshareres.Remove(e)
+	}
+
 	for e := w.msg_acceptsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptsignres.Remove(e)
@@ -787,6 +831,11 @@ func (w *RpcReqWorker) Clear2() {
 	for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendlockoutres.Remove(e)
+	}
+
+	for e := w.msg_sendreshareres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_sendreshareres.Remove(e)
 	}
 
 	for e := w.msg_sendsignres.Front(); e != nil; e = next {
@@ -895,11 +944,17 @@ func (w *RpcReqWorker) Clear2() {
 	if len(w.bacceptlockoutres) == 1 {
 		<-w.bacceptlockoutres
 	}
+	if len(w.bacceptreshareres) == 1 {
+		<-w.bacceptreshareres
+	}
 	if len(w.bacceptsignres) == 1 {
 		<-w.bacceptsignres
 	}
 	if len(w.bsendlockoutres) == 1 {
 		<-w.bsendlockoutres
+	}
+	if len(w.bsendreshareres) == 1 {
+		<-w.bsendreshareres
 	}
 	if len(w.bsendsignres) == 1 {
 		<-w.bsendsignres
@@ -1028,8 +1083,10 @@ func (w *RpcReqWorker) Clear2() {
 
 	//TODO
 	w.splitmsg_acceptlockoutres = make(map[string]*list.List)
+	w.splitmsg_acceptreshareres = make(map[string]*list.List)
 	w.splitmsg_acceptsignres = make(map[string]*list.List)
 	w.splitmsg_sendlockoutres = make(map[string]*list.List)
+	w.splitmsg_sendreshareres = make(map[string]*list.List)
 	w.splitmsg_sendsignres = make(map[string]*list.List)
 	w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
 	w.splitmsg_c1 = make(map[string]*list.List)
@@ -1059,6 +1116,9 @@ func (w *RpcReqWorker) Clear2() {
 	}
 	if len(w.acceptLockOutChan) == 1 {
 		<-w.acceptLockOutChan
+	}
+	if len(w.acceptReShareChan) == 1 {
+		<-w.acceptReShareChan
 	}
 	if len(w.acceptSignChan) == 1 {
 		<-w.acceptSignChan

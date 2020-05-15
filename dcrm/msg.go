@@ -217,6 +217,13 @@ func DcrmCallRet(msg interface{}, enode string) {
 			}
 		}
 
+		if ss[2] == "rpc_reshare" {
+			if w.retres.Len() == w.NodeCnt {
+				ret := GetGroupRes(workid)
+				w.ch <- ret
+			}
+		}
+
 		if ss[2] == "rpc_req_dcrmaddr" {
 			if w.retres.Len() == w.NodeCnt {
 				ret := GetGroupRes(workid)
@@ -243,6 +250,13 @@ func DcrmCallRet(msg interface{}, enode string) {
 		}
 
 		if ss[2] == "rpc_sign" {
+			if w.retres.Len() == w.NodeCnt {
+				ret := GetGroupRes(workid)
+				w.ch <- ret
+			}
+		}
+
+		if ss[2] == "rpc_reshare" {
 			if w.retres.Len() == w.NodeCnt {
 				ret := GetGroupRes(workid)
 				w.ch <- ret
@@ -917,6 +931,324 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			fmt.Printf("%v ==============RecvMsg.Run,LockOut send tx to net fail, key = %v =======================\n", common.CurrentTime(), rr.Nonce)
 			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("send tx to net fail.")}
+			ch <- res2
+			return true
+		}
+
+		//rpc_reshare
+		if rr.MsgType == "rpc_reshare" {
+			
+			if !strings.EqualFold(cur_enode, self.sender) { //self send
+			    //nonce check
+			    exsit,_ := GetValueFromPubKeyData(rr.Nonce)
+			    ///////
+			    if exsit == true {
+				    fmt.Printf("%v ================RecvMsg.Run, reshare nonce error, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+				    //TODO must set acceptreshare(.....)
+				    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:reshare tx nonce error", Err: fmt.Errorf("reshare tx nonce error")}
+				    ch <- res2
+				    return false
+			    }
+			}
+			
+			w := workers[workid]
+			w.sid = rr.Nonce
+			resharemsg := ReShareSendMsgToDcrm{}
+			err = json.Unmarshal([]byte(rr.Msg), &resharemsg)
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+			    ch <- res
+			    return false
+			}
+
+			rh := TxDataReShare{}
+			err = json.Unmarshal([]byte(resharemsg.TxData), &rh)
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
+			    ch <- res
+			    return false
+			}
+
+			w.groupid = rh.GroupId 
+			w.limitnum = rh.ThresHold
+			gcnt, _ := GetGroup(w.groupid)
+			w.NodeCnt = gcnt
+			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
+			w.ThresHold = w.NodeCnt
+
+			nums := strings.Split(w.limitnum, "/")
+			if len(nums) == 2 {
+			    nodecnt, err := strconv.Atoi(nums[1])
+			    if err == nil {
+				w.NodeCnt = nodecnt
+			    }
+
+			    w.ThresHold = gcnt
+			}
+
+			w.DcrmFrom = rh.PubKey  // pubkey replace dcrmfrom in reshare 
+
+			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
+
+			if strings.EqualFold(cur_enode, self.sender) { //self send
+				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "Pending", "", "", "", nil, wid)
+			} else {
+				cur_nonce, _, _ := GetReShareNonce(resharemsg.Account)
+				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
+				new_nonce_num, _ := new(big.Int).SetString(resharemsg.Nonce, 10)
+				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+					_, err = SetReShareNonce(resharemsg.Account,resharemsg.Nonce)
+					if err != nil {
+						fmt.Printf("%v ================RecvMsg.Run,set reshare nonce fail, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+						//TODO must set acceptreshare(.....)
+						res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set reshare nonce fail in RecvMsg.Run", Err: fmt.Errorf("set reshare nonce fail in recvmsg.run")}
+						ch <- res2
+						return false
+					}
+				}
+
+				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+				ac := &AcceptReShareData{Initiator:self.sender,Account: resharemsg.Account, GroupId: rh.GroupId, Nonce: resharemsg.Nonce, PubKey: rh.PubKey, LimitNum: rh.ThresHold, Mode: rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
+				err := SaveAcceptReShareData(ac)
+				fmt.Printf("%v ===================finish call SaveAcceptReShareData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,pubkey = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode, rr.Nonce)
+				if err != nil {
+					res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set AcceptReShareData fail in RecvMsg.Run", Err: fmt.Errorf("set AcceptReShareData fail in recvmsg.run")}
+					ch <- res2
+					return false
+				}
+				////
+				dcrmpks, _ := hex.DecodeString(ac.PubKey)
+				exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+				if exsit {
+				    _,ok := da.(*PubKeyData)
+				    if ok == true {
+					keys := (da.(*PubKeyData)).RefReShareKeys
+					if keys == "" {
+					    keys = rr.Nonce
+					} else {
+					    keys = keys + ":" + rr.Nonce
+					}
+
+					pubs3 := &PubKeyData{Key:(da.(*PubKeyData)).Key,Account: (da.(*PubKeyData)).Account, Pub: (da.(*PubKeyData)).Pub, Save: (da.(*PubKeyData)).Save, Nonce: (da.(*PubKeyData)).Nonce, GroupId: (da.(*PubKeyData)).GroupId, LimitNum: (da.(*PubKeyData)).LimitNum, Mode: (da.(*PubKeyData)).Mode,KeyGenTime:(da.(*PubKeyData)).KeyGenTime,RefLockOutKeys:(da.(*PubKeyData)).RefLockOutKeys,RefSignKeys:(da.(*PubKeyData)).RefSignKeys,RefReShareKeys:keys}
+					epubs, err := Encode2(pubs3)
+					if err == nil {
+					    ss3, err := Compress([]byte(epubs))
+					    if err == nil {
+						kd := KeyData{Key: dcrmpks[:], Data: ss3}
+						PubKeyDataChan <- kd
+						LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs3)
+						fmt.Printf("%v ==============================RecvMsg.Run,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(),rr.Nonce)
+					    }
+					}
+				    }
+				}
+			}
+
+			////bug
+			if rh.Mode == "0" { // self-group
+				////
+				var reply bool
+				var tip string
+				timeout := make(chan bool, 1)
+				go func(wid int) {
+					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
+					agreeWaitTime := 10 * time.Minute
+					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+
+					wtmp2 := workers[wid]
+
+					for {
+						select {
+						case account := <-wtmp2.acceptReShareChan:
+							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", rr.Nonce)
+							ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+							fmt.Printf("%v ================== (self *RecvMsg) Run() , get all AcceptReShareRes ,result = %v,key = %v ============================\n", common.CurrentTime(), ars, rr.Nonce)
+							
+							//bug
+							reply = true
+							for _,nr := range ars {
+							    if !strings.EqualFold(nr.Status,"Agree") {
+								reply = false
+								break
+							    }
+							}
+							//
+
+							if reply == false {
+								tip = "don't accept reshare"
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "Failure", "", "don't accept reshare", "don't accept reshare", nil, wid)
+							} else {
+								tip = ""
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "pending", "", "", "", ars, wid)
+							}
+
+							///////
+							timeout <- true
+							return
+						case <-agreeWaitTimeOut.C:
+							fmt.Printf("%v ================== (self *RecvMsg) Run() , agree wait timeout. key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
+							ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+							//bug: if self not accept and timeout
+							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+							reply = false
+							tip = "get other node accept reshare result timeout"
+							//
+
+							timeout <- true
+							return
+						}
+					}
+				}(wid)
+
+				if len(workers[wid].acceptWaitReShareChan) == 0 {
+					workers[wid].acceptWaitReShareChan <- "go on"
+				}
+
+				<-timeout
+
+				fmt.Printf("%v ================== (self *RecvMsg) Run() , the terminal accept reshare result = %v,key = %v,============================\n", common.CurrentTime(), reply, rr.Nonce)
+
+				if reply == false {
+					//////////////////////reshare result start/////////////////////////
+					if tip == "get other node accept reshare result timeout" {
+						ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+					} else {
+						/////////////TODO tmp
+						//sid-enode:SendReShareRes:Success:rsv
+						//sid-enode:SendReShareRes:Fail:err
+						mp := []string{w.sid, cur_enode}
+						enode := strings.Join(mp, "-")
+						s0 := "SendReShareRes"
+						s1 := "Fail"
+						s2 := "don't accept reshare."
+						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
+						SendMsgToDcrmGroup(ss, w.groupid)
+						DisMsg(ss)
+						fmt.Printf("%v ================RecvMsg.Run,send SendReShareRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+						_, _, err := GetChannelValue(ch_t, w.bsendreshareres)
+						fmt.Printf("%v ================RecvMsg.Run,the SendReShareRes result from other nodes, err = %v,key = %v =============\n", common.CurrentTime(), err, rr.Nonce)
+						ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+						if err != nil {
+							tip = "get other node terminal accept reshare result timeout" ////bug
+							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", tip,tip, ars, wid)
+						} else if w.msg_sendreshareres.Len() != w.ThresHold {
+							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, wid)
+						} else {
+							reply2 := "false"
+							lohash := ""
+							iter := w.msg_sendreshareres.Front()
+							for iter != nil {
+								mdss := iter.Value.(string)
+								ms := strings.Split(mdss, common.Sep)
+								if strings.EqualFold(ms[2], "Success") {
+									reply2 = "true"
+									lohash = ms[3]
+									break
+								}
+
+								lohash = ms[3]
+								iter = iter.Next()
+							}
+
+							if reply2 == "true" {
+								fmt.Printf("%v ================RecvMsg,the terminal reshare res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "true", "true", "Success", lohash," "," ",ars, wid)
+							} else {
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "",lohash,lohash,ars, wid)
+							}
+						}
+						/////////////////////
+					}
+					///////////////////////reshare result end////////////////////////
+
+					res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("don't accept reshare.")}
+					ch <- res2
+					return false
+				}
+			} else {
+				if len(workers[wid].acceptWaitReShareChan) == 0 {
+					workers[wid].acceptWaitReShareChan <- "go on"
+				}
+
+				if !strings.EqualFold(cur_enode, self.sender) { //no self send
+					ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "true", "Pending", "","","",ars, wid)
+				}
+			}
+
+			rch := make(chan interface{}, 1)
+			fmt.Printf("%v ================== (self *RecvMsg) Run() , start call reshare,key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
+			reshare(w.sid, resharemsg.Account,rh.PubKey,resharemsg.Nonce,rch)
+			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish call reshare,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
+			chret, tip, cherr := GetChannelValue(ch_t, rch)
+			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get reshare return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
+			if chret != "" {
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType + common.Sep + chret, Tip: "", Err: nil}
+				ch <- res2
+				return true
+			}
+
+			//////////////////////reshare result start/////////////////////////
+			if tip == "get other node accept reshare result timeout" {
+				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+			} else {
+				/////////////TODO tmp
+				//sid-enode:SendReShareRes:Success:rsv
+				//sid-enode:SendReShareRes:Fail:err
+				mp := []string{w.sid, cur_enode}
+				enode := strings.Join(mp, "-")
+				s0 := "SendReShareRes"
+				s1 := "Fail"
+				s2 := "don't accept reshare."
+				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
+				SendMsgToDcrmGroup(ss, w.groupid)
+				DisMsg(ss)
+				fmt.Printf("%v ================RecvMsg.Run,send SendReShareRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
+				_, _, err := GetChannelValue(ch_t, w.bsendreshareres)
+				fmt.Printf("%v ================RecvMsg.Run,the SendReShareRes result from other nodes, err = %v,key = %v =============\n", common.CurrentTime(), err, rr.Nonce)
+				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
+				if err != nil {
+					tip = "get other node terminal accept reshare result timeout" ////bug
+					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", tip,tip, ars, wid)
+				} else if w.msg_sendsignres.Len() != w.ThresHold {
+					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, wid)
+				} else {
+					reply2 := "false"
+					lohash := ""
+					iter := w.msg_sendreshareres.Front()
+					for iter != nil {
+						mdss := iter.Value.(string)
+						ms := strings.Split(mdss, common.Sep)
+						if strings.EqualFold(ms[2], "Success") {
+							reply2 = "true"
+							lohash = ms[3]
+							break
+						}
+
+						lohash = ms[3]
+						iter = iter.Next()
+					}
+
+					if reply2 == "true" {
+						fmt.Printf("%v ================RecvMsg,the terminal reshare res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
+						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "true", "true", "Success", lohash," "," ",ars, wid)
+					} else {
+						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "",lohash,lohash,ars, wid)
+					}
+				}
+				/////////////////////
+			}
+			///////////////////////reshare result end////////////////////////
+
+			if cherr != nil {
+				res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: cherr}
+				ch <- res2
+				return false
+			}
+
+			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType, Tip: tip, Err: fmt.Errorf("sign fail.")}
 			ch <- res2
 			return true
 		}

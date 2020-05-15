@@ -205,6 +205,31 @@ func (this *Service) Sign(raw string) map[string]interface{} {
 	}
 }
 
+func (this *Service) ReShare(raw string) map[string]interface{} {
+	//fmt.Printf("%v ==========call rpc ReShare from web,raw = %v ===========\n", common.CurrentTime(), raw)
+
+	data := make(map[string]interface{})
+	key, tip, err := dcrm.ReShare(raw)
+	//fmt.Printf("%v ==========finish call rpc ReShare from web,key = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), key, err, raw)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = key
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) GetBalance(account string, cointype string, dcrmaddr string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
 

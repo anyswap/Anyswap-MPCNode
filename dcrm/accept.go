@@ -498,3 +498,138 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 	return nil
 }
 
+type AcceptReShareData struct {
+        Initiator string //enode
+	Account   string
+	GroupId   string
+	Nonce     string
+	PubKey  string
+	LimitNum  string
+	Mode      string
+	TimeStamp string
+
+	Deal   string 
+	Accept string
+
+	Status    string
+	NewSk string
+	Tip       string
+	Error     string
+
+	AllReply []NodeReply
+	WorkId   int
+}
+
+func SaveAcceptReShareData(ac *AcceptReShareData) error {
+	if ac == nil {
+		return fmt.Errorf("no accept data.")
+	}
+
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.PubKey + ":" + ac.LimitNum))).Hex()
+
+	alos, err := Encode2(ac)
+	if err != nil {
+		return err
+	}
+
+	ss, err := Compress([]byte(alos))
+	if err != nil {
+		return err
+	}
+
+	kdtmp := KeyData{Key: []byte(key), Data: ss}
+	PubKeyDataChan <- kdtmp
+
+	LdbPubKeyData.WriteMap(key, ac)
+	return nil
+}
+
+type TxDataAcceptReShare struct {
+    TxType string
+    Key string
+    Mode string
+    Accept string
+    TimeStamp string
+}
+
+func AcceptReShare(initiator string,account string, groupid string, nonce string, pubkey string, threshold string, deal string, accept string, status string, newsk string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + pubkey + ":" + threshold))).Hex()
+	exsit,da := GetValueFromPubKeyData(key)
+	///////
+	if exsit == false {
+		fmt.Printf("%v =====================AcceptReShare, no exist key = %v =================================\n", common.CurrentTime(), key)
+		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	}
+
+	ac,ok := da.(*AcceptReShareData)
+
+	if ok == false {
+		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	}
+
+	in := ac.Initiator
+	if initiator != "" {
+	    in = initiator
+	}
+
+	de := ac.Deal
+	if deal != "" {
+	    de = deal
+	}
+
+	acp := ac.Accept
+	if accept != "" {
+		acp = accept
+	}
+
+	ah := ac.NewSk
+	if newsk != "" {
+		ah = newsk
+	}
+
+	ttip := ac.Tip
+	if tip != "" {
+		ttip = tip
+	}
+
+	eif := ac.Error
+	if errinfo != "" {
+		eif = errinfo
+	}
+
+	sts := ac.Status
+	if status != "" {
+		sts = status
+	}
+
+	arl := ac.AllReply
+	if allreply != nil && len(allreply) != 0 {
+		arl = allreply
+	}
+
+	wid := ac.WorkId
+	if workid >= 0 {
+		wid = workid
+	}
+
+	ac2 := &AcceptReShareData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey: ac.PubKey,LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, NewSk: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+
+	e, err := Encode2(ac2)
+	if err != nil {
+		fmt.Printf("%v =====================AcceptReShare, encode fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		return "dcrm back-end internal error:encode accept data fail", err
+	}
+
+	es, err := Compress([]byte(e))
+	if err != nil {
+		fmt.Printf("%v =====================AcceptReShare, compress fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		return "dcrm back-end internal error:compress accept data fail", err
+	}
+
+	kdtmp := KeyData{Key: []byte(key), Data: es}
+	PubKeyDataChan <- kdtmp
+
+	LdbPubKeyData.WriteMap(key, ac2)
+	return "", nil
+}
+

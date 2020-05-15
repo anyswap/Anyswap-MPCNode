@@ -42,10 +42,10 @@ import (
 
 var (
 	PaillierKeyLength        = 2048
-	ch_t                     = 100
-	reqdata_trytimes = 20
-	reqdata_timeout = 60
-	recalc_times = 100
+	ch_t                     = 60 
+	reqdata_trytimes = 3
+	reqdata_timeout = 20
+	recalc_times = 3
 )
 
 type PubKeyData struct {

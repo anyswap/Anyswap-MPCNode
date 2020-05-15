@@ -231,6 +231,8 @@ func sign_ec(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmp
 		<-ch1
 	    }
 
+	    w := workers[id]
+	    w.Clear2()
 	    //fmt.Printf("%v=====================sign_ec, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
 	    bak_sig = Sign_ec2(msgprex, save, txhash, keytype, dcrmpkx, dcrmpky, ch1, id)
 	    ret, _, cherr := GetChannelValue(ch_t, ch1)
@@ -242,8 +244,6 @@ func sign_ec(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmp
 		    break
 	    }
 	    
-	    w := workers[id]
-	    w.Clear2()
 	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 	return bak_sig
@@ -509,12 +509,12 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			    <-ch1
 			}
 
+			w := workers[id]
+			w.Clear2()
 			bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx2, dcrmpky2, ch1, id)
 			ret, tip, _ = GetChannelValue(ch_t, ch1)
 			//if ret != "" && eos.IsCanonical([]byte(ret)) == true
 			if ret == "" {
-				w := workers[id]
-				w.Clear2()
 				time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
 				continue
 			}
@@ -523,8 +523,6 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 				flag = true
 				break
 			}
-			w := workers[id]
-			w.Clear2()
 			time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
 		if flag == false {
@@ -574,18 +572,16 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			    <-ch1
 			}
 
+			w := workers[id]
+			w.Clear2()
 			bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
 			ret, tip, cherr = GetChannelValue(ch_t, ch1)
 			if cherr != nil {
-				w := workers[id]
-				w.Clear2()
 				time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 				continue
 			}
 			//if ret != "" && eos.IsCanonical([]byte(ret)) == true
 			if ret == "" {
-				w := workers[id]
-				w.Clear2()
 				time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 				continue
 			}
@@ -595,8 +591,6 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 				flag = true
 				break
 			}
-			w := workers[id]
-			w.Clear2()
 			time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
 		logs.Debug("======== dcrm_sign evt", "got rsv flag", flag, "ret", ret, "", "========")
@@ -618,6 +612,8 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		    <-ch1
 		}
 
+		w := workers[id]
+		w.Clear2()
 		fmt.Printf("%v=====================dcrm_sign, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
 		bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
 		ret, _, cherr := GetChannelValue(ch_t, ch1)
@@ -629,8 +625,6 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 			break
 		}
 		
-		w := workers[id]
-		w.Clear2()
 		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		fmt.Printf("%v=====================dcrm_sign,22222222222222222222222222,key = %v ====================\n",common.CurrentTime(),msgprex)
 	    }
@@ -3855,6 +3849,8 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointyp
 		<-ch1
 	    }
 
+	    w := workers[id]
+	    w.Clear2()
 	    //fmt.Printf("%v=====================dcrm_sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
 	    bak_sig = Sign_ed(msgprex, save, txhash, cointype, pk, ch1, id)
 	    ret, _, cherr := GetChannelValue(ch_t, ch1)
@@ -3866,8 +3862,6 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointyp
 		    break
 	    }
 	    
-	    w := workers[id]
-	    w.Clear2()
 	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 	return bak_sig
@@ -3901,6 +3895,8 @@ func sign_ed(msgprex string,txhash string,save string, pk string, keytype string
 		<-ch1
 	    }
 
+	    w := workers[id]
+	    w.Clear2()
 	    //fmt.Printf("%v=====================sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
 	    bak_sig = Sign_ed(msgprex, save, txhash, keytype, pk, ch1, id)
 	    ret, _, cherr := GetChannelValue(ch_t, ch1)
@@ -3912,8 +3908,6 @@ func sign_ed(msgprex string,txhash string,save string, pk string, keytype string
 		    break
 	    }
 	    
-	    w := workers[id]
-	    w.Clear2()
 	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 	return bak_sig

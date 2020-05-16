@@ -808,11 +808,6 @@ func (w *RpcReqWorker) Clear2() {
 	//fmt.Printf("%v================= RpcReqWorker.Clear2, w.id = %v ===================\n",common.CurrentTime(),w.id)
 	var next *list.Element
 
-	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
-		next = e.Next()
-		w.msg_acceptreqaddrres.Remove(e)
-	}
-
 	for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptlockoutres.Remove(e)
@@ -841,6 +836,11 @@ func (w *RpcReqWorker) Clear2() {
 	for e := w.msg_sendsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendsignres.Remove(e)
+	}
+
+	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_acceptreqaddrres.Remove(e)
 	}
 
 	for e := w.msg_c1.Front(); e != nil; e = next {
@@ -903,6 +903,26 @@ func (w *RpcReqWorker) Clear2() {
 		w.msg_d11_1.Remove(e)
 	}
 
+	for e := w.msg_commitbigvab.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_commitbigvab.Remove(e)
+	}
+
+	for e := w.msg_zkabproof.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_zkabproof.Remove(e)
+	}
+
+	for e := w.msg_commitbigut.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_commitbigut.Remove(e)
+	}
+
+	for e := w.msg_commitbigutd11.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_commitbigutd11.Remove(e)
+	}
+
 	for e := w.msg_s1.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_s1.Remove(e)
@@ -916,6 +936,21 @@ func (w *RpcReqWorker) Clear2() {
 	for e := w.msg_paillierkey.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_paillierkey.Remove(e)
+	}
+
+	for e := w.pkx.Front(); e != nil; e = next {
+		next = e.Next()
+		w.pkx.Remove(e)
+	}
+
+	for e := w.pky.Front(); e != nil; e = next {
+		next = e.Next()
+		w.pky.Remove(e)
+	}
+
+	for e := w.save.Front(); e != nil; e = next {
+		next = e.Next()
+		w.save.Remove(e)
 	}
 
 	for e := w.retres.Front(); e != nil; e = next {
@@ -980,6 +1015,18 @@ func (w *RpcReqWorker) Clear2() {
 	if len(w.bkc) == 1 {
 		<-w.bkc
 	}
+	if len(w.bcommitbigvab) == 1 {
+		<-w.bcommitbigvab
+	}
+	if len(w.bzkabproof) == 1 {
+		<-w.bzkabproof
+	}
+	if len(w.bcommitbigut) == 1 {
+		<-w.bcommitbigut
+	}
+	if len(w.bcommitbigutd11) == 1 {
+		<-w.bcommitbigutd11
+	}
 	if len(w.bs1) == 1 {
 		<-w.bs1
 	}
@@ -1010,6 +1057,7 @@ func (w *RpcReqWorker) Clear2() {
 		next = e.Next()
 		w.msg_edc11.Remove(e)
 	}
+
 	if len(w.bedzk) == 1 {
 		<-w.bedzk
 	}
@@ -1038,6 +1086,15 @@ func (w *RpcReqWorker) Clear2() {
 		next = e.Next()
 		w.msg_edcfsb.Remove(e)
 	}
+	for e := w.edsave.Front(); e != nil; e = next {
+		next = e.Next()
+		w.edsave.Remove(e)
+	}
+	for e := w.edpk.Front(); e != nil; e = next {
+		next = e.Next()
+		w.edpk.Remove(e)
+	}
+
 	if len(w.bedc21) == 1 {
 		<-w.bedc21
 	}
@@ -1101,6 +1158,10 @@ func (w *RpcReqWorker) Clear2() {
 	w.splitmsg_mtazk1proof = make(map[string]*list.List)
 	w.splitmsg_c11 = make(map[string]*list.List)
 	w.splitmsg_d11_1 = make(map[string]*list.List)
+	w.splitmsg_commitbigvab = make(map[string]*list.List)
+	w.splitmsg_zkabproof = make(map[string]*list.List)
+	w.splitmsg_commitbigut = make(map[string]*list.List)
+	w.splitmsg_commitbigutd11 = make(map[string]*list.List)
 	w.splitmsg_s1 = make(map[string]*list.List)
 	w.splitmsg_ss1 = make(map[string]*list.List)
 	w.splitmsg_paillierkey = make(map[string]*list.List)

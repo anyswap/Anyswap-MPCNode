@@ -19,7 +19,9 @@ package main
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -100,7 +102,7 @@ func getConfig() error {
 		keyfilehex = ""
 	}
 	if _, err := toml.DecodeFile(path, &cf); err != nil {
-		fmt.Printf("DecodeFile %v, err: %v", path, err)
+		fmt.Printf("DecodeFile %v, err: %v\n", path, err)
 		return err
 	}
 	nkey := cf.Gdcrm.Nodekey
@@ -126,9 +128,7 @@ func startP2pNode() error {
 	common.InitDir(datadir)
 	layer2.InitP2pDir()
 	getConfig()
-	if port == 0 {
-		port = 4441
-	}
+	port = getPort(port)
 	if rpcport == 0 {
 		rpcport = 4449
 	}
@@ -206,3 +206,39 @@ func startP2pNode() error {
 	}()
 	return nil
 }
+
+func getPort(port int) int {
+	if port == 0 {
+		port = 4441
+	}
+	if PortInUse(port) {
+		portTmp, err := GetFreePort()
+		if err == nil {
+			port = portTmp
+		} else {
+			fmt.Printf("GetFreePort, err: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	//fmt.Printf("PORT: %v\n", port)
+	return port
+}
+
+func GetFreePort() (int, error) {
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func PortInUse(port int) bool {
+	checkStatement := fmt.Sprintf("lsof -i:%d ", port)
+	output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
+	if len(output) > 0 {
+		return true
+	}
+	return false
+}
+

@@ -1665,6 +1665,11 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	var upg = make(map[string]*ec2.PolyGStruct2)
 	for _, v := range ds {
 		mm := strings.Split(v, common.Sep)
+		if len(mm) < 3 {
+		    res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllD1Fail)}
+		    ch <- res
+		    return nil, nil, false
+		}
 		dlen, _ := strconv.Atoi(mm[2])
 		if len(mm) < (4 + dlen) {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d1_1 data error")}

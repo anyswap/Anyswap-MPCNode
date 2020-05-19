@@ -55,7 +55,7 @@ const (
 
 // RPC packet types
 const (
-	pingPacket = iota + 1 // zero is 'reserved'
+	pingPacket = iota + 10 // zero is 'reserved'
 	pongPacket
 	findnodePacket
 	neighborsPacket

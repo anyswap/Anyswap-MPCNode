@@ -137,7 +137,7 @@ func startP2pNode() error {
 		rpcport = 4449
 	}
 	if bootnodes == "" {
-		bootnodes = "enode://5bf686893daa0cfd5f77e45330e8719f2ad1aa08cd19e690e93936fecdd6c7ac2463a9c8f7e424c67d6451913b52762c14721ca2f5d8b6b7f9f2a06bf6bbd112@212.129.146.143:11920"
+		bootnodes = "enode://4dbed736b0d918eb607382e4e50cd85683c4592e32f666cac03c822b2762f2209a51b3ed513adfa28c7fa2be4ca003135a5734cfc1e82161873debb0cff732c8@104.210.49.28:36231"
 	}
 	if genKey != "" {
 		nodeKey, err := crypto.GenerateKey()

@@ -128,10 +128,14 @@ func startP2pNode() error {
 	common.InitDir(datadir)
 	layer2.InitP2pDir()
 	getConfig()
+	if port == 0 {
+		port = 4441
+	}
 	port = getPort(port)
 	if rpcport == 0 {
 		rpcport = 4449
 	}
+	rpcport = getPort(rpcport)
 	if bootnodes == "" {
 		bootnodes = "enode://5bf686893daa0cfd5f77e45330e8719f2ad1aa08cd19e690e93936fecdd6c7ac2463a9c8f7e424c67d6451913b52762c14721ca2f5d8b6b7f9f2a06bf6bbd112@212.129.146.143:11920"
 	}
@@ -208,9 +212,6 @@ func startP2pNode() error {
 }
 
 func getPort(port int) int {
-	if port == 0 {
-		port = 4441
-	}
 	if PortInUse(port) {
 		portTmp, err := GetFreePort()
 		if err == nil {

@@ -160,11 +160,12 @@ func startP2pNode() error {
 			fmt.Printf("HexToECDSA nodekeyhex: %v, err: %v\n", keyfilehex, errkey)
 			os.Exit(1)
 		}
+		fmt.Printf("keyfilehex: %v, bootnodes: %v\n", keyfilehex, bootnodes)
 	} else {
 		if keyfile == "" {
 			keyfile = fmt.Sprintf("node.key")
 		}
-		fmt.Printf("keyfile: %v, bootnodes: %v, port: %v, rpcport: %v\n", keyfile, bootnodes, port, rpcport)
+		fmt.Printf("keyfile: %v, bootnodes: %v\n", keyfile, bootnodes)
 		dcrm.KeyFile = keyfile
 		nodeKey, errkey = crypto.LoadECDSA(keyfile)
 		if errkey != nil {
@@ -179,6 +180,7 @@ func startP2pNode() error {
 	nodeidString := discover.PubkeyID(&nodeKey.PublicKey).String()
 	port = getPort(port)
 	rpcport = getPort(rpcport)
+	fmt.Printf("port: %v, rpcport: %v\n", port, rpcport)
 	storeRpcPort(nodeidString, rpcport)
 	layer2.InitSelfNodeID(nodeidString)
 	layer2.InitIPPort(port)
@@ -222,6 +224,7 @@ func getPort(port int) int {
 	if PortInUse(port) {
 		portTmp, err := GetFreePort()
 		if err == nil {
+			fmt.Printf("PortInUse, port: %v, newport: %v\n", port, portTmp)
 			port = portTmp
 		} else {
 			fmt.Printf("GetFreePort, err: %v\n", err)
@@ -242,7 +245,7 @@ func GetFreePort() (int, error) {
 }
 
 func PortInUse(port int) bool {
-	checkStatement := fmt.Sprintf("lsof -i:%d ", port)
+	checkStatement := fmt.Sprintf("netstat -anutp|grep %v", port)
 	output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
 	if len(output) > 0 {
 		return true

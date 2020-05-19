@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -63,6 +64,7 @@ var (
 	genKey    string
 	datadir   string
 	app       = cli.NewApp()
+	statDir   = "stat"
 )
 
 type conf struct {
@@ -131,11 +133,9 @@ func startP2pNode() error {
 	if port == 0 {
 		port = 4441
 	}
-	port = getPort(port)
 	if rpcport == 0 {
 		rpcport = 4449
 	}
-	rpcport = getPort(rpcport)
 	if bootnodes == "" {
 		bootnodes = "enode://5bf686893daa0cfd5f77e45330e8719f2ad1aa08cd19e690e93936fecdd6c7ac2463a9c8f7e424c67d6451913b52762c14721ca2f5d8b6b7f9f2a06bf6bbd112@212.129.146.143:11920"
 	}
@@ -173,7 +173,11 @@ func startP2pNode() error {
 			kfd.Close()
 		}
 	}
-	layer2.InitSelfNodeID(discover.PubkeyID(&nodeKey.PublicKey).String())
+	nodeidString := discover.PubkeyID(&nodeKey.PublicKey).String()
+	port = getPort(port)
+	rpcport = getPort(rpcport)
+	storeRpcPort(nodeidString, rpcport)
+	layer2.InitSelfNodeID(nodeidString)
 	layer2.InitIPPort(port)
 
 	dcrm := layer2.DcrmNew(nil)
@@ -241,5 +245,21 @@ func PortInUse(port int) bool {
 		return true
 	}
 	return false
+}
+
+func storeRpcPort(nodeid string, rpcport int) {
+	portDir := common.DefaultDataDir()
+	dir := filepath.Join(portDir, statDir, nodeid)
+	if common.FileExist(dir) != true {
+		os.MkdirAll(dir, os.ModePerm)
+	}
+	rpcfile := filepath.Join(dir, "rpcport")
+	f, err := os.Create(rpcfile)
+	defer f.Close()
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		_, err = f.Write([]byte(fmt.Sprintf("%v", rpcport)))
+	}
 }
 

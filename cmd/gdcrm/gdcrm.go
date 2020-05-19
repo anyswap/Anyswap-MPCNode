@@ -65,6 +65,7 @@ var (
 	datadir   string
 	app       = cli.NewApp()
 	statDir   = "stat"
+	Version   = ""
 )
 
 type conf struct {
@@ -84,6 +85,7 @@ func init() {
 	//app := cli.NewApp()
 	app.Usage = "Dcrm Wallet Service"
 	app.Version = "5.1.0"
+	Version = app.Version
 	app.Action = StartDcrm
 	app.Flags = []cli.Flag{
 		cli.IntFlag{Name: "rpcport", Value: 0, Usage: "listen port", Destination: &rpcport},
@@ -128,6 +130,7 @@ func getConfig() error {
 
 func startP2pNode() error {
 	common.InitDir(datadir)
+	common.SetVersion(Version)
 	layer2.InitP2pDir()
 	getConfig()
 	if port == 0 {

@@ -19,6 +19,7 @@ package dcrm
 import (
 	"fmt"
 
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
 )
 
@@ -43,6 +44,10 @@ type Enode struct {
 	Enode string
 }
 
+type Version struct {
+	Version string
+}
+
 type EnodeStatus struct {
 	Enode  string
 	Status string
@@ -55,6 +60,14 @@ func packageResult(status, tip, errors string, msg interface{}) map[string]inter
 		"Error":  errors,
 		"Data":   msg,
 	}
+}
+
+func (this *Service) GetVersion() map[string]interface{} {
+	fmt.Printf("==== GetVersion() ====\n")
+	v := common.GetVersion()
+	fmt.Printf("==== GetVersion() ====, version: %v\n", v)
+	retv := &Version{Version: v}
+	return packageResult(SUCCESS, "", "", retv)
 }
 
 func (this *Service) GetEnode() map[string]interface{} {

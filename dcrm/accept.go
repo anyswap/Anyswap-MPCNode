@@ -502,11 +502,9 @@ type AcceptReShareData struct {
         Initiator string //enode
 	Account   string
 	GroupId   string
-	SubGroupId   string
-	Nonce     string
+	TSGroupId   string
 	PubKey  string
 	LimitNum  string
-	Mode      string
 	TimeStamp string
 
 	Deal   string 
@@ -526,7 +524,7 @@ func SaveAcceptReShareData(ac *AcceptReShareData) error {
 		return fmt.Errorf("no accept data.")
 	}
 
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.PubKey + ":" + ac.LimitNum))).Hex()
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.TSGroupId + ":" + ac.PubKey + ":" + ac.LimitNum))).Hex()
 
 	alos, err := Encode2(ac)
 	if err != nil {
@@ -552,8 +550,8 @@ type TxDataAcceptReShare struct {
     TimeStamp string
 }
 
-func AcceptReShare(initiator string,account string, groupid string, subgroupid string,nonce string, pubkey string, threshold string, mode string,deal string, accept string, status string, newsk string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + subgroupid + ":" + nonce + ":" + pubkey + ":" + threshold + ":" + mode))).Hex()
+func AcceptReShare(initiator string,account string, groupid string, tsgroupid string,pubkey string, threshold string,deal string, accept string, status string, newsk string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + tsgroupid + ":" + pubkey + ":" + threshold))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
@@ -612,7 +610,7 @@ func AcceptReShare(initiator string,account string, groupid string, subgroupid s
 		wid = workid
 	}
 
-	ac2 := &AcceptReShareData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, SubGroupId:ac.SubGroupId, Nonce: ac.Nonce, PubKey: ac.PubKey,LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, NewSk: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+	ac2 := &AcceptReShareData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, TSGroupId:ac.TSGroupId, PubKey: ac.PubKey,LimitNum: ac.LimitNum, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, NewSk: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
 
 	e, err := Encode2(ac2)
 	if err != nil {

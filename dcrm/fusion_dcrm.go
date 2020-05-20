@@ -1401,64 +1401,51 @@ func RecivReShare() {
 			if exsit == false {
 				rh := TxDataReShare{}
 				_ = json.Unmarshal([]byte(data.JsonStr), &rh)
-				//if err != nil {
-				    //TODO
-				//}
 
-				cur_nonce, _, _ := GetReShareNonce(data.Account)
-				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
-				new_nonce_num, _ := new(big.Int).SetString(data.Nonce, 10)
-				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err := SetReShareNonce(data.Account,data.Nonce)
-					if err == nil {
-						//fmt.Printf("%v ==============================RecivReShare,SetReShareNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, rh.Mode, data.Nonce, data.Key)
-					    ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
+				ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
+				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+				    err := SaveAcceptReShareData(ac)
+				    if err == nil {
+					    fmt.Printf("%v ==============================RecivReShare,finish call SaveAcceptReShareData, err = %v,account = %v,group id = %v,threshold = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, data.Key)
 
-					    ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,SubGroupId:rh.SubGroupId, Nonce: data.Nonce, PubKey: rh.PubKey, LimitNum: rh.ThresHold, Mode: rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
-						err := SaveAcceptReShareData(ac)
-						if err == nil {
-							fmt.Printf("%v ==============================RecivReShare,finish call SaveAcceptReShareData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, rh.Mode, data.Nonce, data.Key)
+					    /////
+					    dcrmpks, _ := hex.DecodeString(rh.PubKey)
+					    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+					    if exsit {
+						_,ok := da.(*PubKeyData)
+						if ok == true {
+						    keys := (da.(*PubKeyData)).RefReShareKeys
+						    if keys == "" {
+							keys = data.Key
+						    } else {
+							keys = keys + ":" + data.Key
+						    }
 
-							/////
-							dcrmpks, _ := hex.DecodeString(rh.PubKey)
-							exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
-							if exsit {
-							    _,ok := da.(*PubKeyData)
-							    if ok == true {
-								keys := (da.(*PubKeyData)).RefReShareKeys
-								if keys == "" {
-								    keys = data.Key
-								} else {
-								    keys = keys + ":" + data.Key
-								}
+						    pubs3 := &PubKeyData{Key:(da.(*PubKeyData)).Key,Account: (da.(*PubKeyData)).Account, Pub: (da.(*PubKeyData)).Pub, Save: (da.(*PubKeyData)).Save, Nonce: (da.(*PubKeyData)).Nonce, GroupId: (da.(*PubKeyData)).GroupId, LimitNum: (da.(*PubKeyData)).LimitNum, Mode: (da.(*PubKeyData)).Mode,KeyGenTime:(da.(*PubKeyData)).KeyGenTime,RefLockOutKeys:(da.(*PubKeyData)).RefLockOutKeys,RefSignKeys:(da.(*PubKeyData)).RefSignKeys,RefReShareKeys:keys}
+						    epubs, err := Encode2(pubs3)
+						    if err == nil {
+							ss3, err := Compress([]byte(epubs))
+							if err == nil {
+							    kd := KeyData{Key:dcrmpks[:], Data: ss3}
+							    PubKeyDataChan <- kd
+							    LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs3)
+							    //fmt.Printf("%v ==============================RecivReShare,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
+							    go func(d ReShareData) {
+								    for i := 0; i < 1; i++ {
+									    ret, _, err2 := SendReShare(d.Account, "0", d.JsonStr,d.Key)
+									    if err2 == nil && ret != "" {
+										    return
+									    }
 
-								pubs3 := &PubKeyData{Key:(da.(*PubKeyData)).Key,Account: (da.(*PubKeyData)).Account, Pub: (da.(*PubKeyData)).Pub, Save: (da.(*PubKeyData)).Save, Nonce: (da.(*PubKeyData)).Nonce, GroupId: (da.(*PubKeyData)).GroupId, LimitNum: (da.(*PubKeyData)).LimitNum, Mode: (da.(*PubKeyData)).Mode,KeyGenTime:(da.(*PubKeyData)).KeyGenTime,RefLockOutKeys:(da.(*PubKeyData)).RefLockOutKeys,RefSignKeys:(da.(*PubKeyData)).RefSignKeys,RefReShareKeys:keys}
-								epubs, err := Encode2(pubs3)
-								if err == nil {
-								    ss3, err := Compress([]byte(epubs))
-								    if err == nil {
-									kd := KeyData{Key:dcrmpks[:], Data: ss3}
-									PubKeyDataChan <- kd
-									LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs3)
-									//fmt.Printf("%v ==============================RecivReShare,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
-									go func(d ReShareData) {
-										for i := 0; i < 1; i++ {
-											ret, _, err2 := SendReShare(d.Account, d.Nonce, d.JsonStr,d.Key)
-											if err2 == nil && ret != "" {
-												return
-											}
-
-											time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-										}
-									}(data)
+									    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
 								    }
-								}
-							    }
+							    }(data)
 							}
-							/////
+						    }
 						}
-					}
-				}
+					    }
+					    /////
+				    }
 			}
 		}
 	}
@@ -1502,13 +1489,10 @@ func ReShare(raw string) (string, string, error) {
 		return "", "transaction data format error,it is not RESHARE tx", fmt.Errorf("tx raw data error,it is not reshare tx.")
 	}
 
-	Nonce := tx.Nonce()
-
-	if from.Hex() == "" || rh.PubKey == "" || rh.SubGroupId == "" || rh.ThresHold == "" || rh.Mode == "" || rh.TimeStamp == "" {
+	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.TimeStamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
 
-	//check mode
 	dcrmpks, _ := hex.DecodeString(rh.PubKey)
 	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
 	if exsit == false {
@@ -1520,15 +1504,6 @@ func ReShare(raw string) (string, string, error) {
 		return "", "dcrm back-end internal error:get data from db fail in func reshare", fmt.Errorf("dcrm back-end internal error:get data from db fail in func reshare")
 	}
 
-	if pubs.Mode != rh.Mode {
-	    return "","can not reshare with different mode.",fmt.Errorf("can not reshare with different mode.")
-	}
-
-	////bug:check accout
-	//if pubs.Mode == "1" && !strings.EqualFold(pubs.Account,from.Hex()) {
-	  //  return "","invalid lockout account",fmt.Errorf("invalid lockout account")
-	//}
-	
 	exsit,da = GetValueFromPubKeyData(pubs.Key)
 	if exsit == false {
 	    return "","no exist dcrm addr pubkey data",fmt.Errorf("no exist dcrm addr pubkey data")
@@ -1547,9 +1522,6 @@ func ReShare(raw string) (string, string, error) {
 	    return "","no exist dcrm addr pubkey data",fmt.Errorf("no exist dcrm addr pubkey data")
 	}
 
-	if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
-	    return "","invalid lockout account",fmt.Errorf("invalid lockout account")
-	}
 	////////////////////
 
 	if rh.GroupId == "" {
@@ -1581,9 +1553,9 @@ func ReShare(raw string) (string, string, error) {
 
 	//
 
-	//key = hash(account + groupid + subgroupid + nonce + pubkey + threshold + mode)
-	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + rh.SubGroupId + ":" + fmt.Sprintf("%v", Nonce) + ":" + rh.PubKey + ":" + rh.ThresHold + ":" + rh.Mode))).Hex()
-	data := ReShareData{Account:from.Hex(),Nonce:fmt.Sprintf("%v", Nonce),JsonStr:string(tx.Data()),Key: key}
+	//key = hash(account + groupid + tsgroupid + pubkey + threshold )
+	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + rh.TSGroupId + ":" + rh.PubKey + ":" + rh.ThresHold ))).Hex()
+	data := ReShareData{Account:from.Hex(),Nonce:"0",JsonStr:string(tx.Data()),Key: key}
 	ReShareCh <- data
 
 	fmt.Printf("%v =================== ReShare, return, key = %v ===========================\n", common.CurrentTime(), key)
@@ -1639,88 +1611,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 		status = "Failure"
 	}
 
-	////bug,check valid accepter
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
-	if exsit == false {
-		return "Failure", "dcrm back-end internal error:get reshare data from db fail", fmt.Errorf("get reshare data from db fail")
-	}
-
-	//key = hash(account + groupid + subgroupid + nonce + pubkey + threshold + mode)
-	check := false
-	found := false
-	keys := strings.Split(string(da.([]byte)),":")
-	for _,key := range keys {
-	    exsit,data2 := GetValueFromPubKeyData(key)
-	    if exsit == false {
-		continue
-	    }
-
-	    ac,ok := data2.(*AcceptReqAddrData)
-	    if ok == false || ac == nil {
-		continue
-	    }
-
-	    //if ac.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
-	//	continue
-	  //  }
-
-	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
-	    exsit,data3 := GetValueFromPubKeyData(string(dcrmpks[:]))
-	    if exsit == false || data3 == nil {
-		continue
-	    }
-
-	    pd,ok := data3.(*PubKeyData)
-	    if ok == false {
-		continue
-	    }
-
-	    if pd == nil {
-		continue
-	    }
-
-	    if pd.RefReShareKeys == "" {
-		continue
-	    }
-
-	    resharekeys := strings.Split(pd.RefReShareKeys,":")
-	    for _,resharekey := range resharekeys {
-		if strings.EqualFold(resharekey, acceptreshare.Key) {
-		    found = true
-		    exsit,data3 := GetValueFromPubKeyData(resharekey)
-		    if exsit == false {
-			break
-		    }
-
-		    ac3,ok := data3.(*AcceptReShareData)
-		    if ok == false {
-			break
-		    }
-
-		    if ac3 == nil {
-			    break
-		    }
-
-		    if ac3.Mode == "1" {
-			    break
-		    }
-
-		    check = true
-		    break
-		}
-	    }
-
-	    if check == true || found == true {
-		break
-	    }
-	    ////
-	}
-
-	if !check {
-	    return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
-	}
-
-	exsit,da = GetValueFromPubKeyData(acceptreshare.Key)
+	exsit,da := GetValueFromPubKeyData(acceptreshare.Key)
 	///////
 	if exsit == false {
 		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
@@ -1733,10 +1624,6 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 
 	if ac == nil {
 	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
-	}
-
-	if ac.Mode == "1" {
-	    return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
 	}
 
 	///////
@@ -1771,7 +1658,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 	id,_ := GetWorkerId(w)
 	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_RESHARE,ac.Initiator)
 	
-	tip,err := AcceptReShare(ac.Initiator,ac.Account, ac.GroupId, ac.SubGroupId,ac.Nonce, ac.PubKey, ac.LimitNum, ac.Mode,"false", accept, status, "", "", "", ars,ac.WorkId)
+	tip,err := AcceptReShare(ac.Initiator,ac.Account, ac.GroupId, ac.TSGroupId,ac.PubKey, ac.LimitNum, "false", accept, status, "", "", "", ars,ac.WorkId)
 	if err != nil {
 		return "Failure", tip, err
 	}
@@ -2630,113 +2517,44 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 
 type ReShareCurNodeInfo struct {
 	Key       string
-	Account   string
 	PubKey   string
 	GroupId   string
-	SubGroupId   string
-	Nonce     string
+	TSGroupId   string
 	ThresHold  string
-	Mode      string
 	TimeStamp string
 }
 
-func GetCurNodeReShareInfo(geter_acc string) ([]*ReShareCurNodeInfo, string, error) {
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
-	if exsit == false {
-	    return nil,"",nil
-	}
+func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
+    var ret []*ReShareCurNodeInfo
+    var wg sync.WaitGroup
+    LdbPubKeyData.RLock()
+    for k, v := range LdbPubKeyData.Map {
+	wg.Add(1)
+	go func(key string,value interface{}) {
+	    defer wg.Done()
 
-	//check obj type
-	_,ok := da.([]byte)
-	if ok == false {
-	    return nil,"get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
-	}
-	//
-
-	var ret []*ReShareCurNodeInfo
-	keys := strings.Split(string(da.([]byte)),":")
-	for _,key := range keys {
-	    exsit,data := GetValueFromPubKeyData(key)
-	    if exsit == false {
-		continue
+	    vv,ok := value.(*AcceptReShareData)
+	    if vv == nil || ok == false {
+		return
 	    }
 
-	    if data == nil {
-		continue
+	    if vv.Deal == "true" || vv.Status == "Success" {
+		return
 	    }
 
-	    ac,ok := data.(*AcceptReqAddrData)
-	    if ok == false {
-		continue
+	    if vv.Status != "Pending" {
+		return
 	    }
 
-	    if ac == nil {
-		continue
-	    }
+	    keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.TSGroupId + ":" + vv.PubKey + ":" + vv.LimitNum))).Hex()
 
-	    //if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
-	//	continue
-	  //  }
-
-	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
-	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-	    if exsit == false || data2 == nil {
-		continue
-	    }
-
-	    pd,ok := data2.(*PubKeyData)
-	    if ok == false {
-		continue
-	    }
-
-	    if pd == nil {
-		continue
-	    }
-
-	    if pd.RefReShareKeys == "" {
-		continue
-	    }
-
-	    resharekeys := strings.Split(pd.RefReShareKeys,":")
-	    for _,resharekey := range resharekeys {
-		exsit,data3 := GetValueFromPubKeyData(resharekey)
-		if exsit == false {
-		    continue
-		}
-
-		////
-		ac3,ok := data3.(*AcceptReShareData)
-		if ok == false {
-		    continue
-		}
-
-		if ac3 == nil {
-			continue
-		}
-		
-		if ac3.Mode == "1" {
-			continue
-		}
-		
-		if ac3.Deal == "true" || ac3.Status == "Success" {
-			continue
-		}
-
-		if ac3.Status != "Pending" {
-			continue
-		}
-
-		//key = hash(account + groupid + subgroupid + nonce + pubkey + threshold + mode)
-		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.GroupId + ":" + ac3.SubGroupId + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
-
-		los := &ReShareCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, GroupId:ac3.GroupId, SubGroupId:ac3.SubGroupId, Nonce: ac3.Nonce, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
-		ret = append(ret, los)
-	    }
-	    ////
-	}
-
-	///////
-	return ret, "", nil
+	    los := &ReShareCurNodeInfo{Key: keytmp, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum,TimeStamp: vv.TimeStamp}
+	    ret = append(ret, los)
+	}(k,v)
+    }
+    LdbPubKeyData.RUnlock()
+    wg.Wait()
+    return ret, "", nil
 }
 
 type LockOutReply struct {
@@ -2765,9 +2583,8 @@ type TxDataReShare struct {
     TxType string
     PubKey string
     GroupId string
-    SubGroupId string
+    TSGroupId string
     ThresHold string
-    Mode string
     TimeStamp string
 }
 
@@ -3294,7 +3111,7 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	    return false
 	}
 
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.SubGroupId,self.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "true", "Pending", "", "", "", nil, workid)
+	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,"false", "true", "Pending", "", "", "", nil, workid)
 	
 	SendToGroupAllNodes(rh.GroupId, res)
 
@@ -3307,7 +3124,7 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	///////
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-	if rh.Mode == "0" {
+	//if rh.Mode == "0" {
 		mp := []string{self.Key, cur_enode}
 		enode := strings.Join(mp, "-")
 		s0 := "AcceptReShareRes"
@@ -3330,11 +3147,11 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 		    }
 		}
 		////
-	}
+	//}
 
 	time.Sleep(time.Duration(1) * time.Second)
 	ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.SubGroupId, self.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"", "", "", "", "", "", ars, workid)
+	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,"", "", "", "", "", "", ars, workid)
 	//fmt.Printf("%v ===================ReShareSendMsgToDcrm.Run, finish agree this reshare oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
 	
 	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)

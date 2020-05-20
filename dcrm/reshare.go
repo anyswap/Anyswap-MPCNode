@@ -55,7 +55,7 @@ func SetReShareNonce(account string,nonce string) (string, error) {
 
 //param groupid is not subgroupid
 //w.groupid is subgroupid
-func reshare(wsid string, account string, groupid string,pubkey string, nonce string,mode string,ch chan interface{}) {
+func reshare(wsid string, account string, groupid string,pubkey string, ch chan interface{}) {
 
 	rch := make(chan interface{}, 1)
 	dcrm_reshare(wsid,groupid,pubkey,rch)
@@ -80,14 +80,14 @@ func reshare(wsid string, account string, groupid string,pubkey string, nonce st
 		SendMsgToDcrmGroup(ss, groupid)
 		///////////////
 
-		tip, reply := AcceptReShare("",account, groupid,w.groupid, nonce, pubkey, w.limitnum, mode,"true", "true", "Success", ret, "", "", nil, w.id)
+		tip, reply := AcceptReShare("",account, groupid,w.groupid,pubkey, w.limitnum, "true", "true", "Success", ret, "", "", nil, w.id)
 		if reply != nil {
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update reshare status error.")}
 			ch <- res
 			return
 		}
 
-		fmt.Printf("%v ================reshare,the terminal res is success. nonce =%v ==================\n", common.CurrentTime(), nonce)
+		fmt.Printf("%v ================reshare,the terminal res is success. key =%v ==================\n", common.CurrentTime(), wsid)
 		res := RpcDcrmRes{Ret: ret, Tip: tip, Err: err}
 		ch <- res
 		return

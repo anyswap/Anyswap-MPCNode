@@ -287,11 +287,9 @@ func (this *Service) AcceptReShare(raw string) map[string]interface{} {
 	}
 }
 
-func (this *Service) GetCurNodeReShareInfo(account string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetCurNodeReShareInfo from web,account = %v ================\n", common.CurrentTime(), account)
-
-	s, tip, err := dcrm.GetCurNodeReShareInfo(account)
-	fmt.Printf("%v ==============finish call rpc GetCurNodeReShareInfo ,ret = %v,err = %v, account = %v ================\n", common.CurrentTime(), s, err, account)
+func (this *Service) GetCurNodeReShareInfo() map[string]interface{} {
+	s, tip, err := dcrm.GetCurNodeReShareInfo()
+	fmt.Printf("%v ==============finish call rpc GetCurNodeReShareInfo ,ret = %v,err = %v ================\n", common.CurrentTime(), s, err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",

@@ -309,6 +309,30 @@ func (this *Service) GetCurNodeReShareInfo(account string) map[string]interface{
 	}
 }
 
+func (this *Service) GetReShareStatus(key string) map[string]interface{} {
+	fmt.Printf("%v ==============call rpc GetReShareStatus from web, key = %v ================\n", common.CurrentTime(), key)
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.GetReShareStatus(key)
+	fmt.Printf("%v ==============finish call rpc GetReShareStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) GetBalance(account string, cointype string, dcrmaddr string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
 

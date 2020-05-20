@@ -1414,7 +1414,7 @@ func RecivReShare() {
 						//fmt.Printf("%v ==============================RecivReShare,SetReShareNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, rh.Mode, data.Nonce, data.Key)
 					    ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
 
-					    ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId, Nonce: data.Nonce, PubKey: rh.PubKey, LimitNum: rh.ThresHold, Mode: rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+					    ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,SubGroupId:rh.SubGroupId, Nonce: data.Nonce, PubKey: rh.PubKey, LimitNum: rh.ThresHold, Mode: rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := SaveAcceptReShareData(ac)
 						if err == nil {
 							fmt.Printf("%v ==============================RecivReShare,finish call SaveAcceptReShareData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, rh.Mode, data.Nonce, data.Key)
@@ -1476,6 +1476,21 @@ func ReShare(raw string) (string, string, error) {
 	if err != nil {
 	    return "", "recover fusion account fail from raw data,maybe raw data error", err
 	}
+	
+	h := coins.NewCryptocoinHandler("FSN")
+	if h == nil {
+	    return "", "get fsn cointy handle fail", fmt.Errorf("get fsn cointy handle fail")
+	}
+	
+	fr, err := h.PublicKeyToAddress(cur_enode)
+	if err != nil {
+	    fmt.Printf("%v=====================ReShare, pubkey to addr fail and return, err = %v, ==================\n",common.CurrentTime(),err)
+	    return "", "check current enode account fail from raw data,maybe raw data error", err
+	}
+
+	if !strings.EqualFold(from.Hex(), fr) {
+	    return "", "check current enode account fail from raw data,maybe raw data error", err
+	}
 
 	rh := TxDataReShare{}
 	err = json.Unmarshal(tx.Data(), &rh)
@@ -1489,32 +1504,9 @@ func ReShare(raw string) (string, string, error) {
 
 	Nonce := tx.Nonce()
 
-	if from.Hex() == "" || rh.PubKey == "" || rh.GroupId == "" || rh.ThresHold == "" || rh.Mode == "" || rh.TimeStamp == "" {
+	if from.Hex() == "" || rh.PubKey == "" || rh.SubGroupId == "" || rh.ThresHold == "" || rh.Mode == "" || rh.TimeStamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
-
-	////
-	nums := strings.Split(rh.ThresHold, "/")
-	if len(nums) != 2 {
-		return "", "transacion data format error,threshold is not right", fmt.Errorf("tx.data error.")
-	}
-	nodecnt, err := strconv.Atoi(nums[1])
-	if err != nil {
-		return "", err.Error(),err
-	}
-	limit, err := strconv.Atoi(nums[0])
-	if err != nil {
-		return "", err.Error(),err
-	}
-	if nodecnt < limit || limit < 2 {
-	    return "","threshold format error",fmt.Errorf("threshold format error")
-	}
-
-	nc,_ := GetGroup(rh.GroupId)
-	if nc < limit || nc > nodecnt {
-	    return "","check group node count error",fmt.Errorf("check group node count error")
-	}
-	////
 
 	//check mode
 	dcrmpks, _ := hex.DecodeString(rh.PubKey)
@@ -1560,9 +1552,37 @@ func ReShare(raw string) (string, string, error) {
 	}
 	////////////////////
 
+	if rh.GroupId == "" {
+	    rh.GroupId = pubs.GroupId
+	}
+
+	////
+	nums := strings.Split(rh.ThresHold, "/")
+	if len(nums) != 2 {
+		return "", "transacion data format error,threshold is not right", fmt.Errorf("tx.data error.")
+	}
+	nodecnt, err := strconv.Atoi(nums[1])
+	if err != nil {
+		return "", err.Error(),err
+	}
+	limit, err := strconv.Atoi(nums[0])
+	if err != nil {
+		return "", err.Error(),err
+	}
+	if nodecnt < limit || limit < 2 {
+	    return "","threshold format error",fmt.Errorf("threshold format error")
+	}
+
+	nc,_ := GetGroup(rh.GroupId)
+	if nc < limit || nc > nodecnt {
+	    return "","check group node count error",fmt.Errorf("check group node count error")
+	}
+	////
+
 	//
 
-	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + fmt.Sprintf("%v", Nonce) + ":" + rh.PubKey + ":" + rh.ThresHold))).Hex()
+	//key = hash(account + groupid + subgroupid + nonce + pubkey + threshold + mode)
+	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + rh.SubGroupId + ":" + fmt.Sprintf("%v", Nonce) + ":" + rh.PubKey + ":" + rh.ThresHold + ":" + rh.Mode))).Hex()
 	data := ReShareData{Account:from.Hex(),Nonce:fmt.Sprintf("%v", Nonce),JsonStr:string(tx.Data()),Key: key}
 	ReShareCh <- data
 
@@ -2415,6 +2435,7 @@ type TxDataReShare struct {
     TxType string
     PubKey string
     GroupId string
+    SubGroupId string
     ThresHold string
     Mode string
     TimeStamp string
@@ -2943,7 +2964,7 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	    return false
 	}
 
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, self.Nonce, rh.PubKey, rh.ThresHold, "false", "true", "Pending", "", "", "", nil, workid)
+	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.SubGroupId,self.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "true", "Pending", "", "", "", nil, workid)
 	
 	SendToGroupAllNodes(rh.GroupId, res)
 
@@ -2983,7 +3004,7 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	time.Sleep(time.Duration(1) * time.Second)
 	ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, self.Nonce, rh.PubKey, rh.ThresHold, "", "", "", "", "", "", ars, workid)
+	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.SubGroupId, self.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"", "", "", "", "", "", ars, workid)
 	//fmt.Printf("%v ===================ReShareSendMsgToDcrm.Run, finish agree this reshare oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
 	
 	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)

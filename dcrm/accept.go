@@ -502,6 +502,7 @@ type AcceptReShareData struct {
         Initiator string //enode
 	Account   string
 	GroupId   string
+	SubGroupId   string
 	Nonce     string
 	PubKey  string
 	LimitNum  string
@@ -512,7 +513,7 @@ type AcceptReShareData struct {
 	Accept string
 
 	Status    string
-	NewSk string
+	NewSk string //TODO 
 	Tip       string
 	Error     string
 
@@ -552,8 +553,8 @@ type TxDataAcceptReShare struct {
     TimeStamp string
 }
 
-func AcceptReShare(initiator string,account string, groupid string, nonce string, pubkey string, threshold string, deal string, accept string, status string, newsk string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + pubkey + ":" + threshold))).Hex()
+func AcceptReShare(initiator string,account string, groupid string, subgroupid string,nonce string, pubkey string, threshold string, mode string,deal string, accept string, status string, newsk string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + subgroupid + ":" + nonce + ":" + pubkey + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
@@ -612,7 +613,7 @@ func AcceptReShare(initiator string,account string, groupid string, nonce string
 		wid = workid
 	}
 
-	ac2 := &AcceptReShareData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey: ac.PubKey,LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, NewSk: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+	ac2 := &AcceptReShareData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, SubGroupId:ac.SubGroupId, Nonce: ac.Nonce, PubKey: ac.PubKey,LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, NewSk: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
 
 	e, err := Encode2(ac2)
 	if err != nil {

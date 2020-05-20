@@ -53,27 +53,12 @@ func SetReShareNonce(account string,nonce string) (string, error) {
 	return "", nil
 }
 
-func reshare(wsid string, account string, pubkey string, nonce string,ch chan interface{}) {
+//param groupid is not subgroupid
+//w.groupid is subgroupid
+func reshare(wsid string, account string, groupid string,pubkey string, nonce string,mode string,ch chan interface{}) {
 
-	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
-	///////
-	if exsit == false {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
-		ch <- res
-		return
-	}
-
-	_,ok := da.(*PubKeyData)
-	if ok == false {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
-		ch <- res
-		return
-	}
-
-	save := (da.(*PubKeyData)).Save
 	rch := make(chan interface{}, 1)
-	dcrm_reshare(wsid,save,rch)
+	dcrm_reshare(wsid,groupid,pubkey,rch)
 	ret, _, cherr := GetChannelValue(ch_t, rch)
 	if ret != "" {
 		w, err := FindWorker(wsid)
@@ -92,10 +77,10 @@ func reshare(wsid string, account string, pubkey string, nonce string,ch chan in
 		s1 := "Success"
 		s2 := ret
 		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-		SendMsgToDcrmGroup(ss, w.groupid)
+		SendMsgToDcrmGroup(ss, groupid)
 		///////////////
 
-		tip, reply := AcceptReShare("",account, w.groupid, nonce, pubkey, w.limitnum, "true", "true", "Success", ret, "", "", nil, w.id)
+		tip, reply := AcceptReShare("",account, groupid,w.groupid, nonce, pubkey, w.limitnum, mode,"true", "true", "Success", ret, "", "", nil, w.id)
 		if reply != nil {
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update reshare status error.")}
 			ch <- res
@@ -120,7 +105,7 @@ func reshare(wsid string, account string, pubkey string, nonce string,ch chan in
 //ec2
 //msgprex = hash
 //return value is the backup for dcrm sig.
-func dcrm_reshare(msgprex string, save string,ch chan interface{}) {
+func dcrm_reshare(msgprex string, groupid string,pubkey string,ch chan interface{}) {
 
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
@@ -136,7 +121,8 @@ func dcrm_reshare(msgprex string, save string,ch chan interface{}) {
 	    <-ch1
 	}
 
-	ReShare_ec2(msgprex, save, ch1, id)
+	w.Clear2()
+	ReShare_ec2(msgprex, groupid,pubkey, ch1, id)
 	ret, _, cherr := GetChannelValue(ch_t, ch1)
 	if ret != "" && cherr == nil {
 		res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
@@ -144,14 +130,13 @@ func dcrm_reshare(msgprex string, save string,ch chan interface{}) {
 		break
 	}
 	
-	w.Clear2()
 	time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
     }
 }
 
 //msgprex = hash
 //return value is the backup for the dcrm sig
-func ReShare_ec2(msgprex string, save string, ch chan interface{}, id int) {
+func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface{}, id int) {
 	if id < 0 || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res
@@ -164,6 +149,23 @@ func ReShare_ec2(msgprex string, save string, ch chan interface{}, id int) {
 		return
 	}
 
+	dcrmpks, _ := hex.DecodeString(pubkey)
+	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+	///////
+	if exsit == false {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
+		ch <- res
+		return
+	}
+
+	_,ok := da.(*PubKeyData)
+	if ok == false {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
+		ch <- res
+		return
+	}
+
+	save := (da.(*PubKeyData)).Save
 	mm := strings.Split(save, common.SepSave)
 	if len(mm) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
@@ -181,23 +183,9 @@ func ReShare_ec2(msgprex string, save string, ch chan interface{}, id int) {
 	skU1, w1 := MapPrivKeyShare("ALL", w, idSign, mm[0])
 	if skU1 == nil || w1 == nil {
 	    ////////test reshare///////////////////////
-	    fmt.Printf("%v =============Sign_ec2,cur node not take part in reshare,key = %v ================\n", common.CurrentTime(), msgprex)
-	    key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
-	    exsit,da := GetValueFromPubKeyData(key)
-	    if exsit == false {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
-		ch <- res
-		return
-	    }
+	    fmt.Printf("%v =============ReShare_ec2,cur node not take part in reshare,key = %v ================\n", common.CurrentTime(), msgprex)
 
-	    pubs,ok := da.(*PubKeyData)
-	    if ok == false {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
-		ch <- res
-		return
-	    }
-
-	    ids = GetIds("ALL", pubs.GroupId)
+	    ids = GetIds("ALL", groupid)
 	    
 	    _, tip, cherr := GetChannelValue(ch_t, w.bc11)
 	    suss := false
@@ -478,29 +466,14 @@ func ReShare_ec2(msgprex string, save string, ch chan interface{}, id int) {
 	}
 	commitSkP1G := new(ec2.Commitment).Commit(u1CommitValues...)
 
-	key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
-	exsit,da := GetValueFromPubKeyData(key)
-	if exsit == false {
-	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
-	    ch <- res
-	    return
-	}
-
-	pubs,ok := da.(*PubKeyData)
-	if ok == false {
-	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
-	    ch <- res
-	    return
-	}
-
-	ids = GetIds("ALL", pubs.GroupId)
+	ids = GetIds("ALL", groupid)
 
 	mp := []string{msgprex, cur_enode}
 	enode := strings.Join(mp, "-")
 	s0 := "C11"
 	s1 := string(commitSkP1G.C.Bytes())
 	ss := enode + common.Sep + s0 + common.Sep + s1
-	SendMsgToDcrmGroup(ss, pubs.GroupId)
+	SendMsgToDcrmGroup(ss, groupid)
 	DisMsg(ss)
 
 	_, tip, cherr := GetChannelValue(ch_t, w.bc11)
@@ -524,7 +497,7 @@ func ReShare_ec2(msgprex string, save string, ch chan interface{}, id int) {
 	}
 
 	for _, id := range ids {
-		enodes := GetEnodesByUid(id, "ALL", pubs.GroupId)
+		enodes := GetEnodesByUid(id, "ALL", groupid)
 
 		if enodes == "" {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetEnodeByUIdFail)}
@@ -557,7 +530,7 @@ func ReShare_ec2(msgprex string, save string, ch chan interface{}, id int) {
 			continue
 		}
 
-		enodes := GetEnodesByUid(uid, "ALL", pubs.GroupId)
+		enodes := GetEnodesByUid(uid, "ALL", groupid)
 		if IsCurNode(enodes, cur_enode) {
 			mp := []string{msgprex, cur_enode}
 			enode := strings.Join(mp, "-")
@@ -594,7 +567,7 @@ func ReShare_ec2(msgprex string, save string, ch chan interface{}, id int) {
 		}
 	}
 	ss = ss + "NULL"
-	SendMsgToDcrmGroup(ss, pubs.GroupId)
+	SendMsgToDcrmGroup(ss, groupid)
 	DisMsg(ss)
 	
 	_, tip, cherr = GetChannelValue(ch_t, w.bss1)

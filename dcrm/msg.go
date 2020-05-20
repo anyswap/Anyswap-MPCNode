@@ -969,7 +969,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 			}
 
-			w.groupid = rh.GroupId 
+			w.groupid = rh.SubGroupId 
 			w.limitnum = rh.ThresHold
 			gcnt, _ := GetGroup(w.groupid)
 			w.NodeCnt = gcnt
@@ -991,7 +991,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
-				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "Pending", "", "", "", nil, wid)
+				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"false", "false", "Pending", "", "", "", nil, wid)
 			} else {
 				cur_nonce, _, _ := GetReShareNonce(resharemsg.Account)
 				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
@@ -1008,7 +1008,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
-				ac := &AcceptReShareData{Initiator:self.sender,Account: resharemsg.Account, GroupId: rh.GroupId, Nonce: resharemsg.Nonce, PubKey: rh.PubKey, LimitNum: rh.ThresHold, Mode: rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
+				ac := &AcceptReShareData{Initiator:self.sender,Account: resharemsg.Account, GroupId: rh.GroupId, SubGroupId:rh.SubGroupId, Nonce: resharemsg.Nonce, PubKey: rh.PubKey, LimitNum: rh.ThresHold, Mode: rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
 				err := SaveAcceptReShareData(ac)
 				fmt.Printf("%v ===================finish call SaveAcceptReShareData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,pubkey = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode, rr.Nonce)
 				if err != nil {
@@ -1076,10 +1076,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply == false {
 								tip = "don't accept reshare"
-								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "Failure", "", "don't accept reshare", "don't accept reshare", nil, wid)
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"false", "false", "Failure", "", "don't accept reshare", "don't accept reshare", nil, wid)
 							} else {
 								tip = ""
-								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "pending", "", "", "", ars, wid)
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"false", "false", "pending", "", "", "", ars, wid)
 							}
 
 							///////
@@ -1089,7 +1089,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							fmt.Printf("%v ================== (self *RecvMsg) Run() , agree wait timeout. key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
 							ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
 							//bug: if self not accept and timeout
-							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "false", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "false", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
 							reply = false
 							tip = "get other node accept reshare result timeout"
 							//
@@ -1112,7 +1112,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 					//////////////////////reshare result start/////////////////////////
 					if tip == "get other node accept reshare result timeout" {
 						ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
-						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
 					} else {
 						/////////////TODO tmp
 						//sid-enode:SendReShareRes:Success:rsv
@@ -1123,7 +1123,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						s1 := "Fail"
 						s2 := "don't accept reshare."
 						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-						SendMsgToDcrmGroup(ss, w.groupid)
+						SendMsgToDcrmGroup(ss, rh.GroupId)
 						DisMsg(ss)
 						fmt.Printf("%v ================RecvMsg.Run,send SendReShareRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 						_, _, err := GetChannelValue(ch_t, w.bsendreshareres)
@@ -1131,9 +1131,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 						ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
 						if err != nil {
 							tip = "get other node terminal accept reshare result timeout" ////bug
-							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", tip,tip, ars, wid)
+							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Timeout", "", tip,tip, ars, wid)
 						} else if w.msg_sendreshareres.Len() != w.ThresHold {
-							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, wid)
+							AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, wid)
 						} else {
 							reply2 := "false"
 							lohash := ""
@@ -1153,9 +1153,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 							if reply2 == "true" {
 								fmt.Printf("%v ================RecvMsg,the terminal reshare res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "true", "true", "Success", lohash," "," ",ars, wid)
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"true", "true", "Success", lohash," "," ",ars, wid)
 							} else {
-								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "",lohash,lohash,ars, wid)
+								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "", "Failure", "",lohash,lohash,ars, wid)
 							}
 						}
 						/////////////////////
@@ -1173,13 +1173,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				if !strings.EqualFold(cur_enode, self.sender) { //no self send
 					ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
-					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "true", "Pending", "","","",ars, wid)
+					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "true", "Pending", "","","",ars, wid)
 				}
 			}
 
 			rch := make(chan interface{}, 1)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , start call reshare,key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
-			reshare(w.sid, resharemsg.Account,rh.PubKey,resharemsg.Nonce,rch)
+			reshare(w.sid, resharemsg.Account,rh.GroupId,rh.PubKey,resharemsg.Nonce,rh.Mode,rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish call reshare,key = %v ============================\n", common.CurrentTime(), rr.Nonce)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish and get reshare return value = %v,err = %v,key = %v ============================\n", common.CurrentTime(), chret, cherr, rr.Nonce)
@@ -1192,7 +1192,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			//////////////////////reshare result start/////////////////////////
 			if tip == "get other node accept reshare result timeout" {
 				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
-				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
 			} else {
 				/////////////TODO tmp
 				//sid-enode:SendReShareRes:Success:rsv
@@ -1203,7 +1203,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				s1 := "Fail"
 				s2 := "don't accept reshare."
 				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-				SendMsgToDcrmGroup(ss, w.groupid)
+				SendMsgToDcrmGroup(ss, rh.GroupId)
 				DisMsg(ss)
 				fmt.Printf("%v ================RecvMsg.Run,send SendReShareRes msg to other nodes finish,key = %v =============\n", common.CurrentTime(), rr.Nonce)
 				_, _, err := GetChannelValue(ch_t, w.bsendreshareres)
@@ -1211,9 +1211,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
 				if err != nil {
 					tip = "get other node terminal accept reshare result timeout" ////bug
-					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Timeout", "", tip,tip, ars, wid)
+					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "", "Timeout", "", tip,tip, ars, wid)
 				} else if w.msg_sendsignres.Len() != w.ThresHold {
-					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, wid)
+					AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, wid)
 				} else {
 					reply2 := "false"
 					lohash := ""
@@ -1233,9 +1233,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 					if reply2 == "true" {
 						fmt.Printf("%v ================RecvMsg,the terminal reshare res is success. key = %v ==================\n", common.CurrentTime(), rr.Nonce)
-						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "true", "true", "Success", lohash," "," ",ars, wid)
+						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.SubGroupId,resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "true", "true", "Success", lohash," "," ",ars, wid)
 					} else {
-						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold, "false", "", "Failure", "",lohash,lohash,ars, wid)
+						AcceptReShare(self.sender,resharemsg.Account, rh.GroupId,rh.SubGroupId, resharemsg.Nonce, rh.PubKey, rh.ThresHold,rh.Mode, "false", "", "Failure", "",lohash,lohash,ars, wid)
 					}
 				}
 				/////////////////////

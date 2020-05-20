@@ -230,6 +230,38 @@ func (this *Service) ReShare(raw string) map[string]interface{} {
 	}
 }
 
+func (this *Service) GetReShareNonce(account string) map[string]interface{} {
+	data := make(map[string]interface{})
+	if account == "" {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    "parameter error,but return 0",
+			"Error":  "parameter error",
+			"Data":   data,
+		}
+	}
+
+	ret, tip, err := dcrm.GetReShareNonce(account)
+	if err != nil {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    tip + ",but return 0",
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) GetBalance(account string, cointype string, dcrmaddr string) map[string]interface{} {
 	fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
 

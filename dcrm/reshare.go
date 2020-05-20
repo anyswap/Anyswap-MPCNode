@@ -431,6 +431,44 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		    }
 	    }
 
+	    // for all nodes, de-commitment
+	    var ug = make(map[string][]*big.Int)
+	    for _, id := range idSign {
+		    enodes := GetEnodesByUid(id, "ALL", w.groupid)
+		    en := strings.Split(string(enodes[8:]), "@")
+		    _, u1G := udecom[en[0]].DeCommit()
+		    ug[en[0]] = u1G
+	    }
+
+	    // for all nodes, calculate the public key
+	    var pkx *big.Int
+	    var pky *big.Int
+	    for _, id := range idSign {
+		    enodes := GetEnodesByUid(id, "ALL", w.groupid)
+		    en := strings.Split(string(enodes[8:]), "@")
+		    pkx = (ug[en[0]])[0]
+		    pky = (ug[en[0]])[1]
+		    break
+	    }
+
+	    for k, id := range idSign {
+		    if k == 0 {
+			    continue
+		    }
+
+		    enodes := GetEnodesByUid(id, "ALL", w.groupid)
+		    en := strings.Split(string(enodes[8:]), "@")
+		    pkx, pky = secp256k1.S256().Add(pkx, pky, (ug[en[0]])[0], (ug[en[0]])[1])
+	    }
+	    ys := secp256k1.S256().Marshal(pkx, pky)
+	    pubkeyhex := hex.EncodeToString(ys)
+	    if !strings.EqualFold(pubkey,pubkeyhex) {
+		fmt.Printf("%v=====================ReShare_ec2, reshare fail,new pubkey != old pubkey, old pubkey = %v, new pubkey = %v, key = %v=======================\n",common.CurrentTime(),pubkey,pubkeyhex,msgprex)
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("reshare fail,new pubkey != old pubkey")}
+		ch <- res
+		return 
+	    }
+
 	    var newskU1 *big.Int
 	    for _, id := range idSign {
 		    enodes := GetEnodesByUid(id, "ALL", w.groupid)
@@ -449,6 +487,7 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		    newskU1 = new(big.Int).Add(newskU1, sstruct[en[0]].Share)
 	    }
 	    newskU1 = new(big.Int).Mod(newskU1, secp256k1.S256().N)
+	    fmt.Printf("%v=====================ReShare_ec2, gen newskU1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 	    res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	    ch <- res
 	    return
@@ -801,6 +840,45 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		}
 	}
 
+	// for all nodes, de-commitment
+	var ug = make(map[string][]*big.Int)
+	for _, id := range idSign {
+		enodes := GetEnodesByUid(id, "ALL", w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		_, u1G := udecom[en[0]].DeCommit()
+		ug[en[0]] = u1G
+	}
+
+	// for all nodes, calculate the public key
+	var pkx *big.Int
+	var pky *big.Int
+	for _, id := range idSign {
+		enodes := GetEnodesByUid(id, "ALL", w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		pkx = (ug[en[0]])[0]
+		pky = (ug[en[0]])[1]
+		break
+	}
+
+	for k, id := range idSign {
+		if k == 0 {
+			continue
+		}
+
+		enodes := GetEnodesByUid(id, "ALL", w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		pkx, pky = secp256k1.S256().Add(pkx, pky, (ug[en[0]])[0], (ug[en[0]])[1])
+	}
+	ys := secp256k1.S256().Marshal(pkx, pky)
+	pubkeyhex := hex.EncodeToString(ys)
+	if !strings.EqualFold(pubkey,pubkeyhex) {
+	    fmt.Printf("%v=====================ReShare_ec2, reshare fail,new pubkey != old pubkey, old pubkey = %v, new pubkey = %v, key = %v=======================\n",common.CurrentTime(),pubkey,pubkeyhex,msgprex)
+	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("reshare fail,new pubkey != old pubkey")}
+	    ch <- res
+	    return 
+	}
+
+	//gen new sku1
 	var newskU1 *big.Int
 	for _, id := range idSign {
 		enodes := GetEnodesByUid(id, "ALL", w.groupid)
@@ -819,6 +897,7 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		newskU1 = new(big.Int).Add(newskU1, sstruct[en[0]].Share)
 	}
 	newskU1 = new(big.Int).Mod(newskU1, secp256k1.S256().N)
+	fmt.Printf("%v=====================ReShare_ec2, gen newsku1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 	res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	ch <- res
 	////////////////////////////////

@@ -1655,7 +1655,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 		continue
 	    }
 
-	    ac,ok := data2.(*AcceptReShareData)
+	    ac,ok := data2.(*AcceptReqAddrData)
 	    if ok == false || ac == nil {
 		continue
 	    }
@@ -2589,6 +2589,117 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.MsgHash + ":" + ac3.Keytype + ":" + ac3.GroupId + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
 
 		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, MsgHash:ac3.MsgHash, MsgContext:ac3.MsgContext, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
+		ret = append(ret, los)
+	    }
+	    ////
+	}
+
+	///////
+	return ret, "", nil
+}
+
+type ReShareCurNodeInfo struct {
+	Key       string
+	Account   string
+	PubKey   string
+	GroupId   string
+	SubGroupId   string
+	Nonce     string
+	ThresHold  string
+	Mode      string
+	TimeStamp string
+}
+
+func GetCurNodeReShareInfo(geter_acc string) ([]*ReShareCurNodeInfo, string, error) {
+	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	if exsit == false {
+	    return nil,"",nil
+	}
+
+	//check obj type
+	_,ok := da.([]byte)
+	if ok == false {
+	    return nil,"get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
+	}
+	//
+
+	var ret []*ReShareCurNodeInfo
+	keys := strings.Split(string(da.([]byte)),":")
+	for _,key := range keys {
+	    exsit,data := GetValueFromPubKeyData(key)
+	    if exsit == false {
+		continue
+	    }
+
+	    if data == nil {
+		continue
+	    }
+
+	    ac,ok := data.(*AcceptReqAddrData)
+	    if ok == false {
+		continue
+	    }
+
+	    if ac == nil {
+		continue
+	    }
+
+	    //if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+	//	continue
+	  //  }
+
+	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+	    if exsit == false || data2 == nil {
+		continue
+	    }
+
+	    pd,ok := data2.(*PubKeyData)
+	    if ok == false {
+		continue
+	    }
+
+	    if pd == nil {
+		continue
+	    }
+
+	    if pd.RefReShareKeys == "" {
+		continue
+	    }
+
+	    resharekeys := strings.Split(pd.RefReShareKeys,":")
+	    for _,resharekey := range resharekeys {
+		exsit,data3 := GetValueFromPubKeyData(resharekey)
+		if exsit == false {
+		    continue
+		}
+
+		////
+		ac3,ok := data3.(*AcceptReShareData)
+		if ok == false {
+		    continue
+		}
+
+		if ac3 == nil {
+			continue
+		}
+		
+		if ac3.Mode == "1" {
+			continue
+		}
+		
+		if ac3.Deal == "true" || ac3.Status == "Success" {
+			continue
+		}
+
+		if ac3.Status != "Pending" {
+			continue
+		}
+
+		//key = hash(account + groupid + subgroupid + nonce + pubkey + threshold + mode)
+		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.GroupId + ":" + ac3.SubGroupId + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
+
+		los := &ReShareCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, GroupId:ac3.GroupId, SubGroupId:ac3.SubGroupId, Nonce: ac3.Nonce, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
 		ret = append(ret, los)
 	    }
 	    ////

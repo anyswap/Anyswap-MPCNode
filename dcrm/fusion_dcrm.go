@@ -1590,6 +1590,195 @@ func ReShare(raw string) (string, string, error) {
 	return key, "", nil
 }
 
+func RpcAcceptReShare(raw string) (string, string, error) {
+	tx := new(types.Transaction)
+	raws := common.FromHex(raw)
+	if err := rlp.DecodeBytes(raws, tx); err != nil {
+		return "Failure", "raw data error", err
+	}
+
+	signer := types.NewEIP155Signer(big.NewInt(30400)) //
+	from, err := types.Sender(signer, tx)
+	if err != nil {
+	    return "Failure", "recover fusion account fail from raw data,maybe raw data error", err
+	}
+
+	h := coins.NewCryptocoinHandler("FSN")
+	if h == nil {
+	    return "Failure", "get fsn cointy handle fail", fmt.Errorf("get fsn cointy handle fail")
+	}
+	
+	fr, err := h.PublicKeyToAddress(cur_enode)
+	if err != nil {
+	    return "Failure", "check current enode account fail from raw data,maybe raw data error", err
+	}
+
+	if !strings.EqualFold(from.Hex(), fr) {
+	    return "Failure", "check current enode account fail from raw data,maybe raw data error", err
+	}
+
+	acceptreshare := TxDataAcceptReShare{}
+	err = json.Unmarshal(tx.Data(), &acceptreshare)
+	if err != nil {
+	    return "Failure", "recover tx.data json string fail from raw data,maybe raw data error", err
+	}
+
+	if acceptreshare.TxType != "ACCEPTRESHARE" {
+	    return "Failure", "transaction data format error,it is not ACCEPTRESHARE tx", fmt.Errorf("tx.data error,it is not ACCEPTRESHARE tx.")
+	}
+
+	if acceptreshare.Accept != "AGREE" && acceptreshare.Accept != "DISAGREE" {
+	    return "Failure", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
+	}
+
+	status := "Pending"
+	accept := "false"
+	if acceptreshare.Accept == "AGREE" {
+		accept = "true"
+	} else {
+		status = "Failure"
+	}
+
+	////bug,check valid accepter
+	exsit,da := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
+	if exsit == false {
+		return "Failure", "dcrm back-end internal error:get reshare data from db fail", fmt.Errorf("get reshare data from db fail")
+	}
+
+	//key = hash(account + groupid + subgroupid + nonce + pubkey + threshold + mode)
+	check := false
+	found := false
+	keys := strings.Split(string(da.([]byte)),":")
+	for _,key := range keys {
+	    exsit,data2 := GetValueFromPubKeyData(key)
+	    if exsit == false {
+		continue
+	    }
+
+	    ac,ok := data2.(*AcceptReShareData)
+	    if ok == false || ac == nil {
+		continue
+	    }
+
+	    //if ac.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
+	//	continue
+	  //  }
+
+	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	    exsit,data3 := GetValueFromPubKeyData(string(dcrmpks[:]))
+	    if exsit == false || data3 == nil {
+		continue
+	    }
+
+	    pd,ok := data3.(*PubKeyData)
+	    if ok == false {
+		continue
+	    }
+
+	    if pd == nil {
+		continue
+	    }
+
+	    if pd.RefReShareKeys == "" {
+		continue
+	    }
+
+	    resharekeys := strings.Split(pd.RefReShareKeys,":")
+	    for _,resharekey := range resharekeys {
+		if strings.EqualFold(resharekey, acceptreshare.Key) {
+		    found = true
+		    exsit,data3 := GetValueFromPubKeyData(resharekey)
+		    if exsit == false {
+			break
+		    }
+
+		    ac3,ok := data3.(*AcceptReShareData)
+		    if ok == false {
+			break
+		    }
+
+		    if ac3 == nil {
+			    break
+		    }
+
+		    if ac3.Mode == "1" {
+			    break
+		    }
+
+		    check = true
+		    break
+		}
+	    }
+
+	    if check == true || found == true {
+		break
+	    }
+	    ////
+	}
+
+	if !check {
+	    return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
+	}
+
+	exsit,da = GetValueFromPubKeyData(acceptreshare.Key)
+	///////
+	if exsit == false {
+		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	}
+
+	ac,ok := da.(*AcceptReShareData)
+	if ok == false {
+	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	}
+
+	if ac == nil {
+	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	}
+
+	if ac.Mode == "1" {
+	    return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
+	}
+
+	///////
+	mp := []string{acceptreshare.Key, cur_enode}
+	enode := strings.Join(mp, "-")
+	s0 := "AcceptReShareRes"
+	s1 := accept
+	s2 := acceptreshare.TimeStamp
+	ss2 := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
+	SendMsgToDcrmGroup(ss2, ac.GroupId)
+	DisMsg(ss2)
+	fmt.Printf("%v ================== AcceptReShare, finish send AcceptReShareRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptreshare.Key)
+	////fix bug: get C11 timeout
+	_, enodes := GetGroup(ac.GroupId)
+	nodes := strings.Split(enodes, common.Sep2)
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+	    c1data := acceptreshare.Key + "-" + node2 + common.Sep + "AcceptReShareRes"
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		DisMsg(c1.(string))
+		go C1Data.DeleteMap(strings.ToLower(c1data))
+	    }
+	}
+	////
+
+	w, err := FindWorker(acceptreshare.Key)
+	if err != nil {
+	    return "Failure",err.Error(),err
+	}
+
+	id,_ := GetWorkerId(w)
+	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_RESHARE,ac.Initiator)
+	
+	tip,err := AcceptReShare(ac.Initiator,ac.Account, ac.GroupId, ac.SubGroupId,ac.Nonce, ac.PubKey, ac.LimitNum, ac.Mode,"false", accept, status, "", "", "", ars,ac.WorkId)
+	if err != nil {
+		return "Failure", tip, err
+	}
+
+	return "Success", "", nil
+}
+
 ///////reshare end////////
 
 type SignData struct {

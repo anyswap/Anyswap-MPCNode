@@ -548,7 +548,6 @@ func SaveAcceptReShareData(ac *AcceptReShareData) error {
 type TxDataAcceptReShare struct {
     TxType string
     Key string
-    Mode string
     Accept string
     TimeStamp string
 }

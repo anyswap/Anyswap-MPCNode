@@ -178,8 +178,8 @@ func startP2pNode() error {
 		}
 	}
 	nodeidString := discover.PubkeyID(&nodeKey.PublicKey).String()
-	port = getPort(port)
-	rpcport = getPort(rpcport)
+	//port = getPort(port)
+	//rpcport = getPort(rpcport)
 	fmt.Printf("port: %v, rpcport: %v\n", port, rpcport)
 	storeRpcPort(nodeidString, rpcport)
 	layer2.InitSelfNodeID(nodeidString)

@@ -1374,6 +1374,14 @@ func LockOut(raw string) (string, string, error) {
 	}
 	////////////////////
 
+	//check to addr
+	validator := coins.NewDcrmAddressValidator(cointype)
+	if validator == nil {
+	    return "","unsupported cointype",fmt.Errorf("unsupported cointype")
+	}
+	if !validator.IsValidAddress(dcrmto) {
+	    return "","invalid to addr",fmt.Errorf("invalid to addr")
+	}
 	//
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()

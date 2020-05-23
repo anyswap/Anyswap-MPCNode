@@ -635,7 +635,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 }
 
 func MapPrivKeyShare(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, privshare string) (*big.Int, *big.Int) {
-	if cointype == "" || w == nil || len(idSign) == 0 || privshare == "" {
+	if cointype == "" || w == nil || idSign == nil || len(idSign) == 0 || privshare == "" {
 		return nil, nil
 	}
 

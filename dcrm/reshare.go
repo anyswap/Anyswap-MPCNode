@@ -176,6 +176,12 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	// [Notes]
 	// 1. assume the nodes who take part in the signature generation as follows
 	ids := GetIds("ALL", w.groupid)
+	if len(ids) < w.ThresHold {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("calc ids fail")}
+		ch <- res
+		return
+	}
+
 	idSign := ids[:w.ThresHold]
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
@@ -183,11 +189,10 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	skU1, w1 := MapPrivKeyShare("ALL", w, idSign, mm[0])
 	if skU1 == nil || w1 == nil {
 	    ////////test reshare///////////////////////
-	    fmt.Printf("%v =============ReShare_ec2,cur node not take part in reshare,key = %v ================\n", common.CurrentTime(), msgprex)
-
 	    ids = GetIds("ALL", groupid)
+	    fmt.Printf("%v =============ReShare_ec2,cur node not take part in reshare, gid = %v, ids = %v, key = %v ================\n", common.CurrentTime(), groupid,ids,msgprex)
 	    
-	    _, tip, cherr := GetChannelValue(ch_t, w.bc11)
+	    _, tip, cherr := GetChannelValue(120, w.bc11)
 	    suss := false
 	    if cherr != nil {
 		suss = ReqDataFromGroup(msgprex,w.id,"C11",reqdata_trytimes,reqdata_timeout)
@@ -200,7 +205,7 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		    return
 	    }
 
-	    _, tip, cherr = GetChannelValue(ch_t, w.bss1)
+	    _, tip, cherr = GetChannelValue(120, w.bss1)
 	    suss = false
 	    if cherr != nil {
 		suss = ReqDataFromGroup(msgprex,w.id,"SS1",reqdata_trytimes,reqdata_timeout)
@@ -213,7 +218,7 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		    return
 	    }
 
-	    _, tip, cherr = GetChannelValue(ch_t, w.bd11_1)
+	    _, tip, cherr = GetChannelValue(120, w.bd11_1)
 	    suss = false
 	    if cherr != nil {
 		suss = ReqDataFromGroup(msgprex,w.id,"D11",reqdata_trytimes,reqdata_timeout)

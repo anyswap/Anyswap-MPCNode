@@ -503,6 +503,7 @@ type AcceptReShareData struct {
 	Account   string
 	GroupId   string
 	TSGroupId   string
+	TSCount   string
 	PubKey  string
 	LimitNum  string
 	TimeStamp string
@@ -528,11 +529,13 @@ func SaveAcceptReShareData(ac *AcceptReShareData) error {
 
 	alos, err := Encode2(ac)
 	if err != nil {
+	    fmt.Printf("%v==================SaveAcceptReShareData, encode fail, err = %v ====================\n",common.CurrentTime(),err)
 		return err
 	}
 
 	ss, err := Compress([]byte(alos))
 	if err != nil {
+	    fmt.Printf("%v==================SaveAcceptReShareData, compress fail, err = %v ====================\n",common.CurrentTime(),err)
 		return err
 	}
 
@@ -610,7 +613,7 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
 		wid = workid
 	}
 
-	ac2 := &AcceptReShareData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, TSGroupId:ac.TSGroupId, PubKey: ac.PubKey,LimitNum: ac.LimitNum, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, NewSk: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+	ac2 := &AcceptReShareData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, TSGroupId:ac.TSGroupId, TSCount:ac.TSCount, PubKey: ac.PubKey,LimitNum: ac.LimitNum, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, NewSk: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
 
 	e, err := Encode2(ac2)
 	if err != nil {

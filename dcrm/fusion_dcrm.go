@@ -1405,14 +1405,19 @@ func RecivReShare() {
 	for {
 		select {
 		case data := <-ReShareCh:
+			fmt.Printf("%v ==============================RecivReShare,get new job, key = %v ============================================\n", common.CurrentTime(),data.Key)
 			exsit,_ := GetValueFromPubKeyData(data.Key)
 			if exsit == false {
 				rh := TxDataReShare{}
-				_ = json.Unmarshal([]byte(data.JsonStr), &rh)
+				err2 := json.Unmarshal([]byte(data.JsonStr), &rh)
+				if err2 != nil {
+				    fmt.Printf("%v ==============================RecivReShare,unmarshal fail, err = %v, key = %v ============================================\n", common.CurrentTime(),err2,data.Key)
+				}
 
 				ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, TSCount:rh.TSCount, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 				    err := SaveAcceptReShareData(ac)
+				    fmt.Printf("%v ==============================RecivReShare,save acceptdata fail, err = %v, key = %v ============================================\n", common.CurrentTime(),err,data.Key)
 				    if err == nil {
 					    fmt.Printf("%v ==============================RecivReShare,finish call SaveAcceptReShareData, err = %v,account = %v,group id = %v,threshold = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, data.Key)
 
@@ -1477,13 +1482,16 @@ func ReShare(raw string) (string, string, error) {
 	    return "", "get fsn cointy handle fail", fmt.Errorf("get fsn cointy handle fail")
 	}
 	
-	fr, err := h.PublicKeyToAddress(cur_enode)
+	//pk := hex.EncodeToString(cur_enode)
+	pk := "04" + cur_enode
+	fr, err := h.PublicKeyToAddress(pk)
 	if err != nil {
-	    fmt.Printf("%v=====================ReShare, pubkey to addr fail and return, err = %v, ==================\n",common.CurrentTime(),err)
+	    fmt.Printf("%v=====================ReShare, pubkey to addr fail and return, cur_enode = %v, pk = %v, from = %v, fr = %v, err = %v, ==================\n",common.CurrentTime(),cur_enode,pk,from.Hex(),fr,err)
 	    return "", "check current enode account fail from raw data,maybe raw data error", err
 	}
 
 	if !strings.EqualFold(from.Hex(), fr) {
+	    fmt.Printf("%v=====================ReShare, pubkey to addr fail and return, cur_enode = %v, pk = %v, from = %v, fr = %v, err = %v, ==================\n",common.CurrentTime(),cur_enode,pk,from.Hex(),fr,err)
 	    return "", "check current enode account fail from raw data,maybe raw data error", err
 	}
 
@@ -1497,7 +1505,7 @@ func ReShare(raw string) (string, string, error) {
 		return "", "transaction data format error,it is not RESHARE tx", fmt.Errorf("tx raw data error,it is not reshare tx.")
 	}
 
-	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.TimeStamp == "" {
+	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.TSCount == "" || rh.ThresHold == "" || rh.TimeStamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
 
@@ -1557,6 +1565,14 @@ func ReShare(raw string) (string, string, error) {
 	if nc < limit || nc > nodecnt {
 	    return "","check group node count error",fmt.Errorf("check group node count error")
 	}
+	
+	tscount, err := strconv.Atoi(rh.TSCount)
+	if err != nil {
+		return "", err.Error(),err
+	}
+	if tscount < limit || tscount > nodecnt {
+	    return "","check ts count error",fmt.Errorf("check ts count error")
+	}
 	////
 
 	//
@@ -1587,19 +1603,23 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 	if h == nil {
 	    return "Failure", "get fsn cointy handle fail", fmt.Errorf("get fsn cointy handle fail")
 	}
-	
-	fr, err := h.PublicKeyToAddress(cur_enode)
+
+	pk := "04" + cur_enode
+	fr, err := h.PublicKeyToAddress(pk)
 	if err != nil {
+	    fmt.Printf("%v===============RpcAcceptReShare, pubkey to addr fail,from = %v, fr = %v, err = %v ====================\n",common.CurrentTime(),from.Hex(),fr,err)
 	    return "Failure", "check current enode account fail from raw data,maybe raw data error", err
 	}
 
 	if !strings.EqualFold(from.Hex(), fr) {
+	    fmt.Printf("%v===============RpcAcceptReShare, from != fr, from = %v, fr = %v, ====================\n",common.CurrentTime(),from.Hex(),fr)
 	    return "Failure", "check current enode account fail from raw data,maybe raw data error", err
 	}
 
 	acceptreshare := TxDataAcceptReShare{}
 	err = json.Unmarshal(tx.Data(), &acceptreshare)
 	if err != nil {
+	    fmt.Printf("%v===============RpcAcceptReShare, unmarshal txdata fail, err = %v, ====================\n",common.CurrentTime(),err)
 	    return "Failure", "recover tx.data json string fail from raw data,maybe raw data error", err
 	}
 
@@ -2533,6 +2553,7 @@ type ReShareCurNodeInfo struct {
 }
 
 func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
+    //fmt.Printf("%v================GetCurNodeReShareInfo start,====================\n",common.CurrentTime())
     var ret []*ReShareCurNodeInfo
     var wg sync.WaitGroup
     LdbPubKeyData.RLock()
@@ -2542,10 +2563,12 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 	    defer wg.Done()
 
 	    vv,ok := value.(*AcceptReShareData)
+//	    fmt.Printf("%v================GetCurNodeReShareInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 	    if vv == nil || ok == false {
 		return
 	    }
 
+//	    fmt.Printf("%v================GetCurNodeReShareInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
 	    if vv.Deal == "true" || vv.Status == "Success" {
 		return
 	    }
@@ -2558,10 +2581,13 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 
 	    los := &ReShareCurNodeInfo{Key: keytmp, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum,TimeStamp: vv.TimeStamp}
 	    ret = append(ret, los)
+//	    fmt.Printf("%v================GetCurNodeReShareInfo ret = %v,====================\n",common.CurrentTime(),ret)
 	}(k,v)
     }
     LdbPubKeyData.RUnlock()
+  //  fmt.Printf("%v================GetCurNodeReShareInfo end lock,====================\n",common.CurrentTime())
     wg.Wait()
+    //fmt.Printf("%v================GetCurNodeReShareInfo end, ret = %v====================\n",common.CurrentTime(),ret)
     return ret, "", nil
 }
 
@@ -2592,6 +2618,7 @@ type TxDataReShare struct {
     PubKey string
     GroupId string
     TSGroupId string
+    TSCount string
     ThresHold string
     TimeStamp string
 }
@@ -2668,6 +2695,17 @@ func Encode2(obj interface{}) (string, error) {
 		return buff.String(), nil*/
 	case *AcceptSignData:
 		ch := obj.(*AcceptSignData)
+
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+
+		err1 := enc.Encode(ch)
+		if err1 != nil {
+		    return "", err1
+		}
+		return buff.String(), nil
+	case *AcceptReShareData:
+		ch := obj.(*AcceptReShareData)
 
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
@@ -2766,6 +2804,21 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		dec := gob.NewDecoder(&data)
 
 		var res AcceptSignData
+		err := dec.Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
+	}
+
+	if datatype == "AcceptReShareData" {
+		var data bytes.Buffer
+		data.Write([]byte(s))
+
+		dec := gob.NewDecoder(&data)
+
+		var res AcceptReShareData
 		err := dec.Decode(&res)
 		if err != nil {
 			return nil, err
@@ -2897,6 +2950,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Waiting For Result.key = %v============================\n", common.CurrentTime(), self.Key)
 	<-w.acceptWaitReqAddrChan
+	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, get w.acceptWaitReqAddrChan success. key = %v============================\n", common.CurrentTime(), self.Key)
 
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	///////
@@ -2956,7 +3010,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	time.Sleep(time.Duration(1) * time.Second)
 	ars := GetAllReplyFromGroup(-1,req.GroupId,Rpc_REQADDR,cur_enode)
 	AcceptReqAddr(cur_enode,self.Account, "ALL", req.GroupId, self.Nonce, req.ThresHold, req.Mode, "", "", "", "", "", "", ars, workid,"")
-	//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
+	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, w.ch)
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Get Result. result = %v,cherr = %v,key = %v============================\n", common.CurrentTime(), chret, cherr, self.Key)
 	if cherr != nil {

@@ -167,7 +167,7 @@ func DcrmCallRet(msg interface{}, enode string) {
 
 	//msg = success:workid:msgtype:ret  or fail:workid:msgtype:tip:error
 	res := msg.(string)
-	common.Info("============================!!!!!! DcrmCallRet, ", "get return msg = ", res, "sender node = ", enode, "", "!!!!!!=========================")
+	fmt.Printf("%v============================!!!!!! DcrmCallRet, get return value = %v, !!!!!!=========================\n",common.CurrentTime(),res)
 	if res == "" {
 		return
 	}
@@ -191,7 +191,7 @@ func DcrmCallRet(msg interface{}, enode string) {
 	}
 
 	//msgtype := ss[2]
-	common.Info("==============DcrmCallRet, ", "ret =", ss[3], "ret len =", len(ss[3]))
+	fmt.Printf("%v==============DcrmCallRet,ret = %v ===============\n",common.CurrentTime(),ss[3])
 	workid, err := strconv.Atoi(ss[1])
 	if err != nil || workid < 0 || workid >= RpcMaxWorker {
 		return
@@ -958,8 +958,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			w.groupid = rh.TSGroupId 
 			w.limitnum = rh.ThresHold
-			gcnt, _ := GetGroup(w.groupid)
-			w.NodeCnt = gcnt
+			//gcnt, _ := GetGroup(w.groupid)
+			//w.NodeCnt = gcnt
+			tscount,_ := strconv.Atoi(rh.TSCount)
+			w.NodeCnt = tscount
 			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
 			w.ThresHold = w.NodeCnt
 
@@ -970,7 +972,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				w.NodeCnt = nodecnt
 			    }
 
-			    w.ThresHold = gcnt
+			    w.ThresHold = tscount
 			}
 
 			w.DcrmFrom = rh.PubKey  // pubkey replace dcrmfrom in reshare 
@@ -981,7 +983,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,"false", "false", "Pending", "", "", "", nil, wid)
 			} else {
 				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
-				ac := &AcceptReShareData{Initiator:self.sender,Account: resharemsg.Account, GroupId: rh.GroupId, TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
+				ac := &AcceptReShareData{Initiator:self.sender,Account: resharemsg.Account, GroupId: rh.GroupId, TSGroupId:rh.TSGroupId, TSCount:rh.TSCount, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
 				err := SaveAcceptReShareData(ac)
 				fmt.Printf("%v ===================finish call SaveAcceptReShareData, err = %v,wid = %v,account = %v,group id = %v,pubkey = %v,threshold = %v,key = %v =========================\n", common.CurrentTime(), err, wid, resharemsg.Account, rh.GroupId, rh.PubKey, rh.ThresHold, rr.Nonce)
 				if err != nil {
@@ -1835,8 +1837,12 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
 	    l = w.msg_sendlockoutres
 	case "AcceptSignRes":
 	    l = w.msg_acceptsignres 
+	case "AcceptReShareRes":
+	    l = w.msg_acceptreshareres 
 	case "SendSignRes":
 	    l = w.msg_sendsignres 
+	case "SendReShareRes":
+	    l = w.msg_sendreshareres 
 	case "C1":
 	    l = w.msg_c1
 	case "D1":
@@ -2234,6 +2240,76 @@ func DisMsg(msg string) {
 		if w.msg_sendsignres.Len() == w.ThresHold {
 			w.bsendsignres <- true
 		}
+	case "AcceptReShareRes":
+		///bug
+		if w.msg_acceptreshareres.Len() >= w.NodeCnt {
+			return
+		}
+		///
+		if Find(w.msg_acceptreshareres, msg) {
+			return
+		}
+
+		///bug
+		mm2 := mm[0:3]
+		var next *list.Element
+		for e := w.msg_acceptreshareres.Front(); e != nil; e = next {
+			next = e.Next()
+
+			if e.Value == nil {
+				continue
+			}
+
+			s := e.Value.(string)
+
+			if s == "" {
+				continue
+			}
+
+			tmp := strings.Split(s, common.Sep)
+			tmp2 := tmp[0:3]
+			//fmt.Printf("%v ===============DisMsg, msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+			if testEq(mm2, tmp2) {
+				fmt.Printf("%v ===============DisMsg, test eq return true,msg = %v,s = %v,key = %v=================\n", common.CurrentTime(), msg, s,prexs[0])
+				return
+			}
+		}
+		//////
+
+		w.msg_acceptreshareres.PushBack(msg)
+		if w.msg_acceptreshareres.Len() == w.NodeCnt {
+			w.bacceptreshareres <- true
+			/////
+			exsit,da := GetValueFromPubKeyData(prexs[0])
+			if exsit == false {
+				return
+			}
+
+			ac,ok := da.(*AcceptReShareData)
+			if ok == false {
+			    return
+			}
+
+			if ac == nil {
+				return
+			}
+			workers[ac.WorkId].acceptReShareChan <- "go on"
+			/////
+		}
+	case "SendReShareRes":
+		///bug
+		if w.msg_sendreshareres.Len() >= w.NodeCnt {
+			return
+		}
+		///
+		if Find(w.msg_sendreshareres, msg) {
+			return
+		}
+
+		w.msg_sendreshareres.PushBack(msg)
+		if w.msg_sendreshareres.Len() == w.NodeCnt {
+			w.bsendreshareres <- true
+		}
 	case "NoReciv":
 		key := prexs[0]
 		enode1 := prexs[1]
@@ -2346,14 +2422,14 @@ func DisMsg(msg string) {
 		}
 		///
 		if Find(w.msg_c11, msg) {
-			fmt.Println("=================C11 exsit,msg =%v,prex =%s===================", msg, prexs[0])
+			fmt.Println("=================C11 exsit, msg =%v, key =%v===================", msg, prexs[0])
 			return
 		}
 
-		//fmt.Println("=================Get C11 msg =%v,prex =%s===================",msg,prexs[0])
+		fmt.Printf("%v=================Get C11, msg =%v, key =%s===================\n",common.CurrentTime(),msg,prexs[0])
 		w.msg_c11.PushBack(msg)
 		if w.msg_c11.Len() == w.ThresHold {
-			common.Info("===================Get All C11 ", "msg hash = ", test, "prex = ", prexs[0], "", "====================")
+			fmt.Printf("%v===================Get All C11, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bc11 <- true
 		}
 	case "KC":
@@ -2426,9 +2502,10 @@ func DisMsg(msg string) {
 			return
 		}
 
+		fmt.Printf("%v=================Get D11, msg =%v, key =%v===================\n",common.CurrentTime(),msg,prexs[0])
 		w.msg_d11_1.PushBack(msg)
 		if w.msg_d11_1.Len() == w.ThresHold {
-			common.Info("===================Get All D11 ", "msg hash = ", test, "prex = ", prexs[0], "", "====================")
+		    fmt.Printf("%v=================Get All D11, key =%v===================\n",common.CurrentTime(),prexs[0])
 			w.bd11_1 <- true
 		}
 	case "CommitBigVAB":
@@ -2516,9 +2593,10 @@ func DisMsg(msg string) {
 			return
 		}
 
+		fmt.Printf("%v=================Get SS1, msg =%v, key =%v===================\n",common.CurrentTime(),msg,prexs[0])
 		w.msg_ss1.PushBack(msg)
 		if w.msg_ss1.Len() == w.ThresHold {
-			common.Info("===================Get All SS1 ", "msg hash = ", test, "prex = ", prexs[0], "", "====================")
+		    fmt.Printf("%v=================Get All SS1, msg =%v, key =%v===================\n",common.CurrentTime(),msg,prexs[0])
 			w.bss1 <- true
 		}
 	case "PaillierKey":

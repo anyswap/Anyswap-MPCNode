@@ -78,18 +78,22 @@ func (this *Service) GetEnode() map[string]interface{} {
 	return packageResult(SUCCESS, "", "", reten)
 }
 
+type GroupID struct {
+	Gid    string
+	Sgid    string
+}
+
 type GroupInfo struct {
 	Gid    string
-	Sgid   string
 	Count  int
 	Enodes []string
 }
 
 func (this *Service) ReshareGroup(threshold string, enodes []string) map[string]interface{} {
 	fmt.Printf("==== ReshareSDKGroup() ====, threshold: %v, enodes: %v\n", threshold, enodes)
-	err := layer2.CheckAddPeer(threshold, enodes, true)
+	all, err := layer2.CheckAddPeer(threshold, enodes, true)
 	if err != nil {
-		ret := &GroupInfo{}
+		ret := &GroupID{}
 		fmt.Printf("==== ReshareSDKGroup() ====, CheckAddPeer err: %v\n", err)
 		return packageResult(FAIL, err.Error(), err.Error(), ret)
 	}
@@ -97,18 +101,22 @@ func (this *Service) ReshareGroup(threshold string, enodes []string) map[string]
 	if retErr != "" {
 		status := FAIL
 		fmt.Printf("==== ReshareSDKGroup() ====, CreateSDKGroup tip: %v, err: %v\n", retErr, retErr)
-		ret := &GroupInfo{Gid: gid, Count: count, Enodes: enodes}
+		ret := &GroupID{Gid: gid}
 		return packageResult(status, retErr, retErr, ret)
 	}
-	sgid, counts, retErrs := layer2.CreateSDKGroup(threshold, enodes, true)
-	if retErrs != "" {
-		status := FAIL
-		fmt.Printf("==== ReshareSDKGroup() ====, CreateSDKGroup sub tip: %v, err: %v\n", retErrs, retErrs)
-		ret := &GroupInfo{Sgid: sgid, Count: counts, Enodes: enodes}
-		return packageResult(status, retErr, retErr, ret)
+	sgid := ""
+	if all != true {
+		sid, _, retErrs := layer2.CreateSDKGroup(threshold, enodes, true)
+		if retErrs != "" {
+			status := FAIL
+			fmt.Printf("==== ReshareSDKGroup() ====, CreateSDKGroup sub tip: %v, err: %v\n", retErrs, retErrs)
+			ret := &GroupID{Sgid: sid}
+			return packageResult(status, retErr, retErr, ret)
+		}
+		sgid = sid
+		fmt.Printf("==== ReshareSDKGroup() ====, gid: %v, sgid: %v, count: %v\n", gid, sid, count)
 	}
-	fmt.Printf("==== ReshareSDKGroup() ====, gid: %v, sgid: %v, count: %v\n", gid, sgid, count)
-	ret := &GroupInfo{Gid: gid, Sgid: sgid, Count: count, Enodes: enodes}
+	ret := &GroupID{Gid: gid, Sgid: sgid}
 	return packageResult(SUCCESS, "", "", ret)
 }
 
@@ -118,9 +126,9 @@ func (this *Service) CreateGroup(threshold string, enodes []string) map[string]i
 
 func (this *Service) CreateSDKGroup(threshold string, enodes []string, subGroup bool) map[string]interface{} {
 	fmt.Printf("==== CreateSDKGroup() ====\n")
-	err := layer2.CheckAddPeer(threshold, enodes, subGroup)
+	_, err := layer2.CheckAddPeer(threshold, enodes, subGroup)
 	if err != nil {
-		ret := &GroupInfo{}
+		ret := &GroupID{}
 		fmt.Printf("==== CreateSDKGroup() ====, CheckAddPeer err: %v\n", err)
 		return packageResult(FAIL, err.Error(), err.Error(), ret)
 	}
@@ -128,11 +136,11 @@ func (this *Service) CreateSDKGroup(threshold string, enodes []string, subGroup 
 	if retErr != "" {
 		status := FAIL
 		fmt.Printf("==== CreateSDKGroup() ====, CreateSDKGroup tip: %v, err: %v\n", retErr, retErr)
-		ret := &GroupInfo{Gid: gid, Count: count, Enodes: enodes}
+		ret := &GroupID{Gid: gid}
 		return packageResult(status, retErr, retErr, ret)
 	}
 	fmt.Printf("==== CreateSDKGroup() ====, gid: %v, count: %v\n", gid, count)
-	ret := &GroupInfo{Gid: gid, Count: count, Enodes: enodes}
+	ret := &GroupID{Gid: gid}
 	return packageResult(SUCCESS, "", "", ret)
 }
 

@@ -376,22 +376,26 @@ func GetEnodeStatus(enode string) (string, error) {
 	return discover.GetEnodeStatus(enode)
 }
 
-func CheckAddPeer(threshold string, enodes []string, subGroup bool) error {
+func CheckAddPeer(threshold string, enodes []string, subGroup bool) (bool, error) {
+	thshall := false
 	es := strings.Split(threshold, "/")
 	if len(es) != 2 {
 		msg := fmt.Sprintf("args threshold(%v) format is wrong", threshold)
-		return errors.New(msg)
+		return thshall, errors.New(msg)
 	}
 	nodeNum0, _ := strconv.Atoi(es[0])
 	nodeNum1, _ := strconv.Atoi(es[1])
 	if len(enodes) < nodeNum0 || len(enodes) > nodeNum1 {
 		msg := fmt.Sprintf("args threshold(%v) and enodes(%v) not match", threshold, enodes)
-		return errors.New(msg)
+		return thshall, errors.New(msg)
+	}
+	if nodeNum0 == nodeNum1 {
+		thshall = true
 	}
 	if subGroup {// sub group
 		if len(enodes) != nodeNum1 {
 			msg := fmt.Sprintf("args threshold(%v) and enodes(%v) not match subGroup", threshold, enodes)
-			return errors.New(msg)
+			return thshall, errors.New(msg)
 		}
 	}
 	var nodeid map[discover.NodeID]int = make(map[discover.NodeID]int, len(enodes))
@@ -406,11 +410,11 @@ func CheckAddPeer(threshold string, enodes []string, subGroup bool) error {
 		node, err := discover.ParseNode(enode)
 		if err != nil {
 			msg := fmt.Sprintf("CheckAddPeer, parse err enode: %v", enode)
-			return errors.New(msg)
+			return thshall, errors.New(msg)
 		}
 		if nodeid[node.ID] == 1 {
 			msg := fmt.Sprintf("CheckAddPeer, enode: %v, err: repeated", enode)
-			return errors.New(msg)
+			return thshall, errors.New(msg)
 		}
 		nodeid[node.ID] = 1
 		if selfid == node.ID {
@@ -428,9 +432,9 @@ func CheckAddPeer(threshold string, enodes []string, subGroup bool) error {
 	wg.Wait()
 	if selfEnodeExist != true {
 		msg := fmt.Sprintf("CheckAddPeer, slefEnode: %v, err: selfEnode not exist", discover.GetEnode())
-		return errors.New(msg)
+		return thshall, errors.New(msg)
 	}
-	return nil
+	return thshall, nil
 }
 
 func InitIPPort(port int) {

@@ -733,17 +733,17 @@ func sendGroupToNode(groupList *Group, p2pType int, node *Node) { //nooo
 	}
 }
 
-func sendGroupInfo(groupList *Group, p2pType int) { //nooo
-	fmt.Printf("%v ==== sendGroupInfo() ====, gid: %v\n", common.CurrentTime(), groupList.ID)
-	for i := 0; i < len(groupList.Nodes); i++ {
-		fmt.Printf("==== sendGroupInfo() ====, gid: %v, node: %v\n", groupList.ID, groupList.Nodes[i])
-		node := groupList.Nodes[i]
+func sendGroupInfo(gid NodeID, nodes []RpcNode, p2pType int) { //nooo
+	fmt.Printf("%v ==== sendGroupInfo() ====, gid: %v, nodes: %v\n", common.CurrentTime(), gid, nodes)
+	for i := 0; i < len(nodes); i++ {
+		fmt.Printf("==== sendGroupInfo() ====, gid: %v, node: %v\n", gid, nodes[i])
+		node := nodes[i]
 		//e := fmt.Sprintf("enode://%v@%v:%v", node.ID, node.IP, node.UDP)
 		//if e == SelfEnode {
 		//	go callGroupEvent(req.ID, req.Mode, nodes, int(req.P2pType), req.Type)
 		//}
 		ipa := &net.UDPAddr{IP: node.IP, Port: int(node.UDP)}
-		go SendToPeer(groupList.ID, node.ID, ipa, "", p2pType)
+		go SendToPeer(gid, node.ID, ipa, "", p2pType)
 	}
 }
 
@@ -781,31 +781,49 @@ func addGroupSDK(n *Node, p2pType int) { //nooo
 	SDK_groupList[groupTmp.ID] = groupTmp
 }
 
-func StartCreateSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bool) string {
+func StartCreateSDKGroup(gid NodeID, threshold string, enode []*Node, Type string, exist bool, subGroup bool) string {
 	fmt.Printf("%v ==== StartCreateSDKGroup() ====, gid: %v\n", common.CurrentTime(), gid)
-	buildSDKGroup(gid, mode, enode, Type, exist)
+	buildSDKGroup(gid, threshold, enode, Type, exist, subGroup)
 	return ""
 }
 
-func buildSDKGroup(gid NodeID, mode string, enode []*Node, Type string, exist bool) {
+func buildSDKGroup(gid NodeID, threshold string, enode []*Node, Type string, exist bool, subGroup bool) {
+	es := strings.Split(threshold, "/")
+	if len(es) != 2 {
+		fmt.Printf("args threshold(%v) format is wrong", threshold)
+		return
+	}
+	nodeNum0, _ := strconv.Atoi(es[0])
 	GroupSDK.Lock()
 	defer GroupSDK.Unlock()
 	fmt.Printf("%v ==== buildSDKGroup() ====, gid: %v, enode: %v\n", common.CurrentTime(), gid, enode)
 	groupTmp := new(Group)
-	groupTmp.Mode = mode
+	groupTmp.Mode = threshold
 	groupTmp.Type = Type
-	groupTmp.Nodes = make([]RpcNode, len(enode))
+	cnodes := len(enode)
+	if subGroup {
+		cnodes = nodeNum0
+	}
+	groupTmp.Nodes = make([]RpcNode, cnodes)
+	tmpNodes := make([]RpcNode, len(enode))
 	for i, node := range enode {
+		tmpNodes[i] = RpcNode(nodeToRPC(node))
+		fmt.Printf("==== buildSDKGroup() ====, tmpNodes: %v\n", tmpNodes)
+		if subGroup {
+			if i >= nodeNum0 {
+				continue
+			}
+		}
 		groupTmp.Nodes[i] = RpcNode(nodeToRPC(node))
 		groupTmp.count++
 	}
 	groupTmp.ID = gid
 	SDK_groupList[groupTmp.ID] = groupTmp
-	fmt.Printf("==== buildSDKGroup() ====, gid: %v, group: %v\n", groupTmp)
+	fmt.Printf("==== buildSDKGroup() ====, gid: %v, group: %v\n", gid, groupTmp)
 	if exist != true {
 		sendGroupInit(SDK_groupList[gid], Sdkprotocol_type)
 	}
-	sendGroupInfo(SDK_groupList[gid], Sdkprotocol_type)
+	sendGroupInfo(gid, tmpNodes, Sdkprotocol_type)
 }
 
 func updateGroup(n *Node, p2pType int) { //nooo
@@ -814,7 +832,7 @@ func updateGroup(n *Node, p2pType int) { //nooo
 			if node.ID == n.ID {
 				g.Nodes = append(g.Nodes[:i], g.Nodes[i+1:]...)
 				g.Nodes = append(g.Nodes, RpcNode(nodeToRPC(n)))
-				sendGroupInfo(g, p2pType)
+				sendGroupInfo(g.ID, g.Nodes, p2pType)
 				sendGroupInit(g, p2pType)
 				StoreGroupToDb(g)
 				break
@@ -936,7 +954,7 @@ func setGroupSDK(n *Node, replace string, p2pType int) {
 				}
 			}
 			fmt.Printf("==== setGroupSDK() ====, nodeID: %v, group: %v\n", n.ID, SDK_groupList[n.ID])
-			sendGroupInfo(SDK_groupList[n.ID], p2pType)
+			sendGroupInfo(n.ID, SDK_groupList[n.ID].Nodes, p2pType)
 			sendGroupInit(SDK_groupList[n.ID], p2pType)
 			StoreGroupToDb(SDK_groupList[n.ID])
 		} else { // add self node

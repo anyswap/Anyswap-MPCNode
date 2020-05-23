@@ -310,12 +310,33 @@ func SdkProtocol_registerSendToGroupReturnCallback(sdkcallback func(interface{},
 }
 
 // 1 + 1 + 1
-func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
+func CreateSDKGroup(threshold string, enodes []string, subGroup bool) (string, int, string) {
+	es := strings.Split(threshold, "/")
+	if len(es) != 2 {
+		msg := fmt.Sprintf("args threshold(%v) format is wrong", threshold)
+		return "", 0, msg
+	}
+	nodeNum0, _ := strconv.Atoi(es[0])
 	count := len(enodes)
-	sort.Sort(sort.StringSlice(enodes))
 	enode := []*discover.Node{}
+	var tmpEnodes []string
+	for i, e := range enodes {
+		node, err := discover.ParseNode(e)
+		if err != nil {
+			fmt.Printf("CreateSDKGroup, parse err: %v\n", e)
+			return "", 0, "enode wrong format"
+		}
+		enode = append(enode, node)
+		if subGroup {
+			if i >= nodeNum0 {
+				continue
+			}
+		}
+		tmpEnodes = append(tmpEnodes, e)
+	}
+	sort.Sort(sort.StringSlice(tmpEnodes))
 	id := []byte("")
-	for _, un := range enodes {
+	for i, un := range tmpEnodes {
 		fmt.Printf("for enode: %v\n", un)
 		node, err := discover.ParseNode(un)
 		if err != nil {
@@ -323,6 +344,11 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 			return "", 0, "enode wrong format"
 		}
 		fmt.Printf("for selfid: %v, node.ID: %v\n", selfid, node.ID)
+		if subGroup {
+			if i >= nodeNum0 {
+				continue// for check enode parse
+			}
+		}
 		n := fmt.Sprintf("%v", node.ID)
 		fmt.Printf("CreateSDKGroup, n: %v\n", n)
 		if len(id) == 0 {
@@ -330,7 +356,6 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 		} else {
 			id = crypto.Keccak512(id, []byte(node.ID.String()))
 		}
-		enode = append(enode, node)
 	}
 	gid, err := discover.BytesID(id)
 	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
@@ -343,7 +368,7 @@ func CreateSDKGroup(mode string, enodes []string) (string, int, string) {
 		}
 	}
 	discover.GroupSDK.Unlock()
-	retErr := discover.StartCreateSDKGroup(gid, mode, enode, "1+1+1", exist)
+	retErr := discover.StartCreateSDKGroup(gid, threshold, enode, "1+1+1", exist, subGroup)
 	return gid.String(), count, retErr
 }
 
@@ -351,17 +376,23 @@ func GetEnodeStatus(enode string) (string, error) {
 	return discover.GetEnodeStatus(enode)
 }
 
-func CheckAddPeer(mode string, enodes []string) error {
-	es := strings.Split(mode, "/")
+func CheckAddPeer(threshold string, enodes []string, subGroup bool) error {
+	es := strings.Split(threshold, "/")
 	if len(es) != 2 {
-		msg := fmt.Sprintf("args mode(%v) format is wrong", mode)
+		msg := fmt.Sprintf("args threshold(%v) format is wrong", threshold)
 		return errors.New(msg)
 	}
 	nodeNum0, _ := strconv.Atoi(es[0])
 	nodeNum1, _ := strconv.Atoi(es[1])
 	if len(enodes) < nodeNum0 || len(enodes) > nodeNum1 {
-		msg := fmt.Sprintf("args mode(%v) and enodes(%v) not match", mode, enodes)
+		msg := fmt.Sprintf("args threshold(%v) and enodes(%v) not match", threshold, enodes)
 		return errors.New(msg)
+	}
+	if subGroup {// sub group
+		if len(enodes) != nodeNum1 {
+			msg := fmt.Sprintf("args threshold(%v) and enodes(%v) not match subGroup", threshold, enodes)
+			return errors.New(msg)
+		}
 	}
 	var nodeid map[discover.NodeID]int = make(map[discover.NodeID]int, len(enodes))
 	defer func() {

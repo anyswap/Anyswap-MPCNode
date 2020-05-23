@@ -121,7 +121,6 @@ func dcrm_reshare(msgprex string, groupid string,pubkey string,ch chan interface
 	    <-ch1
 	}
 
-	w.Clear2()
 	ReShare_ec2(msgprex, groupid,pubkey, ch1, id)
 	ret, _, cherr := GetChannelValue(ch_t, ch1)
 	if ret != "" && cherr == nil {
@@ -130,6 +129,7 @@ func dcrm_reshare(msgprex string, groupid string,pubkey string,ch chan interface
 		break
 	}
 	
+	w.Clear2()
 	time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
     }
 }

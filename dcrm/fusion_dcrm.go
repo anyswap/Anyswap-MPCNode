@@ -1415,7 +1415,7 @@ func RecivReShare() {
 				}
 
 				ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, TSCount:rh.TSCount, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 				    err := SaveAcceptReShareData(ac)
 				    fmt.Printf("%v ==============================RecivReShare,save acceptdata fail, err = %v, key = %v ============================================\n", common.CurrentTime(),err,data.Key)
 				    if err == nil {
@@ -1505,7 +1505,7 @@ func ReShare(raw string) (string, string, error) {
 		return "", "transaction data format error,it is not RESHARE tx", fmt.Errorf("tx raw data error,it is not reshare tx.")
 	}
 
-	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.TSCount == "" || rh.ThresHold == "" || rh.TimeStamp == "" {
+	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.TimeStamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
 
@@ -1566,13 +1566,13 @@ func ReShare(raw string) (string, string, error) {
 	    return "","check group node count error",fmt.Errorf("check group node count error")
 	}
 	
-	tscount, err := strconv.Atoi(rh.TSCount)
-	if err != nil {
-		return "", err.Error(),err
-	}
-	if tscount < limit || tscount > nodecnt {
-	    return "","check ts count error",fmt.Errorf("check ts count error")
-	}
+	//tscount, err := strconv.Atoi(rh.TSCount)
+	//if err != nil {
+	//	return "", err.Error(),err
+	//}
+	//if tscount < limit || tscount > nodecnt {
+	//    return "","check ts count error",fmt.Errorf("check ts count error")
+	//}
 	////
 
 	//
@@ -2618,7 +2618,6 @@ type TxDataReShare struct {
     PubKey string
     GroupId string
     TSGroupId string
-    TSCount string
     ThresHold string
     TimeStamp string
 }

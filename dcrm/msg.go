@@ -958,10 +958,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			w.groupid = rh.TSGroupId 
 			w.limitnum = rh.ThresHold
-			//gcnt, _ := GetGroup(w.groupid)
-			//w.NodeCnt = gcnt
-			tscount,_ := strconv.Atoi(rh.TSCount)
-			w.NodeCnt = tscount
+			gcnt, _ := GetGroup(w.groupid)
+			w.NodeCnt = gcnt
+			//tscount,_ := strconv.Atoi(rh.TSCount)
+			//w.NodeCnt = tscount
 			fmt.Printf("%v ===================RecvMsg.Run, w.NodeCnt = %v, w.groupid = %v, wid = %v, key = %v ==============================\n", common.CurrentTime(), w.NodeCnt, w.groupid,wid, rr.Nonce)
 			w.ThresHold = w.NodeCnt
 
@@ -972,7 +972,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				w.NodeCnt = nodecnt
 			    }
 
-			    w.ThresHold = tscount
+			    w.ThresHold = gcnt
 			}
 
 			w.DcrmFrom = rh.PubKey  // pubkey replace dcrmfrom in reshare 
@@ -983,7 +983,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,"false", "false", "Pending", "", "", "", nil, wid)
 			} else {
 				ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
-				ac := &AcceptReShareData{Initiator:self.sender,Account: resharemsg.Account, GroupId: rh.GroupId, TSGroupId:rh.TSGroupId, TSCount:rh.TSCount, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
+				ac := &AcceptReShareData{Initiator:self.sender,Account: resharemsg.Account, GroupId: rh.GroupId, TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:wid}
 				err := SaveAcceptReShareData(ac)
 				fmt.Printf("%v ===================finish call SaveAcceptReShareData, err = %v,wid = %v,account = %v,group id = %v,pubkey = %v,threshold = %v,key = %v =========================\n", common.CurrentTime(), err, wid, resharemsg.Account, rh.GroupId, rh.PubKey, rh.ThresHold, rr.Nonce)
 				if err != nil {

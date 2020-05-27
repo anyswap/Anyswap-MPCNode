@@ -238,8 +238,8 @@ func startP2pNode() error {
 		fmt.Println("\n=================== P2P Service Start! ===================\n")
 		if privateNet {
 			go func() {
-				signalChan := make(chan os.Signal,1)
-				signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+				signalChan := make(chan os.Signal, 1)
+				signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 				<-signalChan
 				deleteRpcPort(pubdir)
 				os.Exit(1)
@@ -298,7 +298,7 @@ func updateRpcPort(pubdir, rpcport string) {
 		os.MkdirAll(dir, os.ModePerm)
 	}
 	rpcfile := filepath.Join(dir, "rpcport")
-	//fmt.Printf("==== updateRpcPort() ====, rpcfile: %v, rpcport: %v\n", rpcfile, rpcport)
+	fmt.Printf("==== updateRpcPort() ====, rpcfile: %v, rpcport: %v\n", rpcfile, rpcport)
 	f, err := os.Create(rpcfile)
 	defer f.Close()
 	if err != nil {

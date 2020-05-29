@@ -17,6 +17,9 @@ import (
 )
 
 var (
+	nodeChainIDStr = "46688"
+	nodeChainID    *big.Int
+
 	gatewayURL   = "https://testnet.fsn.dev/api"
 	gasLimit     = uint64(4000000)
 	gasPriceStr  = "1000000000"
@@ -49,7 +52,14 @@ func checkArguments() error {
 		return fmt.Errorf("wrong gas price %v", gasPriceStr)
 	}
 
+	nodeChainID, ok = new(big.Int).SetString(nodeChainIDStr, 0)
+	if !ok {
+		return fmt.Errorf("wrong chain Id %v", nodeChainIDStr)
+	}
+
 	fmt.Println("create contract check arguments:")
+	fmt.Println("full node chain ID is", nodeChainID)
+	fmt.Println("gateway RPC URL is", gatewayURL)
 	fmt.Println("from is", *fromAddr)
 	fmt.Println("group info is groupId", *gid, "threshold", *ts, "pubkey", *pubkey)
 	fmt.Println("gas limit is", gasLimit)
@@ -95,7 +105,8 @@ func createContract() error {
 	printTx(rawTx, true)
 	fmt.Println()
 
-	msgHash := signer.Hash(rawTx)
+	chainSigner := types.NewEIP155Signer(nodeChainID)
+	msgHash := chainSigner.Hash(rawTx)
 	rsv := signMsgHash(msgHash.String())
 
 	signature := common.FromHex(rsv)
@@ -105,13 +116,13 @@ func createContract() error {
 		return err
 	}
 
-	signedTx, err := rawTx.WithSignature(signer, signature)
+	signedTx, err := rawTx.WithSignature(chainSigner, signature)
 	if err != nil {
 		fmt.Printf("sign tx failed, err=%v\n", err)
 		return err
 	}
 
-	sender, err := types.Sender(signer, signedTx)
+	sender, err := types.Sender(chainSigner, signedTx)
 	if err != nil {
 		fmt.Printf("get sender from signed tx failed, err=%v\n", err)
 		return err

@@ -149,30 +149,6 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		return
 	}
 
-	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
-	///////
-	if exsit == false {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
-		ch <- res
-		return
-	}
-
-	_,ok := da.(*PubKeyData)
-	if ok == false {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
-		ch <- res
-		return
-	}
-
-	save := (da.(*PubKeyData)).Save
-	mm := strings.Split(save, common.SepSave)
-	if len(mm) == 0 {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
-		ch <- res
-		return
-	}
-
 	// [Notes]
 	// 1. assume the nodes who take part in the signature generation as follows
 	ids := GetIds("ALL", w.groupid)
@@ -184,10 +160,52 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 
 	idSign := ids[:w.ThresHold]
 
+	take_reshare := true
+	var save string
+	var mm []string
+	var skU1 *big.Int
+	var w1 *big.Int
+
+	dcrmpks, _ := hex.DecodeString(pubkey)
+	//exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	///////
+	if exsit == false {
+		//res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
+		//ch <- res
+		//return
+		take_reshare = false
+		skU1 = nil
+		w1 = nil
+	} else {
+	    _,ok := da.(*PubKeyData)
+	    if ok == false {
+		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
+		    //ch <- res
+		    //return
+		    take_reshare = false
+		    skU1 = nil
+		    w1 = nil
+	    } else {
+		save = (da.(*PubKeyData)).Save
+		mm = strings.Split(save, common.SepSave)
+		if len(mm) == 0 {
+			//res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
+			//ch <- res
+			//return
+			take_reshare = false
+			skU1 = nil
+			w1 = nil
+		} else {
+		    skU1, w1 = MapPrivKeyShare("ALL", w, idSign, mm[0])
+		}
+
+	    }
+	}
+
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
-	skU1, w1 := MapPrivKeyShare("ALL", w, idSign, mm[0])
-	if skU1 == nil || w1 == nil {
+	if take_reshare == false || skU1 == nil || w1 == nil {
 	    ////////test reshare///////////////////////
 	    ids = GetIds("ALL", groupid)
 	    fmt.Printf("%v =============ReShare_ec2,cur node not take part in reshare, gid = %v, ids = %v, key = %v ================\n", common.CurrentTime(), groupid,ids,msgprex)

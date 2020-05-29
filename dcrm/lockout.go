@@ -95,7 +95,8 @@ func SetLockOutNonce(account string,nonce string) (string, error) {
 
 func sign(wsid string,account string,pubkey string,unsignhash string,keytype string,nonce string,mode string,ch chan interface{}) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+	//exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 	///////
 	if exsit == false {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
@@ -259,7 +260,8 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	}
 
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-	exsit,da := GetValueFromPubKeyData(key2)
+	//exsit,da := GetValueFromPubKeyData(key2)
+	exsit,da := GetPubKeyDataFromLocalDb(key2)
 	///////
 	if exsit == false {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get lockout data from db fail", Err: fmt.Errorf("get lockout data from db fail")}

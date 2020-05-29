@@ -46,7 +46,6 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 	}
 	//
 	if db == nil {
-		common.Info("==============GetPubKeyDataValueFromDb,db is nil=================", "account hash = ", key)
 		lock.Unlock()
 		return nil
 	}
@@ -54,7 +53,6 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 	da, err := db.Get([]byte(key))
 	///////
 	if err != nil {
-		common.Info("==============GetPubKeyDataValueFromDb,read from db error=================", "err = ", err, "account hash = ", key)
 		db.Close()
 		lock.Unlock()
 		return nil
@@ -192,6 +190,34 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
     }
 
     return exsit,datmp
+}
+
+func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
+    if key == "" {
+	return false,nil
+    }
+
+    da := GetPubKeyDataValueFromDb(key)
+    if da == nil {
+	return false,nil
+    }
+
+    ss, err := UnCompress(string(da))
+    if err != nil {
+	return false,nil
+    }
+
+    pubs, err := Decode2(ss, "PubKeyData")
+    if err != nil {
+	return false,nil
+    }
+
+    pd,ok := pubs.(*PubKeyData)
+    if ok == false {
+	return false,nil
+    }
+
+    return true,pd 
 }
 
 func GetGroupDir() string { //TODO

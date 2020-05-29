@@ -1980,12 +1980,21 @@ func GetBalance(account string, cointype string, dcrmaddr string) (string, strin
 	ba, err := h.GetAddressBalance(dcrmaddr, "")
 	if err != nil {
 		//	fmt.Println("================GetBalance 22222,err =%v =================",err)
-		return "", "dcrm back-end internal error:get dcrm addr balance fail", err
+		//return "", "dcrm back-end internal error:get dcrm addr balance fail", err
+		return "0","dcrm back-end internal error:get dcrm addr balance fail,but return 0",nil
 	}
 
 	if h.IsToken() {
-		ret := fmt.Sprintf("%v", ba.TokenBalance.Val)
-		return ret, "", nil
+	    if ba.TokenBalance.Val == nil {
+		return "0", "token balance is nil,but return 0", nil
+	    }
+
+	    ret := fmt.Sprintf("%v", ba.TokenBalance.Val)
+	    return ret, "", nil
+	}
+
+	if ba.CoinBalance.Val == nil {
+	    return "0", "coin balance is nil,but return 0", nil
 	}
 
 	ret := fmt.Sprintf("%v", ba.CoinBalance.Val)

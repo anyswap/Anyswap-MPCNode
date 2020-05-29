@@ -1960,15 +1960,11 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 
 func GetBalance(account string, cointype string, dcrmaddr string) (string, string, error) {
 
-	if strings.EqualFold(cointype, "BTC") { ///tmp code
-		//return "0","",nil  //TODO
+	if strings.EqualFold(cointype, "EVT1") || strings.EqualFold(cointype, "EVT") { ///tmp code
+		return "0","",nil  //TODO
 	}
 
-	if strings.EqualFold(cointype, "BCH") {
-		return "0", "", nil //TODO
-	}
-
-	if strings.EqualFold(cointype, "USDT") {
+	if strings.EqualFold(cointype, "EOS") {
 		return "0", "", nil //TODO
 	}
 

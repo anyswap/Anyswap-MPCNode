@@ -2,10 +2,10 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-.PHONY: all gdcrm bootnode cfaucet clean fmt
+.PHONY: all gdcrm bootnode cfaucet clean fmt gdcrm-client
 
 all:
-	./build.sh gdcrm bootnode
+	./build.sh gdcrm bootnode gdcrm-client
 	cp cmd/conf.toml bin/cmd
 	@echo "Done building."
 
@@ -15,6 +15,10 @@ gdcrm:
 
 bootnode:
 	./build.sh bootnode
+	@echo "Done building."
+
+gdcrm-client:
+	./build.sh gdcrm-client
 	@echo "Done building."
 
 cfaucet:

@@ -18,11 +18,15 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -61,12 +65,15 @@ var (
 	bootnodes string
 	keyfile   string
 	keyfilehex string
+	pubkey    string
 	genKey    string
 	datadir   string
 	app       = cli.NewApp()
 	statDir   = "stat"
 	Version   = ""
 )
+
+const privateNet bool = false
 
 type conf struct {
 	Gdcrm *gdcrmConf
@@ -78,8 +85,6 @@ type gdcrmConf struct {
 	Port      int
 	Rpcport   int
 }
-
-var count int = 0
 
 func init() {
 	//app := cli.NewApp()
@@ -93,6 +98,7 @@ func init() {
 		cli.StringFlag{Name: "bootnodes", Value: "", Usage: "boot node", Destination: &bootnodes},
 		cli.StringFlag{Name: "nodekey", Value: "", Usage: "private key filename", Destination: &keyfile},
 		cli.StringFlag{Name: "nodekeyhex", Value: "", Usage: "private key as hex", Destination: &keyfilehex},
+		cli.StringFlag{Name: "pubkey", Value: "", Usage: "public key from web user", Destination: &pubkey},
 		cli.StringFlag{Name: "genkey", Value: "", Usage: "generate a node key", Destination: &genKey},
 		cli.StringFlag{Name: "datadir", Value: "", Usage: "data dir", Destination: &datadir},
 	}
@@ -105,9 +111,14 @@ func getConfig() error {
 		fmt.Printf("Options -nodekey and -nodekeyhex are mutually exclusive\n")
 		keyfilehex = ""
 	}
-	if _, err := toml.DecodeFile(path, &cf); err != nil {
-		fmt.Printf("DecodeFile %v, err: %v\n", path, err)
-		return err
+	if common.FileExist(path) != true {
+		fmt.Printf("config file: %v not exist\n", path)
+		return errors.New("config file not exist")
+	} else {
+		if _, err := toml.DecodeFile(path, &cf); err != nil {
+			fmt.Printf("DecodeFile %v: %v\n", path, err)
+			return err
+		}
 	}
 	nkey := cf.Gdcrm.Nodekey
 	bnodes := cf.Gdcrm.Bootnodes
@@ -178,10 +189,20 @@ func startP2pNode() error {
 		}
 	}
 	nodeidString := discover.PubkeyID(&nodeKey.PublicKey).String()
-	//port = getPort(port)
-	//rpcport = getPort(rpcport)
+	pubdir := nodeidString
+	if privateNet {
+		fmt.Printf("private network\n")
+		port = getPort(port)
+		rpcport = getPort(rpcport)
+		if pubkey != "" {
+			pubdir = pubkey
+			if strings.HasPrefix(pubkey, "0x") {
+				pubdir = pubkey[2:]
+			}
+		}
+		storeRpcPort(pubdir, rpcport)
+	}
 	fmt.Printf("port: %v, rpcport: %v\n", port, rpcport)
-	storeRpcPort(nodeidString, rpcport)
 	layer2.InitSelfNodeID(nodeidString)
 	layer2.InitIPPort(port)
 
@@ -215,6 +236,15 @@ func startP2pNode() error {
 		layer2.InitServer(nodeserv)
 		//fmt.Printf("\nNodeInfo: %+v\n", nodeserv.NodeInfo())
 		fmt.Println("\n=================== P2P Service Start! ===================\n")
+		if privateNet {
+			go func() {
+				signalChan := make(chan os.Signal, 1)
+				signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+				<-signalChan
+				deleteRpcPort(pubdir)
+				os.Exit(1)
+			}()
+		}
 		select {}
 	}()
 	return nil
@@ -253,19 +283,28 @@ func PortInUse(port int) bool {
 	return false
 }
 
-func storeRpcPort(nodeid string, rpcport int) {
+func storeRpcPort(pubdir string, rpcport int) {
+	updateRpcPort(pubdir, fmt.Sprintf("%v", rpcport))
+}
+
+func deleteRpcPort(pubdir string) {
+	updateRpcPort(pubdir, "")
+}
+
+func updateRpcPort(pubdir, rpcport string) {
 	portDir := common.DefaultDataDir()
-	dir := filepath.Join(portDir, statDir, nodeid)
+	dir := filepath.Join(portDir, statDir, pubdir)
 	if common.FileExist(dir) != true {
 		os.MkdirAll(dir, os.ModePerm)
 	}
 	rpcfile := filepath.Join(dir, "rpcport")
+	fmt.Printf("==== updateRpcPort() ====, rpcfile: %v, rpcport: %v\n", rpcfile, rpcport)
 	f, err := os.Create(rpcfile)
 	defer f.Close()
 	if err != nil {
 		fmt.Println(err.Error())
 	} else {
-		_, err = f.Write([]byte(fmt.Sprintf("%v", rpcport)))
+		_, err = f.Write([]byte(rpcport))
 	}
 }
 

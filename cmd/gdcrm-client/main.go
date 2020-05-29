@@ -45,6 +45,8 @@ const (
 )
 
 var (
+	keyfile  *string
+	passwd   *string
 	url      *string
 	test     *string
 	gid      *string
@@ -101,16 +103,21 @@ func main() {
 	case "ACCEPTRESHARE":
 		// approve condominium account reshare
 		acceptReshare()
+	case "CREATECONTRACT":
+		err := createContract()
+		if err != nil {
+			fmt.Printf("createContract failed. %v\n", err)
+		}
 	default:
-		fmt.Printf("\ntest('%v') not support\nSupport test: EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE\n", *test)
+		fmt.Printf("\ntest('%v') not support\nSupport test: EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE/CREATECONTRACT\n", *test)
 	}
 }
 
 func init() {
-	keyfile := flag.String("keystore", "", "Keystore file")
-	passwd := flag.String("passwd", "111111", "Password")
+	keyfile = flag.String("keystore", "", "Keystore file")
+	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	test = flag.String("test", "", "EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE")
+	test = flag.String("test", "", "EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE/CREATECONTRACT")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
@@ -130,6 +137,14 @@ func init() {
 	// array
 	flag.Var(&enodesSig, "sig", "Enodes Sig list")
 	flag.Var(&nodes, "node", "Node rpc url")
+
+	// create contract flags
+	flag.StringVar(&gatewayURL, "gateway", gatewayURL, "gateway of full node RPC address")
+	flag.Uint64Var(&gasLimit, "gas", gasLimit, "gas limit")
+	flag.StringVar(&gasPriceStr, "gasPrice", gasPriceStr, "gas price")
+	flag.StringVar(&bytecodeFile, "bytecode", bytecodeFile, "path of bytecode file")
+	flag.BoolVar(&dryrun, "dryrun", dryrun, "dry run")
+
 	flag.Parse()
 
 	// To account
@@ -500,6 +515,12 @@ func acceptLockOut() {
 	}
 }
 func sign() {
+	if *msghash == "" {
+		*msghash = common.ToHex(crypto.Keccak256([]byte(*memo)))
+	}
+	signMsgHash(*msghash)
+}
+func signMsgHash(msgHash string) (rsv string) {
 	// get sign nonce
 	signNonce, err := client.Call("dcrm_getSignNonce", keyWrapper.Address.String())
 	if err != nil {
@@ -511,16 +532,13 @@ func sign() {
 	}
 	nonce, _ := strconv.ParseUint(nonceStr, 0, 64)
 	fmt.Printf("dcrm_getSignNonce = %s\nNonce = %d\n", signNonce, nonce)
-	if *msghash == "" {
-		*msghash = common.ToHex(crypto.Keccak256([]byte(*memo)))
-	}
 	// build tx data
 	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 	txdata := signData{
-		TxType:     *test,
+		TxType:     "SIGN",
 		PubKey:     *pubkey,
 		MsgContext: *memo,
-		MsgHash:    *msghash,
+		MsgHash:    msgHash,
 		Keytype:    *keyType,
 		GroupID:    *gid,
 		ThresHold:  *ts,
@@ -565,10 +583,12 @@ func sign() {
 		return
 	}
 	if statusJSON.Status != "Success" {
-		fmt.Printf("\tdcrm_getSignStatus=%s\tkeyID=%s  ", statusJSON.Status, keyID)
+		fmt.Printf("\tdcrm_getSignStatus=%s\tkeyID=%s\n", statusJSON.Status, keyID)
 	} else {
-		fmt.Printf("\tSuccess\tRSV=%s", statusJSON.Rsv)
+		fmt.Printf("\tSuccess\tRSV=%s\n", statusJSON.Rsv)
+		return statusJSON.Rsv
 	}
+	return
 }
 func acceptSign() {
 	// get approve list of condominium account

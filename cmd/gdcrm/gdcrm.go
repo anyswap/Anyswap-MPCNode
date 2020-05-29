@@ -20,11 +20,13 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -192,14 +194,19 @@ func startP2pNode() error {
 	pubdir := nodeidString
 	if privateNet {
 		fmt.Printf("private network\n")
-		port = getPort(port)
-		rpcport = getPort(rpcport)
 		if pubkey != "" {
 			pubdir = pubkey
 			if strings.HasPrefix(pubkey, "0x") {
 				pubdir = pubkey[2:]
 			}
 		}
+		port = getPort(port)
+		rp := getRpcPort(pubdir)
+		fmt.Printf("getRpcPort, rp: %v\n", rp)
+		if rp != 0 {
+			rpcport = rp
+		}
+		rpcport = getPort(rpcport)
 		storeRpcPort(pubdir, rpcport)
 	}
 	fmt.Printf("port: %v, rpcport: %v\n", port, rpcport)
@@ -306,5 +313,29 @@ func updateRpcPort(pubdir, rpcport string) {
 	} else {
 		_, err = f.Write([]byte(rpcport))
 	}
+}
+
+func getRpcPort(pubdir string) int {
+	fmt.Printf("==== getRpcPort() ====, pubdir: %v\n", pubdir)
+	portDir := common.DefaultDataDir()
+	dir := filepath.Join(portDir, statDir, pubdir)
+	if common.FileExist(dir) != true {
+		return 0
+	}
+	rpcfile := filepath.Join(dir, "rpcport")
+	if common.FileExist(rpcfile) != true {
+		return 0
+	}
+
+	port, err := ioutil.ReadFile(rpcfile)
+	if err == nil {
+		pp := strings.Split(string(port), "\n")
+		p, err := strconv.Atoi(pp[0])
+		fmt.Printf("==== getRpcPort() ====, p: %v, err: %v\n", p, err)
+		if err == nil {
+			return p
+		}
+        }
+	return 0
 }
 

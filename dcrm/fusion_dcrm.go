@@ -1928,7 +1928,8 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 		    _ = json.Unmarshal([]byte(ret), &dp)
 		    balances := make([]SubAddressBalance, 0)
 		    var wg sync.WaitGroup
-		    var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
+		    ret  := common.NewSafeMap(10)
+		    //var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
 		    for cointype, subaddr := range dp.DcrmAddress {
 			    wg.Add(1)
 			    go func(cointype, subaddr string) {
@@ -1937,15 +1938,20 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 				    if err != nil {
 					    balance = "0"
 				    }
-				    ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
+				    //ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
+				    ret.WriteMap(strings.ToLower(cointype),&SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance})
 			    }(cointype, subaddr)
 		    }
 		    wg.Wait()
 		    for _, cointype := range coins.Cointypes {
-			    if ret[cointype] != nil {
-				    balances = append(balances, *(ret[cointype]))
+			    subaddrbal,exist := ret.ReadMap(strings.ToLower(cointype))
+			    if exist == true && subaddrbal != nil {
+				subbal,ok := subaddrbal.(*SubAddressBalance)
+				if ok == true && subbal != nil {
+				    balances = append(balances, *subbal)
 				    fmt.Printf("balances: %v\n", balances)
-				    delete(ret, cointype)
+				    ret.DeleteMap(strings.ToLower(cointype))
+				}
 			    }
 		    }
 		    m = &DcrmAccountsBalanceRes{PubKey: pubkey, Balances: balances}

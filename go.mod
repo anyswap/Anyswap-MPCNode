@@ -20,7 +20,7 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/eoscanada/eos-go v0.8.16
 	github.com/ethereum/go-ethereum v1.9.14 // indirect
-	github.com/fsn-dev/cryptoCoins v0.0.0-20200423033629-0506a41d1e72
+	github.com/fsn-dev/cryptoCoins v0.0.0-20200529023326-829372e1fe6e
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/golang/snappy v0.0.1
 	github.com/gorilla/mux v1.7.3

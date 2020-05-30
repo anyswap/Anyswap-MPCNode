@@ -97,8 +97,11 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	//exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
 	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	test,_ := new(big.Int).SetString(string(dcrmpks[:]),0)
+	fmt.Printf("============================sign,pubkey = %v, k = %v, key = %v, =========================\n",pubkey,test,wsid)
 	///////
 	if exsit == false {
+	    fmt.Printf("============================sign,not exist sign data, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
 		ch <- res
 		return
@@ -106,6 +109,7 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 
 	_,ok := da.(*PubKeyData)
 	if ok == false {
+		fmt.Printf("============================sign,sign data error, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
 		ch <- res
 		return
@@ -121,11 +125,26 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 		dcrmpkx, dcrmpky = secp256k1.S256().Unmarshal(dcrmpks[:])
 	}
 
+	///sku1
+	da2 := GetSkU1FromLocalDb(string(dcrmpks[:]))
+	if da2 == nil {
+		res := RpcDcrmRes{Ret: "", Tip: "lockout get sku1 fail", Err: fmt.Errorf("lockout get sku1 fail")}
+		ch <- res
+		return
+	}
+	sku1 := new(big.Int).SetBytes(da2)
+	if sku1 == nil {
+		res := RpcDcrmRes{Ret: "", Tip: "lockout get sku1 fail", Err: fmt.Errorf("lockout get sku1 fail")}
+		ch <- res
+		return
+	}
+	//
+
 	var rsv string
 	var cherrtmp error
 	rch := make(chan interface{}, 1)
 	if keytype == "ED25519" {
-	    sign_ed(wsid,unsignhash,save,dcrmpub,keytype,rch)
+	    sign_ed(wsid,unsignhash,save,sku1,dcrmpub,keytype,rch)
 	    ret, tip, cherr := GetChannelValue(ch_t, rch)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
@@ -136,7 +155,7 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 	    rsv = ret
 	    cherrtmp = cherr
 	} else {
-	    sign_ec(wsid,unsignhash,save,dcrmpkx,dcrmpky,keytype,rch)
+	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,rch)
 	    ret, tip, cherr := GetChannelValue(ch_t,rch)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
@@ -202,7 +221,7 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 	return
 }
 
-func sign_ec(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
+func sign_ec(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
 
 	/////////////
 	txhashs := []rune(txhash)
@@ -235,7 +254,7 @@ func sign_ec(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmp
 	    w := workers[id]
 	    w.Clear2()
 	    //fmt.Printf("%v=====================sign_ec, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
-	    bak_sig = Sign_ec2(msgprex, save, txhash, keytype, dcrmpkx, dcrmpky, ch1, id)
+	    bak_sig = Sign_ec2(msgprex, save, sku1, txhash, keytype, dcrmpkx, dcrmpky, ch1, id)
 	    ret, _, cherr := GetChannelValue(ch_t, ch1)
 	    //fmt.Printf("%v=====================sign_ec,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
 	    if ret != "" && cherr == nil {
@@ -300,6 +319,23 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 		return
 	}
 
+	///sku1
+	da2 := GetSkU1FromLocalDb(key2)
+	fmt.Printf("===================validate_lockout, da2 = %v,sku1 da2 = %v, key = %v =====================\n",da2,string(da2),wsid)
+	if da2 == nil {
+	    fmt.Printf("===================validate_lockout, get sku1 fail, key = %v =====================\n",wsid)
+		res := RpcDcrmRes{Ret: "", Tip: "lockout get sku1 fail", Err: fmt.Errorf("lockout get sku1 fail")}
+		ch <- res
+		return
+	}
+	sku1 := new(big.Int).SetBytes(da2)
+	if sku1 == nil {
+		res := RpcDcrmRes{Ret: "", Tip: "lockout get sku1 fail", Err: fmt.Errorf("lockout get sku1 fail")}
+		ch <- res
+		return
+	}
+	//
+
 	amount, ok := new(big.Int).SetString(value, 10)
 	if ok == false {
 		fmt.Printf("%v =============validate_lockout,transfer amount to big.Int fail ===============\n", common.CurrentTime())
@@ -342,7 +378,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	var bak_sigs []string
 	for _, digest := range digests {
 		if types.IsDefaultED25519(cointype) {
-			bak_sig := dcrm_sign_ed(wsid, digest, save, dcrmpub, cointype, rch)
+			bak_sig := dcrm_sign_ed(wsid, digest, save, sku1,dcrmpub, cointype, rch)
 			ret, tip, cherr := GetChannelValue(ch_t, rch)
 			if cherr != nil {
 				res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
@@ -359,7 +395,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 		}
 
 		fmt.Printf("%v==================start call dcrm_sign, digest = %v, key = %v ===================\n",common.CurrentTime(),digest,wsid)
-		bak_sig := dcrm_sign(wsid, digest, save, dcrmpkx, dcrmpky, cointype, rch)
+		bak_sig := dcrm_sign(wsid, digest, save, sku1,dcrmpkx, dcrmpky, cointype, rch)
 		ret, tip, cherr := GetChannelValue(ch_t, rch)
 		fmt.Printf("%v==================end call dcrm_sign, digest = %v, ret = %v, cherr = %v, key = %v ===================\n",common.CurrentTime(),digest,ret,cherr,wsid)
 		if cherr != nil {
@@ -453,7 +489,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 //ec2
 //msgprex = hash
 //return value is the backup for dcrm sig.
-func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcrmpky *big.Int, cointype string, ch chan interface{}) string {
+func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, cointype string, ch chan interface{}) string {
 
 	if strings.EqualFold(cointype, "EOS") == true {
 
@@ -513,7 +549,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 
 			w := workers[id]
 			w.Clear2()
-			bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx2, dcrmpky2, ch1, id)
+			bak_sig = Sign_ec2(msgprex, save, sku1, txhash, cointype, dcrmpkx2, dcrmpky2, ch1, id)
 			ret, tip, _ = GetChannelValue(ch_t, ch1)
 			//if ret != "" && eos.IsCanonical([]byte(ret)) == true
 			if ret == "" {
@@ -576,7 +612,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 
 			w := workers[id]
 			w.Clear2()
-			bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
+			bak_sig = Sign_ec2(msgprex, save, sku1,txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
 			ret, tip, cherr = GetChannelValue(ch_t, ch1)
 			if cherr != nil {
 				time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
@@ -617,7 +653,7 @@ func dcrm_sign(msgprex string, txhash string, save string, dcrmpkx *big.Int, dcr
 		w := workers[id]
 		w.Clear2()
 		fmt.Printf("%v=====================dcrm_sign, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
-		bak_sig = Sign_ec2(msgprex, save, txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
+		bak_sig = Sign_ec2(msgprex, save, sku1,txhash, cointype, dcrmpkx, dcrmpky, ch1, id)
 		ret, _, cherr := GetChannelValue(ch_t, ch1)
 		fmt.Printf("%v=====================dcrm_sign,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
 		if ret != "" && cherr == nil {
@@ -2767,7 +2803,7 @@ func GetRealByUid2(keytype string,w *RpcReqWorker,uid *big.Int) int {
 
 //msgprex = hash
 //return value is the backup for the dcrm sig
-func Sign_ec2(msgprex string, save string, message string, cointype string, pkx *big.Int, pky *big.Int, ch chan interface{}, id int) string {
+func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointype string, pkx *big.Int, pky *big.Int, ch chan interface{}, id int) string {
 	if id < 0 || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res
@@ -2804,7 +2840,7 @@ func Sign_ec2(msgprex string, save string, message string, cointype string, pkx 
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
-	skU1, w1 := MapPrivKeyShare(cointype, w, idSign, mm[0])
+	skU1, w1 := MapPrivKeyShare(cointype, w, idSign, string(sku1.Bytes()))
 	if skU1 == nil || w1 == nil {
 	    return ""
 	}
@@ -3139,7 +3175,7 @@ func SendMsgToPeer(enodes string, msg string) {
 ////ed
 //msgprex = hash
 //return value is the backup for dcrm sig.
-func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointype string, ch chan interface{}) string {
+func dcrm_sign_ed(msgprex string, txhash string, save string, sku1 *big.Int,pk string, cointype string, ch chan interface{}) string {
 
 	txhashs := []rune(txhash)
 	if string(txhashs[0:2]) == "0x" {
@@ -3170,7 +3206,7 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointyp
 	    w := workers[id]
 	    w.Clear2()
 	    //fmt.Printf("%v=====================dcrm_sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
-	    bak_sig = Sign_ed(msgprex, save, txhash, cointype, pk, ch1, id)
+	    bak_sig = Sign_ed(msgprex, save, sku1,txhash, cointype, pk, ch1, id)
 	    ret, _, cherr := GetChannelValue(ch_t, ch1)
 	    //fmt.Printf("%v=====================dcrm_sign_ed,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
 	    if ret != "" && cherr == nil {
@@ -3185,7 +3221,7 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, pk string, cointyp
 	return bak_sig
 }
 
-func sign_ed(msgprex string,txhash string,save string, pk string, keytype string, ch chan interface{}) string {
+func sign_ed(msgprex string,txhash string,save string, sku1 *big.Int, pk string, keytype string, ch chan interface{}) string {
 
 	txhashs := []rune(txhash)
 	if string(txhashs[0:2]) == "0x" {
@@ -3216,7 +3252,7 @@ func sign_ed(msgprex string,txhash string,save string, pk string, keytype string
 	    w := workers[id]
 	    w.Clear2()
 	    //fmt.Printf("%v=====================sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
-	    bak_sig = Sign_ed(msgprex, save, txhash, keytype, pk, ch1, id)
+	    bak_sig = Sign_ed(msgprex, save, sku1, txhash, keytype, pk, ch1, id)
 	    ret, _, cherr := GetChannelValue(ch_t, ch1)
 	    //fmt.Printf("%v=====================sign_ed,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
 	    if ret != "" && cherr == nil {
@@ -3233,7 +3269,7 @@ func sign_ed(msgprex string,txhash string,save string, pk string, keytype string
 
 //msgprex = hash
 //return value is the backup for the dcrm sig
-func Sign_ed(msgprex string, save string, message string, cointype string, pk string, ch chan interface{}, id int) string {
+func Sign_ed(msgprex string, save string, sku1 *big.Int, message string, cointype string, pk string, ch chan interface{}, id int) string {
 	defer func() {
 		if e := recover(); e != nil {
 			fmt.Errorf("Sign_ed,Runtime error: %v\n%v", e, string(debug.Stack()))
@@ -3273,7 +3309,8 @@ func Sign_ed(msgprex string, save string, message string, cointype string, pk st
 	m := strings.Split(save, common.Sep11)
 
 	var sk [64]byte
-	va := []byte(m[0])
+	//va := []byte(m[0])
+	va := sku1.Bytes()
 	copy(sk[:], va[:64])
 	//pk := ([]byte(m[1]))[:]
 	var tsk [32]byte

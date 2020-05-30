@@ -145,6 +145,7 @@ type RpcReqWorker struct {
 	pkx  *list.List
 	pky  *list.List
 	save *list.List
+	sku1 *list.List
 
 	bacceptreqaddrres chan bool
 	bacceptlockoutres chan bool
@@ -189,6 +190,7 @@ type RpcReqWorker struct {
 	bedcfsb      chan bool
 	msg_edcfsb   *list.List
 	edsave       *list.List
+	edsku1       *list.List
 	edpk         *list.List
 
 	bedc21    chan bool
@@ -339,6 +341,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 		pkx:  list.New(),
 		pky:  list.New(),
 		save: list.New(),
+		sku1: list.New(),
 
 		bacceptreqaddrres: make(chan bool, 1),
 		bacceptlockoutres: make(chan bool, 1),
@@ -381,6 +384,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 		bedcfsb:      make(chan bool, 1),
 		msg_edcfsb:   list.New(),
 		edsave:       list.New(),
+		edsku1:       list.New(),
 		edpk:         list.New(),
 		bedc21:       make(chan bool, 1),
 		msg_edc21:    list.New(),
@@ -568,6 +572,11 @@ func (w *RpcReqWorker) Clear() {
 		w.save.Remove(e)
 	}
 
+	for e := w.sku1.Front(); e != nil; e = next {
+		next = e.Next()
+		w.sku1.Remove(e)
+	}
+
 	for e := w.retres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.retres.Remove(e)
@@ -704,6 +713,10 @@ func (w *RpcReqWorker) Clear() {
 	for e := w.edsave.Front(); e != nil; e = next {
 		next = e.Next()
 		w.edsave.Remove(e)
+	}
+	for e := w.edsku1.Front(); e != nil; e = next {
+		next = e.Next()
+		w.edsku1.Remove(e)
 	}
 	for e := w.edpk.Front(); e != nil; e = next {
 		next = e.Next()
@@ -953,6 +966,11 @@ func (w *RpcReqWorker) Clear2() {
 		w.save.Remove(e)
 	}
 
+	for e := w.sku1.Front(); e != nil; e = next {
+		next = e.Next()
+		w.sku1.Remove(e)
+	}
+
 	for e := w.retres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.retres.Remove(e)
@@ -1089,6 +1107,10 @@ func (w *RpcReqWorker) Clear2() {
 	for e := w.edsave.Front(); e != nil; e = next {
 		next = e.Next()
 		w.edsave.Remove(e)
+	}
+	for e := w.edsku1.Front(); e != nil; e = next {
+		next = e.Next()
+		w.edsku1.Remove(e)
 	}
 	for e := w.edpk.Front(); e != nil; e = next {
 		next = e.Next()

@@ -28,6 +28,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/cryptoCoins/coins"
 )
 
 func GetReShareNonce(account string) (string, string, error) {
@@ -161,45 +162,23 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	idSign := ids[:w.ThresHold]
 
 	take_reshare := true
-	var save string
-	var mm []string
 	var skU1 *big.Int
 	var w1 *big.Int
 
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	//exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
-	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-	///////
-	if exsit == false {
-		//res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
-		//ch <- res
-		//return
-		take_reshare = false
-		skU1 = nil
-		w1 = nil
+	///sku1
+	da := GetSkU1FromLocalDb(string(dcrmpks[:]))
+	if da == nil {
+	    take_reshare = false
+	    skU1 = nil
+	    w1 = nil
 	} else {
-	    _,ok := da.(*PubKeyData)
-	    if ok == false {
-		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reshare data from db fail", Err: fmt.Errorf("get reshare data from db fail")}
-		    //ch <- res
-		    //return
-		    take_reshare = false
-		    skU1 = nil
-		    w1 = nil
+	    skU1 = new(big.Int).SetBytes(da)
+	    if skU1 == nil {
+		take_reshare = false
+		w1 = nil
 	    } else {
-		save = (da.(*PubKeyData)).Save
-		mm = strings.Split(save, common.SepSave)
-		if len(mm) == 0 {
-			//res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
-			//ch <- res
-			//return
-			take_reshare = false
-			skU1 = nil
-			w1 = nil
-		} else {
-		    skU1, w1 = MapPrivKeyShare("ALL", w, idSign, mm[0])
-		}
-
+		skU1, w1 = MapPrivKeyShare("ALL", w, idSign, string(skU1.Bytes()))
 	    }
 	}
 
@@ -511,6 +490,31 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	    }
 	    newskU1 = new(big.Int).Mod(newskU1, secp256k1.S256().N)
 	    fmt.Printf("%v=====================ReShare_ec2, gen newskU1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
+
+	    //set new sk
+	    sk := KeyData{Key: dcrmpks[:], Data: string(newskU1.Bytes())}
+	    SkU1Chan <- sk
+
+	    for _, ct := range coins.Cointypes {
+		    if strings.EqualFold(ct, "ALL") {
+			    continue
+		    }
+
+		    h := coins.NewCryptocoinHandler(ct)
+		    if h == nil {
+			    continue
+		    }
+		    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+		    if err != nil {
+			    continue
+		    }
+
+		    key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+		    sk = KeyData{Key: []byte(key), Data: string(newskU1.Bytes())}
+		    SkU1Chan <- sk
+	    }
+	    //
+
 	    res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	    ch <- res
 	    return
@@ -921,6 +925,30 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	}
 	newskU1 = new(big.Int).Mod(newskU1, secp256k1.S256().N)
 	fmt.Printf("%v=====================ReShare_ec2, gen newsku1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
+	//set new sk
+	sk := KeyData{Key: dcrmpks[:], Data: string(newskU1.Bytes())}
+	SkU1Chan <- sk
+
+	for _, ct := range coins.Cointypes {
+		if strings.EqualFold(ct, "ALL") {
+			continue
+		}
+
+		h := coins.NewCryptocoinHandler(ct)
+		if h == nil {
+			continue
+		}
+		ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+		if err != nil {
+			continue
+		}
+
+		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+		sk = KeyData{Key: []byte(key), Data: string(newskU1.Bytes())}
+		SkU1Chan <- sk
+	}
+	//
+
 	res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	ch <- res
 	////////////////////////////////

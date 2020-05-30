@@ -237,6 +237,7 @@ func InitDev(keyfile string) {
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 
 	go SavePubKeyDataToDb()
+	go SaveSkU1ToDb()
 	go CommitRpcReq()
 	go ec2.GenRandomInt(2048)
 	go ec2.GenRandomSafePrime(2048)

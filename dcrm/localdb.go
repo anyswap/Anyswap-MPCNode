@@ -20,17 +20,19 @@ import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
     "time"
+    "fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
 var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 1000)
+	SkU1Chan = make(chan KeyData, 1000)
 )
 
-func GetPubKeyDataValueFromDb(key string) []byte {
+func GetSkU1FromLocalDb(key string) []byte {
 	lock.Lock()
-	dir := GetDbDir()
+	dir := GetSkU1Dir()
 	////////
 	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
 	//bug
@@ -63,6 +65,43 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 	return da
 }
 
+func GetPubKeyDataValueFromDb(key string) []byte {
+	lock.Lock()
+	dir := GetDbDir()
+	////////
+	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
+	//bug
+	if err != nil {
+	    fmt.Printf("===================GetPubKeyDataValueFromDb, err = %v ===================\n",err)
+		for i := 0; i < 100; i++ {
+			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
+			if err == nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+	//
+	if db == nil {
+	    fmt.Printf("===================GetPubKeyDataValueFromDb, db is nil ===================\n")
+		lock.Unlock()
+		return nil
+	}
+
+	da, err := db.Get([]byte(key))
+	///////
+	if err != nil {
+	    fmt.Printf("===================GetPubKeyDataValueFromDb, 222222, err = %v ===================\n",err)
+		db.Close()
+		lock.Unlock()
+		return nil
+	}
+
+	db.Close()
+	lock.Unlock()
+	return da
+}
 
 type KeyData struct {
 	Key  []byte
@@ -92,6 +131,36 @@ func SavePubKeyDataToDb() {
 				db.Close()
 			} else {
 				PubKeyDataChan <- kd
+			}
+
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		}
+	}
+}
+
+func SaveSkU1ToDb() {
+	for {
+		select {
+		case kd := <-SkU1Chan:
+			dir := GetSkU1Dir()
+			db, err := ethdb.NewLDBDatabase(dir, 0, 0)
+			//bug
+			if err != nil {
+				for i := 0; i < 100; i++ {
+					db, err = ethdb.NewLDBDatabase(dir, 0, 0)
+					if err == nil && db != nil {
+						break
+					}
+
+					time.Sleep(time.Duration(1000000))
+				}
+			}
+			//
+			if db != nil {
+				db.Put(kd.Key, []byte(kd.Data))
+				db.Close()
+			} else {
+				SkU1Chan <- kd
 			}
 
 			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
@@ -204,16 +273,19 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
     ss, err := UnCompress(string(da))
     if err != nil {
+	fmt.Printf("========================GetPubKeyDataFromLocalDb, uncompress err = %v ========================\n",err)
 	return false,nil
     }
 
     pubs, err := Decode2(ss, "PubKeyData")
     if err != nil {
+	fmt.Printf("========================GetPubKeyDataFromLocalDb, decode err = %v ========================\n",err)
 	return false,nil
     }
 
     pd,ok := pubs.(*PubKeyData)
     if ok == false {
+	fmt.Printf("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================\n")
 	return false,nil
     }
 
@@ -230,6 +302,12 @@ func GetGroupDir() string { //TODO
 func GetDbDir() string {
 	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb" + cur_enode
+	return dir
+}
+
+func GetSkU1Dir() string {
+	dir := common.DefaultDataDir()
+	dir += "/dcrmdata/sk" + cur_enode
 	return dir
 }
 

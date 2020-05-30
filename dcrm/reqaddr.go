@@ -155,6 +155,14 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		}
 
 		sedsave := itertmp.Value.(string)
+		itertmp = workers[id].edsku1.Front()
+		if itertmp == nil {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsku1 fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
+			ch <- res
+			return
+		}
+
+		sedsku1 := itertmp.Value.(string)
 		////////
 		tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 		rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
@@ -215,12 +223,18 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			/////
 			LdbPubKeyData.WriteMap(key, pubs)
 			////
+			sk := KeyData{Key: sedpk[:], Data: sedsku1}
+			SkU1Chan <- sk
+			sk = KeyData{Key: []byte(key), Data: sedsku1}
+			SkU1Chan <- sk
 		} else {
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
 			/////
 			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
 			////
+			sk := KeyData{Key: sedpk[:], Data: sedsku1}
+			SkU1Chan <- sk
 
 			for _, ct := range coins.Cointypes {
 				if strings.EqualFold(ct, "ALL") {
@@ -242,6 +256,8 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				/////
 				LdbPubKeyData.WriteMap(key, pubs)
 				////
+				sk = KeyData{Key: []byte(key), Data: sedsku1}
+				SkU1Chan <- sk
 			}
 		}
 
@@ -295,7 +311,19 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		return
 	}
 	save := iter.Value.(string)
+	iter = workers[id].sku1.Front()
+	if iter == nil {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sku1 fail in req ec2 pubkey", Err: GetRetErr(ErrGetGenSaveDataFail)}
+		ch <- res
+		return
+	}
+	sku1 := iter.Value.(string)
 	////////
+	sk := KeyData{Key: ys, Data: sku1}
+	SkU1Chan <- sk
+	//save sku1
+	//
+
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
 
@@ -357,12 +385,16 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		/////
 		LdbPubKeyData.WriteMap(key, pubs)
 		////
+		sk = KeyData{Key: []byte(key), Data: sku1}
+		SkU1Chan <- sk
 	} else {
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
 		/////
 		LdbPubKeyData.WriteMap(string(ys), pubs)
 		////
+		test,_ := new(big.Int).SetString(string(ys),0)
+		fmt.Printf("%v===============dcrm_genPubKey, 555555555, k = %v, key = %v ================\n",common.CurrentTime(),test,msgprex)
 
 		for _, ct := range coins.Cointypes {
 			if strings.EqualFold(ct, "ALL") {
@@ -384,6 +416,8 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			/////
 			LdbPubKeyData.WriteMap(key, pubs)
 			////
+			sk = KeyData{Key: []byte(key), Data: sku1}
+			SkU1Chan <- sk
 		}
 	}
 
@@ -935,9 +969,11 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	//save the local db
 	//sk:pk:tsk:pkfinal
-	save := string(sk[:]) + common.Sep11 + string(pk[:]) + common.Sep11 + string(tSk[:]) + common.Sep11 + string(finalPkBytes[:])
+	//save := string(sk[:]) + common.Sep11 + string(pk[:]) + common.Sep11 + string(tSk[:]) + common.Sep11 + string(finalPkBytes[:])
+	save := "XXX" + common.Sep11 + string(pk[:]) + common.Sep11 + string(tSk[:]) + common.Sep11 + string(finalPkBytes[:])
 
 	w.edsave.PushBack(save)
+	w.edsku1.PushBack(string(sk[:]))
 	w.edpk.PushBack(string(finalPkBytes[:]))
 
 	return true
@@ -2225,7 +2261,8 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 	}
 
 	//save skU1/u1PaillierSk/u1PaillierPk/...
-	ss := string(skU1.Bytes())
+	//ss := string(skU1.Bytes())
+	ss := "XXX"
 	ss = ss + common.SepSave
 	s1 := u1PaillierSk.Length
 	s2 := string(u1PaillierSk.L.Bytes())
@@ -2300,6 +2337,7 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker
 	//w.save:  sku1:UiSK:U1PK:U2PK:U3PK:....:UnPK:U1H1:U1H2:U1Y:U1E:U1N:U2H1:U2H2:U2Y:U2E:U2N:U3H1:U3H2:U3Y:U3E:U3N:......:NULL
 	//w.save:  sku1:UiSK.Len:UiSK.L:UiSK.U:U1PK.Len:U1PK.N:U1PK.G:U1PK.N2:U2PK.Len:U2PK.N:U2PK.G:U2PK.N2:....:UnPK.Len:UnPK.N:UnPK.G:UnPK.N2:U1Ntilde:U1H1:U1H2:U2Ntilde::U2H1:U2H2:......:UnNtilde:UnH1:UnH2:NULL
 	w.save.PushBack(ss)
+	w.sku1.PushBack(string(skU1.Bytes()))
 	return true
 }
 

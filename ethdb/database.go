@@ -37,7 +37,7 @@ const (
 	writePauseWarningThrottler = 1 * time.Minute
 )
 
-var OpenFileLimit = 64
+var OpenFileLimit = 1024 
 
 type LDBDatabase struct {
 	fn string      // filename for reporting

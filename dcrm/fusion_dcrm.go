@@ -50,8 +50,8 @@ import (
 var (
 	cur_enode  string
 	init_times = 0
-	sendtogroup_lilo_timeout = 130000  
-	sendtogroup_timeout      = 130000
+	sendtogroup_lilo_timeout = 1000  
+	sendtogroup_timeout      = 1000
 	KeyFile    string
 	ReqAddrCh  = make(chan ReqAddrData, 1000)
 	LockOutCh  = make(chan LockOutData, 1000)
@@ -60,6 +60,9 @@ var (
 	
 	lock5                    sync.Mutex
 	lock                     sync.Mutex
+
+	db *ethdb.LDBDatabase
+	dbsk *ethdb.LDBDatabase
 )
 
 func Start() {
@@ -71,6 +74,43 @@ func Start() {
 	go RecivSign()
 	InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
+	dbtmp, err := ethdb.NewLDBDatabase(GetDbDir(), cache, handles)
+	//bug
+	if err != nil {
+		for i := 0; i < 100; i++ {
+			dbtmp, err = ethdb.NewLDBDatabase(GetDbDir(), cache, handles)
+			if err == nil && dbtmp != nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+	if err != nil {
+	    db = nil
+	} else {
+	    db = dbtmp
+	}
+	//
+	dbsktmp, err := ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
+	//bug
+	if err != nil {
+		for i := 0; i < 100; i++ {
+			dbsktmp, err = ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
+			if err == nil && dbsktmp != nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+	if err != nil {
+	    dbsk = nil
+	} else {
+	    dbsk = dbsktmp
+	}
+	
+	LdbPubKeyData = GetAllPubKeyDataFromDb()
 }
 
 func PutGroup(groupId string) bool {
@@ -84,11 +124,11 @@ func PutGroup(groupId string) bool {
 	dir := GetGroupDir()
 	//db, err := leveldb.OpenFile(dir, nil)
 
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
+	db, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	//bug
 	if err != nil {
 		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
+			db, err = ethdb.NewLDBDatabase(dir, cache, handles)
 			if err == nil && db != nil {
 				break
 			}
@@ -152,11 +192,11 @@ func GetGroupIdByEnode(enode string) string {
 	dir := GetGroupDir()
 	//db, err := leveldb.OpenFile(dir, nil)
 
-	db, err := ethdb.NewLDBDatabase(dir, 0, 0)
+	db, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	//bug
 	if err != nil {
 		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, 0, 0)
+			db, err = ethdb.NewLDBDatabase(dir,cache, handles)
 			if err == nil && db != nil {
 				break
 			}
@@ -234,7 +274,7 @@ func IsInGroup(enode string, groupId string) bool {
 func InitDev(keyfile string) {
 	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
 
-	LdbPubKeyData = GetAllPubKeyDataFromDb()
+	//LdbPubKeyData = GetAllPubKeyDataFromDb()
 
 	go SavePubKeyDataToDb()
 	go SaveSkU1ToDb()

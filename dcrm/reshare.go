@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
+	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
@@ -169,6 +170,7 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	///sku1
 	da := GetSkU1FromLocalDb(string(dcrmpks[:]))
 	if da == nil {
+	    fmt.Printf("=====================ReShare_ec2,da is nil =====================\n")
 	    take_reshare = false
 	    skU1 = nil
 	    w1 = nil
@@ -492,6 +494,25 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	    fmt.Printf("%v=====================ReShare_ec2, gen newskU1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 
 	    //set new sk
+	    dir := GetSkU1Dir()
+	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	    //bug
+	    if err != nil {
+		    for i := 0; i < 100; i++ {
+			    dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			    if err == nil {
+				    break
+			    }
+
+			    time.Sleep(time.Duration(1000000))
+		    }
+	    }
+	    if err != nil {
+		//dbsk = nil
+	    } else {
+		dbsk = dbsktmp
+	    }
+
 	    sk := KeyData{Key: dcrmpks[:], Data: string(newskU1.Bytes())}
 	    SkU1Chan <- sk
 
@@ -925,7 +946,27 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	}
 	newskU1 = new(big.Int).Mod(newskU1, secp256k1.S256().N)
 	fmt.Printf("%v=====================ReShare_ec2, gen newsku1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
+	
 	//set new sk
+	dir := GetSkU1Dir()
+	dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	//bug
+	if err != nil {
+		for i := 0; i < 100; i++ {
+			dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			if err == nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+	if err != nil {
+	    //dbsk = nil
+	} else {
+	    dbsk = dbsktmp
+	}
+
 	sk := KeyData{Key: dcrmpks[:], Data: string(newskU1.Bytes())}
 	SkU1Chan <- sk
 

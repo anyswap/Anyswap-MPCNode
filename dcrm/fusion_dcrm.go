@@ -1447,8 +1447,8 @@ func RecivReShare() {
 		select {
 		case data := <-ReShareCh:
 			fmt.Printf("%v ==============================RecivReShare,get new job, key = %v ============================================\n", common.CurrentTime(),data.Key)
-			exsit,_ := GetValueFromPubKeyData(data.Key)
-			if exsit == false {
+			//exsit,_ := GetValueFromPubKeyData(data.Key)
+			//if exsit == false {
 				rh := TxDataReShare{}
 				err2 := json.Unmarshal([]byte(data.JsonStr), &rh)
 				if err2 != nil {
@@ -1500,7 +1500,7 @@ func RecivReShare() {
 					    }
 					    /////
 				    }
-			}
+			//}
 		}
 	}
 }

@@ -170,6 +170,9 @@ func SavePubKeyDataToDb() {
 			}*/
 			//
 			if db != nil {
+			    if kd.Data == "CLEAN" {
+				db.Delete(kd.Key)
+			    } else {
 				err := db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
 				    dir := GetSkU1Dir()
@@ -194,6 +197,7 @@ func SavePubKeyDataToDb() {
 
 				}
 				//db.Close()
+			    }
 			} else {
 				PubKeyDataChan <- kd
 			}

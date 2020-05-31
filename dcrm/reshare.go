@@ -491,7 +491,6 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		    newskU1 = new(big.Int).Add(newskU1, sstruct[en[0]].Share)
 	    }
 	    newskU1 = new(big.Int).Mod(newskU1, secp256k1.S256().N)
-	    fmt.Printf("%v=====================ReShare_ec2, gen newskU1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 
 	    //set new sk
 	    dir := GetSkU1Dir()
@@ -535,6 +534,250 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		    SkU1Chan <- sk
 	    }
 	    //
+	    
+	    ///////gen paillier key
+	    u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
+	    mp := []string{msgprex, cur_enode}
+	    enode := strings.Join(mp, "-")
+	    s0 := "PaillierKey"
+	    s1 := u1PaillierPk.Length
+	    s2 := string(u1PaillierPk.N.Bytes())
+	    s3 := string(u1PaillierPk.G.Bytes())
+	    s4 := string(u1PaillierPk.N2.Bytes())
+	    ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4
+	    SendMsgToDcrmGroup(ss, groupid)
+	    DisMsg(ss)
+
+	    _, _, cherr = GetChannelValue(120, w.bpaillierkey)
+	    suss = false
+	    if cherr != nil {
+		suss = ReqDataFromGroup(msgprex,w.id,"PaillierKey",reqdata_trytimes,reqdata_timeout)
+	    } else {
+		suss = true
+	    }
+
+	    if !suss {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier key fail")}
+		    ch <- res
+		    return 
+	    }
+
+	    NtildeLength := 2048
+	    // for u1
+	    u1NtildeH1H2 := keygen.DECDSA_Key_GenerateNtildeH1H2(NtildeLength)
+	    if u1NtildeH1H2 == nil {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen ntilde h1 h2 fail.")}
+		    ch <- res
+		    return
+	    }
+
+	    // 7. Broadcast ntilde
+	    mp = []string{msgprex, cur_enode}
+	    enode = strings.Join(mp, "-")
+	    s0 = "NTILDEH1H2" //delete zkfactor add ntild h1 h2
+	    s1 = string(u1NtildeH1H2.Ntilde.Bytes())
+	    s2 = string(u1NtildeH1H2.H1.Bytes())
+	    s3 = string(u1NtildeH1H2.H2.Bytes())
+	    ss = enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3
+	    SendMsgToDcrmGroup(ss, groupid)
+	    DisMsg(ss)
+	    _, tip, cherr = GetChannelValue(120, w.bzkfact)
+	    suss = false
+	    if cherr != nil {
+		suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",reqdata_trytimes,reqdata_timeout)
+	    } else {
+		suss = true
+	    }
+	    
+	    if !suss {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get NTILDEH1H2 fail")}
+		    ch <- res
+		    return
+	    }
+
+	    ids = GetIds("ALL", groupid)
+	    sstmp := "XXX"
+	    sstmp = sstmp + common.SepSave
+	    s1 = u1PaillierSk.Length
+	    s2 = string(u1PaillierSk.L.Bytes())
+	    s3 = string(u1PaillierSk.U.Bytes())
+	    sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
+	    for _, id := range ids {
+		    enodes := GetEnodesByUid(id, "ALL", groupid)
+		    en := strings.Split(string(enodes[8:]), "@")
+
+		    if enodes == "" {
+			    res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetEnodeByUIdFail)}
+			    ch <- res
+			    return 
+		    }
+
+		    if IsCurNode(enodes, cur_enode) {
+			s1 = u1PaillierPk.Length
+			s2 = string(u1PaillierPk.N.Bytes())
+			s3 = string(u1PaillierPk.G.Bytes())
+			s4 := string(u1PaillierPk.N2.Bytes())
+			sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave + s4 + common.SepSave
+			continue
+		    }
+
+		    iter := w.msg_paillierkey.Front() //////by type
+		    for iter != nil {
+			if iter.Value == nil {
+			    iter = iter.Next()
+			    continue
+			}
+
+			mdss,ok := iter.Value.(string)
+			if ok == false {
+			    iter = iter.Next()
+			    continue
+			}
+
+			ms := strings.Split(mdss, common.Sep)
+			prexs := strings.Split(ms[0], "-")
+			if len(prexs) < 2 {
+			    iter = iter.Next()
+			    continue
+			}
+
+			node3 := prexs[1]
+			if strings.EqualFold(node3,en[0]) {
+			    s1 = ms[2]
+			    s2 = ms[3]
+			    s3 = ms[4]
+			    s4 := ms[5]
+			    sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave + s4 + common.SepSave
+			    break
+			}
+
+			iter = iter.Next()
+		    }
+	    }
+
+	    for _, id := range ids {
+		    enodes := GetEnodesByUid(id, "ALL", groupid)
+		    en := strings.Split(string(enodes[8:]), "@")
+
+		    if enodes == "" {
+			    res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetEnodeByUIdFail)}
+			    ch <- res
+			    return 
+		    }
+
+		    if IsCurNode(enodes, cur_enode) {
+			s1 = string(u1NtildeH1H2.Ntilde.Bytes())
+			s2 = string(u1NtildeH1H2.H1.Bytes())
+			s3 = string(u1NtildeH1H2.H2.Bytes())
+			sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
+			continue
+		    }
+
+		    iter := w.msg_zkfact.Front() //////by type
+		    for iter != nil {
+			if iter.Value == nil {
+			    iter = iter.Next()
+			    continue
+			}
+
+			mdss,ok := iter.Value.(string)
+			if ok == false {
+			    iter = iter.Next()
+			    continue
+			}
+
+			ms := strings.Split(mdss, common.Sep)
+			prexs := strings.Split(ms[0], "-")
+			if len(prexs) < 2 {
+			    iter = iter.Next()
+			    continue
+			}
+
+			node3 := prexs[1]
+			if strings.EqualFold(node3,en[0]) {
+			    sstmp = sstmp + ms[2] + common.SepSave + ms[3] + common.SepSave + ms[4] + common.SepSave //for ntilde
+			    break
+			}
+
+			iter = iter.Next()
+		    }
+	    }
+	    
+	    sstmp = sstmp + "NULL"
+	    
+	    dir = GetDbDir()
+	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	    //bug
+	    if err != nil {
+		    for i := 0; i < 100; i++ {
+			    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			    if err == nil {
+				    break
+			    }
+
+			    time.Sleep(time.Duration(1000000))
+		    }
+	    }
+	    if err != nil {
+		//dbsk = nil
+	    } else {
+		db = dbtmp
+	    }
+
+	    pubs := &PubKeyData{Key:"",Account:"", Pub: string(dcrmpks[:]), Save: sstmp, Nonce: "", GroupId: groupid, LimitNum: "", Mode: "",KeyGenTime:""}
+	    epubs, err := Encode2(pubs)
+	    if err != nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
+		    ch <- res
+		    return
+	    }
+
+	    ss1, err := Compress([]byte(epubs))
+	    if err != nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
+		    ch <- res
+		    return
+	    }
+
+	    exsit,pda := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	    if exsit {
+		daa,ok := pda.(*PubKeyData)
+		if ok {
+		    go LdbPubKeyData.DeleteMap(daa.Key)
+		    kd := KeyData{Key: []byte(daa.Key), Data: "CLEAN"}
+		    PubKeyDataChan <- kd
+		}
+	    }
+	    
+	    kd := KeyData{Key: dcrmpks[:], Data: ss1}
+	    PubKeyDataChan <- kd
+	    /////
+	    LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
+	    ////
+	    for _, ct := range coins.Cointypes {
+		    if strings.EqualFold(ct, "ALL") {
+			    continue
+		    }
+
+		    h := coins.NewCryptocoinHandler(ct)
+		    if h == nil {
+			    continue
+		    }
+		    ctaddr, err := h.PublicKeyToAddress(pubkey)
+		    if err != nil {
+			    continue
+		    }
+
+		    key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+		    kd = KeyData{Key: []byte(key), Data: ss1}
+		    PubKeyDataChan <- kd
+		    /////
+		    LdbPubKeyData.WriteMap(key, pubs)
+		    ////
+	    }
+
+	    /////////////////////
+	    fmt.Printf("%v=====================ReShare_ec2, gen newskU1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 
 	    res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	    ch <- res
@@ -945,7 +1188,6 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		newskU1 = new(big.Int).Add(newskU1, sstruct[en[0]].Share)
 	}
 	newskU1 = new(big.Int).Mod(newskU1, secp256k1.S256().N)
-	fmt.Printf("%v=====================ReShare_ec2, gen newsku1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 	
 	//set new sk
 	dir := GetSkU1Dir()
@@ -989,6 +1231,248 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		SkU1Chan <- sk
 	}
 	//
+	///////gen paillier key
+	u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
+	mp = []string{msgprex, cur_enode}
+	enode = strings.Join(mp, "-")
+	s0 = "PaillierKey"
+	s1 = u1PaillierPk.Length
+	s2 := string(u1PaillierPk.N.Bytes())
+	s3 := string(u1PaillierPk.G.Bytes())
+	s4 = string(u1PaillierPk.N2.Bytes())
+	ss = enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4
+	SendMsgToDcrmGroup(ss, groupid)
+	DisMsg(ss)
+
+	_, _, cherr = GetChannelValue(120, w.bpaillierkey)
+	suss = false
+	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"PaillierKey",reqdata_trytimes,reqdata_timeout)
+	} else {
+	    suss = true
+	}
+
+	if !suss {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier key fail")}
+		ch <- res
+		return
+	}
+
+	NtildeLength := 2048
+	// for u1
+	u1NtildeH1H2 := keygen.DECDSA_Key_GenerateNtildeH1H2(NtildeLength)
+	if u1NtildeH1H2 == nil {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen ntilde h1 h2 fail.")}
+		ch <- res
+		return
+	}
+
+	// 7. Broadcast ntilde
+	mp = []string{msgprex, cur_enode}
+	enode = strings.Join(mp, "-")
+	s0 = "NTILDEH1H2" //delete zkfactor add ntild h1 h2
+	s1 = string(u1NtildeH1H2.Ntilde.Bytes())
+	s2 = string(u1NtildeH1H2.H1.Bytes())
+	s3 = string(u1NtildeH1H2.H2.Bytes())
+	ss = enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3
+	SendMsgToDcrmGroup(ss, groupid)
+	DisMsg(ss)
+	_, tip, cherr = GetChannelValue(120, w.bzkfact)
+	suss = false
+	if cherr != nil {
+	    suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",reqdata_trytimes,reqdata_timeout)
+	} else {
+	    suss = true
+	}
+	
+	if !suss {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get NTILDEH1H2 fail")}
+		ch <- res
+		return
+	}
+
+	sstmp := "XXX"
+	sstmp = sstmp + common.SepSave
+	s1 = u1PaillierSk.Length
+	s2 = string(u1PaillierSk.L.Bytes())
+	s3 = string(u1PaillierSk.U.Bytes())
+	sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
+	for _, id := range ids {
+		enodes := GetEnodesByUid(id, "ALL", groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+
+		if enodes == "" {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetEnodeByUIdFail)}
+			ch <- res
+			return 
+		}
+
+		if IsCurNode(enodes, cur_enode) {
+		    s1 = u1PaillierPk.Length
+		    s2 = string(u1PaillierPk.N.Bytes())
+		    s3 = string(u1PaillierPk.G.Bytes())
+		    s4 := string(u1PaillierPk.N2.Bytes())
+		    sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave + s4 + common.SepSave
+		    continue
+		}
+
+		iter := w.msg_paillierkey.Front() //////by type
+		for iter != nil {
+		    if iter.Value == nil {
+			iter = iter.Next()
+			continue
+		    }
+
+		    mdss,ok := iter.Value.(string)
+		    if ok == false {
+			iter = iter.Next()
+			continue
+		    }
+
+		    ms := strings.Split(mdss, common.Sep)
+		    prexs := strings.Split(ms[0], "-")
+		    if len(prexs) < 2 {
+			iter = iter.Next()
+			continue
+		    }
+
+		    node3 := prexs[1]
+		    if strings.EqualFold(node3,en[0]) {
+			s1 = ms[2]
+			s2 = ms[3]
+			s3 = ms[4]
+			s4 := ms[5]
+			sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave + s4 + common.SepSave
+			break
+		    }
+
+		    iter = iter.Next()
+		}
+	}
+
+	for _, id := range ids {
+		enodes := GetEnodesByUid(id, "ALL", groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+
+		if enodes == "" {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetEnodeByUIdFail)}
+			ch <- res
+			return 
+		}
+
+		if IsCurNode(enodes, cur_enode) {
+		    s1 = string(u1NtildeH1H2.Ntilde.Bytes())
+		    s2 = string(u1NtildeH1H2.H1.Bytes())
+		    s3 = string(u1NtildeH1H2.H2.Bytes())
+		    sstmp = sstmp + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave
+		    continue
+		}
+
+		iter := w.msg_zkfact.Front() //////by type
+		for iter != nil {
+		    if iter.Value == nil {
+			iter = iter.Next()
+			continue
+		    }
+
+		    mdss,ok := iter.Value.(string)
+		    if ok == false {
+			iter = iter.Next()
+			continue
+		    }
+
+		    ms := strings.Split(mdss, common.Sep)
+		    prexs := strings.Split(ms[0], "-")
+		    if len(prexs) < 2 {
+			iter = iter.Next()
+			continue
+		    }
+
+		    node3 := prexs[1]
+		    if strings.EqualFold(node3,en[0]) {
+			sstmp = sstmp + ms[2] + common.SepSave + ms[3] + common.SepSave + ms[4] + common.SepSave //for ntilde
+			break
+		    }
+
+		    iter = iter.Next()
+		}
+	}
+	
+	sstmp = sstmp + "NULL"
+	
+	dir = GetDbDir()
+	dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	//bug
+	if err != nil {
+		for i := 0; i < 100; i++ {
+			dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			if err == nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+	if err != nil {
+	    //dbsk = nil
+	} else {
+	    db = dbtmp
+	}
+
+	pubs := &PubKeyData{Key:"",Account:"", Pub: string(dcrmpks[:]), Save: sstmp, Nonce: "", GroupId: groupid, LimitNum: "", Mode: "",KeyGenTime:""}
+	epubs, err := Encode2(pubs)
+	if err != nil {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
+		ch <- res
+		return
+	}
+
+	ss1, err := Compress([]byte(epubs))
+	if err != nil {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
+		ch <- res
+		return
+	}
+
+	exsit,pda := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	if exsit {
+	    daa,ok := pda.(*PubKeyData)
+	    if ok {
+		go LdbPubKeyData.DeleteMap(daa.Key)
+		kd := KeyData{Key: []byte(daa.Key), Data: "CLEAN"}
+		PubKeyDataChan <- kd
+	    }
+	}
+	
+	kd := KeyData{Key: dcrmpks[:], Data: ss1}
+	PubKeyDataChan <- kd
+	/////
+	LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
+	////
+	for _, ct := range coins.Cointypes {
+		if strings.EqualFold(ct, "ALL") {
+			continue
+		}
+
+		h := coins.NewCryptocoinHandler(ct)
+		if h == nil {
+			continue
+		}
+		ctaddr, err := h.PublicKeyToAddress(pubkey)
+		if err != nil {
+			continue
+		}
+
+		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+		kd = KeyData{Key: []byte(key), Data: ss1}
+		PubKeyDataChan <- kd
+		/////
+		LdbPubKeyData.WriteMap(key, pubs)
+		////
+	}
+
+	/////////////////////
+	fmt.Printf("%v=====================ReShare_ec2, gen newsku1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 
 	res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	ch <- res

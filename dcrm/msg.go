@@ -2601,7 +2601,7 @@ func DisMsg(msg string) {
 		}
 	case "PaillierKey":
 		///bug
-		if w.msg_paillierkey.Len() >= w.ThresHold {
+		if w.msg_paillierkey.Len() >= w.NodeCnt {
 			return
 		}
 		///
@@ -2610,7 +2610,8 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_paillierkey.PushBack(msg)
-		if w.msg_paillierkey.Len() == w.ThresHold {
+		//if w.msg_paillierkey.Len() == w.ThresHold {
+		if w.msg_paillierkey.Len() == w.NodeCnt {
 			fmt.Printf("%v===================Get All PaillierKey, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bpaillierkey <- true
 		}

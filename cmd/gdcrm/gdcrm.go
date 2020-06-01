@@ -287,10 +287,15 @@ func PortInUse(port int) bool {
 	if home != "" {
 		checkStatement := ""
 		if runtime.GOOS == "darwin" {
-		} else if runtime.GOOS == "windows" {
+			checkStatement = fmt.Sprintf("netstat -an|grep %v", port)
+			output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
+			if len(output) > 0 {
+				return true
+			}
+		}else if runtime.GOOS == "windows" {
 			p := fmt.Sprintf("netstat -ano|findstr %v", port)
 			output := exec.Command("cmd", "/C", p)
-			pp, err := output.CombinedOutput()
+			_, err := output.CombinedOutput()
 			if err == nil {
 				return true
 			}

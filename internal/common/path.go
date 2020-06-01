@@ -92,6 +92,10 @@ func DefaultDataDir() string {
 	return ""
 }
 
+func HomeDir() string {
+	return homeDir()
+}
+
 func homeDir() string {
 	if home := os.Getenv("HOME"); home != "" {
 		return home

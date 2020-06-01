@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -282,10 +283,24 @@ func GetFreePort() (int, error) {
 }
 
 func PortInUse(port int) bool {
-	checkStatement := fmt.Sprintf("netstat -anutp|grep %v", port)
-	output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
-	if len(output) > 0 {
-		return true
+	home := common.HomeDir()
+	if home != "" {
+		checkStatement := ""
+		if runtime.GOOS == "darwin" {
+		} else if runtime.GOOS == "windows" {
+			p := fmt.Sprintf("netstat -ano|findstr %v", port)
+			output := exec.Command("cmd", "/C", p)
+			pp, err := output.CombinedOutput()
+			if err == nil {
+				return true
+			}
+		} else {
+			checkStatement = fmt.Sprintf("netstat -anutp|grep %v", port)
+			output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
+			if len(output) > 0 {
+				return true
+			}
+		}
 	}
 	return false
 }

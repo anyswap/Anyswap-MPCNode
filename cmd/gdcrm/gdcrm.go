@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -167,6 +168,18 @@ func startP2pNode() error {
 	}
 	var nodeKey *ecdsa.PrivateKey
 	var errkey error
+	pubdir := ""
+	if privateNet {
+		keyfilehex = ""
+		fmt.Printf("private network\n")
+		if pubkey != "" {
+			pubdir = pubkey
+			if strings.HasPrefix(pubkey, "0x") {
+				pubdir = pubkey[2:]
+			}
+			keyfile = fmt.Sprintf("%v.key", pubdir[:8])
+		}
+	}
 	if keyfilehex != "" {
 		nodeKey, errkey = crypto.HexToECDSA(keyfilehex)
 		if errkey != nil {
@@ -191,15 +204,10 @@ func startP2pNode() error {
 		}
 	}
 	nodeidString := discover.PubkeyID(&nodeKey.PublicKey).String()
-	pubdir := nodeidString
+	if pubdir == "" {
+		pubdir = nodeidString
+	}
 	if privateNet {
-		fmt.Printf("private network\n")
-		if pubkey != "" {
-			pubdir = pubkey
-			if strings.HasPrefix(pubkey, "0x") {
-				pubdir = pubkey[2:]
-			}
-		}
 		port = getPort(port)
 		rp := getRpcPort(pubdir)
 		fmt.Printf("getRpcPort, rp: %v\n", rp)
@@ -282,10 +290,29 @@ func GetFreePort() (int, error) {
 }
 
 func PortInUse(port int) bool {
-	checkStatement := fmt.Sprintf("netstat -anutp|grep %v", port)
-	output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
-	if len(output) > 0 {
-		return true
+	home := common.HomeDir()
+	if home != "" {
+		checkStatement := ""
+		if runtime.GOOS == "darwin" {
+			checkStatement = fmt.Sprintf("netstat -an|grep %v", port)
+			output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
+			if len(output) > 0 {
+				return true
+			}
+		}else if runtime.GOOS == "windows" {
+			p := fmt.Sprintf("netstat -ano|findstr %v", port)
+			output := exec.Command("cmd", "/C", p)
+			_, err := output.CombinedOutput()
+			if err == nil {
+				return true
+			}
+		} else {
+			checkStatement = fmt.Sprintf("netstat -anutp|grep %v", port)
+			output, _ := exec.Command("sh", "-c", checkStatement).CombinedOutput()
+			if len(output) > 0 {
+				return true
+			}
+		}
 	}
 	return false
 }

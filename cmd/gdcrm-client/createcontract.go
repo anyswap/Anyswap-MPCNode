@@ -107,7 +107,7 @@ func createContract() error {
 
 	chainSigner := types.NewEIP155Signer(nodeChainID)
 	msgHash := chainSigner.Hash(rawTx)
-	rsv := signMsgHash(msgHash.String())
+	rsv := signMsgHash(msgHash.String(), -1)
 
 	signature := common.FromHex(rsv)
 	if len(signature) != crypto.SignatureLength {

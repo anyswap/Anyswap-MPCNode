@@ -421,6 +421,67 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		}
 	}
 
+	////set pubkey to account map
+	/*exsit,da := GetValueFromPubKeyData(msgprex)
+	///////
+	if exsit == false {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get accept result from db fail", Err: err}
+		ch <- res
+		return
+	}
+
+	ac,ok := da.(*AcceptReqAddrData)
+	if ok == false {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get accept result from db fail", Err: err}
+		ch <- res
+		return
+	}
+
+	if mode == "0" {
+	    sigs := strings.Split(ac.Sigs,common.Sep)
+	    cnt,_ := strconv.Atoi(sigs[0])
+	    for j := 0;j<cnt;j++ {
+		fr := sigs[2*j+2]
+		exsit,da := GetValueFromPubKeyData(strings.ToLower(fr))
+		if exsit == false {
+		    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: pubkeyhex}
+		    PubKeyDataChan <- kdtmp
+		    LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(pubkeyhex))
+		} else {
+		    //
+		    found := false
+		    keys := strings.Split(string(da.([]byte)),":")
+		    for _,v := range keys {
+			if strings.EqualFold(v,pubkeyhex) {
+			    found = true
+			    break
+			}
+		    }
+		    //
+
+		    if !found {
+			da2 := string(da.([]byte)) + ":" + pubkeyhex
+			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
+			PubKeyDataChan <- kdtmp
+			LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
+		    }
+		}
+	    }
+	} else {
+	    exsit,da := GetValueFromPubKeyData(strings.ToLower(account))
+	    if exsit == false {
+		kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: pubkeyhex}
+		PubKeyDataChan <- kdtmp
+		LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(pubkeyhex))
+	    } else {
+		da2 := string(da.([]byte)) + ":" + pubkeyhex
+		kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
+		PubKeyDataChan <- kdtmp
+		LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
+	    }
+	}*/
+	/////////////////////////////
+
 	res := RpcDcrmRes{Ret: pubkeyhex, Tip: "", Err: nil}
 	ch <- res
 }

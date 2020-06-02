@@ -575,7 +575,7 @@ func RecivReqAddr() {
 												found := false
 												keys := strings.Split(string(da.([]byte)),":")
 												for _,v := range keys {
-												    if strings.EqualFold(v,d.Key) {
+												    if strings.EqualFold(v,pubkey) {
 													found = true
 													break
 												    }
@@ -1459,14 +1459,105 @@ func RecivReShare() {
 				}
 
 				ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold,TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold, PubAccount:rh.Account, Mode:rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 				    err := SaveAcceptReShareData(ac)
-				    fmt.Printf("%v ==============================RecivReShare,save acceptdata fail, err = %v, key = %v ============================================\n", common.CurrentTime(),err,data.Key)
 				    if err == nil {
 					    fmt.Printf("%v ==============================RecivReShare,finish call SaveAcceptReShareData, err = %v,account = %v,group id = %v,threshold = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, data.Key)
 
+					    go func(d ReShareData,rhda *TxDataReShare,resh *AcceptReShareData) {
+						nums := strings.Split(rhda.ThresHold, "/")
+						nodecnt, _ := strconv.Atoi(nums[1])
+						if nodecnt <= 1 {
+						    return
+						}
+
+						sigs := strings.Split(rhda.Sigs,"|")
+						//SigN = enode://xxxxxxxx@ip:portxxxxxxxxxxxxxxxxxxxxxx
+						_, enodes := GetGroup(rhda.GroupId)
+						nodes := strings.Split(enodes, common.Sep2)
+						/////////////////////tmp code //////////////////////
+						//if reqda.Mode == "0" {
+							if nodecnt != len(sigs) {
+							    return
+							}
+
+							mp := []string{d.Key, cur_enode}
+							enode := strings.Join(mp, "-")
+							s0 := "GroupAccounts_ReShare"
+							s1 := strconv.Itoa(nodecnt)
+							ss := enode + common.Sep + s0 + common.Sep + s1
+
+							sstmp := s1
+							for j := 0; j < nodecnt; j++ {
+								en := strings.Split(sigs[j], "@")
+								for _, node := range nodes {
+								    node2 := ParseNode(node)
+								    enId := strings.Split(en[0],"//")
+								    if len(enId) < 2 {
+									return
+								    }
+
+								    if strings.EqualFold(node2, enId[1]) {
+									enodesigs := []rune(sigs[j])
+									if len(enodesigs) <= len(node) {
+									    return
+									}
+
+									sig := enodesigs[len(node):]
+									//sigbit, _ := hex.DecodeString(string(sig[:]))
+									sigbit := common.FromHex(string(sig[:]))
+									if sigbit == nil {
+									    return
+									}
+
+									pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
+									if err != nil {
+									    fmt.Printf("%v=====================RecivReqAddr, recover pubkey fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
+									    return
+									}
+									
+									h := coins.NewCryptocoinHandler("FSN")
+									if h != nil {
+									    pubkey := hex.EncodeToString(pub)
+									    from, err := h.PublicKeyToAddress(pubkey)
+									    if err != nil {
+										fmt.Printf("%v=====================RecivReqAddr, pubkey to addr fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
+										return
+									    }
+									    
+									    //key-enode:GroupAccounts:5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
+									    ss += common.Sep
+									    ss += node2 
+									    ss += common.Sep
+									    ss += from
+									    
+									    sstmp += common.Sep
+									    sstmp += node2
+									    sstmp += common.Sep
+									    sstmp += from
+									}
+								    }
+								}
+
+							}
+
+							SendMsgToDcrmGroup(ss, rhda.GroupId)
+							resh.Sigs = sstmp
+							if SaveAcceptReShareData(resh) != nil { //re-save
+							    return
+							}
+						//} 
+						    for i := 0; i < 1; i++ {
+							    ret, _, err2 := SendReShare(d.Account, "0", d.JsonStr,d.Key)
+							    if err2 == nil && ret != "" {
+								    return
+							    }
+
+							    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
+						    }
+					    }(data,&rh,ac)
 					    /////
-					    dcrmpks, _ := hex.DecodeString(rh.PubKey)
+					    /*dcrmpks, _ := hex.DecodeString(rh.PubKey)
 					    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
 					    if exsit {
 						_,ok := da.(*PubKeyData)
@@ -1487,20 +1578,10 @@ func RecivReShare() {
 							    PubKeyDataChan <- kd
 							    LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs3)
 							    //fmt.Printf("%v ==============================RecivReShare,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
-							    go func(d ReShareData) {
-								    for i := 0; i < 1; i++ {
-									    ret, _, err2 := SendReShare(d.Account, "0", d.JsonStr,d.Key)
-									    if err2 == nil && ret != "" {
-										    return
-									    }
-
-									    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-								    }
-							    }(data)
 							}
 						    }
 						}
-					    }
+					    }*/
 					    /////
 				    }
 			//}
@@ -1549,11 +1630,11 @@ func ReShare(raw string) (string, string, error) {
 		return "", "transaction data format error,it is not RESHARE tx", fmt.Errorf("tx raw data error,it is not reshare tx.")
 	}
 
-	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.TimeStamp == "" {
+	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.Account == "" || rh.Mode == "" || rh.TimeStamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
 	}
 
-	dcrmpks, _ := hex.DecodeString(rh.PubKey)
+	/*dcrmpks, _ := hex.DecodeString(rh.PubKey)
 	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
 	if exsit == false {
 		return "", "dcrm back-end internal error:get data from db fail in func reshare", fmt.Errorf("dcrm back-end internal error:get data from db fail in reshare")
@@ -1587,7 +1668,7 @@ func ReShare(raw string) (string, string, error) {
 	if rh.GroupId == "" {
 	    rh.GroupId = pubs.GroupId
 	}
-
+*/
 	////
 	nums := strings.Split(rh.ThresHold, "/")
 	if len(nums) != 2 {
@@ -1621,8 +1702,8 @@ func ReShare(raw string) (string, string, error) {
 
 	//
 
-	//key = hash(account + groupid + tsgroupid + pubkey + threshold )
-	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + rh.TSGroupId + ":" + rh.PubKey + ":" + rh.ThresHold ))).Hex()
+	//key = hash(account + groupid + tsgroupid + pubkey + threshold + mode)
+	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + rh.TSGroupId + ":" + rh.PubKey + ":" + rh.ThresHold + ":" + rh.Mode))).Hex()
 	data := ReShareData{Account:from.Hex(),Nonce:"0",JsonStr:string(tx.Data()),Key: key}
 	ReShareCh <- data
 
@@ -1730,7 +1811,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 	id,_ := GetWorkerId(w)
 	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_RESHARE,ac.Initiator)
 	
-	tip,err := AcceptReShare(ac.Initiator,ac.Account, ac.GroupId, ac.TSGroupId,ac.PubKey, ac.LimitNum, "false", accept, status, "", "", "", ars,ac.WorkId)
+	tip,err := AcceptReShare(ac.Initiator,ac.Account, ac.GroupId, ac.TSGroupId,ac.PubKey, ac.LimitNum, ac.Mode,"false", accept, status, "", "", "", ars,ac.WorkId)
 	if err != nil {
 		return "Failure", tip, err
 	}
@@ -2604,11 +2685,13 @@ type ReShareCurNodeInfo struct {
 	GroupId   string
 	TSGroupId   string
 	ThresHold  string
+	Account string
+	Mode string
 	TimeStamp string
 }
 
 func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
-    //fmt.Printf("%v================GetCurNodeReShareInfo start,====================\n",common.CurrentTime())
+    fmt.Printf("%v================GetCurNodeReShareInfo start,====================\n",common.CurrentTime())
     var ret []*ReShareCurNodeInfo
     var wg sync.WaitGroup
     LdbPubKeyData.RLock()
@@ -2618,12 +2701,12 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 	    defer wg.Done()
 
 	    vv,ok := value.(*AcceptReShareData)
-//	    fmt.Printf("%v================GetCurNodeReShareInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+	    fmt.Printf("%v================GetCurNodeReShareInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 	    if vv == nil || ok == false {
 		return
 	    }
 
-//	    fmt.Printf("%v================GetCurNodeReShareInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+	    fmt.Printf("%v================GetCurNodeReShareInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
 	    if vv.Deal == "true" || vv.Status == "Success" {
 		return
 	    }
@@ -2632,17 +2715,17 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 		return
 	    }
 
-	    keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.TSGroupId + ":" + vv.PubKey + ":" + vv.LimitNum))).Hex()
+	    keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.TSGroupId + ":" + vv.PubKey + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
 
-	    los := &ReShareCurNodeInfo{Key: keytmp, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum,TimeStamp: vv.TimeStamp}
+	    los := &ReShareCurNodeInfo{Key: keytmp, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
 	    ret = append(ret, los)
-//	    fmt.Printf("%v================GetCurNodeReShareInfo ret = %v,====================\n",common.CurrentTime(),ret)
+	    fmt.Printf("%v================GetCurNodeReShareInfo ret = %v,====================\n",common.CurrentTime(),ret)
 	}(k,v)
     }
     LdbPubKeyData.RUnlock()
-  //  fmt.Printf("%v================GetCurNodeReShareInfo end lock,====================\n",common.CurrentTime())
+    fmt.Printf("%v================GetCurNodeReShareInfo end lock,====================\n",common.CurrentTime())
     wg.Wait()
-    //fmt.Printf("%v================GetCurNodeReShareInfo end, ret = %v====================\n",common.CurrentTime(),ret)
+    fmt.Printf("%v================GetCurNodeReShareInfo end, ret = %v====================\n",common.CurrentTime(),ret)
     return ret, "", nil
 }
 
@@ -2674,6 +2757,9 @@ type TxDataReShare struct {
     GroupId string
     TSGroupId string
     ThresHold string
+    Account string
+    Mode string
+    Sigs string
     TimeStamp string
 }
 
@@ -3227,7 +3313,7 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	    return false
 	}
 
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,"false", "true", "Pending", "", "", "", nil, workid)
+	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "true", "Pending", "", "", "", nil, workid)
 	
 	SendToGroupAllNodes(rh.GroupId, res)
 
@@ -3267,7 +3353,7 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	time.Sleep(time.Duration(1) * time.Second)
 	ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,"", "", "", "", "", "", ars, workid)
+	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"", "", "", "", "", "", ars, workid)
 	//fmt.Printf("%v ===================ReShareSendMsgToDcrm.Run, finish agree this reshare oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
 	
 	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)

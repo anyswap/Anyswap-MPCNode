@@ -451,30 +451,36 @@ func getLocalIP() string {
 	internetIP := ""
 	wlanIP := ""
 	loopIP := ""
-	for i := 0; i < len(netInterfaces); i++ {
-		//fmt.Printf("i: %v, flags: %v, net.FlagUp: %v\n", i, netInterfaces[i].Flags, net.FlagUp)
-		if (netInterfaces[i].Flags & net.FlagUp) != 0 {
-			addrs, _ := netInterfaces[i].Addrs()
+	for i, iface := range netInterfaces {
+		var ip net.IP
+		if (iface.Flags & net.FlagUp) != 0 {
+			addrs, _ := iface.Addrs()
+			for _, addr := range addrs {
+				switch v := addr.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				}
 
-			for _, address := range addrs {
-				if ipnet, ok := address.(*net.IPNet); ok {
-					//fmt.Println(ipnet.IP.String())
-					if ipnet.IP.To4() != nil {
-						if netInterfaces[i].Name == "WLAN" {
-							wlanIP = ipnet.IP.String()
-						} else if ipnet.IP.IsLoopback() {
-							loopIP = ipnet.IP.String()
+				if ip != nil {
+					if ip.To4() != nil {
+						if iface.Name == "WLAN" {
+							wlanIP = ip.String()
+						} else if ip.IsLoopback() {
+							loopIP = ip.String()
 						}else {
 							if internetIP == "" {
-								internetIP = ipnet.IP.String()
+								internetIP = ip.String()
 							}
 						}
+						 fmt.Printf("==== getLocalIP() ====, %v: iface: %v, ip: %v\n", i, iface, ip)
 					}
 				}
 			}
 		}
 	}
-	//fmt.Printf("internetIP: %v, wlanIP: %v, loopIP: %v\n", internetIP, wlanIP, loopIP)
+	fmt.Printf("==== getLocalIP() ====, internetIP: %v, wlanIP: %v, loopIP: %v\n", internetIP, wlanIP, loopIP)
 	if internetIP != "" {
 		//fmt.Printf("\nip: %v\n", internetIP)
 		return internetIP

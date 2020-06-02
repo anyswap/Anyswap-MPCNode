@@ -57,10 +57,10 @@ func SetReShareNonce(account string,nonce string) (string, error) {
 
 //param groupid is not subgroupid
 //w.groupid is subgroupid
-func reshare(wsid string, account string, groupid string,pubkey string, ch chan interface{}) {
+func reshare(wsid string, initator string, groupid string,pubkey string,account string,mode string,sigs string,ch chan interface{}) {
 
 	rch := make(chan interface{}, 1)
-	dcrm_reshare(wsid,groupid,pubkey,rch)
+	dcrm_reshare(wsid,initator,groupid,pubkey,account,mode,sigs,rch)
 	ret, _, cherr := GetChannelValue(ch_t, rch)
 	if ret != "" {
 		w, err := FindWorker(wsid)
@@ -82,7 +82,7 @@ func reshare(wsid string, account string, groupid string,pubkey string, ch chan 
 		SendMsgToDcrmGroup(ss, groupid)
 		///////////////
 
-		tip, reply := AcceptReShare("",account, groupid,w.groupid,pubkey, w.limitnum, "true", "true", "Success", ret, "", "", nil, w.id)
+		tip, reply := AcceptReShare("",initator, groupid,w.groupid,pubkey, w.limitnum, mode,"true", "true", "Success", ret, "", "", nil, w.id)
 		if reply != nil {
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update reshare status error.")}
 			ch <- res
@@ -107,7 +107,7 @@ func reshare(wsid string, account string, groupid string,pubkey string, ch chan 
 //ec2
 //msgprex = hash
 //return value is the backup for dcrm sig.
-func dcrm_reshare(msgprex string, groupid string,pubkey string,ch chan interface{}) {
+func dcrm_reshare(msgprex string, initator string, groupid string,pubkey string,account string,mode string,sigs string,ch chan interface{}) {
 
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
@@ -123,7 +123,7 @@ func dcrm_reshare(msgprex string, groupid string,pubkey string,ch chan interface
 	    <-ch1
 	}
 
-	ReShare_ec2(msgprex, groupid,pubkey, ch1, id)
+	ReShare_ec2(msgprex, initator, groupid,pubkey, account,mode,sigs, ch1, id)
 	ret, _, cherr := GetChannelValue(ch_t, ch1)
 	if ret != "" && cherr == nil {
 		res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
@@ -138,7 +138,7 @@ func dcrm_reshare(msgprex string, groupid string,pubkey string,ch chan interface
 
 //msgprex = hash
 //return value is the backup for the dcrm sig
-func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface{}, id int) {
+func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, account string,mode string,sigs string,ch chan interface{}, id int) {
 	if id < 0 || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res
@@ -724,7 +724,14 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		db = dbtmp
 	    }
 
-	    pubs := &PubKeyData{Key:"",Account:"", Pub: string(dcrmpks[:]), Save: sstmp, Nonce: "", GroupId: groupid, LimitNum: "", Mode: "",KeyGenTime:""}
+	    nonce,_,err := GetReqAddrNonce(account) //reqaddr nonce
+	    if err != nil {
+		nonce = "0"
+	    }
+
+	    rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL" + ":" + groupid + ":" + nonce + ":" + w.limitnum + ":" + mode))).Hex() //reqaddr key
+	    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+	    pubs := &PubKeyData{Key:rk,Account:account, Pub: string(dcrmpks[:]), Save: sstmp, Nonce: nonce, GroupId: groupid, LimitNum: w.limitnum, Mode: mode,KeyGenTime:tt,RefReShareKeys:msgprex}
 	    epubs, err := Encode2(pubs)
 	    if err != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
@@ -743,6 +750,22 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	    if exsit {
 		daa,ok := pda.(*PubKeyData)
 		if ok {
+		    //check mode
+		    if daa.Mode != mode {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check mode fail", Err: fmt.Errorf("check mode fail")}
+			ch <- res
+			return
+		    }
+		    //
+
+		    //check account
+		    if !strings.EqualFold(account, daa.Account) {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check account fail", Err: fmt.Errorf("check account fail")}
+			ch <- res
+			return
+		    }
+		    //
+
 		    go LdbPubKeyData.DeleteMap(daa.Key)
 		    kd := KeyData{Key: []byte(daa.Key), Data: "CLEAN"}
 		    PubKeyDataChan <- kd
@@ -775,7 +798,80 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		    LdbPubKeyData.WriteMap(key, pubs)
 		    ////
 	    }
+	    
+	    SetReqAddrNonce(account,nonce)
+	    wid := -1
+	    var allreply []NodeReply
+	    exsit,da2 := GetValueFromPubKeyData(msgprex)
+	    if exsit {
+		acr,ok := da2.(*AcceptReShareData)
+		if ok {
+		    wid = acr.WorkId
+		    allreply = acr.AllReply
+		}
+	    }
 
+	    //ars := GetAllReplyFromGroup(-1,groupid,Rpc_REQADDR,cur_enode)
+	    ac := &AcceptReqAddrData{Initiator:cur_enode,Account: account, Cointype: "ALL", GroupId: groupid, Nonce: nonce, LimitNum: w.limitnum, Mode: mode, TimeStamp: tt, Deal: "true", Accept: "true", Status: "Success", PubKey: pubkey, Tip: "", Error: "", AllReply: allreply, WorkId: wid,Sigs:sigs}
+	    SaveAcceptReqAddrData(ac)
+	    if mode == "0" {
+		sigs2 := strings.Split(ac.Sigs,common.Sep)
+		cnt,_ := strconv.Atoi(sigs2[0])
+		for j := 0;j<cnt;j++ {
+		    fr := sigs2[2*j+2]
+		    exsit,da := GetValueFromPubKeyData(strings.ToLower(fr))
+		    if exsit == false {
+			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: rk}
+			PubKeyDataChan <- kdtmp
+			LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(rk))
+		    } else {
+			//
+			found := false
+			keys := strings.Split(string(da.([]byte)),":")
+			for _,v := range keys {
+			    if strings.EqualFold(v,rk) {
+				found = true
+				break
+			    }
+			}
+			//
+
+			if !found {
+			    da2 := string(da.([]byte)) + ":" + rk
+			    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
+			    PubKeyDataChan <- kdtmp
+			    LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
+			}
+		    }
+		}
+	    } else {
+		exsit,da := GetValueFromPubKeyData(strings.ToLower(account))
+		if exsit == false {
+		    kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: rk}
+		    PubKeyDataChan <- kdtmp
+		    LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(rk))
+		} else {
+		    //
+		    found := false
+		    keys := strings.Split(string(da.([]byte)),":")
+		    for _,v := range keys {
+			if strings.EqualFold(v,rk) {
+			    found = true
+			    break
+			}
+		    }
+		    //
+
+		    if !found {
+			da2 := string(da.([]byte)) + ":" + rk
+			kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
+			PubKeyDataChan <- kdtmp
+			LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
+		    }
+
+		}
+	    }
+	    //AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
 	    /////////////////////
 	    fmt.Printf("%v=====================ReShare_ec2, gen newskU1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 
@@ -1231,6 +1327,7 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		SkU1Chan <- sk
 	}
 	//
+
 	///////gen paillier key
 	u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
 	mp = []string{msgprex, cur_enode}
@@ -1255,7 +1352,7 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	if !suss {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier key fail")}
 		ch <- res
-		return
+		return 
 	}
 
 	NtildeLength := 2048
@@ -1419,7 +1516,14 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	    db = dbtmp
 	}
 
-	pubs := &PubKeyData{Key:"",Account:"", Pub: string(dcrmpks[:]), Save: sstmp, Nonce: "", GroupId: groupid, LimitNum: "", Mode: "",KeyGenTime:""}
+	nonce,_,err := GetReqAddrNonce(account) //reqaddr nonce
+	if err != nil {
+	    nonce = "0"
+	}
+
+	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL" + ":" + groupid + ":" + nonce + ":" + w.limitnum + ":" + mode))).Hex() //reqaddr key
+	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+	pubs := &PubKeyData{Key:rk,Account:account, Pub: string(dcrmpks[:]), Save: sstmp, Nonce: nonce, GroupId: groupid, LimitNum: w.limitnum, Mode: mode,KeyGenTime:tt,RefReShareKeys:msgprex}
 	epubs, err := Encode2(pubs)
 	if err != nil {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
@@ -1438,6 +1542,22 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 	if exsit {
 	    daa,ok := pda.(*PubKeyData)
 	    if ok {
+		//check mode
+		if daa.Mode != mode {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check mode fail", Err: fmt.Errorf("check mode fail")}
+		    ch <- res
+		    return
+		}
+		//
+
+		//check account
+		if !strings.EqualFold(account, daa.Account) {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check account fail", Err: fmt.Errorf("check account fail")}
+		    ch <- res
+		    return
+		}
+		//
+
 		go LdbPubKeyData.DeleteMap(daa.Key)
 		kd := KeyData{Key: []byte(daa.Key), Data: "CLEAN"}
 		PubKeyDataChan <- kd
@@ -1470,7 +1590,80 @@ func ReShare_ec2(msgprex string, groupid string,pubkey string, ch chan interface
 		LdbPubKeyData.WriteMap(key, pubs)
 		////
 	}
+	
+	SetReqAddrNonce(account,nonce)
+	wid := -1
+	var allreply []NodeReply
+	exsit,da2 := GetValueFromPubKeyData(msgprex)
+	if exsit {
+	    acr,ok := da2.(*AcceptReShareData)
+	    if ok {
+		wid = acr.WorkId
+		allreply = acr.AllReply
+	    }
+	}
 
+	//ars := GetAllReplyFromGroup(-1,groupid,Rpc_REQADDR,cur_enode)
+	ac := &AcceptReqAddrData{Initiator:cur_enode,Account: account, Cointype: "ALL", GroupId: groupid, Nonce: nonce, LimitNum: w.limitnum, Mode: mode, TimeStamp: tt, Deal: "true", Accept: "true", Status: "Success", PubKey: pubkey, Tip: "", Error: "", AllReply: allreply, WorkId: wid,Sigs:sigs}
+	SaveAcceptReqAddrData(ac)
+	if mode == "0" {
+	    sigs2 := strings.Split(ac.Sigs,common.Sep)
+	    cnt,_ := strconv.Atoi(sigs2[0])
+	    for j := 0;j<cnt;j++ {
+		fr := sigs2[2*j+2]
+		exsit,da := GetValueFromPubKeyData(strings.ToLower(fr))
+		if exsit == false {
+		    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: rk}
+		    PubKeyDataChan <- kdtmp
+		    LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(rk))
+		} else {
+		    //
+		    found := false
+		    keys := strings.Split(string(da.([]byte)),":")
+		    for _,v := range keys {
+			if strings.EqualFold(v,rk) {
+			    found = true
+			    break
+			}
+		    }
+		    //
+
+		    if !found {
+			da2 := string(da.([]byte)) + ":" + rk
+			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
+			PubKeyDataChan <- kdtmp
+			LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
+		    }
+		}
+	    }
+	} else {
+	    exsit,da := GetValueFromPubKeyData(strings.ToLower(account))
+	    if exsit == false {
+		kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: rk}
+		PubKeyDataChan <- kdtmp
+		LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(rk))
+	    } else {
+		//
+		found := false
+		keys := strings.Split(string(da.([]byte)),":")
+		for _,v := range keys {
+		    if strings.EqualFold(v,rk) {
+			found = true
+			break
+		    }
+		}
+		//
+
+		if !found {
+		    da2 := string(da.([]byte)) + ":" + rk
+		    kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
+		    PubKeyDataChan <- kdtmp
+		    LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
+		}
+
+		}
+	}
+	//AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
 	/////////////////////
 	fmt.Printf("%v=====================ReShare_ec2, gen newsku1 = %v, key = %v=======================\n",common.CurrentTime(),newskU1,msgprex)
 

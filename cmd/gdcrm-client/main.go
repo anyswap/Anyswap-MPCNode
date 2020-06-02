@@ -646,6 +646,12 @@ func acceptSign() {
 }
 func reshare() {
 	// build tx data
+	sigs := ""
+	for i := 0; i < len(enodesSig)-1; i++ {
+		sigs = sigs + enodesSig[i] + "|"
+	}
+	
+	sigs = sigs + enodesSig[len(enodesSig)-1]
 	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 	txdata := reshareData{
 		TxType:    *test,
@@ -653,6 +659,9 @@ func reshare() {
 		GroupID:   *gid,
 		TSGroupID: *tsgid,
 		ThresHold: *ts,
+		Account:keyWrapper.Address.String(),
+		Mode:*mode,
+		Sigs:sigs,
 		TimeStamp: timestamp,
 	}
 	playload, _ := json.Marshal(txdata)
@@ -856,6 +865,9 @@ type reshareData struct {
 	GroupID   string `json:"GroupId"`
 	TSGroupID string `json:"TSGroupId"`
 	ThresHold string `json:"ThresHold"`
+	Account string `json:"Account"`
+	Mode string `json:"Mode"`
+	Sigs string `json:"Sigs"`
 	TimeStamp string `json:"TimeStamp"`
 }
 type reqAddrStatus struct {
@@ -924,6 +936,8 @@ type reshareCurNodeInfo struct {
 	GroupID   string `json:"GroupId"`
 	TSGroupID string `json:"TSGroupId"`
 	ThresHold string `json:"ThresHold"`
+	Account string `json:"Account"`
+	Mode string `json:"Mode"`
 	TimeStamp string `json:"TimeStamp"`
 }
 

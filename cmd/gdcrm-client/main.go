@@ -519,9 +519,9 @@ func sign() {
 	if *msghash == "" {
 		*msghash = common.ToHex(crypto.Keccak256([]byte(*memo)))
 	}
-	signMsgHash(*msghash)
+	signMsgHash(*msghash, -1)
 }
-func signMsgHash(msgHash string) (rsv string) {
+func signMsgHash(msgHash string, loopCount int) (rsv string) {
 	// get sign nonce
 	signNonce, err := client.Call("dcrm_getSignNonce", keyWrapper.Address.String())
 	if err != nil {
@@ -563,31 +563,41 @@ func signMsgHash(msgHash string) (rsv string) {
 		panic(err)
 	}
 	fmt.Printf("\ndcrm_sign keyID = %s\n\n", keyID)
-	fmt.Printf("\nWaiting for stats result...\n")
-	// traverse key from reqAddr failed by keyID
-	time.Sleep(time.Duration(20) * time.Second)
-	fmt.Printf("\n\nUser=%s", keyWrapper.Address.String())
-	var statusJSON signStatus
-	reqStatus, err := client.Call("dcrm_getSignStatus", keyID)
-	if err != nil {
-		fmt.Println("\ndcrm_getSignStatus rpc error:", err)
-		return
-	}
-	statusJSONStr, err := getJSONResult(reqStatus)
-	if err != nil {
-		fmt.Printf("\tdcrm_getSignStatus=NotStart\tkeyID=%s ", keyID)
-		fmt.Println("\tRequest not complete:", err)
-		return
-	}
-	if err := json.Unmarshal([]byte(statusJSONStr), &statusJSON); err != nil {
-		fmt.Println("\tUnmarshal statusJSONStr fail:", err)
-		return
-	}
-	if statusJSON.Status != "Success" {
-		fmt.Printf("\tdcrm_getSignStatus=%s\tkeyID=%s\n", statusJSON.Status, keyID)
-	} else {
-		fmt.Printf("\tSuccess\tRSV=%s\n", statusJSON.Rsv)
-		return statusJSON.Rsv
+	for i, j := loopCount, 1; i != 0; j++ {
+		fmt.Printf("\nWaiting for stats result (loop %v)...\n", j)
+		if i > 0 {
+			i--
+		}
+		// traverse key from reqAddr failed by keyID
+		time.Sleep(time.Duration(20) * time.Second)
+		fmt.Printf("\n\nUser=%s", keyWrapper.Address.String())
+		var statusJSON signStatus
+		reqStatus, err := client.Call("dcrm_getSignStatus", keyID)
+		if err != nil {
+			fmt.Println("\ndcrm_getSignStatus rpc error:", err)
+			continue
+		}
+		statusJSONStr, err := getJSONResult(reqStatus)
+		if err != nil {
+			fmt.Printf("\tdcrm_getSignStatus=NotStart\tkeyID=%s ", keyID)
+			fmt.Println("\tRequest not complete:", err)
+			continue
+		}
+		if err := json.Unmarshal([]byte(statusJSONStr), &statusJSON); err != nil {
+			fmt.Println("\tUnmarshal statusJSONStr fail:", err)
+			continue
+		}
+		switch statusJSON.Status {
+		case "Timeout", "Failure":
+			fmt.Printf("\tdcrm_getSignStatus=%s\tkeyID=%s\n", statusJSON.Status, keyID)
+			return
+		case "Success":
+			fmt.Printf("\tSuccess\tRSV=%s\n", statusJSON.Rsv)
+			return statusJSON.Rsv
+		default:
+			fmt.Printf("\tdcrm_getSignStatus=%s\tkeyID=%s\n", statusJSON.Status, keyID)
+			continue
+		}
 	}
 	return
 }
@@ -650,7 +660,7 @@ func reshare() {
 	for i := 0; i < len(enodesSig)-1; i++ {
 		sigs = sigs + enodesSig[i] + "|"
 	}
-	
+
 	sigs = sigs + enodesSig[len(enodesSig)-1]
 	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 	txdata := reshareData{
@@ -659,9 +669,9 @@ func reshare() {
 		GroupID:   *gid,
 		TSGroupID: *tsgid,
 		ThresHold: *ts,
-		Account:keyWrapper.Address.String(),
-		Mode:*mode,
-		Sigs:sigs,
+		Account:   keyWrapper.Address.String(),
+		Mode:      *mode,
+		Sigs:      sigs,
 		TimeStamp: timestamp,
 	}
 	playload, _ := json.Marshal(txdata)
@@ -865,9 +875,9 @@ type reshareData struct {
 	GroupID   string `json:"GroupId"`
 	TSGroupID string `json:"TSGroupId"`
 	ThresHold string `json:"ThresHold"`
-	Account string `json:"Account"`
-	Mode string `json:"Mode"`
-	Sigs string `json:"Sigs"`
+	Account   string `json:"Account"`
+	Mode      string `json:"Mode"`
+	Sigs      string `json:"Sigs"`
 	TimeStamp string `json:"TimeStamp"`
 }
 type reqAddrStatus struct {
@@ -936,8 +946,8 @@ type reshareCurNodeInfo struct {
 	GroupID   string `json:"GroupId"`
 	TSGroupID string `json:"TSGroupId"`
 	ThresHold string `json:"ThresHold"`
-	Account string `json:"Account"`
-	Mode string `json:"Mode"`
+	Account   string `json:"Account"`
+	Mode      string `json:"Mode"`
 	TimeStamp string `json:"TimeStamp"`
 }
 

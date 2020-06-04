@@ -654,6 +654,24 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			w.DcrmFrom = lo.DcrmAddr
 
+			/////
+			pubkey := ""
+			lokey := Keccak256Hash([]byte(strings.ToLower(lo.DcrmAddr))).Hex()
+			exsit,loda := GetValueFromPubKeyData(lokey)
+			if exsit {
+			    _,ok := loda.(*PubKeyData)
+			    if ok == true {
+				dcrmpub := (loda.(*PubKeyData)).Pub
+				pubkey = hex.EncodeToString([]byte(dcrmpub))
+			    }
+			}
+			if pubkey == "" {
+			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pubkey fail", Err: fmt.Errorf("get pubkey fail")}
+			    ch <- res2
+			    return false
+			}
+			/////
+
 			//fmt.Printf("%v====================RecvMsg.Run,w.NodeCnt = %v, w.ThresHold = %v, w.limitnum = %v, key = %v ================\n",common.CurrentTime(),w.NodeCnt,w.ThresHold,w.limitnum,rr.Nonce)
 
 			if strings.EqualFold(cur_enode, self.sender) { //self send
@@ -674,7 +692,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				}
 
 				ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
-				ac := &AcceptLockOutData{Initiator:self.sender,Account: lomsg.Account, GroupId: lo.GroupId, Nonce: lomsg.Nonce, DcrmFrom: lo.DcrmAddr, DcrmTo: lo.DcrmTo, Value: lo.Value, Cointype: lo.Cointype, LimitNum: lo.ThresHold, Mode: lo.Mode, TimeStamp: lo.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
+				ac := &AcceptLockOutData{Initiator:self.sender,Account: lomsg.Account, GroupId: lo.GroupId, Nonce: lomsg.Nonce, PubKey: pubkey, DcrmTo: lo.DcrmTo, Value: lo.Value, Cointype: lo.Cointype, LimitNum: lo.ThresHold, Mode: lo.Mode, TimeStamp: lo.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: wid}
 				err := SaveAcceptLockOutData(ac)
 				fmt.Printf("%v ===================finish call SaveAcceptLockOutData, err = %v,wid = %v,account = %v,group id = %v,nonce = %v,dcrm from = %v,dcrm to = %v,value = %v,cointype = %v,threshold = %v,mode = %v,key = %v =========================\n", common.CurrentTime(), err, wid, lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.DcrmTo, lo.Value, lo.Cointype, lo.ThresHold, lo.Mode, rr.Nonce)
 				if err != nil {

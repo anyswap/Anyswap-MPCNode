@@ -431,6 +431,40 @@ func ExsitPubKey(account string, cointype string) (string, bool) {
 	return pubkey, true
 }
 
+func CheckAccept(pubkey string,mode string,account string) bool {
+    if pubkey == "" || mode == "" || account == "" {
+	return false
+    }
+
+    dcrmpks, _ := hex.DecodeString(pubkey)
+    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+    if exsit {
+	pd,ok := da.(*PubKeyData)
+	if ok == true {
+	    exsit,da2 := GetValueFromPubKeyData(pd.Key)
+	    if exsit == true {
+		ac,ok := da2.(*AcceptReqAddrData)
+		if ok == true {
+		    if ac != nil {
+			if ac.Mode != mode {
+			    return false
+			}
+			if mode == "1" && strings.EqualFold(account,ac.Account) {
+			    return true
+			}
+
+			if mode == "0" && CheckAcc(cur_enode,account,ac.Sigs) {
+			    return true
+			}
+		    }
+		}
+	    }
+	}
+    }
+
+    return false
+}
+
 type ReqAddrData struct {
 	Account   string
 	Nonce     string
@@ -775,7 +809,7 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 	    return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	}
 
-	if ac.Mode == "0" {
+	/*if ac.Mode == "0" {
 	    exsit,data := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
 	    if exsit == false {
 		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
@@ -793,7 +827,10 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 	    if found == false {
 		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	    }
-	}
+	}*/
+	//if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
+	//	return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
+	//}
 	/////
 
 	///////
@@ -899,7 +936,7 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 	}
 
 	////bug,check valid accepter
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
+	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
 	if exsit == false {
 		return "Failure", "dcrm back-end internal error:get lockout data from db fail", fmt.Errorf("get lockout data from db fail")
 	}
@@ -976,10 +1013,10 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 
 	if !check {
 		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
-	}
+	}*/
 
 	//ACCEPTLOCKOUT:account:groupid:nonce:dcrmaddr:dcrmto:value:cointype:threshold:mode:accept:timestamp
-	exsit,da = GetValueFromPubKeyData(acceptlo.Key)
+	exsit,da := GetValueFromPubKeyData(acceptlo.Key)
 	///////
 	if exsit == false {
 		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
@@ -994,8 +1031,11 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
-	if ac.Mode == "1" {
-		return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
+	//if ac.Mode == "1" {
+	//	return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
+	//}
+	if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
+		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	}
 
 	///////
@@ -1027,9 +1067,14 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 	    return "Failure",err.Error(),err
 	}
 
+	dcrmaddr,_,err := GetAddr(ac.PubKey,ac.Cointype)
+	if err != nil {
+	    return "Failure",err.Error(),err
+	}
+
 	id,_ := GetWorkerId(w)
 	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_LOCKOUT,ac.Initiator)
-	tip, err := AcceptLockOut(ac.Initiator,ac.Account, ac.GroupId, ac.Nonce, ac.DcrmFrom, ac.LimitNum, "false", accept, status, "", "", "", ars, ac.WorkId)
+	tip, err := AcceptLockOut(ac.Initiator,ac.Account, ac.GroupId, ac.Nonce, dcrmaddr, ac.LimitNum, "false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 		return "Failure", tip, err
 	}
@@ -1074,7 +1119,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	}
 
 	////bug,check valid accepter
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
+	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
 	if exsit == false {
 		return "Failure", "dcrm back-end internal error:get sign data from db fail", fmt.Errorf("get sign data from db fail")
 	}
@@ -1152,10 +1197,10 @@ func RpcAcceptSign(raw string) (string, string, error) {
 
 	if !check {
 	    return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
-	}
+	}*/
 
 	//ACCEPTSIGN:account:pubkey:msghash:keytype:groupid:nonce:threshold:mode:accept:timestamp
-	exsit,da = GetValueFromPubKeyData(acceptsig.Key)
+	exsit,da := GetValueFromPubKeyData(acceptsig.Key)
 	///////
 	if exsit == false {
 		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
@@ -1170,8 +1215,11 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
 	}
 
-	if ac.Mode == "1" {
-	    return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
+	//if ac.Mode == "1" {
+	//    return "Failure", "mode = 1,do not need to accept", fmt.Errorf("mode = 1,do not need to accept")
+	//}
+	if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
+		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	}
 
 	///////
@@ -1252,7 +1300,18 @@ func RecivLockOut() {
 						//fmt.Printf("%v ==============================RecivLockOut,SetLockOutNonce, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, groupid, threshold, mode, data.Nonce, data.Key)
 					    ars := GetAllReplyFromGroup(-1,groupid,Rpc_LOCKOUT,cur_enode)
 
-					    ac := &AcceptLockOutData{Initiator:cur_enode,Account: data.Account, GroupId: groupid, Nonce: data.Nonce, DcrmFrom: dcrmaddr, DcrmTo: dcrmto, Value: value, Cointype: cointype, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
+					    pubkey := ""
+					    lokey := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
+					    exsit,loda := GetValueFromPubKeyData(lokey)
+					    if exsit {
+						_,ok := loda.(*PubKeyData)
+						if ok == true {
+						    dcrmpub := (loda.(*PubKeyData)).Pub
+						    pubkey = hex.EncodeToString([]byte(dcrmpub))
+						}
+					    }
+					    
+					    ac := &AcceptLockOutData{Initiator:cur_enode,Account: data.Account, GroupId: groupid, Nonce: data.Nonce, PubKey:pubkey, DcrmTo: dcrmto, Value: value, Cointype: cointype, LimitNum: threshold, Mode: mode, TimeStamp: timestamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
 						err := SaveAcceptLockOutData(ac)
 						if err == nil {
 							fmt.Printf("%v ==============================RecivLockOut,finish call SaveAcceptLockOutData, err = %v,account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, groupid, threshold, mode, data.Nonce, data.Key)
@@ -1985,7 +2044,7 @@ func RecivSign() {
 }
 
 func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, error) {
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {
 	    return nil,"",fmt.Errorf("get value from pubkeydata fail.")
 	}
@@ -2086,7 +2145,104 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 	    return m, tip, err
 	}
 
-	return nil, "get accounts balance fail", fmt.Errorf("get accounts balance fail")
+	return nil, "get accounts balance fail", fmt.Errorf("get accounts balance fail")*/
+
+	found := false
+	var wg sync.WaitGroup
+	LdbPubKeyData.RLock()
+	for k, v := range LdbPubKeyData.Map {
+	    wg.Add(1)
+	    go func(key string,value interface{}) {
+		defer wg.Done()
+
+		vv,ok := value.(*AcceptReqAddrData)
+		if vv == nil || ok == false {
+		    return
+		}
+
+		if vv.Mode == "1" {
+			if !strings.EqualFold(vv.Account,geter_acc) {
+			    return
+			}
+		}
+
+		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
+		    return
+		}
+
+		dcrmpks, _ := hex.DecodeString(vv.PubKey)
+		exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+		if exsit == false || data2 == nil {
+		    return
+		}
+
+		pd,ok := data2.(*PubKeyData)
+		if ok == false || pd == nil {
+		    return
+		}
+
+		if pd.Pub == "" || pd.GroupId == "" || pd.Mode == "" {
+		    return
+		}
+
+		pubkeyhex := hex.EncodeToString([]byte(pd.Pub))
+		if strings.EqualFold(pubkey, pubkeyhex) == false {
+		    return
+		}
+
+		found = true
+
+	    }(k,v)
+	}
+	LdbPubKeyData.RUnlock()
+	wg.Wait()
+
+	if !found {
+	    return nil, "get accounts balance fail", fmt.Errorf("get accounts balance fail")
+	}
+	
+	keytmp, err2 := hex.DecodeString(pubkey)
+	if err2 != nil {
+		return nil, "decode pubkey fail", err2
+	}
+
+	ret, tip, err := GetPubKeyData(string(keytmp), pubkey, "ALL")
+	var m interface{}
+	if err == nil {
+		dp := DcrmPubkeyRes{}
+		_ = json.Unmarshal([]byte(ret), &dp)
+		balances := make([]SubAddressBalance, 0)
+		var wg sync.WaitGroup
+		ret  := common.NewSafeMap(10)
+		//var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
+		for cointype, subaddr := range dp.DcrmAddress {
+			wg.Add(1)
+			go func(cointype, subaddr string) {
+				defer wg.Done()
+				balance, _, err := GetBalance(pubkey, cointype, subaddr)
+				if err != nil {
+					balance = "0"
+				}
+				//ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
+				ret.WriteMap(strings.ToLower(cointype),&SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance})
+			}(cointype, subaddr)
+		}
+		wg.Wait()
+		for _, cointype := range coins.Cointypes {
+			subaddrbal,exist := ret.ReadMap(strings.ToLower(cointype))
+			if exist == true && subaddrbal != nil {
+			    subbal,ok := subaddrbal.(*SubAddressBalance)
+			    if ok == true && subbal != nil {
+				balances = append(balances, *subbal)
+				fmt.Printf("balances: %v\n", balances)
+				ret.DeleteMap(strings.ToLower(cointype))
+			    }
+			}
+		}
+		m = &DcrmAccountsBalanceRes{PubKey: pubkey, Balances: balances}
+	}
+
+	return m, tip, err
 }
 
 func GetBalance(account string, cointype string, dcrmaddr string) (string, string, error) {
@@ -2394,7 +2550,7 @@ func SortCurNodeInfo(value []interface{}) []interface{} {
 }
 
 func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {
 	    return nil,"",nil
 	}
@@ -2451,7 +2607,68 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	}
 
 	///////
+	return ret, "", nil*/
+	
+	fmt.Printf("%v================GetCurNodeReqAddrInfo start,====================\n",common.CurrentTime())
+	var ret []*ReqAddrReply
+	var wg sync.WaitGroup
+	LdbPubKeyData.RLock()
+	for k, v := range LdbPubKeyData.Map {
+	    wg.Add(1)
+	    go func(key string,value interface{}) {
+		defer wg.Done()
+
+		vv,ok := value.(*AcceptReqAddrData)
+		fmt.Printf("%v================GetCurNodeReqAddrInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+		if vv == nil || ok == false {
+		    return
+		}
+
+		fmt.Printf("%v================GetCurNodeReqAddrInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+		if vv.Deal == "true" || vv.Status == "Success" {
+		    return
+		}
+
+		if vv.Status != "Pending" {
+		    return
+		}
+
+		if vv.Mode == "1" {
+		    return
+		}
+		
+		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
+		    return
+		}
+
+		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
+		ret = append(ret, los)
+		fmt.Printf("%v================GetCurNodeReqAddrInfo ret = %v,====================\n",common.CurrentTime(),ret)
+	    }(k,v)
+	}
+	LdbPubKeyData.RUnlock()
+	fmt.Printf("%v================GetCurNodeReqAddrInfo end lock,====================\n",common.CurrentTime())
+	wg.Wait()
+	fmt.Printf("%v================GetCurNodeReqAddrInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
+}
+
+func GetAddr(pubkey string,cointype string) (string,string,error) {
+    if pubkey == "" || cointype == "" {
+	return "","param error",fmt.Errorf("param error")
+    }
+
+     h := coins.NewCryptocoinHandler(cointype)
+     if h == nil {
+	     return "", "cointype is not supported", fmt.Errorf("req addr fail.cointype is not supported.")
+     }
+
+     ctaddr, err := h.PublicKeyToAddress(pubkey)
+     if err != nil {
+	     return "", "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkey, fmt.Errorf("get dcrm  addr fail.")
+     }
+
+     return ctaddr, "", nil
 }
 
 type LockOutCurNodeInfo struct {
@@ -2469,14 +2686,16 @@ type LockOutCurNodeInfo struct {
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, error) {
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {
+	    fmt.Printf("===================GetCurNodeLockOutInfo, no exist keys, account = %v ====================\n",geter_acc)
 	    return nil,"",nil
 	}
 
 	//check obj type
 	_,ok := da.([]byte)
 	if ok == false {
+	    fmt.Printf("===================GetCurNodeLockOutInfo, check obj type fail, account = %v,da = %v ====================\n",geter_acc,da)
 	    return nil,"get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
 	}
 	//
@@ -2484,44 +2703,54 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 	var ret []*LockOutCurNodeInfo
 	keys := strings.Split(string(da.([]byte)),":")
 	for _,key := range keys {
+	    fmt.Printf("===================GetCurNodeLockOutInfo, get lockout key = %v, account = %v ====================\n",key,geter_acc)
 	    exsit,data := GetValueFromPubKeyData(key)
 	    if exsit == false {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 1111,get lockout key = %v, account = %v ====================\n",key,geter_acc)
 		continue
 	    }
 
 	    if data == nil {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 2222,get lockout key = %v, account = %v ====================\n",key,geter_acc)
 		continue
 	    }
 
 	    ac,ok := data.(*AcceptReqAddrData)
 	    if ok == false {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 33333,get lockout key = %v, account = %v ====================\n",key,geter_acc)
 		continue
 	    }
 
 	    if ac == nil {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 444444,get lockout key = %v, account = %v ====================\n",key,geter_acc)
 		continue
 	    }
 
 	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 555555,get lockout key = %v, account = %v ====================\n",key,geter_acc)
 		continue
 	    }
 
 	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
 	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
 	    if exsit == false || data2 == nil {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 666666,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
 		continue
 	    }
 
 	    pd,ok := data2.(*PubKeyData)
 	    if ok == false {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 777777,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
 		continue
 	    }
 
 	    if pd == nil {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 88888,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
 		continue
 	    }
 
 	    if pd.RefLockOutKeys == "" {
+		fmt.Printf("===================GetCurNodeLockOutInfo, 999999,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
 		continue
 	    }
 
@@ -2529,28 +2758,34 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 	    for _,lockoutkey := range lockoutkeys {
 		exsit,data3 := GetValueFromPubKeyData(lockoutkey)
 		if exsit == false {
+		    fmt.Printf("===================GetCurNodeLockOutInfo, 100000,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
 		    continue
 		}
 
 		////
 		ac3,ok := data3.(*AcceptLockOutData)
 		if ok == false {
+		    fmt.Printf("===================GetCurNodeLockOutInfo, 100001,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
 		    continue
 		}
 
 		if ac3 == nil {
+		    fmt.Printf("===================GetCurNodeLockOutInfo, 100002,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
 			continue
 		}
 		
 		if ac3.Mode == "1" {
+		    fmt.Printf("===================GetCurNodeLockOutInfo, 100003,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
 			continue
 		}
 		
 		if ac3.Deal == "true" || ac3.Status == "Success" {
+		    fmt.Printf("===================GetCurNodeLockOutInfo, 100004,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
 			continue
 		}
 
 		if ac3.Status != "Pending" {
+		    fmt.Printf("===================GetCurNodeLockOutInfo, 100005,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
 			continue
 		}
 
@@ -2563,6 +2798,52 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 	}
 
 	///////
+	return ret, "", nil*/
+
+	fmt.Printf("%v================GetCurNodeLockOutInfo start,====================\n",common.CurrentTime())
+	var ret []*LockOutCurNodeInfo
+	var wg sync.WaitGroup
+	LdbPubKeyData.RLock()
+	for k, v := range LdbPubKeyData.Map {
+	    wg.Add(1)
+	    go func(key string,value interface{}) {
+		defer wg.Done()
+
+		vv,ok := value.(*AcceptLockOutData)
+		fmt.Printf("%v================GetCurNodeLockOutInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+		if vv == nil || ok == false {
+		    return
+		}
+
+		fmt.Printf("%v================GetCurNodeLockOutInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+		if vv.Deal == "true" || vv.Status == "Success" {
+		    return
+		}
+
+		if vv.Status != "Pending" {
+		    return
+		}
+
+		//keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.DcrmFrom + ":" + vv.LimitNum))).Hex()
+
+		dcrmaddr,_,err := GetAddr(vv.PubKey,vv.Cointype)
+		if err != nil {
+		    return
+		}
+
+		if !CheckAccept(vv.PubKey,vv.Mode,geter_acc) {
+			return
+		}
+		
+		los := &LockOutCurNodeInfo{Key: key, Account: vv.Account, GroupId: vv.GroupId, Nonce: vv.Nonce, DcrmFrom: dcrmaddr, DcrmTo: vv.DcrmTo, Value: vv.Value, Cointype: vv.Cointype, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
+		ret = append(ret, los)
+		fmt.Printf("%v================GetCurNodeLockOutInfo ret = %v,====================\n",common.CurrentTime(),ret)
+	    }(k,v)
+	}
+	LdbPubKeyData.RUnlock()
+	fmt.Printf("%v================GetCurNodeLockOutInfo end lock,====================\n",common.CurrentTime())
+	wg.Wait()
+	fmt.Printf("%v================GetCurNodeLockOutInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 
@@ -2581,7 +2862,7 @@ type SignCurNodeInfo struct {
 }
 
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
-	exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {
 	    return nil,"",nil
 	}
@@ -2676,6 +2957,45 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	}
 
 	///////
+	return ret, "", nil*/
+
+	fmt.Printf("%v================GetCurNodeSignInfo start,====================\n",common.CurrentTime())
+	var ret []*SignCurNodeInfo
+	var wg sync.WaitGroup
+	LdbPubKeyData.RLock()
+	for k, v := range LdbPubKeyData.Map {
+	    wg.Add(1)
+	    go func(key string,value interface{}) {
+		defer wg.Done()
+
+		vv,ok := value.(*AcceptSignData)
+		fmt.Printf("%v================GetCurNodeSignInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+		if vv == nil || ok == false {
+		    return
+		}
+
+		fmt.Printf("%v================GetCurNodeSignInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+		if vv.Deal == "true" || vv.Status == "Success" {
+		    return
+		}
+
+		if vv.Status != "Pending" {
+		    return
+		}
+
+		if !CheckAccept(vv.PubKey,vv.Mode,geter_acc) {
+			return
+		}
+		
+		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
+		ret = append(ret, los)
+		fmt.Printf("%v================GetCurNodeSignInfo ret = %v,====================\n",common.CurrentTime(),ret)
+	    }(k,v)
+	}
+	LdbPubKeyData.RUnlock()
+	fmt.Printf("%v================GetCurNodeSignInfo end lock,====================\n",common.CurrentTime())
+	wg.Wait()
+	fmt.Printf("%v================GetCurNodeSignInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 
@@ -2715,9 +3035,9 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 		return
 	    }
 
-	    keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.TSGroupId + ":" + vv.PubKey + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
+	    //keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.TSGroupId + ":" + vv.PubKey + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
 
-	    los := &ReShareCurNodeInfo{Key: keytmp, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
+	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
 	    ret = append(ret, los)
 	    fmt.Printf("%v================GetCurNodeReShareInfo ret = %v,====================\n",common.CurrentTime(),ret)
 	}(k,v)
@@ -3830,7 +4150,7 @@ type PubKeyInfo struct {
 }
 
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
-    exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
+    /*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
 	if exsit == false {
 	    fmt.Printf("%v================GetAccounts, no exist, geter_acc = %v,=================\n",common.CurrentTime(),geter_acc)
 	    return nil,"",fmt.Errorf("get value from pubkeydata fail.")
@@ -3903,6 +4223,71 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	    }
 	}
 
+	als := make([]AccountsList, 0)
+	for k, v := range gp {
+		alNew := AccountsList{GroupID: k, Accounts: v}
+		als = append(als, alNew)
+	}
+
+	pa := &PubAccounts{Group: als}
+	return pa, "", nil*/
+	
+	gp := make(map[string][]PubKeyInfo)
+	var wg sync.WaitGroup
+	LdbPubKeyData.RLock()
+	for k, v := range LdbPubKeyData.Map {
+	    wg.Add(1)
+	    go func(key string,value interface{}) {
+		defer wg.Done()
+
+		vv,ok := value.(*AcceptReqAddrData)
+		if vv == nil || ok == false {
+		    return
+		}
+
+		if vv.Mode == "1" {
+			if !strings.EqualFold(vv.Account,geter_acc) {
+			    return
+			}
+		}
+
+		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
+		    return
+		}
+
+		dcrmpks, _ := hex.DecodeString(vv.PubKey)
+		exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+		if exsit == false || data2 == nil {
+		    return
+		}
+
+		pd,ok := data2.(*PubKeyData)
+		if ok == false || pd == nil {
+		    return
+		}
+
+		pubkeyhex := hex.EncodeToString([]byte(pd.Pub))
+		gid := pd.GroupId
+		md := pd.Mode
+		limit := pd.LimitNum
+		if mode == md {
+			al, exsit := gp[gid]
+			if exsit {
+				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
+				al = append(al, tmp)
+				gp[gid] = al
+			} else {
+				a := make([]PubKeyInfo, 0)
+				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
+				a = append(a, tmp)
+				gp[gid] = a
+			}
+		}
+	    }(k,v)
+	}
+	LdbPubKeyData.RUnlock()
+	wg.Wait()
+	
 	als := make([]AccountsList, 0)
 	for k, v := range gp {
 		alNew := AccountsList{GroupID: k, Accounts: v}

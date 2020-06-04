@@ -239,7 +239,7 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 		wid = workid
 	}
 
-	ac2 := &AcceptLockOutData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, DcrmFrom: ac.DcrmFrom, DcrmTo: ac.DcrmTo, Value: ac.Value, Cointype: ac.Cointype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, OutTxHash: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
+	ac2 := &AcceptLockOutData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey:ac.PubKey, DcrmTo: ac.DcrmTo, Value: ac.Value, Cointype: ac.Cointype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, OutTxHash: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
 
 	e, err := Encode2(ac2)
 	if err != nil {
@@ -402,7 +402,7 @@ type AcceptLockOutData struct {
 	Account   string
 	GroupId   string
 	Nonce     string
-	DcrmFrom  string
+	PubKey  string
 	DcrmTo    string
 	Value     string
 	Cointype  string
@@ -427,7 +427,12 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 		return fmt.Errorf("no accept data.")
 	}
 
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.DcrmFrom + ":" + ac.LimitNum))).Hex()
+	dcrmaddr,_,err := GetAddr(ac.PubKey,ac.Cointype)
+	if err != nil {
+		return fmt.Errorf("get dcrm addr fail")
+	}
+
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + dcrmaddr + ":" + ac.LimitNum))).Hex()
 
 	alos, err := Encode2(ac)
 	if err != nil {

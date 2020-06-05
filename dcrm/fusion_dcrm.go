@@ -4232,7 +4232,8 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	pa := &PubAccounts{Group: als}
 	return pa, "", nil*/
 	
-	gp := make(map[string][]PubKeyInfo)
+	gp  := common.NewSafeMap(10)
+	//gp := make(map[string][]PubKeyInfo)
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
 	for k, v := range LdbPubKeyData.Map {
@@ -4271,16 +4272,21 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 		md := pd.Mode
 		limit := pd.LimitNum
 		if mode == md {
-			al, exsit := gp[gid]
-			if exsit {
+			al, exsit := gp.ReadMap(strings.ToLower(gid))
+			if exsit && al != nil {
+			    al2,ok := al.([]PubKeyInfo)
+			    if ok == true && al2 != nil {
 				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
-				al = append(al, tmp)
-				gp[gid] = al
+				al2 = append(al2, tmp)
+				//gp[gid] = al
+				gp.WriteMap(strings.ToLower(gid),al2)
+			    }
 			} else {
 				a := make([]PubKeyInfo, 0)
 				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
 				a = append(a, tmp)
-				gp[gid] = a
+				gp.WriteMap(strings.ToLower(gid),a)
+				//gp[gid] = a
 			}
 		}
 	    }(k,v)
@@ -4289,9 +4295,13 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	wg.Wait()
 	
 	als := make([]AccountsList, 0)
-	for k, v := range gp {
-		alNew := AccountsList{GroupID: k, Accounts: v}
+	key,value := gp.ListMap()
+	for j :=0;j < len(key);j++ {
+	    v,ok := value[j].([]PubKeyInfo)
+	    if ok {
+		alNew := AccountsList{GroupID: key[j], Accounts: v}
 		als = append(als, alNew)
+	    }
 	}
 
 	pa := &PubAccounts{Group: als}

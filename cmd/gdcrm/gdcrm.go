@@ -92,7 +92,7 @@ type gdcrmConf struct {
 func init() {
 	//app := cli.NewApp()
 	app.Usage = "Dcrm Wallet Service"
-	app.Version = "5.1.0"
+	app.Version = "5.2.0"
 	Version = app.Version
 	app.Action = StartDcrm
 	app.Flags = []cli.Flag{

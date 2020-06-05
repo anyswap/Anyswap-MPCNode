@@ -99,8 +99,13 @@ func createContract() error {
 	}
 	fmt.Printf("read bytecode '%v' success\n", bytecodeFile)
 	bytecodeStr := strings.TrimSpace(string(bytecodeContent))
+	input, err := hexutil.Decode(bytecodeStr)
+	if err != nil {
+		fmt.Printf("bytecode is not hex string, err=%v\n", err)
+		return err
+	}
 
-	rawTx := types.NewContractCreation(nonce, big.NewInt(0), gasLimit, gasPrice, common.FromHex(bytecodeStr))
+	rawTx := types.NewContractCreation(nonce, big.NewInt(0), gasLimit, gasPrice, input)
 	fmt.Println("create raw tx success")
 	printTx(rawTx, true)
 	fmt.Println()

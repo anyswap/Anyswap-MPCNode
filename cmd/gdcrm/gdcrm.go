@@ -153,7 +153,7 @@ func startP2pNode() error {
 	if rpcport == 0 {
 		rpcport = 4449
 	}
-	if bootnodes == "" {
+	if !privateNet && bootnodes == "" {
 		bootnodes = "enode://4dbed736b0d918eb607382e4e50cd85683c4592e32f666cac03c822b2762f2209a51b3ed513adfa28c7fa2be4ca003135a5734cfc1e82161873debb0cff732c8@104.210.49.28:36231"
 	}
 	if genKey != "" {
@@ -170,6 +170,9 @@ func startP2pNode() error {
 	var errkey error
 	pubdir := ""
 	if privateNet {
+		if bootnodes == "" {
+			bootnodes = "enode://4dbed736b0d918eb607382e4e50cd85683c4592e32f666cac03c822b2762f2209a51b3ed513adfa28c7fa2be4ca003135a5734cfc1e82161873debb0cff732c8@127.0.0.1:36231"
+		}
 		keyfilehex = ""
 		fmt.Printf("private network\n")
 		if pubkey != "" {

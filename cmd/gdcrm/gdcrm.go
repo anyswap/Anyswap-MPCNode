@@ -180,7 +180,9 @@ func startP2pNode() error {
 			if strings.HasPrefix(pubkey, "0x") {
 				pubdir = pubkey[2:]
 			}
-			keyfile = fmt.Sprintf("%v.key", pubdir[:8])
+			fmt.Printf("bootnodes: %v\n", bootnodes)
+			keyname := fmt.Sprintf("%v.key", pubdir[:8])
+			keyfile = filepath.Join(layer2.GetSelfDir(), keyname)
 		}
 	}
 	if keyfilehex != "" {

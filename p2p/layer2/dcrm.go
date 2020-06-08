@@ -501,3 +501,7 @@ func GetGroupList() map[discover.NodeID]*discover.Group {
 	return discover.SDK_groupList
 }
 
+func GetSelfDir() string {
+	return discover.GetGroupDir()
+}
+

@@ -1496,6 +1496,10 @@ func RecoverGroupSDKList() error { //nooo
 	return err
 }
 
+func GetGroupDir() string {
+	return getGroupDir()
+}
+
 func getGroupDir() string {
 	dir := p2pDir
 	if setgroup != 0 {

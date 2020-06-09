@@ -257,11 +257,10 @@ func IsInGroup(enode string, groupId string) bool {
 		return false
 	}
 
-	fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v\n", groupId, enodes)
+	//fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v\n", groupId, enodes)
 	nodes := strings.Split(enodes, common.Sep2)
-	fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v, split: %v, nodes: %v\n", groupId, enodes, common.Sep2, nodes)
+	//fmt.Printf("==== dev.IsInGroup() ====, gid: %v, enodes: %v, split: %v, nodes: %v\n", groupId, enodes, common.Sep2, nodes)
 	for _, node := range nodes {
-		fmt.Printf("==== dev.IsInGroup() ====, call ParseNode enode: %v\n", node)
 		node2 := ParseNode(node)
 		if strings.EqualFold(node2, enode) {
 			return true
@@ -655,7 +654,7 @@ func RecivReqAddr() {
 								//}
 
 								addr, _, err := SendReqDcrmAddr(d.Account, d.Nonce, d.JsonStr, d.Key)
-								fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n", common.CurrentTime(), addr, err, d.Key)
+								//fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n", common.CurrentTime(), addr, err, d.Key)
 								if addr != "" && err == nil {
 									return
 								}
@@ -745,7 +744,7 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 	data := ReqAddrData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
 	ReqAddrCh <- data
 
-	fmt.Printf("%v ===============ReqDcrmAddr finish,return,key = %v,raw = %v,mode = %v ================================\n", common.CurrentTime(), key, raw, mode)
+	//fmt.Printf("%v ===============ReqDcrmAddr finish,return,key = %v,raw = %v,mode = %v ================================\n", common.CurrentTime(), key, raw, mode)
 	return key, "", nil
 }
 
@@ -855,7 +854,7 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 	} else {
 	    logs,ok := log.(*DecdsaLog)
 	    if ok == false {
-		fmt.Printf("%v ===============AcceptReqAddr,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),acceptreq.Key)
+		//fmt.Printf("%v ===============AcceptReqAddr,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),acceptreq.Key)
 		return "Failure", "get dcrm log fail", fmt.Errorf("get dcrm log fail.")
 	    }
 
@@ -1231,7 +1230,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	ss2 := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 	SendMsgToDcrmGroup(ss2, ac.GroupId)
 	DisMsg(ss2)
-	fmt.Printf("%v ================== AcceptSign, finish send AcceptSignRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptsig.Key)
+	//fmt.Printf("%v ================== AcceptSign, finish send AcceptSignRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptsig.Key)
 	////fix bug: get C11 timeout
 	_, enodes := GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, common.Sep2)
@@ -1491,7 +1490,7 @@ func LockOut(raw string) (string, string, error) {
 	data := LockOutData{Account:from.Hex(),Nonce:fmt.Sprintf("%v", Nonce),JsonStr:string(tx.Data()),Key: key}
 	LockOutCh <- data
 
-	fmt.Printf("%v =================== LockOut, return, key = %v ===========================\n", common.CurrentTime(), key)
+	//fmt.Printf("%v =================== LockOut, return, key = %v ===========================\n", common.CurrentTime(), key)
 	return key, "", nil
 }
 
@@ -1508,7 +1507,7 @@ func RecivReShare() {
 	for {
 		select {
 		case data := <-ReShareCh:
-			fmt.Printf("%v ==============================RecivReShare,get new job, key = %v ============================================\n", common.CurrentTime(),data.Key)
+			//fmt.Printf("%v ==============================RecivReShare,get new job, key = %v ============================================\n", common.CurrentTime(),data.Key)
 			//exsit,_ := GetValueFromPubKeyData(data.Key)
 			//if exsit == false {
 				rh := TxDataReShare{}
@@ -1766,7 +1765,7 @@ func ReShare(raw string) (string, string, error) {
 	data := ReShareData{Account:from.Hex(),Nonce:"0",JsonStr:string(tx.Data()),Key: key}
 	ReShareCh <- data
 
-	fmt.Printf("%v =================== ReShare, return, key = %v ===========================\n", common.CurrentTime(), key)
+	//fmt.Printf("%v =================== ReShare, return, key = %v ===========================\n", common.CurrentTime(), key)
 	return key, "", nil
 }
 
@@ -1847,7 +1846,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 	ss2 := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 	SendMsgToDcrmGroup(ss2, ac.GroupId)
 	DisMsg(ss2)
-	fmt.Printf("%v ================== AcceptReShare, finish send AcceptReShareRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptreshare.Key)
+	//fmt.Printf("%v ================== AcceptReShare, finish send AcceptReShareRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptreshare.Key)
 	////fix bug: get C11 timeout
 	_, enodes := GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, common.Sep2)
@@ -1971,7 +1970,7 @@ func Sign(raw string) (string, string, error) {
 	data := SignData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
 	SignCh <- data
 
-	fmt.Printf("%v =================== Sign, return key = %v ===========================\n", common.CurrentTime(),key)
+	//fmt.Printf("%v =================== Sign, return key = %v ===========================\n", common.CurrentTime(),key)
 	return key,"",nil
 }
 
@@ -1990,7 +1989,7 @@ func RecivSign() {
 				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 					_, err := SetSignNonce(data.Account,data.Nonce)
 					if err == nil {
-						fmt.Printf("%v ==============================RecivSign, SetSignNonce, err = %v,pubkey = %v, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, sig.PubKey, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)
+						//fmt.Printf("%v ==============================RecivSign, SetSignNonce, err = %v,pubkey = %v, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,key = %v ============================================\n", common.CurrentTime(), err, sig.PubKey, data.Account, sig.GroupId, sig.ThresHold, sig.Mode, data.Nonce, data.Key)
 					    ars := GetAllReplyFromGroup(-1,sig.GroupId,Rpc_SIGN,cur_enode)
 
 					    ac := &AcceptSignData{Initiator:cur_enode,Account: data.Account, GroupId: sig.GroupId, Nonce: data.Nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext:sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
@@ -2019,7 +2018,7 @@ func RecivSign() {
 									    kd := KeyData{Key: dcrmpks[:], Data: ss3}
 									    PubKeyDataChan <- kd
 									    LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs3)
-									    fmt.Printf("%v ==============================RecivSign,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
+									    //fmt.Printf("%v ==============================RecivSign,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
 									    go func(d SignData) {
 										    for i := 0; i < 1; i++ {
 											    rsv, _, err2 := SendSign(d.Account, d.Nonce, d.JsonStr, d.Key)
@@ -2285,7 +2284,7 @@ func GetBalance(account string, cointype string, dcrmaddr string) (string, strin
 	}
 
 	ret := fmt.Sprintf("%v", ba.CoinBalance.Val)
-	fmt.Printf("%v =========GetBalance,dcrmaddr = %v ,cointype = %v ,ret = %v=============\n", common.CurrentTime(), dcrmaddr, cointype, ret)
+	//fmt.Printf("%v =========GetBalance,dcrmaddr = %v ,cointype = %v ,ret = %v=============\n", common.CurrentTime(), dcrmaddr, cointype, ret)
 	return ret, "", nil
 }
 
@@ -2408,8 +2407,8 @@ func GetReqAddrStatus(key string) (string, string, error) {
 	}
 
 	los := &ReqAddrStatus{Status: ac.Status, PubKey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
-	ret, err := json.Marshal(los)
-	fmt.Printf("%v =====================GetReqAddrStatus,status = %v,ret = %v,err = %v,key = %v ======================\n", common.CurrentTime(),ac.Status,string(ret),err, key)
+	ret, _ := json.Marshal(los)
+	//fmt.Printf("%v =====================GetReqAddrStatus,status = %v,ret = %v,err = %v,key = %v ======================\n", common.CurrentTime(),ac.Status,string(ret),err, key)
 	return string(ret), "", nil
 }
 
@@ -2609,7 +2608,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	///////
 	return ret, "", nil*/
 	
-	fmt.Printf("%v================GetCurNodeReqAddrInfo start,====================\n",common.CurrentTime())
+	//fmt.Printf("%v================GetCurNodeReqAddrInfo start,====================\n",common.CurrentTime())
 	var ret []*ReqAddrReply
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
@@ -2619,12 +2618,12 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptReqAddrData)
-		fmt.Printf("%v================GetCurNodeReqAddrInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+		//fmt.Printf("%v================GetCurNodeReqAddrInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 		if vv == nil || ok == false {
 		    return
 		}
 
-		fmt.Printf("%v================GetCurNodeReqAddrInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+		//fmt.Printf("%v================GetCurNodeReqAddrInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -2643,13 +2642,13 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		fmt.Printf("%v================GetCurNodeReqAddrInfo ret = %v,====================\n",common.CurrentTime(),ret)
+		//fmt.Printf("%v================GetCurNodeReqAddrInfo ret = %v,====================\n",common.CurrentTime(),ret)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
-	fmt.Printf("%v================GetCurNodeReqAddrInfo end lock,====================\n",common.CurrentTime())
+	//fmt.Printf("%v================GetCurNodeReqAddrInfo end lock,====================\n",common.CurrentTime())
 	wg.Wait()
-	fmt.Printf("%v================GetCurNodeReqAddrInfo end, ret = %v====================\n",common.CurrentTime(),ret)
+	//fmt.Printf("%v================GetCurNodeReqAddrInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 
@@ -2800,7 +2799,7 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 	///////
 	return ret, "", nil*/
 
-	fmt.Printf("%v================GetCurNodeLockOutInfo start,====================\n",common.CurrentTime())
+	//fmt.Printf("%v================GetCurNodeLockOutInfo start,====================\n",common.CurrentTime())
 	var ret []*LockOutCurNodeInfo
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
@@ -2810,12 +2809,12 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptLockOutData)
-		fmt.Printf("%v================GetCurNodeLockOutInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+	//	fmt.Printf("%v================GetCurNodeLockOutInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 		if vv == nil || ok == false {
 		    return
 		}
 
-		fmt.Printf("%v================GetCurNodeLockOutInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+//		fmt.Printf("%v================GetCurNodeLockOutInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -2837,13 +2836,13 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		
 		los := &LockOutCurNodeInfo{Key: key, Account: vv.Account, GroupId: vv.GroupId, Nonce: vv.Nonce, DcrmFrom: dcrmaddr, DcrmTo: vv.DcrmTo, Value: vv.Value, Cointype: vv.Cointype, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		fmt.Printf("%v================GetCurNodeLockOutInfo ret = %v,====================\n",common.CurrentTime(),ret)
+//		fmt.Printf("%v================GetCurNodeLockOutInfo ret = %v,====================\n",common.CurrentTime(),ret)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
-	fmt.Printf("%v================GetCurNodeLockOutInfo end lock,====================\n",common.CurrentTime())
+//	fmt.Printf("%v================GetCurNodeLockOutInfo end lock,====================\n",common.CurrentTime())
 	wg.Wait()
-	fmt.Printf("%v================GetCurNodeLockOutInfo end, ret = %v====================\n",common.CurrentTime(),ret)
+//	fmt.Printf("%v================GetCurNodeLockOutInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 
@@ -2959,7 +2958,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	///////
 	return ret, "", nil*/
 
-	fmt.Printf("%v================GetCurNodeSignInfo start,====================\n",common.CurrentTime())
+	//fmt.Printf("%v================GetCurNodeSignInfo start,====================\n",common.CurrentTime())
 	var ret []*SignCurNodeInfo
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
@@ -2969,12 +2968,12 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptSignData)
-		fmt.Printf("%v================GetCurNodeSignInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+//		fmt.Printf("%v================GetCurNodeSignInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 		if vv == nil || ok == false {
 		    return
 		}
 
-		fmt.Printf("%v================GetCurNodeSignInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+//		fmt.Printf("%v================GetCurNodeSignInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -2989,13 +2988,13 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		fmt.Printf("%v================GetCurNodeSignInfo ret = %v,====================\n",common.CurrentTime(),ret)
+//		fmt.Printf("%v================GetCurNodeSignInfo ret = %v,====================\n",common.CurrentTime(),ret)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
-	fmt.Printf("%v================GetCurNodeSignInfo end lock,====================\n",common.CurrentTime())
+//	fmt.Printf("%v================GetCurNodeSignInfo end lock,====================\n",common.CurrentTime())
 	wg.Wait()
-	fmt.Printf("%v================GetCurNodeSignInfo end, ret = %v====================\n",common.CurrentTime(),ret)
+//	fmt.Printf("%v================GetCurNodeSignInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 
@@ -3011,7 +3010,7 @@ type ReShareCurNodeInfo struct {
 }
 
 func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
-    fmt.Printf("%v================GetCurNodeReShareInfo start,====================\n",common.CurrentTime())
+//    fmt.Printf("%v================GetCurNodeReShareInfo start,====================\n",common.CurrentTime())
     var ret []*ReShareCurNodeInfo
     var wg sync.WaitGroup
     LdbPubKeyData.RLock()
@@ -3021,12 +3020,12 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 	    defer wg.Done()
 
 	    vv,ok := value.(*AcceptReShareData)
-	    fmt.Printf("%v================GetCurNodeReShareInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
+	    //fmt.Printf("%v================GetCurNodeReShareInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 	    if vv == nil || ok == false {
 		return
 	    }
 
-	    fmt.Printf("%v================GetCurNodeReShareInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+	    //fmt.Printf("%v================GetCurNodeReShareInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
 	    if vv.Deal == "true" || vv.Status == "Success" {
 		return
 	    }
@@ -3039,13 +3038,13 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 
 	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
 	    ret = append(ret, los)
-	    fmt.Printf("%v================GetCurNodeReShareInfo ret = %v,====================\n",common.CurrentTime(),ret)
+	    //fmt.Printf("%v================GetCurNodeReShareInfo ret = %v,====================\n",common.CurrentTime(),ret)
 	}(k,v)
     }
     LdbPubKeyData.RUnlock()
-    fmt.Printf("%v================GetCurNodeReShareInfo end lock,====================\n",common.CurrentTime())
+    //fmt.Printf("%v================GetCurNodeReShareInfo end lock,====================\n",common.CurrentTime())
     wg.Wait()
-    fmt.Printf("%v================GetCurNodeReShareInfo end, ret = %v====================\n",common.CurrentTime(),ret)
+    //fmt.Printf("%v================GetCurNodeReShareInfo end, ret = %v====================\n",common.CurrentTime(),ret)
     return ret, "", nil
 }
 
@@ -3408,9 +3407,9 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 
 	SendToGroupAllNodes(req.GroupId, res)
 
-	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Waiting For Result.key = %v============================\n", common.CurrentTime(), self.Key)
+	//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Waiting For Result.key = %v============================\n", common.CurrentTime(), self.Key)
 	<-w.acceptWaitReqAddrChan
-	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, get w.acceptWaitReqAddrChan success. key = %v============================\n", common.CurrentTime(), self.Key)
+	//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, get w.acceptWaitReqAddrChan success. key = %v============================\n", common.CurrentTime(), self.Key)
 
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	///////
@@ -3470,7 +3469,7 @@ func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	time.Sleep(time.Duration(1) * time.Second)
 	ars := GetAllReplyFromGroup(-1,req.GroupId,Rpc_REQADDR,cur_enode)
 	AcceptReqAddr(cur_enode,self.Account, "ALL", req.GroupId, self.Nonce, req.ThresHold, req.Mode, "", "", "", "", "", "", ars, workid,"")
-	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
+	//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, w.ch)
 	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Get Result. result = %v,cherr = %v,key = %v============================\n", common.CurrentTime(), chret, cherr, self.Key)
 	if cherr != nil {
@@ -3538,7 +3537,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	w := workers[workid]
 
 	////
-	fmt.Printf("%v =============LockOutSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
+	//fmt.Printf("%v =============LockOutSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
 	<-w.acceptWaitLockOutChan
 	var tip string
 
@@ -3575,7 +3574,7 @@ func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	//fmt.Printf("%v ===================LockOutSendMsgToDcrm.Run, finish agree this lockout oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
 	
 	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)
-	fmt.Printf("%v ==============LockOutSendMsgToDcrm.Run,Get Result = %v, err = %v, key = %v =================\n", common.CurrentTime(), chret, cherr, self.Key)
+	//fmt.Printf("%v ==============LockOutSendMsgToDcrm.Run,Get Result = %v, err = %v, key = %v =================\n", common.CurrentTime(), chret, cherr, self.Key)
 	if cherr != nil {
 		res2 := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		ch <- res2
@@ -3640,7 +3639,7 @@ func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	w := workers[workid]
 
 	////
-	fmt.Printf("%v =============ReShareSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
+	//fmt.Printf("%v =============ReShareSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
 	<-w.acceptWaitReShareChan
 	var tip string
 
@@ -3742,7 +3741,7 @@ func (self *SignSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
 	w := workers[workid]
 
 	////
-	fmt.Printf("%v =============SignSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
+	//fmt.Printf("%v =============SignSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
 	<-w.acceptWaitSignChan
 	var tip string
 

@@ -81,11 +81,11 @@ func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数�
 }
 
 func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc AcceptReqAddr from web,raw = %v==========\n", common.CurrentTime(), raw)
+	//fmt.Printf("%v ==========call rpc AcceptReqAddr from web,raw = %v==========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptReqAddr(raw)
-	fmt.Printf("%v ==========call rpc AcceptReqAddr from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
+	//fmt.Printf("%v ==========call rpc AcceptReqAddr from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
 		return map[string]interface{}{
@@ -106,11 +106,11 @@ func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 }
 
 func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc AcceptLockOut from web,raw = %v==========\n", common.CurrentTime(), raw)
+	//fmt.Printf("%v ==========call rpc AcceptLockOut from web,raw = %v==========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptLockOut(raw)
-	fmt.Printf("%v ==========call rpc AcceptLockOut from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
+	//fmt.Printf("%v ==========call rpc AcceptLockOut from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
 		return map[string]interface{}{
@@ -131,11 +131,11 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) AcceptSign(raw string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
+	//fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptSign(raw)
-	fmt.Printf("%v ==========call rpc AcceptSign from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
+	//fmt.Printf("%v ==========call rpc AcceptSign from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
 		return map[string]interface{}{
@@ -263,11 +263,11 @@ func (this *Service) GetReShareNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) AcceptReShare(raw string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc AcceptReShare from web,raw = %v==========\n", common.CurrentTime(), raw)
+	//fmt.Printf("%v ==========call rpc AcceptReShare from web,raw = %v==========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptReShare(raw)
-	fmt.Printf("%v ==========call rpc AcceptReShare from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
+	//fmt.Printf("%v ==========call rpc AcceptReShare from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
 		return map[string]interface{}{
@@ -289,7 +289,7 @@ func (this *Service) AcceptReShare(raw string) map[string]interface{} {
 
 func (this *Service) GetCurNodeReShareInfo() map[string]interface{} {
 	s, tip, err := dcrm.GetCurNodeReShareInfo()
-	fmt.Printf("%v ==============finish call rpc GetCurNodeReShareInfo ,ret = %v,err = %v ================\n", common.CurrentTime(), s, err)
+	//fmt.Printf("%v ==============finish call rpc GetCurNodeReShareInfo ,ret = %v,err = %v ================\n", common.CurrentTime(), s, err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -308,10 +308,10 @@ func (this *Service) GetCurNodeReShareInfo() map[string]interface{} {
 }
 
 func (this *Service) GetReShareStatus(key string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetReShareStatus from web, key = %v ================\n", common.CurrentTime(), key)
+	//fmt.Printf("%v ==============call rpc GetReShareStatus from web, key = %v ================\n", common.CurrentTime(), key)
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetReShareStatus(key)
-	fmt.Printf("%v ==============finish call rpc GetReShareStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
+	//fmt.Printf("%v ==============finish call rpc GetReShareStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -332,7 +332,7 @@ func (this *Service) GetReShareStatus(key string) map[string]interface{} {
 }
 
 func (this *Service) GetBalance(account string, cointype string, dcrmaddr string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
+	//fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
 
 	data := make(map[string]interface{})
 	if account == "" || cointype == "" || dcrmaddr == "" {
@@ -346,7 +346,7 @@ func (this *Service) GetBalance(account string, cointype string, dcrmaddr string
 	}
 
 	ret, tip, err := dcrm.GetBalance(account, cointype, dcrmaddr)
-	fmt.Printf("%v ==========finish call rpc GetBalance ,balance = %v,err = %v,account = %v,cointype  = %v,dcrm from = %v ===========\n", common.CurrentTime(), ret, err, account, cointype, dcrmaddr)
+	//fmt.Printf("%v ==========finish call rpc GetBalance ,balance = %v,err = %v,account = %v,cointype  = %v,dcrm from = %v ===========\n", common.CurrentTime(), ret, err, account, cointype, dcrmaddr)
 
 	if err != nil {
 		data["result"] = "0"
@@ -469,10 +469,10 @@ func (this *Service) GetSignNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v ================\n", common.CurrentTime(), account)
+	//fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v ================\n", common.CurrentTime(), account)
 
 	s, tip, err := dcrm.GetCurNodeReqAddrInfo(account)
-	fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v,ret = %v,err = %v ================\n", common.CurrentTime(), account, s, err)
+	//fmt.Printf("%v ==============call rpc GetCurNodeReqAddrInfo from web, account = %v,ret = %v,err = %v ================\n", common.CurrentTime(), account, s, err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -491,10 +491,10 @@ func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{
 }
 
 func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetCurNodeLockOutInfo from web,account = %v ================\n", common.CurrentTime(), account)
+	//fmt.Printf("%v ==============call rpc GetCurNodeLockOutInfo from web,account = %v ================\n", common.CurrentTime(), account)
 
 	s, tip, err := dcrm.GetCurNodeLockOutInfo(account)
-	fmt.Printf("%v ==============finish call rpc GetCurNodeLockOutInfo ,ret = %v,err = %v,account = %v ================\n", common.CurrentTime(), s, err, account)
+	//fmt.Printf("%v ==============finish call rpc GetCurNodeLockOutInfo ,ret = %v,err = %v,account = %v ================\n", common.CurrentTime(), s, err, account)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -513,10 +513,10 @@ func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{
 }
 
 func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetCurNodeSignInfo from web,account = %v ================\n", common.CurrentTime(), account)
+	//fmt.Printf("%v ==============call rpc GetCurNodeSignInfo from web,account = %v ================\n", common.CurrentTime(), account)
 
 	s, tip, err := dcrm.GetCurNodeSignInfo(account)
-	fmt.Printf("%v ==============finish call rpc GetCurNodeSignInfo ,ret = %v,err = %v, account = %v ================\n", common.CurrentTime(), s, err, account)
+	//fmt.Printf("%v ==============finish call rpc GetCurNodeSignInfo ,ret = %v,err = %v, account = %v ================\n", common.CurrentTime(), s, err, account)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -535,11 +535,11 @@ func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
 }
 
 func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetReqAddrStatus from web, key = %v ================\n", common.CurrentTime(), key)
+	//fmt.Printf("%v ==============call rpc GetReqAddrStatus from web, key = %v ================\n", common.CurrentTime(), key)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetReqAddrStatus(key)
-	fmt.Printf("%v ==============finish call rpc GetReqAddrStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
+	//fmt.Printf("%v ==============finish call rpc GetReqAddrStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -560,10 +560,10 @@ func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
 }
 
 func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetLockOutStatus from web, key = %v ================\n", common.CurrentTime(), key)
+	//fmt.Printf("%v ==============call rpc GetLockOutStatus from web, key = %v ================\n", common.CurrentTime(), key)
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetLockOutStatus(key)
-	fmt.Printf("%v ==============finish call rpc GetLockOutStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
+	//fmt.Printf("%v ==============finish call rpc GetLockOutStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -584,10 +584,10 @@ func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
 }
 
 func (this *Service) GetSignStatus(key string) map[string]interface{} {
-	fmt.Printf("%v ==============call rpc GetSignStatus from web, key = %v ================\n", common.CurrentTime(), key)
+	//fmt.Printf("%v ==============call rpc GetSignStatus from web, key = %v ================\n", common.CurrentTime(), key)
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetSignStatus(key)
-	fmt.Printf("%v ==============finish call rpc GetSignStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
+	//fmt.Printf("%v ==============finish call rpc GetSignStatus ,ret = %v,err = %v,key = %v ================\n", common.CurrentTime(), ret, err, key)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{

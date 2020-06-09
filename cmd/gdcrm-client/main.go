@@ -18,7 +18,6 @@ package main
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -177,8 +176,6 @@ func init() {
 		keyWrapper.PrivateKey = priKey
 	}
 
-	privateKey := hex.EncodeToString(keyWrapper.PrivateKey.D.Bytes())
-	fmt.Printf("PrivateKey = %s\n", privateKey)
 	fmt.Printf("Recover from address = %s\n", keyWrapper.Address.String())
 	// set signer and chain id
 	chainID := big.NewInt(CHAIN_ID)

@@ -99,6 +99,10 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 	test,_ := new(big.Int).SetString(string(dcrmpks[:]),0)
 	fmt.Printf("============================sign,pubkey = %v, k = %v, key = %v, =========================\n",pubkey,test,wsid)
+	if exsit == false {
+	    time.Sleep(time.Duration(5000000000))
+	    exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	}
 	///////
 	if exsit == false {
 	    fmt.Printf("============================sign,not exist sign data, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
@@ -281,6 +285,10 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
 	//exsit,da := GetValueFromPubKeyData(key2)
 	exsit,da := GetPubKeyDataFromLocalDb(key2)
+	if exsit == false {
+	    time.Sleep(time.Duration(5000000000))
+	    exsit,da = GetPubKeyDataFromLocalDb(key2)
+	}
 	///////
 	if exsit == false {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get lockout data from db fail", Err: fmt.Errorf("get lockout data from db fail")}

@@ -76,19 +76,49 @@ func GetSkU1FromLocalDb(key string) []byte {
 	}
 
 	da, err := dbsk.Get([]byte(key))
-	///////
 	if err != nil {
-		//db.Close()
+	    dir := GetSkU1Dir()
+	    ////////
+	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	    //bug
+	    if err != nil {
+		    for i := 0; i < 100; i++ {
+			    dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			    if err == nil {
+				    break
+			    }
+
+			    time.Sleep(time.Duration(1000000))
+		    }
+	    }
+	    if err != nil {
+		//dbsk = nil
+	    } else {
+		dbsk = dbsktmp
+	    }
+
+	    da, err = dbsk.Get([]byte(key))
+	    if err != nil {
 		lock.Unlock()
 		return nil
+	    }
+	    
+	    sk,err := DecryptMsg(string(da))
+	    if err != nil {
+		lock.Unlock()
+		return nil
+	    }
+
+	    lock.Unlock()
+	    return []byte(sk)
 	}
 
 	sk,err := DecryptMsg(string(da))
 	if err != nil {
+	    lock.Unlock()
 	    return nil
 	}
 
-	//db.Close()
 	lock.Unlock()
 	return []byte(sk)
 }
@@ -138,15 +168,40 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 	}
 
 	da, err := db.Get([]byte(key))
-	///////
+	////bug
 	if err != nil {
-	    fmt.Printf("===================GetPubKeyDataValueFromDb, 222222, err = %v ===================\n",err)
-	//	db.Close()
-		lock.Unlock()
-		return nil
-	}
+	    dir := GetDbDir()
+	    ////////
+	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	    //bug
+	    if err != nil {
+		    for i := 0; i < 100; i++ {
+			    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			    if err == nil {
+				    break
+			    }
 
-	//db.Close()
+			    time.Sleep(time.Duration(1000000))
+		    }
+	    }
+	    if err != nil {
+		//db = nil
+	    } else {
+		db = dbtmp
+	    }
+	    
+	    da, err = db.Get([]byte(key))
+	    if err != nil {
+		    fmt.Printf("===================GetPubKeyDataValueFromDb, 222222, err = %v ===================\n",err)
+		    lock.Unlock()
+		    return nil
+	    }
+	    
+	    lock.Unlock()
+	    return da
+	}
+	///bug
+
 	lock.Unlock()
 	return da
 }

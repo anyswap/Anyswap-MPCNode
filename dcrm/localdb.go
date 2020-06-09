@@ -83,9 +83,14 @@ func GetSkU1FromLocalDb(key string) []byte {
 		return nil
 	}
 
+	sk,err := DecryptMsg(string(da))
+	if err != nil {
+	    return nil
+	}
+
 	//db.Close()
 	lock.Unlock()
-	return da
+	return []byte(sk)
 }
 
 func GetPubKeyDataValueFromDb(key string) []byte {
@@ -175,7 +180,7 @@ func SavePubKeyDataToDb() {
 			    } else {
 				err := db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-				    dir := GetSkU1Dir()
+				    dir := GetDbDir()
 				    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 				    //bug
 				    if err != nil {
@@ -226,7 +231,13 @@ func SaveSkU1ToDb() {
 			}*/
 			//
 			if dbsk != nil {
-			    err := dbsk.Put(kd.Key, []byte(kd.Data))
+			    cm,err := EncryptMsg(kd.Data,cur_enode)
+			    if err != nil {
+				SkU1Chan <- kd
+				break
+			    }
+
+			    err = dbsk.Put(kd.Key, []byte(cm))
 			    if err != nil {
 				dir := GetSkU1Dir()
 				dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -245,7 +256,7 @@ func SaveSkU1ToDb() {
 				    //dbsk = nil
 				} else {
 				    dbsk = dbsktmp
-				    dbsk.Put(kd.Key, []byte(kd.Data))
+				    dbsk.Put(kd.Key, []byte(cm))
 				}
 
 			    }

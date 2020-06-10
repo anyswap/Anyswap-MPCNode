@@ -24,15 +24,15 @@ import (
 )
 
 var (
-	RpcReqQueueCache = make(chan RpcReq, RpcMaxQueue)
+	RPCReqQueueCache = make(chan RPCReq, RPCMaxQueue)
 	//rpc-req //dcrm node
-	RpcMaxWorker = 5000
-	RpcMaxQueue  = 5000
-	RpcReqQueue  chan RpcReq
-	workers      []*RpcReqWorker
+	RPCMaxWorker = 5000
+	RPCMaxQueue  = 5000
+	RPCReqQueue  chan RPCReq
+	workers      []*RPCReqWorker
 )
 
-type RpcReq struct {
+type RPCReq struct {
 	rpcdata WorkReq
 	ch      chan interface{}
 }
@@ -40,10 +40,10 @@ type RpcReq struct {
 //rpc-req
 type ReqDispatcher struct {
 	// A pool of workers channels that are registered with the dispatcher
-	WorkerPool chan chan RpcReq
+	WorkerPool chan chan RPCReq
 }
 
-func GetWorkerId(w *RpcReqWorker) (int,error) {
+func GetWorkerId(w *RPCReqWorker) (int,error) {
     if w == nil {
 	return -1,fmt.Errorf("fail get worker id")
     }
@@ -51,9 +51,9 @@ func GetWorkerId(w *RpcReqWorker) (int,error) {
     return w.id,nil
 }
 
-type RpcReqWorker struct {
-	RpcReqWorkerPool chan chan RpcReq
-	RpcReqChannel    chan RpcReq
+type RPCReqWorker struct {
+	RPCReqWorkerPool chan chan RPCReq
+	RPCReqChannel    chan RPCReq
 	rpcquit          chan bool
 	id               int
 	groupid          string
@@ -218,21 +218,21 @@ type RpcReqWorker struct {
 
 //workers,RpcMaxWorker,RpcReqWorker,RpcReqQueue,RpcMaxQueue,ReqDispatcher
 func InitChan() {
-	workers = make([]*RpcReqWorker, RpcMaxWorker)
-	RpcReqQueue = make(chan RpcReq, RpcMaxQueue)
-	reqdispatcher := NewReqDispatcher(RpcMaxWorker)
+	workers = make([]*RPCReqWorker, RPCMaxWorker)
+	RPCReqQueue = make(chan RPCReq, RPCMaxQueue)
+	reqdispatcher := NewReqDispatcher(RPCMaxWorker)
 	reqdispatcher.Run()
 }
 
 func NewReqDispatcher(maxWorkers int) *ReqDispatcher {
-	pool := make(chan chan RpcReq, maxWorkers)
+	pool := make(chan chan RPCReq, maxWorkers)
 	return &ReqDispatcher{WorkerPool: pool}
 }
 
 func (d *ReqDispatcher) Run() {
 	// starting n number of workers
-	for i := 0; i < RpcMaxWorker; i++ {
-		worker := NewRpcReqWorker(d.WorkerPool)
+	for i := 0; i < RPCMaxWorker; i++ {
+		worker := NewRPCReqWorker(d.WorkerPool)
 		worker.id = i
 		workers[i] = worker
 		worker.Start()
@@ -244,9 +244,9 @@ func (d *ReqDispatcher) Run() {
 func (d *ReqDispatcher) dispatch() {
 	for {
 		select {
-		case req := <-RpcReqQueue:
+		case req := <-RPCReqQueue:
 			// a job request has been received
-			go func(req RpcReq) {
+			go func(req RPCReq) {
 				// try to obtain a worker job channel that is available.
 				// this will block until a worker is idle
 				reqChannel := <-d.WorkerPool
@@ -258,12 +258,12 @@ func (d *ReqDispatcher) dispatch() {
 	}
 }
 
-func FindWorker(sid string) (*RpcReqWorker, error) {
+func FindWorker(sid string) (*RPCReqWorker, error) {
 	if sid == "" {
 		return nil, fmt.Errorf("input worker id error.")
 	}
 
-	for i := 0; i < RpcMaxWorker; i++ {
+	for i := 0; i < RPCMaxWorker; i++ {
 		w := workers[i]
 
 		if w.sid == "" {
@@ -278,10 +278,10 @@ func FindWorker(sid string) (*RpcReqWorker, error) {
 	return nil, fmt.Errorf("no find worker.")
 }
 
-func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
-	return &RpcReqWorker{
-		RpcReqWorkerPool:          workerPool,
-		RpcReqChannel:             make(chan RpcReq),
+func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
+	return &RPCReqWorker{
+		RPCReqWorkerPool:          workerPool,
+		RPCReqChannel:             make(chan RPCReq),
 		rpcquit:                   make(chan bool),
 		retres:                    list.New(),
 		ch:                        make(chan interface{}),
@@ -415,7 +415,7 @@ func NewRpcReqWorker(workerPool chan chan RpcReq) *RpcReqWorker {
 	}
 }
 
-func (w *RpcReqWorker) Clear() {
+func (w *RPCReqWorker) Clear() {
 
     	//fmt.Printf("%v======================RpcReqWorker.Clear, w.id = %v, w.groupid = %v, key = %v ==========================\n",common.CurrentTime(),w.id,w.groupid,w.sid)
 	w.sid = ""
@@ -817,7 +817,7 @@ func (w *RpcReqWorker) Clear() {
 	}
 }
 
-func (w *RpcReqWorker) Clear2() {
+func (w *RPCReqWorker) Clear2() {
 	//fmt.Printf("%v================= RpcReqWorker.Clear2, w.id = %v ===================\n",common.CurrentTime(),w.id)
 	var next *list.Element
 
@@ -1211,14 +1211,14 @@ func (w *RpcReqWorker) Clear2() {
 	}
 }
 
-func (w *RpcReqWorker) Start() {
+func (w *RPCReqWorker) Start() {
 	go func() {
 
 		for {
 			// register the current worker into the worker queue.
-			w.RpcReqWorkerPool <- w.RpcReqChannel
+			w.RPCReqWorkerPool <- w.RPCReqChannel
 			select {
-			case req := <-w.RpcReqChannel:
+			case req := <-w.RPCReqChannel:
 				req.rpcdata.Run(w.id, req.ch)
 				w.Clear()
 
@@ -1230,7 +1230,7 @@ func (w *RpcReqWorker) Start() {
 	}()
 }
 
-func (w *RpcReqWorker) Stop() {
+func (w *RPCReqWorker) Stop() {
 	go func() {
 		w.rpcquit <- true
 	}()
@@ -1239,8 +1239,8 @@ func (w *RpcReqWorker) Stop() {
 func CommitRpcReq() {
 	for {
 		select {
-		case req := <-RpcReqQueueCache:
-			RpcReqQueue <- req
+		case req := <-RPCReqQueueCache:
+			RPCReqQueue <- req
 		}
 
 		time.Sleep(time.Duration(1000000000)) //na, 1 s = 10e9 na /////////!!!!!fix bug:if large sign at same time,it will very slowly!!!!!

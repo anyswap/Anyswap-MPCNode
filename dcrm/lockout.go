@@ -680,7 +680,7 @@ func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpk
 	return ""
 }
 
-func MapPrivKeyShare(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, privshare string) (*big.Int, *big.Int) {
+func MapPrivKeyShare(cointype string, w *RPCReqWorker, idSign sortableIDSSlice, privshare string) (*big.Int, *big.Int) {
 	if cointype == "" || w == nil || idSign == nil || len(idSign) == 0 || privshare == "" {
 		return nil, nil
 	}
@@ -720,7 +720,7 @@ func MapPrivKeyShare(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, 
 	return skU1, w1
 }
 
-func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice, ch chan interface{}) (*big.Int, *big.Int, *ec2.Commitment) {
+func DECDSASignRoundOne(msgprex string, w *RPCReqWorker, idSign sortableIDSSlice, ch chan interface{}) (*big.Int, *big.Int, *ec2.Commitment) {
 	if msgprex == "" || w == nil || len(idSign) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetC11Timeout)}
 		ch <- res
@@ -775,7 +775,7 @@ func DECDSASignRoundOne(msgprex string, w *RpcReqWorker, idSign sortableIDSSlice
 	return u1K, u1Gamma, commitU1GammaG
 }
 
-func DECDSASignPaillierEncrypt(cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, u1K *big.Int, ch chan interface{}) (map[string]*big.Int, map[string]*big.Int, map[string]*ec2.PublicKey) {
+func DECDSASignPaillierEncrypt(cointype string, save string, w *RPCReqWorker, idSign sortableIDSSlice, u1K *big.Int, ch chan interface{}) (map[string]*big.Int, map[string]*big.Int, map[string]*ec2.PublicKey) {
 	if cointype == "" || w == nil || len(idSign) == 0 || u1K == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -811,7 +811,7 @@ func DECDSASignPaillierEncrypt(cointype string, save string, w *RpcReqWorker, id
 	return ukc, ukc2, ukc3
 }
 
-func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, ch chan interface{}, u1K *big.Int, ukc2 map[string]*big.Int, ukc3 map[string]*ec2.PublicKey) (map[string]*ec2.MtAZK1Proof_nhh, map[string]*ec2.NtildeH1H2) {
+func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RPCReqWorker, idSign sortableIDSSlice, ch chan interface{}, u1K *big.Int, ukc2 map[string]*big.Int, ukc3 map[string]*ec2.PublicKey) (map[string]*ec2.MtAZK1Proof_nhh, map[string]*ec2.NtildeH1H2) {
 	if msgprex == "" || cointype == "" || save == "" || w == nil || len(idSign) == 0 || u1K == nil || len(ukc2) == 0 || len(ukc3) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -879,7 +879,7 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RpcReqW
 	return zk1proof, zkfactproof
 }
 
-func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, ch chan interface{}, ukc map[string]*big.Int) bool {
+func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RPCReqWorker, idSign sortableIDSSlice, ch chan interface{}, ukc map[string]*big.Int) bool {
 	if msgprex == "" || cointype == "" || save == "" || w == nil || len(idSign) == 0 || len(ukc) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -960,7 +960,7 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RpcRe
 	return true
 }
 
-func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, ch chan interface{}, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zk1proof map[string]*ec2.MtAZK1Proof_nhh, zkfactproof map[string]*ec2.NtildeH1H2) bool {
+func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *RPCReqWorker, idSign sortableIDSSlice, ch chan interface{}, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zk1proof map[string]*ec2.MtAZK1Proof_nhh, zkfactproof map[string]*ec2.NtildeH1H2) bool {
 	if msgprex == "" || cointype == "" || save == "" || w == nil || len(idSign) == 0 || len(ukc) == 0 || len(ukc3) == 0 || len(zk1proof) == 0 || len(zkfactproof) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1090,7 +1090,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 	return true
 }
 
-func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zkfactproof map[string]*ec2.NtildeH1H2, u1Gamma *big.Int, w1 *big.Int, betaU1Star []*big.Int, vU1Star []*big.Int, ch chan interface{}) (map[string]*big.Int, map[string]*ec2.MtAZK2Proof_nhh, map[string]*big.Int, map[string]*ec2.MtAZK3Proof_nhh, bool) {
+func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RPCReqWorker, idSign sortableIDSSlice, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zkfactproof map[string]*ec2.NtildeH1H2, u1Gamma *big.Int, w1 *big.Int, betaU1Star []*big.Int, vU1Star []*big.Int, ch chan interface{}) (map[string]*big.Int, map[string]*ec2.MtAZK2Proof_nhh, map[string]*big.Int, map[string]*ec2.MtAZK3Proof_nhh, bool) {
 	if msgprex == "" || cointype == "" || save == "" || w == nil || len(idSign) == 0 || len(ukc) == 0 || len(ukc3) == 0 || len(zkfactproof) == 0 || len(betaU1Star) == 0 || len(vU1Star) == 0 || u1Gamma == nil || w1 == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1245,7 +1245,7 @@ func DECDSASignRoundFour(msgprex string, cointype string, save string, w *RpcReq
 	return mkg, mkg_mtazk2, mkw, mkw_mtazk2, true
 }
 
-func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RpcReqWorker, idSign sortableIDSSlice, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zkfactproof map[string]*ec2.NtildeH1H2, mkg map[string]*big.Int, mkg_mtazk2 map[string]*ec2.MtAZK2Proof_nhh, mkw map[string]*big.Int, mkw_mtazk2 map[string]*ec2.MtAZK3Proof_nhh, ch chan interface{}) bool {
+func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RPCReqWorker, idSign sortableIDSSlice, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zkfactproof map[string]*ec2.NtildeH1H2, mkg map[string]*big.Int, mkg_mtazk2 map[string]*ec2.MtAZK2Proof_nhh, mkw map[string]*big.Int, mkw_mtazk2 map[string]*ec2.MtAZK3Proof_nhh, ch chan interface{}) bool {
 	if msgprex == "" || cointype == "" || save == "" || w == nil || len(idSign) == 0 || len(ukc) == 0 || len(ukc3) == 0 || len(zkfactproof) == 0 || len(mkg) == 0 || len(mkw) == 0 || len(mkg_mtazk2) == 0 || len(mkw_mtazk2) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1454,7 +1454,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *Rp
 	return true
 }
 
-func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, save string, ch chan interface{}) *ec2.PrivateKey {
+func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RPCReqWorker, save string, ch chan interface{}) *ec2.PrivateKey {
 	if cointype == "" || len(idSign) == 0 || w == nil || save == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1490,7 +1490,7 @@ func GetSelfPrivKey(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, s
 	return u1PaillierSk
 }
 
-func DecryptCkGamma(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, u1PaillierSk *ec2.PrivateKey, mkg map[string]*big.Int, ch chan interface{}) []*big.Int {
+func DecryptCkGamma(cointype string, idSign sortableIDSSlice, w *RPCReqWorker, u1PaillierSk *ec2.PrivateKey, mkg map[string]*big.Int, ch chan interface{}) []*big.Int {
 	if cointype == "" || len(idSign) == 0 || w == nil || u1PaillierSk == nil || len(mkg) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1516,7 +1516,7 @@ func DecryptCkGamma(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, u
 	return alpha1
 }
 
-func DecryptCkW(cointype string, idSign sortableIDSSlice, w *RpcReqWorker, u1PaillierSk *ec2.PrivateKey, mkw map[string]*big.Int, ch chan interface{}) []*big.Int {
+func DecryptCkW(cointype string, idSign sortableIDSSlice, w *RPCReqWorker, u1PaillierSk *ec2.PrivateKey, mkw map[string]*big.Int, ch chan interface{}) []*big.Int {
 	if cointype == "" || len(idSign) == 0 || w == nil || u1PaillierSk == nil || len(mkw) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1591,7 +1591,7 @@ func CalcSigma(uu1 []*big.Int, vU1 []*big.Int, ch chan interface{}, ThresHold in
 	return sigma1
 }
 
-func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSign sortableIDSSlice, w *RpcReqWorker, ch chan interface{}) *big.Int {
+func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSign sortableIDSSlice, w *RPCReqWorker, ch chan interface{}) *big.Int {
 	if cointype == "" || len(idSign) == 0 || w == nil || msgprex == "" || delta1 == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1741,7 +1741,7 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 	return deltaSum
 }
 
-func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Commitment, w *RpcReqWorker, ch chan interface{}) *ec2.ZkUProof {
+func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Commitment, w *RPCReqWorker, ch chan interface{}) *ec2.ZkUProof {
 	if msgprex == "" || u1Gamma == nil || commitU1GammaG == nil || w == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1791,7 +1791,7 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 	return u1GammaZKProof
 }
 
-func DECDSASignVerifyCommitment(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, commitU1GammaG *ec2.Commitment, u1GammaZKProof *ec2.ZkUProof, ch chan interface{}) map[string][]*big.Int {
+func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortableIDSSlice, commitU1GammaG *ec2.Commitment, u1GammaZKProof *ec2.ZkUProof, ch chan interface{}) map[string][]*big.Int {
 	if cointype == "" || w == nil || len(idSign) == 0 || commitU1GammaG == nil || u1GammaZKProof == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1956,7 +1956,7 @@ func DECDSASignVerifyCommitment(cointype string, w *RpcReqWorker, idSign sortabl
 	return ug
 }
 
-func Calc_r(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, ug map[string][]*big.Int, deltaSum *big.Int, ch chan interface{}) (*big.Int, *big.Int) {
+func Calc_r(cointype string, w *RPCReqWorker, idSign sortableIDSSlice, ug map[string][]*big.Int, deltaSum *big.Int, ch chan interface{}) (*big.Int, *big.Int) {
 	if cointype == "" || w == nil || len(idSign) == 0 || len(ug) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -2012,7 +2012,7 @@ func Calc_r(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, ug map[st
 	return r, deltaGammaGy
 }
 
-func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1 *big.Int, w *RpcReqWorker, ch chan interface{}) (*ec2.Commitment, []string, *big.Int, *big.Int) {
+func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1 *big.Int, w *RPCReqWorker, ch chan interface{}) (*ec2.Commitment, []string, *big.Int, *big.Int) {
 	if msgprex == "" || r == nil || deltaGammaGy == nil || us1 == nil || w == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -2066,7 +2066,7 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	return commitBigVAB1, commitbigvabs, rho1, l1
 }
 
-func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1 *big.Int, l1 *big.Int, rho1 *big.Int, w *RpcReqWorker, ch chan interface{}, commitBigVAB1 *ec2.Commitment) (*ec2.ZkABProof, []string) {
+func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1 *big.Int, l1 *big.Int, rho1 *big.Int, w *RPCReqWorker, ch chan interface{}, commitBigVAB1 *ec2.Commitment) (*ec2.ZkABProof, []string) {
 	if msgprex == "" || r == nil || deltaGammaGy == nil || us1 == nil || w == nil || l1 == nil || rho1 == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -2147,7 +2147,7 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	return u1zkABProof, zkabproofs
 }
 
-func DECDSASignVerifyBigVAB(cointype string, w *RpcReqWorker, commitbigvabs []string, zkabproofs []string, commitBigVAB1 *ec2.Commitment, u1zkABProof *ec2.ZkABProof, idSign sortableIDSSlice, r *big.Int, deltaGammaGy *big.Int, ch chan interface{}) (map[string]*ec2.Commitment, *big.Int, *big.Int) {
+func DECDSASignVerifyBigVAB(cointype string, w *RPCReqWorker, commitbigvabs []string, zkabproofs []string, commitBigVAB1 *ec2.Commitment, u1zkABProof *ec2.ZkABProof, idSign sortableIDSSlice, r *big.Int, deltaGammaGy *big.Int, ch chan interface{}) (map[string]*ec2.Commitment, *big.Int, *big.Int) {
 	if len(commitbigvabs) == 0 || len(zkabproofs) == 0 || commitBigVAB1 == nil || u1zkABProof == nil || cointype == "" || w == nil || len(idSign) == 0 || r == nil || deltaGammaGy == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error.")}
 		ch <- res
@@ -2282,7 +2282,7 @@ func DECDSASignVerifyBigVAB(cointype string, w *RpcReqWorker, commitbigvabs []st
 	return commitbigcom, BigVx, BigVy
 }
 
-func DECDSASignRoundNine(msgprex string, cointype string, w *RpcReqWorker, idSign sortableIDSSlice, mMtA *big.Int, r *big.Int, pkx *big.Int, pky *big.Int, BigVx *big.Int, BigVy *big.Int, rho1 *big.Int, commitbigcom map[string]*ec2.Commitment, l1 *big.Int, ch chan interface{}) ([]string, *ec2.Commitment) {
+func DECDSASignRoundNine(msgprex string, cointype string, w *RPCReqWorker, idSign sortableIDSSlice, mMtA *big.Int, r *big.Int, pkx *big.Int, pky *big.Int, BigVx *big.Int, BigVy *big.Int, rho1 *big.Int, commitbigcom map[string]*ec2.Commitment, l1 *big.Int, ch chan interface{}) ([]string, *ec2.Commitment) {
 	//if len(idSign) == 0 || len(commitbigcom) == 0 || msgprex == "" || w == nil || cointype == "" || mMtA == nil || r == nil || pkx == nil || pky == nil || l1 == nil || rho1 == nil {
 	//	res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error.")}
 	//	ch <- res
@@ -2386,7 +2386,7 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RpcReqWorker, idSig
 	return commitbiguts, commitBigUT1
 }
 
-func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RpcReqWorker, ch chan interface{}) []string {
+func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RPCReqWorker, ch chan interface{}) []string {
 	if msgprex == "" || commitBigUT1 == nil || w == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error.")}
 		ch <- res
@@ -2448,7 +2448,7 @@ func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RpcReqW
 	return commitbigutd11s
 }
 
-func DECDSASignVerifyBigUTCommitment(cointype string, commitbiguts []string, commitbigutd11s []string, commitBigUT1 *ec2.Commitment, w *RpcReqWorker, idSign sortableIDSSlice, ch chan interface{}, commitbigcom map[string]*ec2.Commitment) bool {
+func DECDSASignVerifyBigUTCommitment(cointype string, commitbiguts []string, commitbigutd11s []string, commitBigUT1 *ec2.Commitment, w *RPCReqWorker, idSign sortableIDSSlice, ch chan interface{}, commitbigcom map[string]*ec2.Commitment) bool {
 	if cointype == "" || len(commitbiguts) == 0 || len(commitbigutd11s) == 0 || commitBigUT1 == nil || w == nil || len(idSign) == 0 || commitbigcom == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error.")}
 		ch <- res
@@ -2545,7 +2545,7 @@ func DECDSASignVerifyBigUTCommitment(cointype string, commitbiguts []string, com
 	return true
 }
 
-func DECDSASignRoundEleven(msgprex string, cointype string, w *RpcReqWorker, idSign sortableIDSSlice, ch chan interface{}, us1 *big.Int) map[string]*big.Int {
+func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idSign sortableIDSSlice, ch chan interface{}, us1 *big.Int) map[string]*big.Int {
 	if cointype == "" || msgprex == "" || w == nil || len(idSign) == 0 || us1 == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error.")}
 		ch <- res
@@ -2636,7 +2636,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RpcReqWorker, idS
 	return ss1s
 }
 
-func Calc_s(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, ss1s map[string]*big.Int, ch chan interface{}) *big.Int {
+func Calc_s(cointype string, w *RPCReqWorker, idSign sortableIDSSlice, ss1s map[string]*big.Int, ch chan interface{}) *big.Int {
 	if cointype == "" || len(idSign) == 0 || w == nil || len(ss1s) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error.")}
 		ch <- res
@@ -2691,7 +2691,7 @@ func Calc_s(cointype string, w *RpcReqWorker, idSign sortableIDSSlice, ss1s map[
 	return s
 }
 
-func GetPaillierPk2(cointype string,w *RpcReqWorker,uid *big.Int) *ec2.PublicKey {
+func GetPaillierPk2(cointype string,w *RPCReqWorker,uid *big.Int) *ec2.PublicKey {
 	if cointype == "" || w == nil || uid == nil {
 		return nil
 	}
@@ -2753,7 +2753,7 @@ func GetPaillierPk2(cointype string,w *RpcReqWorker,uid *big.Int) *ec2.PublicKey
 	return nil
 }
 
-func GetRealByUid(cointype string,w *RpcReqWorker,uid *big.Int) int {
+func GetRealByUid(cointype string,w *RPCReqWorker,uid *big.Int) int {
     if cointype == "ED25519" || cointype == "ECDSA" {
 	return GetRealByUid2(cointype,w,uid)
     }
@@ -2783,7 +2783,7 @@ func GetRealByUid(cointype string,w *RpcReqWorker,uid *big.Int) int {
     return -1
 }
 
-func GetRealByUid2(keytype string,w *RpcReqWorker,uid *big.Int) int {
+func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
     if keytype == "" || w == nil || w.DcrmFrom == "" || uid == nil {
 	return -1
     }
@@ -3286,7 +3286,7 @@ func Sign_ed(msgprex string, save string, sku1 *big.Int, message string, cointyp
 	}()
 
 	logs.Debug("===================Sign_ed====================")
-	if id < 0 || id >= len(workers) || id >= RpcMaxWorker {
+	if id < 0 || id >= len(workers) || id >= RPCMaxWorker {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id fail", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
 		return ""

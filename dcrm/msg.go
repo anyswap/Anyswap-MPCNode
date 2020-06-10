@@ -145,8 +145,8 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 
 	v := RecvMsg{msg: s, sender: enode}
 	rch := make(chan interface{}, 1)
-	req := RpcReq{rpcdata: &v, ch: rch}
-	RpcReqQueue <- req
+	req := RPCReq{rpcdata: &v, ch: rch}
+	RPCReqQueue <- req
 	//fmt.Printf("%v =============DcrmCall, finish send req to Queue,msg hash = %v,key = %v =======================\n", common.CurrentTime(), test, rr.Nonce)
 	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, rch)
 	//fmt.Printf("%v =============DcrmCall, ret = %v,err = %v,msg hash = %v,key = %v =======================\n", common.CurrentTime(), chret, cherr, test, rr.Nonce)
@@ -193,7 +193,7 @@ func DcrmCallRet(msg interface{}, enode string) {
 	//msgtype := ss[2]
 	//fmt.Printf("%v==============DcrmCallRet,ret = %v ===============\n",common.CurrentTime(),ss[3])
 	workid, err := strconv.Atoi(ss[1])
-	if err != nil || workid < 0 || workid >= RpcMaxWorker {
+	if err != nil || workid < 0 || workid >= RPCMaxWorker {
 		return
 	}
 
@@ -275,7 +275,7 @@ func DcrmCallRet(msg interface{}, enode string) {
 }
 
 func GetGroupRes(wid int) RpcDcrmRes {
-	if wid < 0 || wid >= RpcMaxWorker {
+	if wid < 0 || wid >= RPCMaxWorker {
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get work id fail", Err: GetRetErr(ErrGetWorkerIdError)}
 		return res2
 	}
@@ -514,8 +514,8 @@ func SetUpMsgList(msg string, enode string) {
 	v := RecvMsg{msg: msg, sender: enode}
 	//rpc-req
 	rch := make(chan interface{}, 1)
-	req := RpcReq{rpcdata: &v, ch: rch}
-	RpcReqQueue <- req
+	req := RPCReq{rpcdata: &v, ch: rch}
+	RPCReqQueue <- req
 }
 
 //==================================================================
@@ -538,7 +538,7 @@ type SendMsg struct {
 }
 
 func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RpcMaxWorker { //TODO
+	if workid < 0 || workid >= RPCMaxWorker { //TODO
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id fail", Err: fmt.Errorf("no find worker.")}
 		ch <- res2
 		return false

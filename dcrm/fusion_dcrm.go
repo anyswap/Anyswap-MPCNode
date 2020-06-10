@@ -3364,7 +3364,7 @@ type ReqAddrSendMsgToDcrm struct {
 }
 
 func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RpcMaxWorker {
+	if workid < 0 || workid >= RPCMaxWorker {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no worker id", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
 		return false
@@ -3493,7 +3493,7 @@ type LockOutSendMsgToDcrm struct {
 }
 
 func (self *LockOutSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RpcMaxWorker {
+	if workid < 0 || workid >= RPCMaxWorker {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id error", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
 		return false
@@ -3595,7 +3595,7 @@ type ReShareSendMsgToDcrm struct {
 }
 
 func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RpcMaxWorker {
+	if workid < 0 || workid >= RPCMaxWorker {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id error", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
 		return false
@@ -3697,7 +3697,7 @@ type SignSendMsgToDcrm struct {
 }
 
 func (self *SignSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RpcMaxWorker {
+	if workid < 0 || workid >= RPCMaxWorker {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id error", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
 		return false
@@ -3984,9 +3984,9 @@ type NodeReply struct {
 func SendReqDcrmAddr(acc string, nonce string, txdata string, key string) (string, string, error) {
 	v := ReqAddrSendMsgToDcrm{Account: acc, Nonce: nonce, TxData: txdata, Key: key}
 	rch := make(chan interface{}, 1)
-	req := RpcReq{rpcdata: &v, ch: rch}
+	req := RPCReq{rpcdata: &v, ch: rch}
 
-	RpcReqQueueCache <- req
+	RPCReqQueueCache <- req
 	chret, tip, cherr := GetChannelValue(600, req.ch)
 
 	if cherr != nil {
@@ -3999,9 +3999,9 @@ func SendReqDcrmAddr(acc string, nonce string, txdata string, key string) (strin
 func SendLockOut(acc string, nonce string, txdata string,key string) (string, string, error) {
 	v := LockOutSendMsgToDcrm{Account: acc, Nonce: nonce, TxData:txdata, Key: key}
 	rch := make(chan interface{}, 1)
-	req := RpcReq{rpcdata: &v, ch: rch}
+	req := RPCReq{rpcdata: &v, ch: rch}
 
-	RpcReqQueueCache <- req
+	RPCReqQueueCache <- req
 	chret, tip, cherr := GetChannelValue(600, req.ch)
 
 	if cherr != nil {
@@ -4014,9 +4014,9 @@ func SendLockOut(acc string, nonce string, txdata string,key string) (string, st
 func SendReShare(acc string, nonce string, txdata string,key string) (string, string, error) {
 	v := ReShareSendMsgToDcrm{Account: acc, Nonce: nonce, TxData:txdata, Key: key}
 	rch := make(chan interface{}, 1)
-	req := RpcReq{rpcdata: &v, ch: rch}
+	req := RPCReq{rpcdata: &v, ch: rch}
 
-	RpcReqQueueCache <- req
+	RPCReqQueueCache <- req
 	chret, tip, cherr := GetChannelValue(600, req.ch)
 
 	if cherr != nil {
@@ -4029,9 +4029,9 @@ func SendReShare(acc string, nonce string, txdata string,key string) (string, st
 func SendSign(acc string, nonce string, txdata string, key string) (string, string, error) {
     v := SignSendMsgToDcrm{Account: acc, Nonce: nonce, TxData: txdata, Key: key}
 	rch := make(chan interface{}, 1)
-	req := RpcReq{rpcdata: &v, ch: rch}
+	req := RPCReq{rpcdata: &v, ch: rch}
 
-	RpcReqQueueCache <- req
+	RPCReqQueueCache <- req
 	chret, tip, cherr := GetChannelValue(600, req.ch)
 
 	if cherr != nil {

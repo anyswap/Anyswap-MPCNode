@@ -489,7 +489,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 //ed
 //msgprex = hash
 func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string) bool {
-	if id < 0 || id >= RpcMaxWorker || id >= len(workers) {
+	if id < 0 || id >= RPCMaxWorker || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker id", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
 		return false
@@ -1256,7 +1256,7 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
     return suss
 }
 
-func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
+func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
 	if w == nil || msgprex == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res
@@ -1437,7 +1437,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RpcReqWorker) 
 	return u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk, true
 }
 
-func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, w *RpcReqWorker, u1Poly *ec2.PolyStruct2, ids sortableIDSSlice) ([]*ec2.ShareStruct2, bool) {
+func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1Poly *ec2.PolyStruct2, ids sortableIDSSlice) ([]*ec2.ShareStruct2, bool) {
 	if w == nil || cointype == "" || msgprex == "" || u1Poly == nil || len(ids) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1520,7 +1520,7 @@ func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, 
 	return u1Shares, true
 }
 
-func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}, w *RpcReqWorker, u1PolyG *ec2.PolyGStruct2, commitU1G *ec2.Commitment, ids sortableIDSSlice) bool {
+func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1PolyG *ec2.PolyGStruct2, commitU1G *ec2.Commitment, ids sortableIDSSlice) bool {
 	if w == nil || cointype == "" || msgprex == "" || u1PolyG == nil || len(ids) == 0 || commitU1G == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1673,7 +1673,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	return true
 }
 
-func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interface{}, w *RpcReqWorker, u1PolyG *ec2.PolyGStruct2, u1Shares []*ec2.ShareStruct2, ids sortableIDSSlice) (map[string]*ec2.ShareStruct2, []string, bool) {
+func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1PolyG *ec2.PolyGStruct2, u1Shares []*ec2.ShareStruct2, ids sortableIDSSlice) (map[string]*ec2.ShareStruct2, []string, bool) {
 	if w == nil || cointype == "" || msgprex == "" || u1PolyG == nil || len(ids) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1826,7 +1826,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	return sstruct, ds, true
 }
 
-func DECDSAGenKeyCalcPubKey(msgprex string, cointype string, ch chan interface{}, w *RpcReqWorker, udecom map[string]*ec2.Commitment, ids sortableIDSSlice) (map[string][]*big.Int, bool) {
+func DECDSAGenKeyCalcPubKey(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, udecom map[string]*ec2.Commitment, ids sortableIDSSlice) (map[string][]*big.Int, bool) {
 	if w == nil || cointype == "" || msgprex == "" || len(udecom) == 0 || len(ids) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1868,7 +1868,7 @@ func DECDSAGenKeyCalcPubKey(msgprex string, cointype string, ch chan interface{}
 	return ug, true
 }
 
-func DECDSAGenKeyCalcPrivKey(msgprex string, cointype string, ch chan interface{}, w *RpcReqWorker, sstruct map[string]*ec2.ShareStruct2, ids sortableIDSSlice) (*big.Int, bool) {
+func DECDSAGenKeyCalcPrivKey(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, sstruct map[string]*ec2.ShareStruct2, ids sortableIDSSlice) (*big.Int, bool) {
 	if w == nil || cointype == "" || msgprex == "" || len(sstruct) == 0 || len(ids) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1898,7 +1898,7 @@ func DECDSAGenKeyCalcPrivKey(msgprex string, cointype string, ch chan interface{
 	return skU1, true
 }
 
-func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan interface{}, w *RpcReqWorker, ds []string, commitU1G *ec2.Commitment, ids sortableIDSSlice) ([]string, map[string]*ec2.Commitment, bool) {
+func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, ds []string, commitU1G *ec2.Commitment, ids sortableIDSSlice) ([]string, map[string]*ec2.Commitment, bool) {
 	if w == nil || cointype == "" || msgprex == "" || len(ds) == 0 || len(ids) == 0 || commitU1G == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1987,7 +1987,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 	return cs, udecom, true
 }
 
-func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker) (*ec2.NtildeH1H2, bool) {
+func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker) (*ec2.NtildeH1H2, bool) {
 	if w == nil || msgprex == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -2131,7 +2131,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RpcReqWorker)
 	return u1NtildeH1H2, true
 }
 
-func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker, u1 *big.Int) bool {
+func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker, u1 *big.Int) bool {
 	if w == nil || msgprex == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -2266,7 +2266,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RpcReqWorker,
 	return true
 }
 
-func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{}, w *RpcReqWorker, ids sortableIDSSlice, ug map[string][]*big.Int) bool {
+func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, ids sortableIDSSlice, ug map[string][]*big.Int) bool {
 	if w == nil || msgprex == "" || cointype == "" || len(ids) == 0 || len(ug) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -2314,7 +2314,7 @@ func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{},
 	return true
 }
 
-func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RpcReqWorker, ch chan interface{}, skU1 *big.Int, u1PaillierPk *ec2.PublicKey, u1PaillierSk *ec2.PrivateKey, cs []string, u1NtildeH1H2 *ec2.NtildeH1H2) bool {
+func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RPCReqWorker, ch chan interface{}, skU1 *big.Int, u1PaillierPk *ec2.PublicKey, u1PaillierSk *ec2.PrivateKey, cs []string, u1NtildeH1H2 *ec2.NtildeH1H2) bool {
 	if cointype == "" || len(ids) == 0 || w == nil || skU1 == nil || u1PaillierPk == nil || u1PaillierSk == nil || len(cs) == 0 || u1NtildeH1H2 == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -2471,7 +2471,7 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 	fmt.Println(computeNewSK)*/
 	////////////////////
 
-	if id < 0 || id >= RpcMaxWorker || id >= len(workers) {
+	if id < 0 || id >= RPCMaxWorker || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetWorkerIdError)}
 		ch <- res
 		return false

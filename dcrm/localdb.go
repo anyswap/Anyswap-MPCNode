@@ -106,7 +106,8 @@ func GetSkU1FromLocalDb(key string) []byte {
 	    sk,err := DecryptMsg(string(da))
 	    if err != nil {
 		lock.Unlock()
-		return nil
+		return da //TODO ,tmp code 
+		//return nil
 	    }
 
 	    lock.Unlock()
@@ -116,7 +117,8 @@ func GetSkU1FromLocalDb(key string) []byte {
 	sk,err := DecryptMsg(string(da))
 	if err != nil {
 	    lock.Unlock()
-	    return nil
+	    return da //TODO ,tmp code 
+	    //return nil
 	}
 
 	lock.Unlock()

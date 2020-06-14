@@ -108,7 +108,7 @@ func main() {
 			fmt.Printf("createContract failed. %v\n", err)
 		}
 	default:
-		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE/CREATECONTRACT\n", *cmd)
+		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT\n", *cmd)
 	}
 }
 
@@ -151,6 +151,7 @@ func init() {
 	toAccDef := accounts.Account{
 		Address: common.HexToAddress(DCRM_TO_ADDR),
 	}
+	fmt.Println("To address: = ", toAccDef.Address.String())
 	var err error
 	// decrypt private key
 	var keyjson []byte

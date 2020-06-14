@@ -116,7 +116,7 @@ func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
 	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	cmd = flag.String("cmd", "", "EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE/CREATECONTRACT")
+	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
@@ -125,9 +125,9 @@ func init() {
 	coin = flag.String("coin", "FSN", "Coin type")
 	fromAddr = flag.String("from", "", "From address")
 	memo = flag.String("memo", "smpcwallet.com", "Memo")
-	accept = flag.String("accept", "AGREE", "AGREE/DISAGREE")
+	accept = flag.String("accept", "AGREE", "AGREE|DISAGREE")
 	key = flag.String("key", "", "Accept key")
-	keyType = flag.String("keytype", "ECDSA", "ECDSA/ED25519")
+	keyType = flag.String("keytype", "ECDSA", "ECDSA|ED25519")
 	pubkey = flag.String("pubkey", "", "Dcrm pubkey")
 	msghash = flag.String("msghash", "", "msghash=Keccak256(unsignTX)")
 	pkey := flag.String("pkey", "", "Private key")
@@ -151,7 +151,6 @@ func init() {
 	toAccDef := accounts.Account{
 		Address: common.HexToAddress(DCRM_TO_ADDR),
 	}
-	fmt.Println("To address: = ", toAccDef.Address.String())
 	var err error
 	// decrypt private key
 	var keyjson []byte
@@ -182,7 +181,6 @@ func init() {
 	signer = types.NewEIP155Signer(chainID)
 	// init RPC client
 	client = ethrpc.New(*url)
-	fmt.Printf("HTTP-RPC client connected\n")
 }
 
 func enodeSig() {

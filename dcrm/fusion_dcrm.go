@@ -1920,7 +1920,7 @@ func Sign(raw string) (string, string, error) {
 	timestamp := sig.TimeStamp
 	Nonce := tx.Nonce()
 
-	if from.Hex() == "" || pubkey == "" || hash == "" || keytype == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
+	if from.Hex() == "" || pubkey == "" || hash == nil || keytype == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
 		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error from raw data.")
 	}
 
@@ -1966,12 +1966,30 @@ func Sign(raw string) (string, string, error) {
 	//
 
 	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
-	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + hash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
+	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + get_sign_hash(hash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	data := SignData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
 	SignCh <- data
 
 	//fmt.Printf("%v =================== Sign, return key = %v ===========================\n", common.CurrentTime(),key)
 	return key,"",nil
+}
+
+func get_sign_hash(hash []string,keytype string) string {
+    var ids sortableIDSSlice
+    for _, v := range hash {
+	    uid := DoubleHash2(v, keytype)
+	    ids = append(ids, uid)
+    }
+    sort.Sort(ids)
+
+    ret := ""
+    for _,v := range ids {
+	ret += fmt.Sprintf("%v",v)
+	ret += ":"
+    }
+
+    ret += "NULL"
+    return ret
 }
 
 func RecivSign() {
@@ -2850,8 +2868,8 @@ type SignCurNodeInfo struct {
 	Key       string
 	Account   string
 	PubKey   string
-	MsgHash   string
-	MsgContext   string
+	MsgHash   []string
+	MsgContext   []string
 	KeyType   string
 	GroupId   string
 	Nonce     string
@@ -3085,8 +3103,8 @@ type TxDataReShare struct {
 type TxDataSign struct {
     TxType string
     PubKey string
-    MsgHash string
-    MsgContext string
+    MsgHash []string
+    MsgContext []string
     Keytype string
     GroupId string
     ThresHold string

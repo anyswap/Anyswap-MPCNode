@@ -93,7 +93,7 @@ func SetLockOutNonce(account string,nonce string) (string, error) {
 	return "", nil
 }
 
-func sign(wsid string,account string,pubkey string,unsignhash string,keytype string,nonce string,mode string,ch chan interface{}) {
+func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,ch chan interface{}) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	//exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
 	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
@@ -144,7 +144,7 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 	}
 	//
 
-	var rsv string
+	var result string
 	var cherrtmp error
 	rch := make(chan interface{}, 1)
 	if keytype == "ED25519" {
@@ -156,7 +156,7 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 		    return
 	    }
 
-	    rsv = ret
+	    result = ret
 	    cherrtmp = cherr
 	} else {
 	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,rch)
@@ -167,19 +167,28 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 		    return
 	    }
 
-	    rsv = ret
+	    result = ret
 	    cherrtmp = cherr
 	}
 
-	//bug
-	rets := []rune(rsv)
-	if len(rets) != 130 {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:wrong rsv size", Err: GetRetErr(ErrDcrmSigWrongSize)}
-		ch <- res
-		return
+	tmps := strings.Split(result, ":")
+	for _,rsv := range tmps {
+
+	    if rsv == "NULL" {
+		continue
+	    }
+
+	    //bug
+	    rets := []rune(rsv)
+	    if len(rets) != 130 {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:wrong rsv size", Err: GetRetErr(ErrDcrmSigWrongSize)}
+		    ch <- res
+		    return
+	    }
+
 	}
 
-	if rsv != "" {
+	if result != "" {
 		w, err := FindWorker(wsid)
 		if w == nil || err != nil {
 			fmt.Printf("%v ==========sign,no find worker,nonce = %v,err = %v================\n", common.CurrentTime(), nonce, err)
@@ -195,13 +204,13 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 		enode := strings.Join(mp, "-")
 		s0 := "SendSignRes"
 		s1 := "Success"
-		s2 := rsv
+		s2 := result
 		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 		SendMsgToDcrmGroup(ss, w.groupid)
 		///////////////
 
 		//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
-		tip,reply := AcceptSign("",account,pubkey,unsignhash,keytype,w.groupid,nonce,w.limitnum,mode,"true", "true", "Success", rsv,"","",nil,w.id)
+		tip,reply := AcceptSign("",account,pubkey,unsignhash,keytype,w.groupid,nonce,w.limitnum,mode,"true", "true", "Success", result,"","",nil,w.id)
 		if reply != nil {
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update sign status error.")}
 			ch <- res
@@ -209,7 +218,7 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 		}
 
 		fmt.Printf("%v ================sign,the terminal sign res is success. nonce =%v ==================\n", common.CurrentTime(), nonce)
-		res := RpcDcrmRes{Ret: rsv, Tip: tip, Err: err}
+		res := RpcDcrmRes{Ret: result, Tip: tip, Err: err}
 		ch <- res
 		return
 	}
@@ -225,12 +234,17 @@ func sign(wsid string,account string,pubkey string,unsignhash string,keytype str
 	return
 }
 
-func sign_ec(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
+func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
 
 	/////////////
-	txhashs := []rune(txhash)
-	if string(txhashs[0:2]) == "0x" {
-		txhash = string(txhashs[2:])
+    	tmp := make([]string,0)
+	for _,v := range txhash {
+	    txhashs := []rune(v)
+	    if string(txhashs[0:2]) == "0x" {
+		    tmp = append(tmp,string(txhashs[2:]))
+	    } else {
+		tmp = append(tmp,string(txhashs))
+	    }
 	}
 
 	w, err := FindWorker(msgprex)
@@ -246,30 +260,39 @@ func sign_ec(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpkx 
 
 	fmt.Println("===================!!!Start!!!====================")
 
-	///////
-	var ch1 = make(chan interface{}, 1)
+	var result string
 	var bak_sig string
-	for i:=0;i < recalc_times;i++ {
-	    //fmt.Printf("%v===============sign_ec, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
-	    if len(ch1) != 0 {
-		<-ch1
-	    }
+	for _,v := range tmp {
+	    var ch1 = make(chan interface{}, 1)
+	    for i:=0;i < recalc_times;i++ {
+		//fmt.Printf("%v===============sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
+		if len(ch1) != 0 {
+		    <-ch1
+		}
 
-	    w := workers[id]
-	    w.Clear2()
-	    //fmt.Printf("%v=====================sign_ec, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
-	    bak_sig = Sign_ec2(msgprex, save, sku1, txhash, keytype, dcrmpkx, dcrmpky, ch1, id)
-	    ret, _, cherr := GetChannelValue(ch_t, ch1)
-	    //fmt.Printf("%v=====================sign_ec,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
-	    if ret != "" && cherr == nil {
-		//fmt.Printf("%v=====================sign_ec,success sign, ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
-		    res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
-		    ch <- res
-		    break
+		w := workers[id]
+		w.Clear2()
+		bak_sig = Sign_ec2(msgprex, save, sku1, v, keytype, dcrmpkx, dcrmpky, ch1, id)
+		ret, _, cherr := GetChannelValue(ch_t, ch1)
+		if ret != "" && cherr == nil {
+		    result += ret
+		    result += ":"
+			//res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+			//ch <- res
+			break
+		}
+		
+		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	    }
-	    
-	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
+
+	result += "NULL"
+	tmps := strings.Split(result, ":")
+	if len(tmps) == (len(tmp) + 1) {
+	    res := RpcDcrmRes{Ret: result, Tip: "", Err: nil}
+	    ch <- res
+	}
+
 	return bak_sig
 }
 
@@ -3229,11 +3252,16 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, sku1 *big.Int,pk s
 	return bak_sig
 }
 
-func sign_ed(msgprex string,txhash string,save string, sku1 *big.Int, pk string, keytype string, ch chan interface{}) string {
+func sign_ed(msgprex string,txhash []string,save string, sku1 *big.Int, pk string, keytype string, ch chan interface{}) string {
 
-	txhashs := []rune(txhash)
-	if string(txhashs[0:2]) == "0x" {
-		txhash = string(txhashs[2:])
+    	tmp := make([]string,0)
+	for _,v := range txhash {
+	    txhashs := []rune(v)
+	    if string(txhashs[0:2]) == "0x" {
+		    tmp = append(tmp,string(txhashs[2:]))
+	    } else {
+		tmp = append(tmp,string(txhashs))
+	    }
 	}
 
 	w, err := FindWorker(msgprex)
@@ -3249,29 +3277,39 @@ func sign_ed(msgprex string,txhash string,save string, sku1 *big.Int, pk string,
 
 	logs.Debug("===================!!!Start!!!====================")
 
-	var ch1 = make(chan interface{}, 1)
+	var result string
 	var bak_sig string
-	for i:=0;i < recalc_times;i++ {
-	    //fmt.Printf("%v===============sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
-	    if len(ch1) != 0 {
-		<-ch1
-	    }
+	for _,v := range tmp {
+	    var ch1 = make(chan interface{}, 1)
+	    for i:=0;i < recalc_times;i++ {
+		//fmt.Printf("%v===============sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
+		if len(ch1) != 0 {
+		    <-ch1
+		}
 
-	    w := workers[id]
-	    w.Clear2()
-	    //fmt.Printf("%v=====================sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
-	    bak_sig = Sign_ed(msgprex, save, sku1, txhash, keytype, pk, ch1, id)
-	    ret, _, cherr := GetChannelValue(ch_t, ch1)
-	    //fmt.Printf("%v=====================sign_ed,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
-	    if ret != "" && cherr == nil {
-		//fmt.Printf("%v=====================sign_ed,success sign, ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
-		    res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
-		    ch <- res
-		    break
+		w := workers[id]
+		w.Clear2()
+		bak_sig = Sign_ed(msgprex, save, sku1, v, keytype, pk, ch1, id)
+		ret, _, cherr := GetChannelValue(ch_t, ch1)
+		if ret != "" && cherr == nil {
+		    result += ret
+		    result += ":"
+			//res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+			//ch <- res
+			break
+		}
+		
+		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	    }
-	    
-	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
+
+	result += "NULL"
+	tmps := strings.Split(result, ":")
+	if len(tmps) == (len(tmp) + 1) {
+	    res := RpcDcrmRes{Ret: result, Tip: "", Err: nil}
+	    ch <- res
+	}
+
 	return bak_sig
 }
 

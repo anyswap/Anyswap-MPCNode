@@ -267,8 +267,8 @@ type TxDataAcceptSign struct {
     TimeStamp string
 }
 
-func AcceptSign(initiator string,account string, pubkey string,msghash string,keytype string,groupid string, nonce string,threshold string,mode string, deal string, accept string, status string, rsv string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + msghash + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
+func AcceptSign(initiator string,account string, pubkey string,msghash []string,keytype string,groupid string, nonce string,threshold string,mode string, deal string, accept string, status string, rsv string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + get_sign_hash(msghash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if exsit == false {
@@ -457,8 +457,8 @@ type AcceptSignData struct {
 	GroupId   string
 	Nonce     string
 	PubKey  string
-	MsgHash    string
-	MsgContext    string
+	MsgHash    []string
+	MsgContext    []string
 	Keytype  string
 	LimitNum  string
 	Mode      string
@@ -482,7 +482,7 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 	}
 
 	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Nonce + ":" + ac.PubKey + ":" + ac.MsgHash + ":" + ac.Keytype + ":" + ac.GroupId + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Nonce + ":" + ac.PubKey + ":" + get_sign_hash(ac.MsgHash,ac.Keytype) + ":" + ac.Keytype + ":" + ac.GroupId + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
 
 	alos, err := Encode2(ac)
 	if err != nil {

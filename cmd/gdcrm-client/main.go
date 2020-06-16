@@ -47,7 +47,7 @@ var (
 	keyfile  *string
 	passwd   *string
 	url      *string
-	test     *string
+	cmd      *string
 	gid      *string
 	ts       *string
 	mode     *string
@@ -72,7 +72,7 @@ var (
 )
 
 func main() {
-	switch *test {
+	switch *cmd {
 	case "EnodeSig":
 		// get enode after sign
 		enodeSig()
@@ -108,7 +108,7 @@ func main() {
 			fmt.Printf("createContract failed. %v\n", err)
 		}
 	default:
-		fmt.Printf("\ntest('%v') not support\nSupport test: EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE/CREATECONTRACT\n", *test)
+		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT\n", *cmd)
 	}
 }
 
@@ -116,7 +116,7 @@ func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
 	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	test = flag.String("test", "", "EnodeSig/SetGroup/REQDCRMADDR/ACCEPTREQADDR/LOCKOUT/ACCEPTLOCKOUT/SIGN/ACCEPTSIGN/RESHARE/ACCEPTRESHARE/CREATECONTRACT")
+	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
@@ -125,9 +125,9 @@ func init() {
 	coin = flag.String("coin", "FSN", "Coin type")
 	fromAddr = flag.String("from", "", "From address")
 	memo = flag.String("memo", "smpcwallet.com", "Memo")
-	accept = flag.String("accept", "AGREE", "AGREE/DISAGREE")
+	accept = flag.String("accept", "AGREE", "AGREE|DISAGREE")
 	key = flag.String("key", "", "Accept key")
-	keyType = flag.String("keytype", "ECDSA", "ECDSA/ED25519")
+	keyType = flag.String("keytype", "ECDSA", "ECDSA|ED25519")
 	pubkey = flag.String("pubkey", "", "Dcrm pubkey")
 	msghash = flag.String("msghash", "", "msghash=Keccak256(unsignTX)")
 	pkey := flag.String("pkey", "", "Private key")
@@ -182,7 +182,6 @@ func init() {
 	signer = types.NewEIP155Signer(chainID)
 	// init RPC client
 	client = ethrpc.New(*url)
-	fmt.Printf("HTTP-RPC client connected\n")
 }
 
 func enodeSig() {
@@ -272,7 +271,7 @@ func reqDcrmAddr() {
 	// build tx data
 	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 	txdata := reqAddrData{
-		TxType:    *test,
+		TxType:    *cmd,
 		GroupID:   *gid,
 		ThresHold: *ts,
 		Mode:      *mode,
@@ -361,7 +360,7 @@ func acceptReqAddr() {
 
 		timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 		data := acceptData{
-			TxType:    *test,
+			TxType:    *cmd,
 			Key:       keyStr,
 			Accept:    *accept,
 			TimeStamp: timestamp,
@@ -404,7 +403,7 @@ func lockOut() {
 	// build tx data
 	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 	txdata := lockoutData{
-		TxType:    *test,
+		TxType:    *cmd,
 		DcrmAddr:  *fromAddr,
 		DcrmTo:    *toAddr,
 		Value:     *value,
@@ -484,7 +483,7 @@ func acceptLockOut() {
 		}
 		timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 		data := acceptData{
-			TxType:    *test,
+			TxType:    *cmd,
 			Key:       keyStr,
 			Accept:    *accept,
 			TimeStamp: timestamp,
@@ -624,7 +623,7 @@ func acceptSign() {
 		}
 		timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 		data := acceptData{
-			TxType:    *test,
+			TxType:    *cmd,
 			Key:       keyStr,
 			Accept:    *accept,
 			TimeStamp: timestamp,
@@ -661,7 +660,7 @@ func reshare() {
 	sigs = sigs + enodesSig[len(enodesSig)-1]
 	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 	txdata := reshareData{
-		TxType:    *test,
+		TxType:    *cmd,
 		PubKey:    *pubkey,
 		GroupID:   *gid,
 		TSGroupID: *tsgid,
@@ -715,7 +714,7 @@ func acceptReshare() {
 		}
 		timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 		data := acceptData{
-			TxType:    *test,
+			TxType:    *cmd,
 			Key:       keyStr,
 			Accept:    *accept,
 			TimeStamp: timestamp,

@@ -66,6 +66,8 @@ var (
 
 	enodesSig  arrayFlags
 	nodes      arrayFlags
+	hashs      arrayFlags
+	contexts      arrayFlags
 	keyWrapper *keystore.Key
 	signer     types.EIP155Signer
 	client     *ethrpc.EthRPC
@@ -129,13 +131,15 @@ func init() {
 	key = flag.String("key", "", "Accept key")
 	keyType = flag.String("keytype", "ECDSA", "ECDSA|ED25519")
 	pubkey = flag.String("pubkey", "", "Dcrm pubkey")
-	msghash = flag.String("msghash", "", "msghash=Keccak256(unsignTX)")
+	//msghash = flag.String("msghash", "", "msghash=Keccak256(unsignTX)")
 	pkey := flag.String("pkey", "", "Private key")
 	enode = flag.String("enode", "", "enode")
 	tsgid = flag.String("tsgid", "", "Threshold group ID")
 	// array
 	flag.Var(&enodesSig, "sig", "Enodes Sig list")
 	flag.Var(&nodes, "node", "Node rpc url")
+	flag.Var(&hashs, "msghash", "unsigned tx hash array")
+	flag.Var(&contexts, "msgcontext", "unsigned tx context array")
 
 	// create contract flags
 	flag.StringVar(&nodeChainIDStr, "chainID", nodeChainIDStr, "chain ID of full node")
@@ -512,12 +516,20 @@ func acceptLockOut() {
 	}
 }
 func sign() {
-	if *msghash == "" {
-		*msghash = common.ToHex(crypto.Keccak256([]byte(*memo)))
+	//if *msghash == "" {
+	//	*msghash = common.ToHex(crypto.Keccak256([]byte(*memo)))
+	//}
+	if len(hashs) == 0 {
+	    hashs = append(hashs,common.ToHex(crypto.Keccak256([]byte(*memo))))
 	}
-	signMsgHash(*msghash, -1)
+
+	if len(contexts) == 0 {
+	    contexts = append(contexts,*memo)
+	}
+
+	signMsgHash(hashs,contexts, -1)
 }
-func signMsgHash(msgHash string, loopCount int) (rsv string) {
+func signMsgHash(hashs []string, contexts []string,loopCount int) (rsv []string) {
 	// get sign nonce
 	signNonce, err := client.Call("dcrm_getSignNonce", keyWrapper.Address.String())
 	if err != nil {
@@ -534,8 +546,8 @@ func signMsgHash(msgHash string, loopCount int) (rsv string) {
 	txdata := signData{
 		TxType:     "SIGN",
 		PubKey:     *pubkey,
-		MsgContext: *memo,
-		MsgHash:    msgHash,
+		MsgContext: contexts,
+		MsgHash:    hashs,
 		Keytype:    *keyType,
 		GroupID:    *gid,
 		ThresHold:  *ts,
@@ -857,8 +869,8 @@ type lockoutData struct {
 type signData struct {
 	TxType     string `json:"TxType"`
 	PubKey     string `json:"PubKey"`
-	MsgContext string `json:"MsgContext"`
-	MsgHash    string `json:"MsgHash"`
+	MsgContext []string `json:"MsgContext"`
+	MsgHash    []string `json:"MsgHash"`
 	Keytype    string `json:"Keytype"`
 	GroupID    string `json:"GroupId"`
 	ThresHold  string `json:"ThresHold"`
@@ -894,7 +906,7 @@ type lockoutStatus struct {
 }
 type signStatus struct {
 	Status    string      `json:"Status"`
-	Rsv       string      `json:"Rsv"`
+	Rsv       []string      `json:"Rsv"`
 	Tip       string      `json:"Tip"`
 	Error     string      `json:"Error"`
 	AllReply  interface{} `json:"AllReply"`
@@ -929,8 +941,8 @@ type signCurNodeInfo struct {
 	Key        string `json:"Key"`
 	KeyType    string `json:"KeyType"`
 	Mode       string `json:"Mode"`
-	MsgContext string `json:"MsgContext"`
-	MsgHash    string `json:"MsgHash"`
+	MsgContext []string `json:"MsgContext"`
+	MsgHash    []string `json:"MsgHash"`
 	Nonce      string `json:"Nonce"`
 	PubKey     string `json:"PubKey"`
 	ThresHold  string `json:"ThresHold"`

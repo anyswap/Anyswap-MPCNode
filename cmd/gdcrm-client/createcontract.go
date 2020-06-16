@@ -111,8 +111,9 @@ func createContract() error {
 	fmt.Println()
 
 	chainSigner := types.NewEIP155Signer(nodeChainID)
-	msgHash := chainSigner.Hash(rawTx)
-	rsv := signMsgHash(msgHash.String(), -1)
+	//msgHash := chainSigner.Hash(rawTx) //tmp delete 
+	//rsv := signMsgHash(msgHash.String(), -1) //tmp delete
+	rsv := "xxxxxx"//signMsgHash(msgHash.String(), -1)  //TODO
 
 	signature := common.FromHex(rsv)
 	if len(signature) != crypto.SignatureLength {

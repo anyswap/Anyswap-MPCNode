@@ -470,7 +470,7 @@ type AcceptSignData struct {
 	Accept string
 
 	Status    string
-	Rsv string
+	Rsv string   //rsv1:rsv2:....:rsvn:NULL
 	Tip       string
 	Error     string
 

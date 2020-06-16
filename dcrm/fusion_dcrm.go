@@ -2465,7 +2465,7 @@ func GetLockOutStatus(key string) (string, string, error) {
 
 type SignStatus struct {
 	Status    string
-	Rsv string
+	Rsv []string
 	Tip       string
 	Error     string
 	AllReply  []NodeReply 
@@ -2488,7 +2488,8 @@ func GetSignStatus(key string) (string, string, error) {
 		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
-	los := &SignStatus{Status: ac.Status, Rsv: ac.Rsv, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
+	rsvs := strings.Split(ac.Rsv,":")
+	los := &SignStatus{Status: ac.Status, Rsv: rsvs[:len(rsvs)-1], Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
 	ret,_ := json.Marshal(los)
 	return string(ret), "",nil 
 }

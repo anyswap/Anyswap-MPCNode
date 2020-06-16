@@ -263,6 +263,8 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 type TxDataAcceptSign struct {
     TxType string
     Key string
+    MsgHash []string
+    MsgContext []string
     Accept string
     TimeStamp string
 }

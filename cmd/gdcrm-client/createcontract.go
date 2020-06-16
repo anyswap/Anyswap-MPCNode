@@ -111,9 +111,16 @@ func createContract() error {
 	fmt.Println()
 
 	chainSigner := types.NewEIP155Signer(nodeChainID)
-	//msgHash := chainSigner.Hash(rawTx) //tmp delete 
-	//rsv := signMsgHash(msgHash.String(), -1) //tmp delete
-	rsv := "xxxxxx"//signMsgHash(msgHash.String(), -1)  //TODO
+	msgHash := chainSigner.Hash(rawTx)
+	msgContext := "createContract"
+	rsvs := signMsgHash([]string{msgHash.String()}, []string{msgContext}, -1)
+
+	if len(rsvs) != 1 {
+		err = fmt.Errorf("signMsgHash get wrong number of rsv (%v), require one rsv\n", len(rsvs))
+		fmt.Println(err)
+		return err
+	}
+	rsv := rsvs[0]
 
 	signature := common.FromHex(rsv)
 	if len(signature) != crypto.SignatureLength {

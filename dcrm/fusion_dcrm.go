@@ -1105,7 +1105,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	    return "Failure", "transaction data format error,it is not ACCEPTSIGN tx", fmt.Errorf("tx.data error,it is not ACCEPTSIGN tx.")
 	}
 
-	if acceptsig.MsgHash == nil || acceptsig.MsgContext == nil || len(acceptsig.MsgHash) != len(acceptsig.MsgContext) {
+	if acceptsig.MsgHash == nil {
 	    return "Failure", "accept data error", fmt.Errorf("accept data error.")
 	}
 

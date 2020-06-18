@@ -4151,15 +4151,15 @@ func CheckAcc(eid string, geter_acc string, sigs string) bool {
 
 	//sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
 	mms := strings.Split(sigs, common.Sep)
-	for _, mm := range mms {
-		//if strings.EqualFold(mm, eid) {
-		//	if len(mms) >= (k+1) && strings.EqualFold(mms[k+1], geter_acc) {
-		//	    return true
-		//	}
-		//}
-		if strings.EqualFold(geter_acc,mm) { //allow user login diffrent node
-		    return true
+	for k, mm := range mms {
+		if strings.EqualFold(mm, eid) {
+			if len(mms) >= (k+1) && strings.EqualFold(mms[k+1], geter_acc) {
+			    return true
+			}
 		}
+		//if strings.EqualFold(geter_acc,mm) { //allow user login diffrent node
+		//    return true
+		//}
 	}
 	
 	return false

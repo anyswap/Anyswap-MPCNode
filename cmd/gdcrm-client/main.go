@@ -627,18 +627,26 @@ func acceptSign() {
 	for i := 0; i < len(keyList); i++ {
 		// build tx data
 		var keyStr string
+		var msgHash []string
+		var msgContext []string
 		if *key != "" {
 			i = len(keyList)
 			keyStr = *key
+			msgHash = hashs
+			msgContext = contexts
 		} else {
 			keyStr = keyList[i].Key
+			msgHash = keyList[i].MsgHash
+			msgContext = keyList[i].MsgContext
 		}
 		timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
-		data := acceptData{
-			TxType:    *cmd,
-			Key:       keyStr,
-			Accept:    *accept,
-			TimeStamp: timestamp,
+		data := acceptSignData{
+			TxType:     *cmd,
+			Key:        keyStr,
+			Accept:     *accept,
+			MsgHash:    msgHash,
+			MsgContext: msgContext,
+			TimeStamp:  timestamp,
 		}
 		playload, err := json.Marshal(data)
 		if err != nil {
@@ -853,6 +861,14 @@ type acceptData struct {
 	Key       string `json:"Key"`
 	Accept    string `json:"Accept"`
 	TimeStamp string `json:"TimeStamp"`
+}
+type acceptSignData struct {
+	TxType     string   `json:"TxType"`
+	Key        string   `json:"Key"`
+	Accept     string   `json:"Accept"`
+	MsgHash    []string `json:"MsgHash"`
+	MsgContext []string `json:"MsgContext"`
+	TimeStamp  string   `json:"TimeStamp"`
 }
 type lockoutData struct {
 	TxType    string `json:"TxType"`

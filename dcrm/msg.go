@@ -83,7 +83,7 @@ func DcrmCall(msg interface{}, enode string) <-chan string {
 
 	///check
 	_, exsit := DcrmCalls.ReadMap(s)
-	if exsit == false {
+	if !exsit {
 		DcrmCalls.WriteMap(s, "true")
 	} else {
 		common.Info("=============DcrmCall,already exsit in DcrmCalls and return ", "get msg len =", len(s), "sender node =", enode, "", "================")
@@ -304,8 +304,6 @@ func GetGroupRes(wid int) RpcDcrmRes {
 	for iter != nil {
 		ll := iter.Value.(*RpcDcrmRes)
 		return (*ll)
-
-		iter = iter.Next()
 	}
 
 	res2 := RpcDcrmRes{Ret: "", Tip: "", Err: nil}
@@ -604,7 +602,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    //nonce check
 			    exsit,_ := GetValueFromPubKeyData(rr.Nonce)
 			    ///////
-			    if exsit == true {
+			    if !exsit {
 				    fmt.Printf("%v ================RecvMsg.Run,lockout nonce error, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 				    //TODO must set acceptlockout(.....)
 				    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:lockout tx nonce error", Err: fmt.Errorf("lockout tx nonce error")}
@@ -765,7 +763,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							}
 							//
 
-							if reply == false {
+							if !reply {
 								tip = "don't accept lockout"
 								AcceptLockOut(self.sender,lomsg.Account, lo.GroupId, lomsg.Nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Failure", "", "don't accept lockout", "don't accept lockout", ars, wid)
 							} else {
@@ -799,7 +797,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				//fmt.Printf("%v ================== (self *RecvMsg) Run() , the terminal accept lockout result = %v,key = %v,============================\n", common.CurrentTime(), reply, rr.Nonce)
 
-				if reply == false {
+				if !reply {
 					//////////////////////lockout result start/////////////////////////
 					if tip == "get other node accept lockout result timeout" {
 						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,self.sender)
@@ -1002,7 +1000,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			} else {
 				sigs := ""
 				datmp, exsit := GAccs.ReadMap(strings.ToLower(rr.Nonce))
-				if exsit == true {
+				if !exsit {
 				    sigs = string(datmp.([]byte))
 				    go GAccs.DeleteMap(strings.ToLower(rr.Nonce))
 				}
@@ -1074,7 +1072,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							}
 							//
 
-							if reply == false {
+							if !reply {
 								tip = "don't accept reshare"
 								AcceptReShare(self.sender,resharemsg.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Failure", "", "don't accept reshare", "don't accept reshare", nil, wid)
 							} else {
@@ -1108,7 +1106,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				//fmt.Printf("%v ================== (self *RecvMsg) Run() , the terminal accept reshare result = %v,key = %v,============================\n", common.CurrentTime(), reply, rr.Nonce)
 
-				if reply == false {
+				if !reply {
 					//////////////////////reshare result start/////////////////////////
 					if tip == "get other node accept reshare result timeout" {
 						ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,self.sender)
@@ -1172,7 +1170,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			//fmt.Printf("%v ================== (self *RecvMsg) Run() , start call reshare,key = %v,=====================\n", common.CurrentTime(), rr.Nonce)
 			sigs := ""
 			exsit,da := GetValueFromPubKeyData(rr.Nonce)
-			if exsit == true {
+			if exsit {
 			    ac,ok := da.(*AcceptReShareData)
 			    if ok == true {
 				if ac != nil {
@@ -1261,7 +1259,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    //nonce check
 			    exsit,_ := GetValueFromPubKeyData(rr.Nonce)
 			    ///////
-			    if exsit == true {
+			    if exsit {
 				    //fmt.Printf("%v ================RecvMsg.Run, sign nonce error, key = %v ==================\n", common.CurrentTime(), rr.Nonce)
 				    //TODO must set acceptsign(.....)
 				    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:sign tx nonce error", Err: fmt.Errorf("sign tx nonce error")}
@@ -1397,7 +1395,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							}
 							//
 
-							if reply == false {
+							if !reply {
 								tip = "don't accept sign"
 								AcceptSign(self.sender,sigmsg.Account,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,sigmsg.Nonce,sig.ThresHold,sig.Mode,"false", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
 							} else {
@@ -1431,7 +1429,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				//fmt.Printf("%v ================== (self *RecvMsg) Run() , the terminal accept sign result = %v,key = %v,============================\n", common.CurrentTime(), reply, rr.Nonce)
 
-				if reply == false {
+				if !reply {
 					//////////////////////sign result start/////////////////////////
 					if tip == "get other node accept sign result timeout" {
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,self.sender)
@@ -1586,7 +1584,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			if !strings.EqualFold(cur_enode, self.sender) { //self send
 			    //nonce check
 			    exsit,_ := GetValueFromPubKeyData(rr.Nonce)
-			    if exsit == true {
+			    if exsit {
 				    //TODO must set acceptreqaddr(.....)
 				    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: req addr nonce error", Err: fmt.Errorf("req addr nonce error")}
 				    ch <- res2
@@ -1656,7 +1654,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
 				sigs := ""
 				datmp, exsit := GAccs.ReadMap(strings.ToLower(rr.Nonce))
-				if exsit == true {
+				if exsit {
 				    sigs = string(datmp.([]byte))
 				    go GAccs.DeleteMap(strings.ToLower(rr.Nonce))
 				}
@@ -1664,9 +1662,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				ac := &AcceptReqAddrData{Initiator:self.sender,Account: reqmsg.Account, Cointype: "ALL", GroupId: req.GroupId, Nonce: reqmsg.Nonce, LimitNum: req.ThresHold, Mode: req.Mode, TimeStamp: req.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: wid,Sigs:sigs}
 				err := SaveAcceptReqAddrData(ac)
 				fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, wid = %v,account = %v,cointype = %v,group id = %v,nonce = %v, threshold = %v,mode = %v,err = %v,key = %v,msg hash = %v, ========================\n", common.CurrentTime(), wid, reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, err, rr.Nonce, test)
-				if err != nil {
-					////TODO
-				}
 
 				///////add decdsa log
 				var enodeinfo string
@@ -1704,7 +1699,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 				if req.Mode == "1" {
 				    exsit,da := GetValueFromPubKeyData(strings.ToLower(reqmsg.Account))
-				    if exsit == false {
+				    if !exsit {
 					kdtmp := KeyData{Key: []byte(strings.ToLower(reqmsg.Account)), Data: rr.Nonce}
 					PubKeyDataChan <- kdtmp
 					LdbPubKeyData.WriteMap(strings.ToLower(reqmsg.Account), []byte(rr.Nonce))
@@ -1768,7 +1763,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 							}
 							//
 
-							if reply == false {
+							if !reply {
 								tip = "don't accept req addr"
 								AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid,"")
 							} else {
@@ -1803,7 +1798,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				//fmt.Printf("%v ================== (self *RecvMsg) Run(), the terminal accept req addr result = %v, key = %v ============================\n", common.CurrentTime(), reply, rr.Nonce)
 
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,self.sender)
-				if reply == false {
+				if !reply {
 					if tip == "get other node accept req addr result timeout" {
 						AcceptReqAddr(self.sender,reqmsg.Account, "ALL", req.GroupId, reqmsg.Nonce, req.ThresHold, req.Mode, "false", "", "Timeout", "", tip, "don't accept req addr.", ars, wid,"")
 					} else {
@@ -2010,7 +2005,7 @@ func DisMsg(msg string) {
 		for j:= 1;j <= nodecnt; j++ {
 		    acc := mm[2+2*j]
 		    exsit,da := GetValueFromPubKeyData(strings.ToLower(acc))
-		    if exsit == false {
+		    if !exsit {
 			kdtmp := KeyData{Key: []byte(strings.ToLower(acc)), Data: key}
 			PubKeyDataChan <- kdtmp
 			LdbPubKeyData.WriteMap(strings.ToLower(acc), []byte(key))
@@ -2038,7 +2033,7 @@ func DisMsg(msg string) {
 		ss := strings.Join(mmtmp, common.Sep)
 		GAccs.WriteMap(strings.ToLower(key),[]byte(ss))
 		exsit,da := GetValueFromPubKeyData(key)
-		if exsit == true {
+		if exsit {
 		    ac,ok := da.(*AcceptReqAddrData)
 		    if ok == true {
 			if ac != nil {
@@ -2086,7 +2081,7 @@ func DisMsg(msg string) {
 		ss := strings.Join(mmtmp, common.Sep)
 		GAccs.WriteMap(strings.ToLower(key),[]byte(ss))
 		exsit,da := GetValueFromPubKeyData(key)
-		if exsit == true {
+		if exsit {
 		    ac,ok := da.(*AcceptReShareData)
 		    if ok == true {
 			if ac != nil {
@@ -2161,7 +2156,7 @@ func DisMsg(msg string) {
 			w.bacceptreqaddrres <- true
 			///////
 			exsit,da := GetValueFromPubKeyData(prexs[0])
-			if exsit == false {
+			if !exsit {
 				fmt.Printf("%v ==================DisMsg,no exist reqaddr data, worker id = %v,key = %v =======================\n", common.CurrentTime(), w.id, prexs[0])
 				return
 			}
@@ -2221,7 +2216,7 @@ func DisMsg(msg string) {
 			w.bacceptlockoutres <- true
 			/////
 			exsit,da := GetValueFromPubKeyData(prexs[0])
-			if exsit == false {
+			if !exsit {
 				return
 			}
 
@@ -2291,7 +2286,7 @@ func DisMsg(msg string) {
 			w.bacceptsignres <- true
 			/////
 			exsit,da := GetValueFromPubKeyData(prexs[0])
-			if exsit == false {
+			if !exsit {
 				return
 			}
 
@@ -2361,7 +2356,7 @@ func DisMsg(msg string) {
 			w.bacceptreshareres <- true
 			/////
 			exsit,da := GetValueFromPubKeyData(prexs[0])
-			if exsit == false {
+			if !exsit {
 				return
 			}
 
@@ -2497,12 +2492,10 @@ func DisMsg(msg string) {
 	case "C11":
 		///bug
 		if w.msg_c11.Len() >= w.ThresHold {
-			fmt.Println("=================get C11 fail,msg =%v,prex =%s===================", msg, prexs[0])
 			return
 		}
 		///
 		if Find(w.msg_c11, msg) {
-			fmt.Println("=================C11 exsit, msg =%v, key =%v===================", msg, prexs[0])
 			return
 		}
 
@@ -2856,8 +2849,6 @@ func DisMsg(msg string) {
 	default:
 		fmt.Println("unkown msg code")
 	}
-
-	return
 }
 
 //==========================================================================

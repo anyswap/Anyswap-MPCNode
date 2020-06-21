@@ -58,7 +58,6 @@ var (
 	SignCh  = make(chan SignData, 1000)
 	ReShareCh  = make(chan ReShareData, 1000)
 	
-	lock5                    sync.Mutex
 	lock                     sync.Mutex
 
 	db *ethdb.LDBDatabase
@@ -116,7 +115,7 @@ func Start() {
 func PutGroup(groupId string) bool {
 	return true
 
-	if groupId == "" {
+	/*if groupId == "" {
 		return false
 	}
 
@@ -180,7 +179,7 @@ func PutGroup(groupId string) bool {
 
 	db.Close()
 	lock.Unlock()
-	return true
+	return true*////tmp delete
 }
 
 func GetGroupIdByEnode(enode string) string {
@@ -3118,7 +3117,7 @@ type TxDataSign struct {
 }
 
 func Encode2(obj interface{}) (string, error) {
-	switch obj.(type) {
+    switch obj.(type) {
 	case *SendMsg:
 		/*ch := obj.(*SendMsg)
 		ret,err := json.Marshal(ch)

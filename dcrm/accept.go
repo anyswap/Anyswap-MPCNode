@@ -132,7 +132,7 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	}
 
 	arl := ac.AllReply
-	if allreply != nil && len(allreply) != 0 {
+	if allreply != nil {
 		arl = allreply
 	}
 
@@ -230,7 +230,7 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 	}
 
 	arl := ac.AllReply
-	if allreply != nil && len(allreply) != 0 {
+	if allreply != nil {
 		arl = allreply
 	}
 
@@ -320,7 +320,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	}
 
 	arl := ac.AllReply
-	if allreply != nil && len(allreply) != 0 {
+	if allreply != nil {
 		arl = allreply
 	}
 
@@ -613,7 +613,7 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
 	}
 
 	arl := ac.AllReply
-	if allreply != nil && len(allreply) != 0 {
+	if allreply != nil {
 		arl = allreply
 	}
 

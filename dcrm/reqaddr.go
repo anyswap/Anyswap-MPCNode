@@ -127,7 +127,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		    }
 
 		    ok2 = KeyGenerate_ed(msgprex, ch, id, cointype)
-		    if ok2 == true {
+		    if ok2 {
 			break
 		    }
 		    
@@ -135,7 +135,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
 
-		if ok2 == false {
+		if !ok2 {
 			return
 		}
 
@@ -730,7 +730,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		en := strings.Split(string(enodes[8:]), "@")
 		CPkFlag := ed.Verify(cpks[en[0]], dpks[en[0]])
 		if !CPkFlag {
-			fmt.Println("Error: Commitment(PK) Not Pass at User: %s", en[0])
+			fmt.Printf("Error: Commitment(PK) Not Pass at User: %v \n", en[0])
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:commitment check fail in req ed pubkey", Err: fmt.Errorf("Commitment(PK) Not Pass at User.")}
 			ch <- res
 			return false
@@ -745,7 +745,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		copy(t[:], dpk[32:])
 		zkPkFlag := ed.Verify_zk(zks[en[0]], t)
 		if !zkPkFlag {
-			fmt.Println("Error: ZeroKnowledge Proof (Pk) Not Pass at User: %s", en[0])
+			fmt.Printf("Error: ZeroKnowledge Proof (Pk) Not Pass at User: %v \n", en[0])
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:zeroknowledge check fail", Err: fmt.Errorf("ZeroKnowledge Proof (Pk) Not Pass.")}
 			ch <- res
 			return false
@@ -934,7 +934,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		shareUFlag := ed.Verify_vss(edshares[en[0]], uids[cur_enode], cfsbs[en[0]])
 
 		if !shareUFlag {
-			fmt.Println("Error: VSS Share Verification Not Pass at User: %s", en[0])
+			fmt.Printf("Error: VSS Share Verification Not Pass at User: %v \n", en[0])
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:VSS Share verification fail", Err: fmt.Errorf("VSS Share Verification Not Pass.")}
 			ch <- res
 			return false
@@ -979,7 +979,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		t2 := cfsbs[en[0]]
 		tt := t2[0]
 		if !bytes.Equal(askBBytes[:], tt[:]) {
-			fmt.Println("Error: VSS Coefficient Verification Not Pass at User: %s", en[0])
+			fmt.Printf("Error: VSS Coefficient Verification Not Pass at User: %v \n", en[0])
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:VSS Coefficient verification fail", Err: fmt.Errorf("VSS Coefficient Verification Not Pass.")}
 			ch <- res
 			return false
@@ -1718,7 +1718,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 		mm := strings.Split(v, common.Sep)
 		//bug
 		if len(mm) < 4 {
-			fmt.Println("===================!!! KeyGenerate_ECDSA,fill ec2.ShareStruct map error. !!!,Nonce =%s ==================", msgprex)
+			fmt.Printf("===================!!! KeyGenerate_ECDSA,fill ec2.ShareStruct map error. !!!,Nonce =%v ==================\n", msgprex)
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("fill ec2.ShareStruct map error.")}
 			ch <- res
 			return nil, nil, false
@@ -1816,7 +1816,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 			return nil, nil, false
 		}
 		//
-		if keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) == false {
+		if !keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
 			ch <- res
 			return nil, nil, false
@@ -1977,7 +1977,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 			ch <- res
 			return nil, nil, false
 		}
-		if keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
+		if !keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrKeyGenVerifyCommitFail)}
 			ch <- res
 			return nil, nil, false
@@ -2501,66 +2501,65 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 	//*******************!!!Distributed ECDSA Start!!!**********************************
 
 	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk, status := DECDSAGenKeyRoundOne(msgprex, ch, w)
-	if status != true {
+	if !status {
 		return status
 	}
 	//fmt.Printf("%v=================generate key,round one finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	u1Shares, status := DECDSAGenKeyRoundTwo(msgprex, cointype, ch, w, u1Poly, ids)
-	if status != true {
+	if !status {
 		return status
 	}
 	//fmt.Printf("%v=================generate key,round two finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
-	if DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, ids) == false {
+	if !DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, ids) {
 		return false
 	}
 	//fmt.Printf("%v=================generate key,round three finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	sstruct, ds, status := DECDSAGenKeyVerifyShareData(msgprex, cointype, ch, w, u1PolyG, u1Shares, ids)
-	if status != true {
+	if !status {
 		return status
 	}
 	//fmt.Printf("%v=================generate key,verify share data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	cs, udecom, status := DECDSAGenKeyVerifyCommitment(msgprex, cointype, ch, w, ds, commitU1G, ids)
-	if status != true {
+	if !status {
 		return false
 	}
 	//fmt.Printf("%v=================generate key,verify commitment finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	ug, status := DECDSAGenKeyCalcPubKey(msgprex, cointype, ch, w, udecom, ids)
-	if status != true {
+	if !status {
 		return false
 	}
 	//fmt.Printf("%v=================generate key,calc pubkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	skU1, status := DECDSAGenKeyCalcPrivKey(msgprex, cointype, ch, w, sstruct, ids)
-	if status != true {
+	if !status {
 		return false
 	}
 	//fmt.Printf("%v=================generate key,calc privkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
 	u1NtildeH1H2, status := DECDSAGenKeyRoundFour(msgprex, ch, w)
-	if status != true {
+	if !status {
 		return false
 	}
 	//fmt.Printf("%v=================generate key,round four finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
-	if DECDSAGenKeyRoundFive(msgprex, ch, w, u1) != true {
+	if !DECDSAGenKeyRoundFive(msgprex, ch, w, u1) {
 		return false
 	}
 	//fmt.Printf("%v=================generate key,round five finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
-	if DECDSAGenKeyVerifyZKU(msgprex, cointype, ch, w, ids, ug) != true {
+	if !DECDSAGenKeyVerifyZKU(msgprex, cointype, ch, w, ids, ug) {
 		return false
 	}
 	//fmt.Printf("%v=================generate key,verify zk of u1 finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 
-	if DECDSAGenKeySaveData(cointype, ids, w, ch, skU1, u1PaillierPk, u1PaillierSk, cs, u1NtildeH1H2) != true {
+	if !DECDSAGenKeySaveData(cointype, ids, w, ch, skU1, u1PaillierPk, u1PaillierSk, cs, u1NtildeH1H2) {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,save data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
 	fmt.Printf("%v=================generate key, u1 = %v, sku1 = %v, key = %v ===================\n",common.CurrentTime(),u1,skU1,msgprex)
 	for k,id := range ids {
 	    enodes := GetEnodesByUid(id, cointype, w.groupid)

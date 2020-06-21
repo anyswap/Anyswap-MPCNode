@@ -100,8 +100,6 @@ func reshare(wsid string, initator string, groupid string,pubkey string,account 
 		ch <- res
 		return
 	}
-
-	return
 }
 
 //ec2
@@ -186,7 +184,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
-	if take_reshare == false || skU1 == nil || w1 == nil {
+	if !take_reshare || skU1 == nil || w1 == nil {
 	    ////////test reshare///////////////////////
 	    ids = GetIds("ALL", groupid)
 	    fmt.Printf("%v =============ReShare_ec2,cur node not take part in reshare, gid = %v, ids = %v, key = %v ================\n", common.CurrentTime(), groupid,ids,msgprex)
@@ -338,7 +336,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    return
 		    }
 
-		    if keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
+		    if !keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) {
 			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
 			    ch <- res
 			    return
@@ -428,7 +426,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    return 
 		    }
 		    //
-		    if keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) == false {
+		    if !keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) {
 			    res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
 			    ch <- res
 			    return
@@ -1130,7 +1128,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			return 
 		}
 
-		if keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) == false {
+		if !keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
 			ch <- res
 			return 
@@ -1220,7 +1218,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			return
 		}
 		//
-		if keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) == false {
+		if !keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
 			ch <- res
 			return 

@@ -667,84 +667,402 @@ func RecivReqAddr() {
 	}
 }
 
-func ReqDcrmAddr(raw string) (string, string, error) {
-	tx := new(types.Transaction)
-	raws := common.FromHex(raw)
-	if err := rlp.DecodeBytes(raws, tx); err != nil {
-		return "", "raw data error", err
-	}
+func GetGroupSigsDataByRaw(raw string) (string,error) {
+    if raw == "" {
+	return "",fmt.Errorf("raw data empty")
+    }
+    
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	    return "",err
+    }
 
-	signer := types.NewEIP155Signer(big.NewInt(30400)) //
-	from, err := types.Sender(signer, tx)
-	if err != nil {
-	    return "", "recover fusion account fail from raw data,maybe raw data error", err
-	}
+    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+    _, err := types.Sender(signer, tx)
+    if err != nil {
+	return "",err
+    }
 
-	req := TxDataReqAddr{}
-	err = json.Unmarshal(tx.Data(), &req)
-	if err != nil {
-	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
-	}
+    req := TxDataReqAddr{}
+    err = json.Unmarshal(tx.Data(), &req)
+    if err != nil {
+	return "",err
+    }
 
+    if req.TxType != "REQDCRMADDR" {
+	return "",fmt.Errorf("raw data error,it is not REQDCRMADDR tx")
+    }
+
+    nums := strings.Split(req.ThresHold, "/")
+    nodecnt, _ := strconv.Atoi(nums[1])
+    if nodecnt <= 1 {
+	return "",fmt.Errorf("threshold error")
+    }
+
+    if req.Mode == "1" {
+	return "",fmt.Errorf("it is personal mode")
+    }
+
+    sigs := strings.Split(req.Sigs,"|")
+    //SigN = enode://xxxxxxxx@ip:portxxxxxxxxxxxxxxxxxxxxxx
+    _, enodes := GetGroup(req.GroupId)
+    nodes := strings.Split(enodes, common.Sep2)
+    if nodecnt != len(sigs) {
+	return "",fmt.Errorf("group sigs error")
+    }
+
+    sstmp := strconv.Itoa(nodecnt)
+    for j := 0; j < nodecnt; j++ {
+	en := strings.Split(sigs[j], "@")
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+	    enId := strings.Split(en[0],"//")
+	    if len(enId) < 2 {
+		return "",fmt.Errorf("group sigs error")
+	    }
+
+	    if strings.EqualFold(node2, enId[1]) {
+		enodesigs := []rune(sigs[j])
+		if len(enodesigs) <= len(node) {
+		    return "",fmt.Errorf("group sigs error")
+		}
+
+		sig := enodesigs[len(node):]
+		//sigbit, _ := hex.DecodeString(string(sig[:]))
+		sigbit := common.FromHex(string(sig[:]))
+		if sigbit == nil {
+		    return "",fmt.Errorf("group sigs error")
+		}
+
+		pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
+		if err != nil {
+		    return "",err
+		}
+		
+		h := coins.NewCryptocoinHandler("FSN")
+		if h != nil {
+		    pubkey := hex.EncodeToString(pub)
+		    from, err := h.PublicKeyToAddress(pubkey)
+		    if err != nil {
+			return "",err
+		    }
+		    
+		    //5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
+		    sstmp += common.Sep
+		    sstmp += node2
+		    sstmp += common.Sep
+		    sstmp += from
+		}
+	    }
+	}
+    }
+
+    tmps := strings.Split(sstmp,common.Sep)
+    if len(tmps) == (2*nodecnt + 1) {
+	return sstmp,nil
+    }
+
+    return "",fmt.Errorf("group sigs error")
+}
+
+func CheckRaw(raw string) (string,string,string,interface{},error) {
+    if raw == "" {
+	return "","","",nil,fmt.Errorf("raw data empty")
+    }
+    
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	    return "","","",nil,err
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400)) //
+    from, err := types.Sender(signer, tx)
+    if err != nil {
+	return "", "","",nil,err
+    }
+
+    req := TxDataReqAddr{}
+    err = json.Unmarshal(tx.Data(), &req)
+    if err == nil {
 	if req.TxType != "REQDCRMADDR" {
-		return "", "transaction data format error,it is not REQDCRMADDR tx", fmt.Errorf("tx type error.")
+		return "","","",nil,fmt.Errorf("tx type error.")
 	}
-
+	
 	groupid := req.GroupId 
 	if groupid == "" {
-		return "", "group id error", fmt.Errorf("get group id fail.")
+		return "","","",nil,fmt.Errorf("get group id fail.")
 	}
 
 	threshold := req.ThresHold
 	if threshold == "" {
-		return "", "no threshold value", fmt.Errorf("get threshold fail.")
+		return "","","",nil,fmt.Errorf("get threshold fail.")
 	}
 
 	mode := req.Mode
 	if mode == "" {
-		return "", "get mode fail", fmt.Errorf("get mode fail.")
+		return "","","", nil,fmt.Errorf("get mode fail.")
 	}
 
 	timestamp := req.TimeStamp
 	if timestamp == "" {
-		return "", "no timestamp value", fmt.Errorf("get timestamp fail.")
+		return "","","", nil,fmt.Errorf("get timestamp fail.")
 	}
 
 	nums := strings.Split(threshold, "/")
 	if len(nums) != 2 {
-		return "", "transacion data format error,threshold is not right", fmt.Errorf("tx.data error.")
+		return "","","", nil,fmt.Errorf("tx.data error.")
 	}
 
 	nodecnt, err := strconv.Atoi(nums[1])
 	if err != nil {
-		return "", err.Error(),err
+		return "","","", nil,err
 	}
 
 	ts, err := strconv.Atoi(nums[0])
 	if err != nil {
-		return "", err.Error(),err
+		return "","","", nil,err
 	}
 
 	if nodecnt < ts || ts < 2 {
-	    return "","threshold format error",fmt.Errorf("threshold format error")
+	    return "","","",nil,fmt.Errorf("threshold format error")
 	}
 
 	Nonce := tx.Nonce()
 
-	////
 	nc,_ := GetGroup(groupid)
 	if nc != nodecnt {
-	    return "","check group node count error",fmt.Errorf("check group node count error")
+	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
-	////
-
+	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-	data := ReqAddrData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
-	ReqAddrCh <- data
+	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
+    }
 
-	//fmt.Printf("%v ===============ReqDcrmAddr finish,return,key = %v,raw = %v,mode = %v ================================\n", common.CurrentTime(), key, raw, mode)
-	return key, "", nil
+    return "","","",nil,fmt.Errorf("check fail")
+}
+
+func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) error {
+    if raw == "" || workid < 0 || sender == "" {
+	res := RpcDcrmRes{Ret: "", Tip: "init accept data fail.", Err: fmt.Errorf("init accept data fail")}
+	ch <- res
+	return fmt.Errorf("init accept data fail")
+    }
+
+    key,from,nonce,txdata,err := CheckRaw(raw)
+    if err != nil {
+	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
+	ch <- res
+	return err
+    }
+    
+    req,ok := txdata.(*TxDataReqAddr)
+    if ok {
+	exsit,_ := GetValueFromPubKeyData(key)
+	if exsit == false {
+	    cur_nonce, _, _ := GetReqAddrNonce(from)
+	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
+	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
+	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		_, err := SetReqAddrNonce(from,nonce)
+		if err == nil {
+		    ars := GetAllReplyFromGroup(workid,req.GroupId,Rpc_REQADDR,sender)
+		    sigs,err := GetGroupSigsDataByRaw(raw) 
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
+			ch <- res
+			return err
+		    }
+
+		    ac := &AcceptReqAddrData{Initiator:sender,Account: from, Cointype: "ALL", GroupId: req.GroupId, Nonce: nonce, LimitNum: req.ThresHold, Mode: req.Mode, TimeStamp: req.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: workid,Sigs:sigs}
+		    err = SaveAcceptReqAddrData(ac)
+		    fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n", common.CurrentTime(), from, err, key)
+		   if err == nil {
+			rch := make(chan interface{}, 1)
+			w := workers[workid]
+			w.sid = key 
+			w.groupid = req.GroupId
+			w.limitnum = req.ThresHold
+			gcnt, _ := GetGroup(w.groupid)
+			w.NodeCnt = gcnt
+			w.ThresHold = w.NodeCnt
+
+			nums := strings.Split(w.limitnum, "/")
+			if len(nums) == 2 {
+			    nodecnt, err := strconv.Atoi(nums[1])
+			    if err == nil {
+				w.NodeCnt = nodecnt
+			    }
+
+			    th, err := strconv.Atoi(nums[0])
+			    if err == nil {
+				w.ThresHold = th 
+			    }
+			}
+
+			/////////////
+			if req.Mode == "0" { // self-group
+				////
+				var reply bool
+				var tip string
+				timeout := make(chan bool, 1)
+				go func(wid int) {
+					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
+					agreeWaitTime := 10 * time.Minute
+					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+					if wid < 0 || wid >= len(workers) || workers[wid] == nil {
+						ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)	
+						AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "workid error", "workid error", ars, wid,"")
+						tip = "worker id error"
+						reply = false
+						timeout <- true
+						return
+					}
+
+					wtmp2 := workers[wid]
+					for {
+						select {
+						case account := <-wtmp2.acceptReqAddrChan:
+							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", key)
+							ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
+							fmt.Printf("%v ================== (self *RecvMsg) Run(),get all AcceptReqAddrRes, result = %v,key = %v ============================\n", common.CurrentTime(), ars,key)
+							
+							//bug
+							reply = true
+							for _,nr := range ars {
+							    if !strings.EqualFold(nr.Status,"Agree") {
+								reply = false
+								break
+							    }
+							}
+							//
+
+							if !reply {
+								tip = "don't accept req addr"
+								AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid,"")
+							} else {
+								tip = ""
+								AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, wid,"")
+							}
+
+							///////
+							timeout <- true
+							return
+						case <-agreeWaitTimeOut.C:
+							fmt.Printf("%v ================== (self *RecvMsg) Run(), agree wait timeout, key = %v ============================\n", common.CurrentTime(), key)
+							ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
+							//bug: if self not accept and timeout
+							AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
+							tip = "get other node accept req addr result timeout"
+							reply = false
+							//
+
+							timeout <- true
+							return
+						}
+					}
+				}(workid)
+
+				if len(workers[workid].acceptWaitReqAddrChan) == 0 {
+					workers[workid].acceptWaitReqAddrChan <- "go on"
+				}
+
+				if strings.EqualFold(sender,cur_enode) {
+				    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+				    mp := []string{key, cur_enode}
+				    enode := strings.Join(mp, "-")
+				    s0 := "AcceptReqAddrRes"
+				    s1 := "true"
+				    ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + tt
+				    SendMsgToDcrmGroup(ss, req.GroupId)
+				    DisMsg(ss)
+				    ////fix bug: get C1 timeout
+				    _, enodes := GetGroup(req.GroupId)
+				    nodes := strings.Split(enodes, common.Sep2)
+				    for _, node := range nodes {
+					node2 := ParseNode(node)
+					c1data := key + "-" + node2 + common.Sep + "AcceptReqAddrRes"
+					c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+					if exist {
+					    DisMsg(c1.(string))
+					    go C1Data.DeleteMap(strings.ToLower(c1data))
+					}
+				    }
+				}
+
+				<-timeout
+
+				fmt.Printf("%v ================== (self *RecvMsg) Run(), the terminal accept req addr result = %v, key = %v ============================\n", common.CurrentTime(), reply, key)
+
+				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
+				if !reply {
+					if tip == "get other node accept req addr result timeout" {
+						AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Timeout", "", tip, "don't accept req addr.", ars, workid,"")
+					} else {
+						AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, "don't accept req addr.", ars, workid,"")
+					}
+
+					res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_req_dcrmaddr", Tip: tip, Err: fmt.Errorf("don't accept req addr.")}
+					ch <- res
+					return fmt.Errorf("don't accept req addr.")
+				}
+			} else {
+				if len(workers[workid].acceptWaitReqAddrChan) == 0 {
+					workers[workid].acceptWaitReqAddrChan <- "go on"
+				}
+
+				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
+				AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, workid,"")
+			}
+
+			fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey, w.id = %v, w.groupid = %v, key = %v ============================\n", common.CurrentTime(), w.id,w.groupid,key)
+			dcrm_genPubKey(w.sid, from, "ALL", rch, req.Mode, nonce)
+			fmt.Printf("%v ================== (self *RecvMsg) Run(), finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(),key)
+			chret, tip, cherr := GetChannelValue(ch_t, rch)
+			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr,key)
+			if cherr != nil {
+				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
+				AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, workid,"")
+				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_req_dcrmaddr", Tip: tip, Err: cherr}
+				ch <- res
+				return cherr 
+			}
+
+			res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_req_dcrmaddr" + common.Sep + chret, Tip: "", Err: nil}
+			ch <- res
+			return nil
+			/////////////
+		   }
+		}
+	    }
+	}
+    }
+
+    res := RpcDcrmRes{Ret: "", Tip: "init accept data fail.", Err: fmt.Errorf("init accept data fail")}
+    ch <- res
+    return fmt.Errorf("init accept data fail")
+}
+
+func ReqDcrmAddr(raw string) (string, string, error) {
+
+    key,_,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	return "",err.Error(),err
+    }
+
+    req,ok := txdata.(*TxDataReqAddr)
+    if !ok {
+	return "","check raw fail,it is not *TxDataReqAddr",fmt.Errorf("check raw fail,it is not *TxDataReqAddr")
+    }
+
+    SendMsgToDcrmGroup(raw, req.GroupId)
+    SetUpMsgList(raw,cur_enode)
+    //go InitAcceptData(raw)
+    //data := ReqAddrData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
+    //ReqAddrCh <- data
+    return key, "", nil
 }
 
 func RpcAcceptReqAddr(raw string) (string, string, error) {

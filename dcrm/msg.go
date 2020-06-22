@@ -566,6 +566,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return true
 	}
 
+	////////////////////
+	errtmp := InitAcceptData(res,workid,self.sender,ch)
+	if errtmp == nil {
+	    fmt.Printf("%v================RecvMsg.Run, init accept data, err = %v ================\n",common.CurrentTime(),errtmp)
+	    return true
+	}
+	////////////////////
+
 	res, err := UnCompress(res)
 	if err != nil {
 		fmt.Printf("%v ===================RecvMsg.Run,the msg is not key-enode:C1:X1:X2...Xn, uncompress fail,msg hash = %v,err = %v ==============================\n", common.CurrentTime(), test, err)
@@ -1000,7 +1008,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			} else {
 				sigs := ""
 				datmp, exsit := GAccs.ReadMap(strings.ToLower(rr.Nonce))
-				if !exsit {
+				if exsit {
 				    sigs = string(datmp.([]byte))
 				    go GAccs.DeleteMap(strings.ToLower(rr.Nonce))
 				}

@@ -519,7 +519,7 @@ func SetUpMsgList(msg string, enode string) {
 //==================================================================
 
 type WorkReq interface {
-	Run(workid int, ch chan interface{}) bool
+    Run(workid int, ch chan interface{}) bool
 }
 
 //RecvMsg
@@ -569,9 +569,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	////////////////////
 	errtmp := InitAcceptData(res,workid,self.sender,ch)
 	if errtmp == nil {
-	    fmt.Printf("%v================RecvMsg.Run, init accept data, err = %v ================\n",common.CurrentTime(),errtmp)
 	    return true
 	}
+	fmt.Printf("%v================RecvMsg.Run, init accept data, err = %v ================\n",common.CurrentTime(),errtmp)
 	////////////////////
 
 	res, err := UnCompress(res)
@@ -1587,7 +1587,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		}
 
 		//rpc_req_dcrmaddr
-		if rr.MsgType == "rpc_req_dcrmaddr" {
+		/*if rr.MsgType == "rpc_req_dcrmaddr" {
 			
 			if !strings.EqualFold(cur_enode, self.sender) { //self send
 			    //nonce check
@@ -1844,7 +1844,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			res2 := RpcDcrmRes{Ret: strconv.Itoa(rr.WorkId) + common.Sep + rr.MsgType + common.Sep + chret, Tip: "", Err: nil}
 			ch <- res2
 			return true
-		}
+		}*/
 
 	default:
 		return false

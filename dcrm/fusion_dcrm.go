@@ -701,7 +701,7 @@ func GetGroupSigsDataByRaw(raw string) (string,error) {
     }
 
     if req.Mode == "1" {
-	return "",fmt.Errorf("it is personal mode")
+	return "",nil
     }
 
     sigs := strings.Split(req.Sigs,"|")
@@ -853,6 +853,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     key,from,nonce,txdata,err := CheckRaw(raw)
     if err != nil {
+	fmt.Printf("===============InitAcceptData, check raw err = %v, =================\n",err)
 	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 	ch <- res
 	return err
@@ -860,17 +861,20 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     
     req,ok := txdata.(*TxDataReqAddr)
     if ok {
+	fmt.Printf("===============InitAcceptData, check raw success, key = %v, from = %v, nonce = %v, txdata = %v =================\n",key,from,nonce,req)
 	exsit,_ := GetValueFromPubKeyData(key)
 	if exsit == false {
 	    cur_nonce, _, _ := GetReqAddrNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
+	    fmt.Printf("===============InitAcceptData, cur_nonce_num = %v, new_nonce_num = %v, key = %v =================\n",cur_nonce_num,new_nonce_num,key)
 	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		_, err := SetReqAddrNonce(from,nonce)
 		if err == nil {
 		    ars := GetAllReplyFromGroup(workid,req.GroupId,Rpc_REQADDR,sender)
 		    sigs,err := GetGroupSigsDataByRaw(raw) 
 		    if err != nil {
+			fmt.Printf("=================InitAcceptData,get group sigs err = %v, key = %v =================\n",err,key)
 			res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 			ch <- res
 			return err
@@ -1049,6 +1053,7 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
+	fmt.Printf("============ReqDcrmAddr,err = %v ==========\n",err)
 	return "",err.Error(),err
     }
 
@@ -1057,6 +1062,7 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataReqAddr",fmt.Errorf("check raw fail,it is not *TxDataReqAddr")
     }
 
+    fmt.Printf("============ReqDcrmAddr,SendMsgToDcrmGroup, gid = %v ,key = %v ==========\n",req.GroupId,key)
     SendMsgToDcrmGroup(raw, req.GroupId)
     SetUpMsgList(raw,cur_enode)
     //go InitAcceptData(raw)

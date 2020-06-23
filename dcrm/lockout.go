@@ -98,12 +98,12 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 	//test,_ := new(big.Int).SetString(string(dcrmpks[:]),0)
 	//fmt.Printf("============================sign,pubkey = %v, k = %v, key = %v, =========================\n",pubkey,test,wsid)
-	if exsit == false {
+	if !exsit {
 	    time.Sleep(time.Duration(5000000000))
 	    exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 	}
 	///////
-	if exsit == false {
+	if !exsit {
 	    fmt.Printf("============================sign,not exist sign data, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
 		ch <- res
@@ -111,7 +111,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	}
 
 	_,ok := da.(*PubKeyData)
-	if ok == false {
+	if !ok {
 		fmt.Printf("============================sign,sign data error, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
 		ch <- res
@@ -311,7 +311,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	    exsit,da = GetPubKeyDataFromLocalDb(key2)
 	}
 	///////
-	if exsit == false {
+	if !exsit {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get lockout data from db fail", Err: fmt.Errorf("get lockout data from db fail")}
 		ch <- res
 		return
@@ -366,7 +366,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	//
 
 	amount, ok := new(big.Int).SetString(value, 10)
-	if ok == false {
+	if !ok {
 		//fmt.Printf("%v =============validate_lockout,transfer amount to big.Int fail ===============\n", common.CurrentTime())
 		res := RpcDcrmRes{Ret: "", Tip: "lockout value error", Err: fmt.Errorf("lockout value error")}
 		ch <- res
@@ -1060,14 +1060,14 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 			}
 
 			_, exsit := zk1proof[en[0]]
-			if exsit == false {
+			if !exsit {
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 				ch <- res
 				return false
 			}
 
 			_, exsit = ukc[en[0]]
-			if exsit == false {
+			if !exsit {
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 				ch <- res
 				return false
@@ -1083,7 +1083,7 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 			}
 
 			_, exsit = zkfactproof[cur_enode]
-			if exsit == false {
+			if !exsit {
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyMTAZK1PROOFFail)}
 				ch <- res
 				return false
@@ -1926,7 +1926,7 @@ func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortabl
 		}
 
 		_, exsit := udecom[en[0]]
-		if exsit == false {
+		if !exsit {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
 			ch <- res
 			return nil
@@ -2707,12 +2707,12 @@ func GetPaillierPk2(cointype string,w *RPCReqWorker,uid *big.Int) *ec2.PublicKey
 
 	key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
-	if exsit == false {
+	if !exsit {
 	    return nil 
 	}
 
 	pubs,ok := da.(*PubKeyData)
-	if ok == false {
+	if !ok {
 	    return nil
 	}
 
@@ -2730,7 +2730,7 @@ func GetPaillierPk2(cointype string,w *RPCReqWorker,uid *big.Int) *ec2.PublicKey
 			}
 
 			mdss,ok := iter.Value.(string)
-			if ok == false {
+			if !ok {
 			    iter = iter.Next()
 			    continue
 			}
@@ -2773,12 +2773,12 @@ func GetRealByUid(cointype string,w *RPCReqWorker,uid *big.Int) int {
 
     key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
     exsit,da := GetValueFromPubKeyData(key)
-    if exsit == false {
+    if !exsit {
 	return -1
     }
 
     pubs,ok := da.(*PubKeyData)
-    if ok == false {
+    if !ok {
 	return -1
     }
 
@@ -2799,12 +2799,12 @@ func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
 
     dcrmpks, _ := hex.DecodeString(w.DcrmFrom)
     exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
-    if exsit == false {
+    if !exsit {
 	return -1
     }
 
     pubs,ok := da.(*PubKeyData)
-    if ok == false {
+    if !ok {
 	return -1
     }
 

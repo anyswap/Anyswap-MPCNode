@@ -2259,7 +2259,7 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 
 	return nil, "get accounts balance fail", fmt.Errorf("get accounts balance fail")*/
 
-	found := false
+	/*found := false
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
 	for k, v := range LdbPubKeyData.Map {
@@ -2311,7 +2311,7 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 
 	if !found {
 	    return nil, "get accounts balance fail", fmt.Errorf("get accounts balance fail")
-	}
+	}*/
 	
 	keytmp, err2 := hex.DecodeString(pubkey)
 	if err2 != nil {

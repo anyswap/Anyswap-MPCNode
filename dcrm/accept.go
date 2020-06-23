@@ -26,13 +26,13 @@ func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce 
 	fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,acc =%v,cointype =%v,groupid =%v,nonce =%v,threshold =%v,mode =%v,key =%v !!!!============================\n", common.CurrentTime(), account, cointype, groupid, nonce, threshold, mode, key)
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 		fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,no exsit key =%v !!!!============================\n", common.CurrentTime(), key)
 		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
-	if ok == false {
+	if !ok {
 		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
@@ -53,13 +53,13 @@ func GetAcceptLockOutRes(account string, groupid string, nonce string, dcrmfrom 
 	fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,acc =%v,groupid =%v,nonce =%v,dcrmfrom =%v,threshold =%v,key =%v !!!!============================\n", common.CurrentTime(), account, groupid, nonce, dcrmfrom, threshold, key)
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 		fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,no exsit key =%v !!!!============================\n", common.CurrentTime(), key)
 		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
 	ac,ok := da.(*AcceptLockOutData)
-	if ok == false {
+	if !ok {
 		return "dcrm back-end internal error:get accept result from db fail", false
 	}
 
@@ -86,13 +86,13 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 		fmt.Printf("%v =====================AcceptReqAddr,no exist key, key = %v ======================\n", common.CurrentTime(), key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
-	if ok == false {
+	if !ok {
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -183,14 +183,14 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 		fmt.Printf("%v =====================AcceptLockOut, no exist key = %v =================================\n", common.CurrentTime(), key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptLockOutData)
 
-	if ok == false {
+	if !ok {
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -273,14 +273,14 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + get_sign_hash(msghash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 		fmt.Printf("%v =====================AcceptSign, no exist key = %v =================================\n", common.CurrentTime(), key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptSignData)
 
-	if ok == false {
+	if !ok {
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -566,14 +566,14 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + tsgroupid + ":" + pubkey + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 		fmt.Printf("%v =====================AcceptReShare, no exist key = %v =================================\n", common.CurrentTime(), key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptReShareData)
 
-	if ok == false {
+	if !ok {
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 

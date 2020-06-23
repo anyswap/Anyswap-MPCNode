@@ -51,7 +51,7 @@ func GetSignNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 	    return "0", "", nil
 	}
 
@@ -73,7 +73,7 @@ func GetLockOutNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if exsit == false {
+	if !exsit {
 		return "0", "", nil
 	}
 
@@ -306,7 +306,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
 	//exsit,da := GetValueFromPubKeyData(key2)
 	exsit,da := GetPubKeyDataFromLocalDb(key2)
-	if exsit == false {
+	if !exsit {
 	    time.Sleep(time.Duration(5000000000))
 	    exsit,da = GetPubKeyDataFromLocalDb(key2)
 	}
@@ -318,7 +318,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	}
 
 	_,ok := da.(*PubKeyData)
-	if ok == false {
+	if !ok {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get lockout data from db fail", Err: fmt.Errorf("get lockout data from db fail")}
 		ch <- res
 		return

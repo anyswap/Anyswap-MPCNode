@@ -1238,11 +1238,8 @@ func (w *RPCReqWorker) Stop() {
 
 func CommitRpcReq() {
 	for {
-		select {
-		case req := <-RPCReqQueueCache:
-			RPCReqQueue <- req
-		}
-
+		req := <-RPCReqQueueCache
+		RPCReqQueue <- req
 		time.Sleep(time.Duration(1000000000)) //na, 1 s = 10e9 na /////////!!!!!fix bug:if large sign at same time,it will very slowly!!!!!
 	}
 }

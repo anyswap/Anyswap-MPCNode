@@ -53,7 +53,6 @@ var (
 	sendtogroup_lilo_timeout = 1000  
 	sendtogroup_timeout      = 1000
 	KeyFile    string
-	ReqAddrCh  = make(chan ReqAddrData, 1000)
 	LockOutCh  = make(chan LockOutData, 1000)
 	SignCh  = make(chan SignData, 1000)
 	ReShareCh  = make(chan ReShareData, 1000)
@@ -67,7 +66,6 @@ var (
 func Start() {
 	cryptocoinsconfig.Init()
 	coins.Init()
-	go RecivReqAddr()
 	go RecivLockOut()
 	go RecivReShare()
 	go RecivSign()
@@ -461,210 +459,6 @@ func CheckAccept(pubkey string,mode string,account string) bool {
     }
 
     return false
-}
-
-type ReqAddrData struct {
-	Account   string
-	Nonce     string
-	JsonStr   string
-	Key       string
-}
-
-func RecivReqAddr() {
-	for {
-		select {
-		case data := <-ReqAddrCh:
-			////////bug
-			exsit,_ := GetValueFromPubKeyData(data.Key)
-			if exsit == false {
-				req := TxDataReqAddr{}
-				json.Unmarshal([]byte(data.JsonStr), &req)
-				
-				cur_nonce, _, _ := GetReqAddrNonce(data.Account)
-				cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
-				new_nonce_num, _ := new(big.Int).SetString(data.Nonce, 10)
-				if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-					_, err := SetReqAddrNonce(data.Account,data.Nonce)
-					//fmt.Printf("%v =================================RecivReqAddr,SetReqAddrNonce, account = %v,group id = %v,threshold = %v,mode = %v,nonce = %v,err = %v,key = %v, =================================\n", common.CurrentTime(), data.Account, req.GroupId, req.ThresHold,req.Mode, data.Nonce, err, data.Key)
-					if err == nil {
-					    ars := GetAllReplyFromGroup(-1,req.GroupId,Rpc_REQADDR,cur_enode)
-
-					    ac := &AcceptReqAddrData{Initiator:cur_enode,Account: data.Account, Cointype: "ALL", GroupId: req.GroupId, Nonce: data.Nonce, LimitNum: req.ThresHold, Mode: req.Mode, TimeStamp: req.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: -1,Sigs:""}
-						err := SaveAcceptReqAddrData(ac)
-						fmt.Printf("%v ===================call SaveAcceptReqAddrData finish, account = %v,err = %v,key = %v, ========================\n", common.CurrentTime(), data.Account, err, data.Key)
-						if err == nil {
-						    ///////add decdsa log
-						    var enodeinfo string
-						    groupinfo := make([]string,0)
-						    _, enodes := GetGroup(req.GroupId)
-						    nodes := strings.Split(enodes, common.Sep2)
-						    for _, node := range nodes {
-							groupinfo = append(groupinfo,node)
-							node2 := ParseNode(node)
-							if strings.EqualFold(cur_enode,node2) {
-							    enodeinfo = node 
-							}
-						    }
-
-						    log, exist := DecdsaMap.ReadMap(strings.ToLower(data.Key))
-						    if exist == false {
-							logs := &DecdsaLog{CurEnode:enodeinfo,GroupEnodes:groupinfo,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:nil,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
-							DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
-							//fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
-						    } else {
-							logs,ok := log.(*DecdsaLog)
-							if ok == true {
-							    logs.CurEnode = enodeinfo
-							    logs.GroupEnodes = groupinfo
-							    DecdsaMap.WriteMap(strings.ToLower(data.Key),logs)
-							    //fmt.Printf("%v ===============RecivReqAddr,write map success,enodeinfo = %v,key = %v=================\n", common.CurrentTime(),enodeinfo,data.Key)
-							}
-						    }
-						    //////////////////
-							////////bug
-							go func(d ReqAddrData,reqda *TxDataReqAddr,rad *AcceptReqAddrData) {
-								nums := strings.Split(reqda.ThresHold, "/")
-								nodecnt, _ := strconv.Atoi(nums[1])
-								if nodecnt <= 1 {
-								    return
-								}
-
-								sigs := strings.Split(reqda.Sigs,"|")
-								//SigN = enode://xxxxxxxx@ip:portxxxxxxxxxxxxxxxxxxxxxx
-								_, enodes := GetGroup(reqda.GroupId)
-								nodes := strings.Split(enodes, common.Sep2)
-								/////////////////////tmp code //////////////////////
-								if reqda.Mode == "0" {
-								        if nodecnt != len(sigs) {
-									    return
-									}
-
-									mp := []string{d.Key, cur_enode}
-									enode := strings.Join(mp, "-")
-									s0 := "GroupAccounts"
-									s1 := strconv.Itoa(nodecnt)
-									ss := enode + common.Sep + s0 + common.Sep + s1
-
-									sstmp := s1
-									for j := 0; j < nodecnt; j++ {
-									    //fmt.Printf("%v==================RecivReqAddr, j = %v, sig data = %v, key = %v ==================\n",common.CurrentTime(),j,sigs[j],data.Key)
-										en := strings.Split(sigs[j], "@")
-										for _, node := range nodes {
-										    node2 := ParseNode(node)
-										    enId := strings.Split(en[0],"//")
-										    if len(enId) < 2 {
-											return
-										    }
-
-										    //fmt.Printf("%v==================RecivReqAddr, j = %v, sig data = %v, node = %v, node2 = %v, key = %v ==================\n",common.CurrentTime(),j,sigs[j],enId[1],node2,data.Key)
-										    if strings.EqualFold(node2, enId[1]) {
-											enodesigs := []rune(sigs[j])
-											if len(enodesigs) <= len(node) {
-											    return
-											}
-
-											sig := enodesigs[len(node):]
-											//sigbit, _ := hex.DecodeString(string(sig[:]))
-											sigbit := common.FromHex(string(sig[:]))
-											if sigbit == nil {
-											    return
-											}
-
-											//fmt.Printf("%v=====================RecivReqAddr, j = %v, sig data = %v, hex raw sig = %v, raw sig = %v, key = %v ==================\n",common.CurrentTime(),j,sigs[j],string(sig[:]),string(sigbit),data.Key)
-											pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
-											if err != nil {
-											    fmt.Printf("%v=====================RecivReqAddr, recover pubkey fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
-											    return
-											}
-											
-											h := coins.NewCryptocoinHandler("FSN")
-											if h != nil {
-											    pubkey := hex.EncodeToString(pub)
-											    from, err := h.PublicKeyToAddress(pubkey)
-											    if err != nil {
-												fmt.Printf("%v=====================RecivReqAddr, pubkey to addr fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
-												return
-											    }
-											    
-											    //key-enode:GroupAccounts:5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
-											    ss += common.Sep
-											    ss += node2 
-											    ss += common.Sep
-											    ss += from
-											    
-											    sstmp += common.Sep
-											    sstmp += node2
-											    sstmp += common.Sep
-											    sstmp += from
-											    
-											    exsit,da := GetValueFromPubKeyData(strings.ToLower(from))
-											    if exsit == false {
-												kdtmp := KeyData{Key: []byte(strings.ToLower(from)), Data: d.Key}
-												PubKeyDataChan <- kdtmp
-												LdbPubKeyData.WriteMap(strings.ToLower(from), []byte(d.Key))
-											    } else {
-												//
-												found := false
-												keys := strings.Split(string(da.([]byte)),":")
-												for _,v := range keys {
-												    if strings.EqualFold(v,pubkey) {
-													found = true
-													break
-												    }
-												}
-												//
-
-												if !found {
-												    da2 := string(da.([]byte)) + ":" + d.Key
-												    kdtmp := KeyData{Key: []byte(strings.ToLower(from)), Data: da2}
-												    PubKeyDataChan <- kdtmp
-												    LdbPubKeyData.WriteMap(strings.ToLower(from), []byte(da2))
-												}
-											    }
-											}
-										    }
-										}
-
-									}
-
-									SendMsgToDcrmGroup(ss, reqda.GroupId)
-									//fmt.Printf("%v ===============RecivReqAddr,send group accounts to other nodes,msg = %v,key = %v,===========================\n", common.CurrentTime(), ss, d.Key)
-									rad.Sigs = sstmp
-									if SaveAcceptReqAddrData(rad) != nil { //re-save
-									    return
-									}
-								} else {
-									    exsit,da := GetValueFromPubKeyData(strings.ToLower(d.Account))
-									    if exsit == false {
-										kdtmp := KeyData{Key: []byte(strings.ToLower(d.Account)), Data: d.Key}
-										PubKeyDataChan <- kdtmp
-										LdbPubKeyData.WriteMap(strings.ToLower(d.Account), []byte(d.Key))
-									    } else {
-										da2 := string(da.([]byte)) + ":" + d.Key
-										kdtmp := KeyData{Key: []byte(strings.ToLower(d.Account)), Data: da2}
-										PubKeyDataChan <- kdtmp
-										LdbPubKeyData.WriteMap(strings.ToLower(d.Account), []byte(da2))
-									    }
-								}
-								////////////////////////////////////////////////////
-
-								//coin := "ALL"
-								//if !types.IsDefaultED25519(msgs[1]) {  //TODO
-								//}
-
-								addr, _, err := SendReqDcrmAddr(d.Account, d.Nonce, d.JsonStr, d.Key)
-								//fmt.Printf("%v ===============RecivReqAddr,finish calc dcrm addrs,addr = %v,err = %v,key = %v,===========================\n", common.CurrentTime(), addr, err, d.Key)
-								if addr != "" && err == nil {
-									return
-								}
-							}(data,&req,ac)
-							//
-						}
-					}
-				}
-			}
-		}
-	}
 }
 
 func GetGroupSigsDataByRaw(raw string) (string,error) {
@@ -1065,9 +859,6 @@ func ReqDcrmAddr(raw string) (string, string, error) {
     fmt.Printf("============ReqDcrmAddr,SendMsgToDcrmGroup, gid = %v ,key = %v ==========\n",req.GroupId,key)
     SendMsgToDcrmGroup(raw, req.GroupId)
     SetUpMsgList(raw,cur_enode)
-    //go InitAcceptData(raw)
-    //data := ReqAddrData{Account: from.Hex(), Nonce: fmt.Sprintf("%v", Nonce), JsonStr:string(tx.Data()), Key: key}
-    //ReqAddrCh <- data
     return key, "", nil
 }
 
@@ -1131,30 +922,6 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 	    return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
 	}
 
-	/*if ac.Mode == "0" {
-	    exsit,data := GetValueFromPubKeyData(strings.ToLower(from.Hex()))
-	    if exsit == false {
-		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
-	    }
-
-	    found := false
-	    keys := strings.Split(string(data.([]byte)),":")
-	    for _,k := range keys {
-		if strings.EqualFold(k,acceptreq.Key) {
-		    found = true
-		    break
-		}
-	    }
-	    
-	    if found == false {
-		return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
-	    }
-	}*/
-	//if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
-	//	return "Failure", "invalid accepter", fmt.Errorf("invalid accepter")
-	//}
-	/////
-
 	///////
 	mp := []string{acceptreq.Key, cur_enode}
 	enode := strings.Join(mp, "-")
@@ -1164,34 +931,7 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 	SendMsgToDcrmGroup(ss, ac.GroupId)
 	
-	//////////add decdsa log
-	cur_time := fmt.Sprintf("%v",common.CurrentTime())
-	log, exist := DecdsaMap.ReadMap(strings.ToLower(acceptreq.Key))
-	if exist == false {
-	    tmp := make([]SendAcceptResTime,0)
-	    rat := SendAcceptResTime{SendTime:cur_time,Reply:ss}
-	    tmp = append(tmp,rat)
-	    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:tmp,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
-	    DecdsaMap.WriteMap(strings.ToLower(acceptreq.Key),logs)
-	    //fmt.Printf("%v ===============AcceptReqAddr,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,acceptreq.Key)
-	} else {
-	    logs,ok := log.(*DecdsaLog)
-	    if ok == false {
-		//fmt.Printf("%v ===============AcceptReqAddr,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),acceptreq.Key)
-		return "Failure", "get dcrm log fail", fmt.Errorf("get dcrm log fail.")
-	    }
-
-	    rats := logs.SendAcceptRes
-	    rat := SendAcceptResTime{SendTime:cur_time,Reply:ss}
-	    rats = append(rats,rat)
-	    logs.SendAcceptRes = rats
-	    DecdsaMap.WriteMap(strings.ToLower(acceptreq.Key),logs)
-	    //fmt.Printf("%v ===============AcceptReqAddr,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),acceptreq.Key)
-	}
-	///////////////////////
-
 	DisMsg(ss)
-	//fmt.Printf("%v ================== AcceptReqAddr, finish send AcceptReqAddrRes to other nodes,key = %v ====================\n", common.CurrentTime(), acceptreq.Key)
 	////fix bug: get C1 timeout
 	_, enodes := GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, common.Sep2)
@@ -1897,7 +1637,6 @@ func RecivReShare() {
 
 									pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
 									if err != nil {
-									    fmt.Printf("%v=====================RecivReqAddr, recover pubkey fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
 									    return
 									}
 									
@@ -1906,7 +1645,6 @@ func RecivReShare() {
 									    pubkey := hex.EncodeToString(pub)
 									    from, err := h.PublicKeyToAddress(pubkey)
 									    if err != nil {
-										fmt.Printf("%v=====================RecivReqAddr, pubkey to addr fail and return, err = %v, j = %v, sig = %v, key = %v ==================\n",common.CurrentTime(),err,j,string(sig[:]),data.Key)
 										return
 									    }
 									    
@@ -3702,134 +3440,6 @@ type TxDataReqAddr struct {
     Sigs string
 }
 
-type ReqAddrSendMsgToDcrm struct {
-	Account   string
-	Nonce     string
-	TxData string
-	Key       string
-}
-
-func (self *ReqAddrSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RPCMaxWorker {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no worker id", Err: GetRetErr(ErrGetWorkerIdError)}
-		ch <- res
-		return false
-	}
-
-	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-	msg, err := json.Marshal(self)
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
-		ch <- res
-		return false
-	}
-
-	sm := &SendMsg{MsgType: "rpc_req_dcrmaddr", Nonce: self.Key, WorkId: workid, Msg: string(msg)}
-	res, err := Encode2(sm)
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode SendMsg fail in req addr", Err: err}
-		ch <- res
-		return false
-	}
-
-	res, err = Compress([]byte(res))
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress SendMsg data fail in req addr", Err: err}
-		ch <- res
-		return false
-	}
-
-	req := TxDataReqAddr{}
-	err = json.Unmarshal([]byte(self.TxData), &req)
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
-	    ch <- res
-	    return false
-	}
-
-	w := workers[workid]
-	
-	AcceptReqAddr(cur_enode,self.Account, "ALL", req.GroupId, self.Nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", nil, workid,"")
-
-	SendToGroupAllNodes(req.GroupId, res)
-
-	//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Waiting For Result.key = %v============================\n", common.CurrentTime(), self.Key)
-	<-w.acceptWaitReqAddrChan
-	//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, get w.acceptWaitReqAddrChan success. key = %v============================\n", common.CurrentTime(), self.Key)
-
-	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-	///////
-	if req.Mode == "0" {
-		mp := []string{self.Key, cur_enode}
-		enode := strings.Join(mp, "-")
-		s0 := "AcceptReqAddrRes"
-		s1 := "true"
-		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + tt
-		SendMsgToDcrmGroup(ss, req.GroupId)
-		
-		//////////add decdsa log
-		cur_time := fmt.Sprintf("%v",common.CurrentTime())
-		log, exist := DecdsaMap.ReadMap(strings.ToLower(self.Key))
-		if exist == false {
-		    tmp := make([]SendAcceptResTime,0)
-		    rat := SendAcceptResTime{SendTime:cur_time,Reply:ss}
-		    tmp = append(tmp,rat)
-		    logs := &DecdsaLog{CurEnode:"",GroupEnodes:nil,DcrmCallTime:"",RecivAcceptRes:nil,SendAcceptRes:tmp,RecivDcrm:nil,SendDcrm:nil,FailTime:"",FailInfo:"",No_Reciv:nil}
-		    DecdsaMap.WriteMap(strings.ToLower(self.Key),logs)
-		    //fmt.Printf("%v ===============ReqAddrSendMsgToDcrm.Run,write map success, code is AcceptReqAddrRes,exist is false, msg = %v, key = %v=================\n", common.CurrentTime(),ss,self.Key)
-		} else {
-		    logs,ok := log.(*DecdsaLog)
-		    if ok == false {
-			//fmt.Printf("%v ===============ReqAddrSendMsgToDcrm.Run,code is AcceptReqAddrRes,ok if false, key = %v=================\n", common.CurrentTime(),self.Key)
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm log fail in req addr", Err: err}
-			ch <- res
-			return false
-		    }
-
-		    rats := logs.SendAcceptRes
-		    rat := SendAcceptResTime{SendTime:cur_time,Reply:ss}
-		    rats = append(rats,rat)
-		    logs.SendAcceptRes = rats
-		    DecdsaMap.WriteMap(strings.ToLower(self.Key),logs)
-		    //fmt.Printf("%v ===============ReqAddrSendMsgToDcrm.Run,write map success,code is AcceptReqAddrRes,exist is true,key = %v=================\n", common.CurrentTime(),self.Key)
-		}
-		///////////////////////
-
-		DisMsg(ss)
-		//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish send AcceptReqAddrRes to other nodes. key = %v============================\n", common.CurrentTime(), self.Key)
-		////fix bug: get C1 timeout
-		_, enodes := GetGroup(req.GroupId)
-		nodes := strings.Split(enodes, common.Sep2)
-		for _, node := range nodes {
-		    node2 := ParseNode(node)
-		    c1data := self.Key + "-" + node2 + common.Sep + "AcceptReqAddrRes"
-		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-		    if exist {
-			DisMsg(c1.(string))
-			go C1Data.DeleteMap(strings.ToLower(c1data))
-		    }
-		}
-		////
-	}
-
-	time.Sleep(time.Duration(1) * time.Second)
-	ars := GetAllReplyFromGroup(-1,req.GroupId,Rpc_REQADDR,cur_enode)
-	AcceptReqAddr(cur_enode,self.Account, "ALL", req.GroupId, self.Nonce, req.ThresHold, req.Mode, "", "", "", "", "", "", ars, workid,"")
-	//fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, finish agree this req addr oneself.key = %v============================\n", common.CurrentTime(), self.Key)
-	chret, tip, cherr := GetChannelValue(sendtogroup_timeout, w.ch)
-	fmt.Printf("%v ===================ReqAddrSendMsgToDcrm.Run, Get Result. result = %v,cherr = %v,key = %v============================\n", common.CurrentTime(), chret, cherr, self.Key)
-	if cherr != nil {
-		res2 := RpcDcrmRes{Ret: chret, Tip: tip, Err: cherr}
-		ch <- res2
-		return false
-	}
-
-	res2 := RpcDcrmRes{Ret: chret, Tip: tip, Err: cherr}
-	ch <- res2
-
-	return true
-}
-
 //msg = fusionaccount:dcrmaddr:dcrmto:value:cointype:groupid:nonce:threshold
 type LockOutSendMsgToDcrm struct {
 	Account   string
@@ -4327,21 +3937,6 @@ type NodeReply struct {
     Initiator string // "1"/"0"
 }
 
-func SendReqDcrmAddr(acc string, nonce string, txdata string, key string) (string, string, error) {
-	v := ReqAddrSendMsgToDcrm{Account: acc, Nonce: nonce, TxData: txdata, Key: key}
-	rch := make(chan interface{}, 1)
-	req := RPCReq{rpcdata: &v, ch: rch}
-
-	RPCReqQueueCache <- req
-	chret, tip, cherr := GetChannelValue(600, req.ch)
-
-	if cherr != nil {
-		return chret, tip, cherr
-	}
-
-	return chret, "", nil
-}
-
 func SendLockOut(acc string, nonce string, txdata string,key string) (string, string, error) {
 	v := LockOutSendMsgToDcrm{Account: acc, Nonce: nonce, TxData:txdata, Key: key}
 	rch := make(chan interface{}, 1)
@@ -4394,9 +3989,8 @@ func GetChannelValue(t int, obj interface{}) (string, string, error) {
 		timeout <- true
 	}()
 
-	switch obj.(type) {
+	switch ch := obj.(type) {
 	case chan interface{}:
-		ch := obj.(chan interface{})
 		select {
 		case v := <-ch:
 			ret, ok := v.(RpcDcrmRes)
@@ -4407,7 +4001,6 @@ func GetChannelValue(t int, obj interface{}) (string, string, error) {
 			return "", "dcrm back-end internal error:get result from channel timeout", fmt.Errorf("get data from node fail.")
 		}
 	case chan string:
-		ch := obj.(chan string)
 		select {
 		case v := <-ch:
 			return v, "", nil
@@ -4415,7 +4008,6 @@ func GetChannelValue(t int, obj interface{}) (string, string, error) {
 			return "", "dcrm back-end internal error:get result from channel timeout", fmt.Errorf("get data from node fail.")
 		}
 	case chan int64:
-		ch := obj.(chan int64)
 		select {
 		case v := <-ch:
 			return strconv.Itoa(int(v)), "", nil
@@ -4423,7 +4015,6 @@ func GetChannelValue(t int, obj interface{}) (string, string, error) {
 			return "", "dcrm back-end internal error:get result from channel timeout", fmt.Errorf("get data from node fail.")
 		}
 	case chan int:
-		ch := obj.(chan int)
 		select {
 		case v := <-ch:
 			return strconv.Itoa(v), "", nil
@@ -4431,7 +4022,6 @@ func GetChannelValue(t int, obj interface{}) (string, string, error) {
 			return "", "dcrm back-end internal error:get result from channel timeout", fmt.Errorf("get data from node fail.")
 		}
 	case chan bool:
-		ch := obj.(chan bool)
 		select {
 		case v := <-ch:
 			if !v {

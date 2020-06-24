@@ -401,7 +401,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 
     //var data []byte
     datmp, exsit := LdbPubKeyData.ReadMap(key)
-    if exsit == false {
+    if !exsit {
 	    /*da := GetPubKeyDataValueFromDb(key)
 	    if da == nil {
 		    exsit = false
@@ -443,7 +443,7 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
     }
 
     pd,ok := pubs.(*PubKeyData)
-    if ok == false {
+    if !ok {
 	fmt.Printf("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================\n")
 	return false,nil
     }

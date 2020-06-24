@@ -1347,7 +1347,7 @@ func DisMsg(msg string) {
 			}
 
 			ac,ok := da.(*AcceptReqAddrData)
-			if ok == false {
+			if !ok {
 			    return
 			}
 
@@ -1406,7 +1406,7 @@ func DisMsg(msg string) {
 			}
 
 			ac,ok := da.(*AcceptLockOutData)
-			if ok == false {
+			if !ok {
 			    return
 			}
 
@@ -1476,7 +1476,7 @@ func DisMsg(msg string) {
 			}
 
 			ac,ok := da.(*AcceptSignData)
-			if ok == false {
+			if !ok {
 			    return
 			}
 
@@ -1546,7 +1546,7 @@ func DisMsg(msg string) {
 			}
 
 			ac,ok := da.(*AcceptReShareData)
-			if ok == false {
+			if !ok {
 			    return
 			}
 

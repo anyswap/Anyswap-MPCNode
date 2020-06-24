@@ -710,6 +710,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
 	    }
 
+	    fmt.Printf("%v ================CheckRaw, cur_enode = %v, from = %v, ac.Sigs = %v ==================\n",common.CurrentTime(),cur_enode,from.Hex(),ac.Sigs)
 	    if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
 		return "","","",nil,fmt.Errorf("invalid lockout account")
 	    }
@@ -763,6 +764,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 		if err == nil {
 		    ars := GetAllReplyFromGroup(workid,req.GroupId,Rpc_REQADDR,sender)
 		    sigs,err := GetGroupSigsDataByRaw(raw) 
+		    fmt.Printf("=================InitAcceptData,get group sigs = %v, err = %v, key = %v =================\n",sigs,err,key)
 		    if err != nil {
 			fmt.Printf("=================InitAcceptData,get group sigs err = %v, key = %v =================\n",err,key)
 			res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
@@ -3964,7 +3966,9 @@ type AccountsList struct {
 
 func CheckAcc(eid string, geter_acc string, sigs string) bool {
 
-	if eid == "" || geter_acc == "" || sigs == "" {
+    return true //tmp code 
+
+	/*if eid == "" || geter_acc == "" || sigs == "" {
 	    return false
 	}
 
@@ -3981,7 +3985,7 @@ func CheckAcc(eid string, geter_acc string, sigs string) bool {
 		//}
 	}
 	
-	return false
+	return false*/
 }
 
 type PubKeyInfo struct {

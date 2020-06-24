@@ -66,7 +66,7 @@ func GetReqAddrNonce(account string) (string, string, error) {
 	key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	var da []byte
 	datmp, exsit := LdbPubKeyData.ReadMap(key2)
-	if exsit == false {
+	if !exsit {
 		//fmt.Printf("%v ==============GetReqAddrNonce,no exsit in memory,so want to read from db, account = %v,account hash = %v ================\n", common.CurrentTime(), account, key2)
 		da2 := GetPubKeyDataValueFromDb(key2)
 		if da2 == nil {
@@ -281,7 +281,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 
-	if ok == false {
+	if !ok {
 		return
 	}
 

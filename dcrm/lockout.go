@@ -3122,9 +3122,18 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 }
 
 func SendMsgToDcrmGroup(msg string, groupid string) {
-	test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
+	/*test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
 	fmt.Printf("%v =========SendMsgToDcrmGroup,msg = %v,msg hash = %v,send to group id = %v =================\n", common.CurrentTime(), msg, test, groupid)
-	BroadcastInGroupOthers(groupid, msg)
+	BroadcastInGroupOthers(groupid, msg)*/
+	_, nodes := GetGroup(groupid)
+	others := strings.Split(nodes, common.Sep2)
+	for _, v := range others {
+	    if IsCurNode(v, cur_enode) {
+		continue
+	    }
+
+	    SendMsgToPeer(v,msg)
+	}
 }
 
 ///

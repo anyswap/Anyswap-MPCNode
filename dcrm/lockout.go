@@ -94,10 +94,7 @@ func SetLockOutNonce(account string,nonce string) (string, error) {
 
 func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,ch chan interface{}) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	//exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
 	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-	//test,_ := new(big.Int).SetString(string(dcrmpks[:]),0)
-	//fmt.Printf("============================sign,pubkey = %v, k = %v, key = %v, =========================\n",pubkey,test,wsid)
 	if !exsit {
 	    time.Sleep(time.Duration(5000000000))
 	    exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
@@ -105,17 +102,17 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	///////
 	if !exsit {
 	    fmt.Printf("============================sign,not exist sign data, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
-		ch <- res
-		return
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
+	    ch <- res
+	    return
 	}
 
 	_,ok := da.(*PubKeyData)
 	if !ok {
-		fmt.Printf("============================sign,sign data error, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
-		ch <- res
-		return
+	    fmt.Printf("============================sign,sign data error, pubkey = %v, key = %v, =========================\n",pubkey,wsid)
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
+	    ch <- res
+	    return
 	}
 
 	save := (da.(*PubKeyData)).Save
@@ -160,6 +157,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	} else {
 	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,rch)
 	    ret, tip, cherr := GetChannelValue(ch_t,rch)
+	    fmt.Printf("%v ==========sign, return result = %v, err = %v, key = %v ================\n", common.CurrentTime(), ret,cherr,wsid)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		    ch <- res
@@ -190,10 +188,10 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	if result != "" {
 		w, err := FindWorker(wsid)
 		if w == nil || err != nil {
-			fmt.Printf("%v ==========sign,no find worker,nonce = %v,err = %v================\n", common.CurrentTime(), nonce, err)
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("get worker error.")}
-			ch <- res
-			return
+		    fmt.Printf("%v ==========sign,no find worker, err = %v, key = %v ================\n", common.CurrentTime(), err,wsid)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("get worker error.")}
+		    ch <- res
+		    return
 		}
 
 		///////TODO tmp
@@ -216,13 +214,14 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 			return
 		}
 
-		fmt.Printf("%v ================sign,the terminal sign res is success. nonce =%v ==================\n", common.CurrentTime(), nonce)
+		fmt.Printf("%v ================sign,the terminal sign res is success. key =%v ==================\n", common.CurrentTime(), wsid)
 		res := RpcDcrmRes{Ret: result, Tip: tip, Err: err}
 		ch <- res
 		return
 	}
 
 	if cherrtmp != nil {
+		fmt.Printf("%v ================sign,the terminal sign res is failure. err = %v, key =%v ==================\n", common.CurrentTime(), cherrtmp,wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:sign fail", Err: cherrtmp}
 		ch <- res
 		return
@@ -235,6 +234,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
 
 	/////////////
+	fmt.Printf("%v ======================sign_ec, txhash = %v, key = %v ==================\n",common.CurrentTime(),txhash,msgprex)
     	tmp := make([]string,0)
 	for _,v := range txhash {
 	    txhashs := []rune(v)
@@ -245,6 +245,7 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 	    }
 	}
 
+	fmt.Printf("%v ======================sign_ec, tmp = %v, key = %v ==================\n",common.CurrentTime(),tmp,msgprex)
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
 		fmt.Printf("%v ==========dcrm_sign,no find worker,key = %v,err = %v================\n", common.CurrentTime(), msgprex, err)
@@ -263,7 +264,7 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 	for _,v := range tmp {
 	    var ch1 = make(chan interface{}, 1)
 	    for i:=0;i < recalc_times;i++ {
-		//fmt.Printf("%v===============sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
+		fmt.Printf("%v===============sign_ec, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
 		if len(ch1) != 0 {
 		    <-ch1
 		}
@@ -275,11 +276,13 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		if ret != "" && cherr == nil {
 		    result += ret
 		    result += ":"
+		    fmt.Printf("%v ======================sign_ec, result = %v, key = %v ==================\n",common.CurrentTime(),result,msgprex)
 			//res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
 			//ch <- res
 			break
 		}
 		
+		fmt.Printf("%v ======================sign_ec, ret = %v, cherr = %v, key = %v ==================\n",common.CurrentTime(),ret,cherr,msgprex)
 		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	    }
 	}
@@ -291,6 +294,7 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 	    ch <- res
 	}
 
+	fmt.Printf("%v ======================sign_ec, return result = %v, len(tmps) = %v, len(tmp) = %v, key = %v ==================\n",common.CurrentTime(),result,len(tmps),len(tmp),msgprex)
 	return bak_sig
 }
 
@@ -3122,10 +3126,9 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 }
 
 func SendMsgToDcrmGroup(msg string, groupid string) {
-	/*test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
-	fmt.Printf("%v =========SendMsgToDcrmGroup,msg = %v,msg hash = %v,send to group id = %v =================\n", common.CurrentTime(), msg, test, groupid)
-	BroadcastInGroupOthers(groupid, msg)*/
-	_, nodes := GetGroup(groupid)
+	fmt.Printf("%v =========SendMsgToDcrmGroup,msg = %v, send to group id = %v =================\n", common.CurrentTime(), msg,groupid)
+	BroadcastInGroupOthers(groupid, msg)
+	/*_, nodes := GetGroup(groupid)
 	others := strings.Split(nodes, common.Sep2)
 	for _, v := range others {
 	    if IsCurNode(v, cur_enode) {
@@ -3133,7 +3136,7 @@ func SendMsgToDcrmGroup(msg string, groupid string) {
 	    }
 
 	    SendMsgToPeer(v,msg)
-	}
+	}*/
 }
 
 ///
@@ -3183,7 +3186,6 @@ func DecryptMsg(cm string) (string, error) {
 }
 
 ///
-
 func SendMsgToPeer(enodes string, msg string) {
 	test := Keccak256Hash([]byte(strings.ToLower(msg))).Hex()
 	fmt.Printf("%v =========SendMsgToPeer,msg = %v,msg hash = %v,send to peer = %v =================\n", common.CurrentTime(), msg, test, enodes)

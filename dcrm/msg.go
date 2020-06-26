@@ -1287,6 +1287,7 @@ func DisMsg(msg string) {
 
 		w.msg_mtazk1proof.PushBack(msg)
 		if w.msg_mtazk1proof.Len() == (w.ThresHold-1) {
+			fmt.Printf("%v===================Get All MTAZK1PROOF, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bmtazk1proof <- true
 		}
 		//sign
@@ -1318,6 +1319,7 @@ func DisMsg(msg string) {
 
 		w.msg_kc.PushBack(msg)
 		if w.msg_kc.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All KC, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bkc <- true
 		}
 	case "MKG":
@@ -1332,6 +1334,7 @@ func DisMsg(msg string) {
 
 		w.msg_mkg.PushBack(msg)
 		if w.msg_mkg.Len() == (w.ThresHold-1) {
+			fmt.Printf("%v===================Get All MKG, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bmkg <- true
 		}
 	case "MKW":
@@ -1346,6 +1349,7 @@ func DisMsg(msg string) {
 
 		w.msg_mkw.PushBack(msg)
 		if w.msg_mkw.Len() == (w.ThresHold-1) {
+			fmt.Printf("%v===================Get All MKW, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bmkw <- true
 		}
 	case "DELTA1":
@@ -1360,6 +1364,7 @@ func DisMsg(msg string) {
 
 		w.msg_delta1.PushBack(msg)
 		if w.msg_delta1.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All DELTA1, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bdelta1 <- true
 		}
 	case "D11":
@@ -1390,6 +1395,7 @@ func DisMsg(msg string) {
 
 		w.msg_commitbigvab.PushBack(msg)
 		if w.msg_commitbigvab.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All CommitBigVAB, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bcommitbigvab <- true
 		}
 	case "ZKABPROOF":
@@ -1404,6 +1410,7 @@ func DisMsg(msg string) {
 
 		w.msg_zkabproof.PushBack(msg)
 		if w.msg_zkabproof.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All ZKABPROOF, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bzkabproof <- true
 		}
 	case "CommitBigUT":
@@ -1418,6 +1425,7 @@ func DisMsg(msg string) {
 
 		w.msg_commitbigut.PushBack(msg)
 		if w.msg_commitbigut.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All CommitBigUT, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bcommitbigut <- true
 		}
 	case "CommitBigUTD11":
@@ -1432,6 +1440,7 @@ func DisMsg(msg string) {
 
 		w.msg_commitbigutd11.PushBack(msg)
 		if w.msg_commitbigutd11.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All CommitBigUTD11, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bcommitbigutd11 <- true
 		}
 	case "S1":
@@ -1446,6 +1455,7 @@ func DisMsg(msg string) {
 
 		w.msg_s1.PushBack(msg)
 		if w.msg_s1.Len() == w.ThresHold {
+			fmt.Printf("%v===================Get All S1, key = %v====================\n",common.CurrentTime(),prexs[0])
 			w.bs1 <- true
 		}
 	case "SS1":

@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"sync"
+	//"sync"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
@@ -41,7 +41,7 @@ import (
 
 var (
 	PaillierKeyLength        = 2048
-	ch_t                     = 400 
+	ch_t                     = 700 
 	reqdata_trytimes = 5
 	reqdata_timeout = 60
 	recalc_times = 20
@@ -1077,7 +1077,9 @@ func findmsg(l *list.List,node string) bool {
 }
 
 func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeout int) bool {
-    w := workers[wid]
+	return false //tmp code
+
+    /*w := workers[wid]
     if w == nil {
 	return false
     }
@@ -1252,7 +1254,7 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
     }
     wg.Wait()
     //fmt.Printf("%v===================ReqDataFromGroup, finish req data, key = %v, status = %v ========================\n",common.CurrentTime(),msgprex,suss)
-    return suss
+    return suss*/
 }
 
 func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
@@ -1599,7 +1601,9 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	iter = w.msg_d1_1.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
-		ds[itmp] = mdss
+		if itmp < len(ds) {
+		    ds[itmp] = mdss
+		}
 		iter = iter.Next()
 		itmp++
 	}

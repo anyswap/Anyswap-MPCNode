@@ -517,6 +517,14 @@ func SetUpMsgList(msg string, enode string) {
 	RPCReqQueue <- req
 }
 
+func SetUpMsgList3(msg string, enode string,rch chan interface{}) {
+
+	v := RecvMsg{msg: msg, sender: enode}
+	//rpc-req
+	req := RPCReq{rpcdata: &v, ch: rch}
+	RPCReqQueue <- req
+}
+
 //==================================================================
 
 type WorkReq interface {
@@ -568,6 +576,56 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	}
 
 	////////////////////
+	m, err2 := Decode2(res, "SignData")
+	if err2 == nil {
+	    sd,ok := m.(*SignData)
+	    if ok {
+		fmt.Printf("%v===============RecvMsg.Run, sign data = %v, msgprex = %v, key = %v ================\n",common.CurrentTime(),sd,sd.MsgPrex,sd.Key)
+
+		w := workers[workid]
+		w.sid = sd.Key
+		w.groupid = sd.GroupId
+		w.NodeCnt = sd.NodeCnt
+		w.ThresHold = sd.ThresHold
+		w.DcrmFrom = sd.DcrmFrom
+
+		var ch1 = make(chan interface{}, 1)
+		for i:=0;i < recalc_times;i++ {
+		    fmt.Printf("%v===============RecvMsg.Run, sign recalc i = %v, msgprex = %v, key = %v ================\n",common.CurrentTime(),i,sd.MsgPrex,sd.Key)
+		    if len(ch1) != 0 {
+			<-ch1
+		    }
+
+		    w.Clear2()
+		    Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
+		    ret, _, cherr := GetChannelValue(ch_t, ch1)
+		    if ret != "" && cherr == nil {
+
+			ww, err2 := FindWorker(sd.MsgPrex)
+			if err2 != nil || ww == nil {
+			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
+			    ch <- res2
+			    return false
+			}
+
+			fmt.Printf("%v ======================RecvMsg.Run, finish sign, get ret = %v, cherr = %v, msgprex = %v, key = %v ==================\n",common.CurrentTime(),ret,cherr,sd.MsgPrex,sd.Key)
+
+			ww.rsv.PushBack(ret)
+			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
+			ch <- res2
+			return true 
+		    }
+		    
+		    fmt.Printf("%v ======================RecvMsg.Run, ret = %v, cherr = %v, msgprex = %v, key = %v ==================\n",common.CurrentTime(),ret,cherr,sd.MsgPrex,sd.Key)
+		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
+		}	
+		
+		res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
+		ch <- res2
+		return false 
+	    }
+	}
+
 	errtmp := InitAcceptData(res,workid,self.sender,ch)
 	if errtmp == nil {
 	    return true
@@ -1079,10 +1137,20 @@ func DisMsg(msg string) {
 	}
 	/////////////////
 
+	//fix bug: more txhash to be sign,c1 data will be lost.
+	/*if mm[1] == "C1" || mm[1] == "C11" {
+	    mmtmp := mm[0:2]
+	    ss := strings.Join(mmtmp, common.Sep)
+	    fmt.Printf("%v ===============DisMsg,save the msg (c1 or accept res) to C1Data map. ss = %v, msg = %v,key = %v=================\n", common.CurrentTime(), strings.ToLower(ss),msg,prexs[0])
+	    C1Data.WriteMap(strings.ToLower(ss),msg)
+	}*/
+	/////////////////////////////////////////
+
 	//msg:  hash-enode:C1:X1:X2
 	w, err := FindWorker(prexs[0])
 	if err != nil || w == nil {
 
+	    //fmt.Printf("%v ===============DisMsg,no find worker, key = %v =================\n", common.CurrentTime(), prexs[0])
 	    mmtmp := mm[0:2]
 	    ss := strings.Join(mmtmp, common.Sep)
 	    fmt.Printf("%v ===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map. ss = %v, msg = %v,key = %v=================\n", common.CurrentTime(), strings.ToLower(ss),msg,prexs[0])

@@ -37,6 +37,7 @@ import (
 	"crypto/ecdsa"
 	crand "crypto/rand"
 
+	"sync"
 	"github.com/agl/ed25519"
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/cryptoCoins/coins"
@@ -231,7 +232,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	ch <- res
 }
 
-func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
+/*func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
 
 	/////////////
 	fmt.Printf("%v ======================sign_ec, txhash = %v, key = %v ==================\n",common.CurrentTime(),txhash,msgprex)
@@ -296,6 +297,105 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 
 	fmt.Printf("%v ======================sign_ec, return result = %v, len(tmps) = %v, len(tmp) = %v, key = %v ==================\n",common.CurrentTime(),result,len(tmps),len(tmp),msgprex)
 	return bak_sig
+}
+*/
+
+type SignData struct {
+    MsgPrex string
+    Key string
+    Save string
+    Sku1 *big.Int
+    Txhash string
+    GroupId string
+    NodeCnt int 
+    ThresHold int
+    DcrmFrom string
+    Keytype string
+    Cointype string
+    Pkx *big.Int
+    Pky *big.Int
+}
+
+func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
+
+	/////////////
+	fmt.Printf("%v ======================sign_ec, txhash = %v, key = %v ==================\n",common.CurrentTime(),txhash,msgprex)
+    	tmp := make([]string,0)
+	for _,v := range txhash {
+	    txhashs := []rune(v)
+	    if string(txhashs[0:2]) == "0x" {
+		    tmp = append(tmp,string(txhashs[2:]))
+	    } else {
+		tmp = append(tmp,string(txhashs))
+	    }
+	}
+
+	fmt.Printf("%v ======================sign_ec, tmp = %v, key = %v ==================\n",common.CurrentTime(),tmp,msgprex)
+	w, err := FindWorker(msgprex)
+	if w == nil || err != nil {
+		fmt.Printf("%v ==========dcrm_sign,no find worker,key = %v,err = %v================\n", common.CurrentTime(), msgprex, err)
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker.")}
+		ch <- res
+		return ""
+	}
+
+	cur_enode = GetSelfEnode()
+
+	fmt.Println("===================!!!Start!!!====================")
+
+	var wg sync.WaitGroup
+	for _,v := range tmp {
+	    wg.Add(1)
+	    go func(vv string) {
+		defer wg.Done()
+
+		key := Keccak256Hash([]byte(strings.ToLower(msgprex + "-" + vv))).Hex()
+		sd := &SignData{MsgPrex:msgprex,Key:key,Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky}
+		fmt.Printf("%v ======================sign_ec, vv = %v, msgprex = %v, key = %v ==================\n",common.CurrentTime(),vv,msgprex,key)
+
+		val,err := Encode2(sd)
+		if err != nil {
+		    fmt.Printf("%v ======================sign_ec, encode error, vv = %v, msgprex = %v, key = %v, err = %v ==================\n",common.CurrentTime(),vv,msgprex,key,err)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:marshal sign data error", Err: err}
+		    ch <- res
+		    return 
+		}
+		
+		fmt.Printf("%v ======================sign_ec, encode success, vv = %v, msgprex = %v, key = %v, val = %v ==================\n",common.CurrentTime(),vv,msgprex,key,val)
+		rch := make(chan interface{}, 1)
+		SetUpMsgList3(val,cur_enode,rch)
+		_, _,cherr := GetChannelValue(ch_t,rch)
+		if cherr != nil {
+		    fmt.Printf("%v ======================sign_ec, get finish error, vv = %v, msgprex = %v, key = %v, val = %v, cherr = %v ==================\n",common.CurrentTime(),vv,msgprex,key,val,cherr)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
+		    ch <- res
+		    return 
+		}
+		fmt.Printf("%v ======================sign_ec, get finish success, vv = %v, msgprex = %v, key = %v, val = %v, ==================\n",common.CurrentTime(),vv,msgprex,key,val)
+	    }(v)
+	}
+	wg.Wait()
+
+	fmt.Printf("%v ======================sign_ec, all sign finish, msgprex = %v, w.rsv = %v, ==================\n",common.CurrentTime(),msgprex,w.rsv)
+
+	var ret string
+	iter := w.rsv.Front()
+	for iter != nil {
+	    mdss := iter.Value.(string)
+	    ret += mdss 
+	    ret += ":"
+	    iter = iter.Next()
+	}
+
+	ret += "NULL"
+	tmps := strings.Split(ret, ":")
+	if len(tmps) == (len(tmp) + 1) {
+	    res := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
+	    ch <- res
+	}
+
+	fmt.Printf("%v ======================sign_ec, return result = %v, len(tmps) = %v, len(tmp) = %v, key = %v ==================\n",common.CurrentTime(),ret,len(tmps),len(tmp),msgprex)
+	return "" 
 }
 
 func validate_lockout(wsid string, account string, dcrmaddr string, cointype string, value string, to string, nonce string, memo string,ch chan interface{}) {
@@ -3128,6 +3228,7 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 func SendMsgToDcrmGroup(msg string, groupid string) {
 	fmt.Printf("%v =========SendMsgToDcrmGroup,msg = %v, send to group id = %v =================\n", common.CurrentTime(), msg,groupid)
 	BroadcastInGroupOthers(groupid, msg)
+
 	/*_, nodes := GetGroup(groupid)
 	others := strings.Split(nodes, common.Sep2)
 	for _, v := range others {

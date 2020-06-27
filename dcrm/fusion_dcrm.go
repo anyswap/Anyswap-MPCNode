@@ -764,6 +764,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	nc,_ := GetGroup(groupid)
 	if nc < limit || nc > nodecnt {
+	    fmt.Printf("%v ==============CheckRaw, sign, limit = %v, nodecnt = %v,nc = %v, groupid = %v ================\n",common.CurrentTime(),limit,nodecnt,nc,groupid)
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 
@@ -3584,6 +3585,16 @@ func Encode2(obj interface{}) (string, error) {
 		    return "", err1
 		}
 		return buff.String(), nil
+	case *SignData:
+
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+
+		err1 := enc.Encode(ch)
+		if err1 != nil {
+			return "", err1
+		}
+		return buff.String(), nil
 	default:
 		return "", fmt.Errorf("encode obj fail.")
 	}
@@ -3688,6 +3699,21 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		dec := gob.NewDecoder(&data)
 
 		var res AcceptReShareData
+		err := dec.Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
+	}
+
+	if datatype == "SignData" {
+		var data bytes.Buffer
+		data.Write([]byte(s))
+
+		dec := gob.NewDecoder(&data)
+
+		var res SignData
 		err := dec.Decode(&res)
 		if err != nil {
 			return nil, err

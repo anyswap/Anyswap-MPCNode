@@ -142,6 +142,8 @@ type RPCReqWorker struct {
 	msg_paillierkey      *list.List
 	splitmsg_paillierkey map[string]*list.List
 	
+	rsv      *list.List
+	
 	pkx  *list.List
 	pky  *list.List
 	save *list.List
@@ -338,6 +340,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		msg_sendsignres:        list.New(),
 		splitmsg_sendsignres:   make(map[string]*list.List),
 
+		rsv:  list.New(),
 		pkx:  list.New(),
 		pky:  list.New(),
 		save: list.New(),
@@ -580,6 +583,11 @@ func (w *RPCReqWorker) Clear() {
 	for e := w.retres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.retres.Remove(e)
+	}
+
+	for e := w.rsv.Front(); e != nil; e = next {
+		next = e.Next()
+		w.rsv.Remove(e)
 	}
 
 	if len(w.ch) == 1 {
@@ -974,6 +982,11 @@ func (w *RPCReqWorker) Clear2() {
 	for e := w.retres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.retres.Remove(e)
+	}
+
+	for e := w.rsv.Front(); e != nil; e = next {
+		next = e.Next()
+		w.rsv.Remove(e)
 	}
 
 	if len(w.ch) == 1 {

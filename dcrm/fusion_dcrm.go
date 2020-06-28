@@ -2966,66 +2966,6 @@ func SortCurNodeInfo(value []interface{}) []interface{} {
 }
 
 func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
-	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
-	if exsit == false {
-	    return nil,"",nil
-	}
-
-	//check obj type
-	_,ok := da.([]byte)
-	if ok == false {
-	    return nil,"get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
-	}
-	//
-
-	fmt.Printf("%v=================GetCurNodeReqAddrInfo,da = %v,geter_acc = %v ====================\n",common.CurrentTime(),string(da.([]byte)),geter_acc)
-	var ret []*ReqAddrReply
-	keys := strings.Split(string(da.([]byte)),":")
-	for _,key := range keys {
-	    exsit,data := GetValueFromPubKeyData(key)
-	    if exsit == false {
-		continue
-	    }
-
-	    if data == nil {
-		continue
-	    }
-
-	    ac,ok := data.(*AcceptReqAddrData)
-	    if ok == false {
-		continue
-	    }
-
-	    if ac == nil {
-		    continue
-	    }
-
-	    if ac.Mode == "1" {
-		    continue
-	    }
-	    
-	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
-		continue
-	    }
-
-	    if ac.Deal == "true" || ac.Status == "Success" {
-		    continue
-	    }
-
-	    if ac.Status != "Pending" {
-		    continue
-	    }
-
-	    los := &ReqAddrReply{Key: key, Account: ac.Account, Cointype: ac.Cointype, GroupId: ac.GroupId, Nonce: ac.Nonce, ThresHold: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp}
-	    ret = append(ret, los)
-	    ////
-
-	}
-
-	///////
-	return ret, "", nil*/
-	
-	//fmt.Printf("%v================GetCurNodeReqAddrInfo start,====================\n",common.CurrentTime())
 	var ret []*ReqAddrReply
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
@@ -3035,12 +2975,11 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptReqAddrData)
-		//fmt.Printf("%v================GetCurNodeReqAddrInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 		if vv == nil || !ok {
 		    return
 		}
 
-		//fmt.Printf("%v================GetCurNodeReqAddrInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+		fmt.Printf("%v================GetCurNodeReqAddrInfo, it is *AcceptReqAddrData, vv = %v, vv.Deal = %v, vv.Mode = %v, vv.Status = %v, key = %v ====================\n",common.CurrentTime(),vv,vv.Deal,vv.Mode,vv.Status,key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -3059,13 +2998,11 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		//fmt.Printf("%v================GetCurNodeReqAddrInfo ret = %v,====================\n",common.CurrentTime(),ret)
+		fmt.Printf("%v================GetCurNodeReqAddrInfo success return, key = %v ====================\n",common.CurrentTime(),key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
-	//fmt.Printf("%v================GetCurNodeReqAddrInfo end lock,====================\n",common.CurrentTime())
 	wg.Wait()
-	//fmt.Printf("%v================GetCurNodeReqAddrInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 

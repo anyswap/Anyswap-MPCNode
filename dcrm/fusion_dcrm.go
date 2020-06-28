@@ -893,6 +893,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	return fmt.Errorf("init accept data fail")
     }
 
+    fmt.Printf("%v =====================InitAcceptData call CheckRaw ================\n",common.CurrentTime())
     key,from,nonce,txdata,err := CheckRaw(raw)
     if err != nil {
 	fmt.Printf("===============InitAcceptData, check raw err = %v, =================\n",err)
@@ -1796,6 +1797,7 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 
 func ReqDcrmAddr(raw string) (string, string, error) {
 
+    fmt.Printf("%v =====================ReqDcrmAddr call CheckRaw ================\n",common.CurrentTime())
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	fmt.Printf("============ReqDcrmAddr,err = %v ==========\n",err)
@@ -1823,6 +1825,7 @@ func DisAcceptMsg(raw string,workid int) {
 	return
     }
 
+    fmt.Printf("%v =====================DisAcceptMsg call CheckRaw ================\n",common.CurrentTime())
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	return
@@ -1992,6 +1995,7 @@ func DisAcceptMsg(raw string,workid int) {
 }
 
 func RpcAcceptReqAddr(raw string) (string, string, error) {
+    fmt.Printf("%v =====================RpcAcceptReqAddr call CheckRaw ================\n",common.CurrentTime())
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	fmt.Printf("============RpcAcceptReqAddr,CheckRaw err = %v ==========\n",err)
@@ -2018,6 +2022,7 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 }
 
 func RpcAcceptLockOut(raw string) (string, string, error) {
+    fmt.Printf("%v =====================RpcAcceptLockOut call CheckRaw ================\n",common.CurrentTime())
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	fmt.Printf("============RpcAcceptLockOut,CheckRaw err = %v ==========\n",err)
@@ -2044,6 +2049,7 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 }
 
 func RpcAcceptSign(raw string) (string, string, error) {
+    fmt.Printf("%v =====================RpcAcceptSign call CheckRaw ================\n",common.CurrentTime())
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	fmt.Printf("============RpcAcceptSign,CheckRaw err = %v ==========\n",err)
@@ -2070,6 +2076,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
 }
 
 func LockOut(raw string) (string, string, error) {
+    fmt.Printf("%v =====================LockOut call CheckRaw ================\n",common.CurrentTime())
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	fmt.Printf("============LockOut,err = %v ==========\n",err)
@@ -2423,6 +2430,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 ///////reshare end////////
 
 func Sign(raw string) (string, string, error) {
+    fmt.Printf("%v =====================Sign call CheckRaw ================\n",common.CurrentTime())
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	fmt.Printf("============Sign,err = %v ==========\n",err)
@@ -3658,6 +3666,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptlockoutres.Front()
 		if iter != nil {
 		    mdss := iter.Value.(string)
+		    fmt.Printf("%v ===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_LOCKOUT ================\n",common.CurrentTime())
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
 		    exsit,da := GetValueFromPubKeyData(key2)
@@ -3705,6 +3714,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptsignres.Front()
 		if iter != nil {
 		    mdss := iter.Value.(string)
+		    fmt.Printf("%v ===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_SIGN ================\n",common.CurrentTime())
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
 		    exsit,da := GetValueFromPubKeyData(key2)
@@ -3787,6 +3797,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 	    iter := w.msg_acceptreqaddrres.Front()
 	    if iter != nil {
 		mdss := iter.Value.(string)
+		fmt.Printf("%v ===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_REQADDR ================\n",common.CurrentTime())
 		key,_,_,_,_ := CheckRaw(mdss)
 		exsit,da := GetValueFromPubKeyData(key)
 		if exsit {

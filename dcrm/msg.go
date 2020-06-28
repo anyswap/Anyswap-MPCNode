@@ -102,6 +102,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	}
 
 	raw := s 
+	fmt.Printf("%v =================GetRawReply call CheckRaw =====================\n",common.CurrentTime())
 	_,from,_,txdata,err := CheckRaw(raw)
 	if err != nil {
 	    continue

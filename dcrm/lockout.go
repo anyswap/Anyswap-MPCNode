@@ -232,74 +232,6 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	ch <- res
 }
 
-/*func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
-
-	/////////////
-	fmt.Printf("%v ======================sign_ec, txhash = %v, key = %v ==================\n",common.CurrentTime(),txhash,msgprex)
-    	tmp := make([]string,0)
-	for _,v := range txhash {
-	    txhashs := []rune(v)
-	    if string(txhashs[0:2]) == "0x" {
-		    tmp = append(tmp,string(txhashs[2:]))
-	    } else {
-		tmp = append(tmp,string(txhashs))
-	    }
-	}
-
-	fmt.Printf("%v ======================sign_ec, tmp = %v, key = %v ==================\n",common.CurrentTime(),tmp,msgprex)
-	w, err := FindWorker(msgprex)
-	if w == nil || err != nil {
-		fmt.Printf("%v ==========dcrm_sign,no find worker,key = %v,err = %v================\n", common.CurrentTime(), msgprex, err)
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker.")}
-		ch <- res
-		return ""
-	}
-	id := w.id
-
-	cur_enode = GetSelfEnode()
-
-	fmt.Println("===================!!!Start!!!====================")
-
-	var result string
-	var bak_sig string
-	for _,v := range tmp {
-	    var ch1 = make(chan interface{}, 1)
-	    for i:=0;i < recalc_times;i++ {
-		fmt.Printf("%v===============sign_ec, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
-		if len(ch1) != 0 {
-		    <-ch1
-		}
-
-		w := workers[id]
-		w.Clear2()
-		bak_sig = Sign_ec2(msgprex, save, sku1, v, keytype, dcrmpkx, dcrmpky, ch1, id)
-		ret, _, cherr := GetChannelValue(ch_t, ch1)
-		if ret != "" && cherr == nil {
-		    result += ret
-		    result += ":"
-		    fmt.Printf("%v ======================sign_ec, result = %v, key = %v ==================\n",common.CurrentTime(),result,msgprex)
-			//res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
-			//ch <- res
-			break
-		}
-		
-		fmt.Printf("%v ======================sign_ec, ret = %v, cherr = %v, key = %v ==================\n",common.CurrentTime(),ret,cherr,msgprex)
-		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
-	    }
-	}
-
-	result += "NULL"
-	tmps := strings.Split(result, ":")
-	if len(tmps) == (len(tmp) + 1) {
-	    res := RpcDcrmRes{Ret: result, Tip: "", Err: nil}
-	    ch <- res
-	}
-
-	fmt.Printf("%v ======================sign_ec, return result = %v, len(tmps) = %v, len(tmp) = %v, key = %v ==================\n",common.CurrentTime(),result,len(tmps),len(tmp),msgprex)
-	return bak_sig
-}
-*/
-
 type SignData struct {
     MsgPrex string
     Key string
@@ -318,8 +250,6 @@ type SignData struct {
 
 func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
 
-	/////////////
-	fmt.Printf("%v ======================sign_ec, txhash = %v, key = %v ==================\n",common.CurrentTime(),txhash,msgprex)
     	tmp := make([]string,0)
 	for _,v := range txhash {
 	    txhashs := []rune(v)
@@ -330,7 +260,6 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 	    }
 	}
 
-	fmt.Printf("%v ======================sign_ec, tmp = %v, key = %v ==================\n",common.CurrentTime(),tmp,msgprex)
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
 		fmt.Printf("%v ==========dcrm_sign,no find worker,key = %v,err = %v================\n", common.CurrentTime(), msgprex, err)
@@ -340,8 +269,6 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 	}
 
 	cur_enode = GetSelfEnode()
-
-	fmt.Println("===================!!!Start!!!====================")
 
 	var wg sync.WaitGroup
 	for _,v := range tmp {
@@ -454,9 +381,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 
 	///sku1
 	da2 := GetSkU1FromLocalDb(key2)
-	//fmt.Printf("===================validate_lockout, da2 = %v,sku1 da2 = %v, key = %v =====================\n",da2,string(da2),wsid)
 	if da2 == nil {
-	    //fmt.Printf("===================validate_lockout, get sku1 fail, key = %v =====================\n",wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "lockout get sku1 fail", Err: fmt.Errorf("lockout get sku1 fail")}
 		ch <- res
 		return
@@ -471,7 +396,6 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 
 	amount, ok := new(big.Int).SetString(value, 10)
 	if !ok {
-		//fmt.Printf("%v =============validate_lockout,transfer amount to big.Int fail ===============\n", common.CurrentTime())
 		res := RpcDcrmRes{Ret: "", Tip: "lockout value error", Err: fmt.Errorf("lockout value error")}
 		ch <- res
 		return

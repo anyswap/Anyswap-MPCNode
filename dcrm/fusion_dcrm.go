@@ -3144,7 +3144,6 @@ type ReShareCurNodeInfo struct {
 }
 
 func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
-//    fmt.Printf("%v================GetCurNodeReShareInfo start,====================\n",common.CurrentTime())
     var ret []*ReShareCurNodeInfo
     var wg sync.WaitGroup
     LdbPubKeyData.RLock()
@@ -3154,12 +3153,11 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 	    defer wg.Done()
 
 	    vv,ok := value.(*AcceptReShareData)
-	    //fmt.Printf("%v================GetCurNodeReShareInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 	    if vv == nil || !ok {
 		return
 	    }
 
-	    //fmt.Printf("%v================GetCurNodeReShareInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+	    fmt.Printf("%v================GetCurNodeReShareInfo, vv = %v, vv.Deal = %v, vv.Status = %v,key = %v ====================\n",common.CurrentTime(),vv,vv.Deal,vv.Status,key)
 	    if vv.Deal == "true" || vv.Status == "Success" {
 		return
 	    }
@@ -3168,17 +3166,13 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 		return
 	    }
 
-	    //keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.TSGroupId + ":" + vv.PubKey + ":" + vv.LimitNum + ":" + vv.Mode))).Hex()
-
 	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
 	    ret = append(ret, los)
-	    //fmt.Printf("%v================GetCurNodeReShareInfo ret = %v,====================\n",common.CurrentTime(),ret)
+	    fmt.Printf("%v================GetCurNodeReShareInfo success return, key = %v,====================\n",common.CurrentTime(),key)
 	}(k,v)
     }
     LdbPubKeyData.RUnlock()
-    //fmt.Printf("%v================GetCurNodeReShareInfo end lock,====================\n",common.CurrentTime())
     wg.Wait()
-    //fmt.Printf("%v================GetCurNodeReShareInfo end, ret = %v====================\n",common.CurrentTime(),ret)
     return ret, "", nil
 }
 

@@ -3039,121 +3039,7 @@ type LockOutCurNodeInfo struct {
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, error) {
-	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
-	if exsit == false {
-	    fmt.Printf("===================GetCurNodeLockOutInfo, no exist keys, account = %v ====================\n",geter_acc)
-	    return nil,"",nil
-	}
 
-	//check obj type
-	_,ok := da.([]byte)
-	if ok == false {
-	    fmt.Printf("===================GetCurNodeLockOutInfo, check obj type fail, account = %v,da = %v ====================\n",geter_acc,da)
-	    return nil,"get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
-	}
-	//
-
-	var ret []*LockOutCurNodeInfo
-	keys := strings.Split(string(da.([]byte)),":")
-	for _,key := range keys {
-	    fmt.Printf("===================GetCurNodeLockOutInfo, get lockout key = %v, account = %v ====================\n",key,geter_acc)
-	    exsit,data := GetValueFromPubKeyData(key)
-	    if exsit == false {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 1111,get lockout key = %v, account = %v ====================\n",key,geter_acc)
-		continue
-	    }
-
-	    if data == nil {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 2222,get lockout key = %v, account = %v ====================\n",key,geter_acc)
-		continue
-	    }
-
-	    ac,ok := data.(*AcceptReqAddrData)
-	    if ok == false {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 33333,get lockout key = %v, account = %v ====================\n",key,geter_acc)
-		continue
-	    }
-
-	    if ac == nil {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 444444,get lockout key = %v, account = %v ====================\n",key,geter_acc)
-		continue
-	    }
-
-	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 555555,get lockout key = %v, account = %v ====================\n",key,geter_acc)
-		continue
-	    }
-
-	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
-	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-	    if exsit == false || data2 == nil {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 666666,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
-		continue
-	    }
-
-	    pd,ok := data2.(*PubKeyData)
-	    if ok == false {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 777777,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
-		continue
-	    }
-
-	    if pd == nil {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 88888,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
-		continue
-	    }
-
-	    if pd.RefLockOutKeys == "" {
-		fmt.Printf("===================GetCurNodeLockOutInfo, 999999,get lockout key = %v, account = %v, pubkey = %v ====================\n",key,geter_acc,ac.PubKey)
-		continue
-	    }
-
-	    lockoutkeys := strings.Split(pd.RefLockOutKeys,":")
-	    for _,lockoutkey := range lockoutkeys {
-		exsit,data3 := GetValueFromPubKeyData(lockoutkey)
-		if exsit == false {
-		    fmt.Printf("===================GetCurNodeLockOutInfo, 100000,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
-		    continue
-		}
-
-		////
-		ac3,ok := data3.(*AcceptLockOutData)
-		if ok == false {
-		    fmt.Printf("===================GetCurNodeLockOutInfo, 100001,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
-		    continue
-		}
-
-		if ac3 == nil {
-		    fmt.Printf("===================GetCurNodeLockOutInfo, 100002,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
-			continue
-		}
-		
-		if ac3.Mode == "1" {
-		    fmt.Printf("===================GetCurNodeLockOutInfo, 100003,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
-			continue
-		}
-		
-		if ac3.Deal == "true" || ac3.Status == "Success" {
-		    fmt.Printf("===================GetCurNodeLockOutInfo, 100004,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
-			continue
-		}
-
-		if ac3.Status != "Pending" {
-		    fmt.Printf("===================GetCurNodeLockOutInfo, 100005,get lockout key = %v, account = %v, pubkey = %v,get lockout key2 = %v ====================\n",key,geter_acc,ac.PubKey,lockoutkey)
-			continue
-		}
-
-		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.GroupId + ":" + ac3.Nonce + ":" + ac3.DcrmFrom + ":" + ac3.LimitNum))).Hex()
-
-		los := &LockOutCurNodeInfo{Key: keytmp, Account: ac3.Account, GroupId: ac3.GroupId, Nonce: ac3.Nonce, DcrmFrom: ac3.DcrmFrom, DcrmTo: ac3.DcrmTo, Value: ac3.Value, Cointype: ac3.Cointype, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
-		ret = append(ret, los)
-	    }
-	    ////
-	}
-
-	///////
-	return ret, "", nil*/
-
-	//fmt.Printf("%v================GetCurNodeLockOutInfo start,====================\n",common.CurrentTime())
 	var ret []*LockOutCurNodeInfo
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
@@ -3163,12 +3049,11 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptLockOutData)
-	//	fmt.Printf("%v================GetCurNodeLockOutInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 		if vv == nil || !ok {
 		    return
 		}
 
-//		fmt.Printf("%v================GetCurNodeLockOutInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+		fmt.Printf("%v================GetCurNodeLockOutInfo, it is *AcceptLockOutData, vv = %v, vv.Deal = %v, vv.Status = %v, key = %v  ====================\n",common.CurrentTime(),vv,vv.Deal,vv.Status,key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -3176,8 +3061,6 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		if vv.Status != "Pending" {
 		    return
 		}
-
-		//keytmp := Keccak256Hash([]byte(strings.ToLower(vv.Account + ":" + vv.GroupId + ":" + vv.Nonce + ":" + vv.DcrmFrom + ":" + vv.LimitNum))).Hex()
 
 		dcrmaddr,_,err := GetAddr(vv.PubKey,vv.Cointype)
 		if err != nil {
@@ -3190,13 +3073,11 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		
 		los := &LockOutCurNodeInfo{Key: key, Account: vv.Account, GroupId: vv.GroupId, Nonce: vv.Nonce, DcrmFrom: dcrmaddr, DcrmTo: vv.DcrmTo, Value: vv.Value, Cointype: vv.Cointype, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-//		fmt.Printf("%v================GetCurNodeLockOutInfo ret = %v,====================\n",common.CurrentTime(),ret)
+		fmt.Printf("%v================GetCurNodeLockOutInfo success return, key = %v,====================\n",common.CurrentTime(),key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
-//	fmt.Printf("%v================GetCurNodeLockOutInfo end lock,====================\n",common.CurrentTime())
 	wg.Wait()
-//	fmt.Printf("%v================GetCurNodeLockOutInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 

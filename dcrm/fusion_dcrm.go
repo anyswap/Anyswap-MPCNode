@@ -3096,104 +3096,6 @@ type SignCurNodeInfo struct {
 }
 
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
-	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
-	if exsit == false {
-	    return nil,"",nil
-	}
-
-	//check obj type
-	_,ok := da.([]byte)
-	if ok == false {
-	    return nil,"get value from dcrm back-end fail ",fmt.Errorf("get value from PubKey Data fail")
-	}
-	//
-
-	var ret []*SignCurNodeInfo
-	keys := strings.Split(string(da.([]byte)),":")
-	for _,key := range keys {
-	    exsit,data := GetValueFromPubKeyData(key)
-	    if exsit == false {
-		continue
-	    }
-
-	    if data == nil {
-		continue
-	    }
-
-	    ac,ok := data.(*AcceptReqAddrData)
-	    if ok == false {
-		continue
-	    }
-
-	    if ac == nil {
-		continue
-	    }
-
-	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
-		continue
-	    }
-
-	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
-	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-	    if exsit == false || data2 == nil {
-		continue
-	    }
-
-	    pd,ok := data2.(*PubKeyData)
-	    if ok == false {
-		continue
-	    }
-
-	    if pd == nil {
-		continue
-	    }
-
-	    if pd.RefSignKeys == "" {
-		continue
-	    }
-
-	    signkeys := strings.Split(pd.RefSignKeys,":")
-	    for _,signkey := range signkeys {
-		exsit,data3 := GetValueFromPubKeyData(signkey)
-		if exsit == false {
-		    continue
-		}
-
-		////
-		ac3,ok := data3.(*AcceptSignData)
-		if ok == false {
-		    continue
-		}
-
-		if ac3 == nil {
-			continue
-		}
-		
-		if ac3.Mode == "1" {
-			continue
-		}
-		
-		if ac3.Deal == "true" || ac3.Status == "Success" {
-			continue
-		}
-
-		if ac3.Status != "Pending" {
-			continue
-		}
-
-		//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
-		keytmp := Keccak256Hash([]byte(strings.ToLower(ac3.Account + ":" + ac3.Nonce + ":" + ac3.PubKey + ":" + ac3.MsgHash + ":" + ac3.Keytype + ":" + ac3.GroupId + ":" + ac3.LimitNum + ":" + ac3.Mode))).Hex()
-
-		los := &SignCurNodeInfo{Key: keytmp, Account: ac3.Account, PubKey:ac3.PubKey, MsgHash:ac3.MsgHash, MsgContext:ac3.MsgContext, KeyType:ac3.Keytype, GroupId: ac3.GroupId, Nonce: ac3.Nonce, ThresHold: ac3.LimitNum, Mode: ac3.Mode, TimeStamp: ac3.TimeStamp}
-		ret = append(ret, los)
-	    }
-	    ////
-	}
-
-	///////
-	return ret, "", nil*/
-
-	//fmt.Printf("%v================GetCurNodeSignInfo start,====================\n",common.CurrentTime())
 	var ret []*SignCurNodeInfo
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
@@ -3203,12 +3105,11 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptSignData)
-//		fmt.Printf("%v================GetCurNodeSignInfo, k = %v, value = %v, vv = %v, ok = %v ====================\n",common.CurrentTime(),key,value,vv,ok)
 		if vv == nil || !ok {
 		    return
 		}
 
-//		fmt.Printf("%v================GetCurNodeSignInfo, vv = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Status)
+		fmt.Printf("%v================GetCurNodeSignInfo, vv = %v, vv.Deal = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Deal,vv.Status,key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -3223,13 +3124,11 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-//		fmt.Printf("%v================GetCurNodeSignInfo ret = %v,====================\n",common.CurrentTime(),ret)
+		fmt.Printf("%v================GetCurNodeSignInfo success return, key = %v,====================\n",common.CurrentTime(),key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
-//	fmt.Printf("%v================GetCurNodeSignInfo end lock,====================\n",common.CurrentTime())
 	wg.Wait()
-//	fmt.Printf("%v================GetCurNodeSignInfo end, ret = %v====================\n",common.CurrentTime(),ret)
 	return ret, "", nil
 }
 

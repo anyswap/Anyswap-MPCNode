@@ -53,7 +53,6 @@ var (
 	sendtogroup_lilo_timeout = 1000  
 	sendtogroup_timeout      = 1000
 	KeyFile    string
-	ReShareCh  = make(chan ReShareData, 1000)
 	
 	lock                     sync.Mutex
 
@@ -64,7 +63,6 @@ var (
 func Start() {
 	cryptocoinsconfig.Init()
 	coins.Init()
-	go RecivReShare()
 	InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
 	dbtmp, err := ethdb.NewLDBDatabase(GetDbDir(), cache, handles)
@@ -474,29 +472,46 @@ func GetGroupSigsDataByRaw(raw string) (string,error) {
 	return "",err
     }
 
+    var threshold string
+    var mode string
+    var groupsigs string
+    var groupid string
+
     req := TxDataReqAddr{}
     err = json.Unmarshal(tx.Data(), &req)
-    if err != nil {
-	return "",err
+    if err == nil && req.TxType == "REQDCRMADDR" {
+	threshold = req.ThresHold
+	mode = req.Mode
+	groupsigs = req.Sigs
+	groupid = req.GroupId
+    } else {
+	rh := TxDataReShare{}
+	err = json.Unmarshal(tx.Data(), &rh)
+	if err == nil && rh.TxType == "RESHARE" {
+	    threshold = rh.ThresHold
+	    mode = rh.Mode
+	    groupsigs = rh.Sigs
+	    groupid = rh.GroupId
+	}
     }
 
-    if req.TxType != "REQDCRMADDR" {
-	return "",fmt.Errorf("raw data error,it is not REQDCRMADDR tx")
+    if threshold == "" || mode == "" || groupsigs == "" || groupid == "" {
+	return "",fmt.Errorf("raw data error,it is not REQDCRMADDR tx or RESHARE tx")
     }
 
-    nums := strings.Split(req.ThresHold, "/")
+    nums := strings.Split(threshold, "/")
     nodecnt, _ := strconv.Atoi(nums[1])
     if nodecnt <= 1 {
 	return "",fmt.Errorf("threshold error")
     }
 
-    if req.Mode == "1" {
+    if mode == "1" {
 	return "",nil
     }
 
-    sigs := strings.Split(req.Sigs,"|")
+    sigs := strings.Split(groupsigs,"|")
     //SigN = enode://xxxxxxxx@ip:portxxxxxxxxxxxxxxxxxxxxxx
-    _, enodes := GetGroup(req.GroupId)
+    _, enodes := GetGroup(groupid)
     nodes := strings.Split(enodes, common.Sep2)
     if nodecnt != len(sigs) {
 	return "",fmt.Errorf("group sigs error")
@@ -789,6 +804,56 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
+    rh := TxDataReShare{}
+    err = json.Unmarshal(tx.Data(), &rh)
+    if err == nil && rh.TxType == "RESHARE" {
+	h := coins.NewCryptocoinHandler("FSN")
+	if h == nil {
+	    return "","","",nil,fmt.Errorf("get fsn cointype handle fail")
+	}
+	
+	pk := "04" + cur_enode
+	fr, err := h.PublicKeyToAddress(pk)
+	if err != nil {
+	    return "","","",nil,err
+	}
+
+	if !strings.EqualFold(from.Hex(), fr) {
+	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data,maybe raw data error")
+	}
+
+	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.Account == "" || rh.Mode == "" || rh.TimeStamp == "" {
+	    return "","","",nil,fmt.Errorf("param error.")
+	}
+
+	////
+	nums := strings.Split(rh.ThresHold, "/")
+	if len(nums) != 2 {
+	    return "","","",nil,fmt.Errorf("transacion data format error,threshold is not right")
+	}
+	nodecnt, err := strconv.Atoi(nums[1])
+	if err != nil {
+	    return "","","",nil,err
+	}
+	limit, err := strconv.Atoi(nums[0])
+	if err != nil {
+	    return "","","",nil,err
+	}
+	if nodecnt < limit || limit < 2 {
+	    return "","","",nil,fmt.Errorf("threshold format error")
+	}
+
+	nc,_ := GetGroup(rh.GroupId)
+	if nc < limit || nc > nodecnt {
+	    return "","","",nil,fmt.Errorf("check group node count error")
+	}
+	
+	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + rh.TSGroupId + ":" + rh.PubKey + ":" + rh.ThresHold + ":" + rh.Mode))).Hex()
+	Nonce := tx.Nonce()
+	
+	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&rh,nil
+    }
+
     acceptreq := TxDataAcceptReqAddr{}
     err = json.Unmarshal(tx.Data(), &acceptreq)
     if err == nil && acceptreq.TxType == "ACCEPTREQADDR" {
@@ -881,6 +946,46 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	fmt.Printf("%v =================CheckRaw, it is acceptsign tx, raw = %v, key = %v, acceptsig = %v ==================\n",common.CurrentTime(),raw,acceptsig.Key,&acceptsig)
 	return "",from.Hex(),"",&acceptsig,nil
+    }
+
+    acceptrh := TxDataAcceptReShare{}
+    err = json.Unmarshal(tx.Data(), &acceptrh)
+    if err == nil && acceptrh.TxType == "ACCEPTRESHARE" {
+	h := coins.NewCryptocoinHandler("FSN")
+	if h == nil {
+	    return "","","",nil,fmt.Errorf("get fsn cointype handle fail")
+	}
+	
+	pk := "04" + cur_enode
+	fr, err := h.PublicKeyToAddress(pk)
+	if err != nil {
+	    return "","","",nil,err
+	}
+
+	if !strings.EqualFold(from.Hex(), fr) {
+	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data,maybe raw data error")
+	}
+
+	if acceptrh.Accept != "AGREE" && acceptrh.Accept != "DISAGREE" {
+	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
+	}
+
+	exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+	if !exsit {
+	    return "","","",nil,fmt.Errorf("get accept result from db fail")
+	}
+
+	ac,ok := da.(*AcceptReShareData)
+	if !ok || ac == nil {
+	    return "","","",nil,fmt.Errorf("get accept result from db fail")
+	}
+
+	if ac.Mode == "1" {
+	    return "","","",nil,fmt.Errorf("mode = 1,do not need to accept")
+	}
+	
+	fmt.Printf("%v =================CheckRaw, it is acceptreshare tx, raw = %v, key = %v, acceptrh = %v ==================\n",common.CurrentTime(),raw,acceptrh.Key,&acceptrh)
+	return "",from.Hex(),"",&acceptrh,nil
     }
 
     return "","","",nil,fmt.Errorf("check fail")
@@ -1045,11 +1150,11 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, workid,"")
 			}
 
-			fmt.Printf("%v ================== (self *RecvMsg) Run(), start call dcrm_genPubKey, w.id = %v, w.groupid = %v, key = %v ============================\n", common.CurrentTime(), w.id,w.groupid,key)
+			fmt.Printf("%v ================== InitAcceptData, start call dcrm_genPubKey, w.id = %v, w.groupid = %v, key = %v ============================\n", common.CurrentTime(), w.id,w.groupid,key)
 			dcrm_genPubKey(w.sid, from, "ALL", rch, req.Mode, nonce)
-			fmt.Printf("%v ================== (self *RecvMsg) Run(), finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(),key)
+			fmt.Printf("%v ================== InitAcceptData, finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(),key)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
-			fmt.Printf("%v ================== (self *RecvMsg) Run() , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr,key)
+			fmt.Printf("%v ================== InitAcceptData , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr,key)
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 				AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, workid,"")
@@ -1580,6 +1685,225 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	}
     }
 
+    rh,ok := txdata.(*TxDataReShare)
+    if ok {
+	ars := GetAllReplyFromGroup(workid,rh.GroupId,Rpc_RESHARE,sender)
+	sigs,err := GetGroupSigsDataByRaw(raw) 
+	fmt.Printf("=================InitAcceptData,reshare,get group sigs = %v, err = %v, key = %v =================\n",sigs,err,key)
+	if err != nil {
+	    fmt.Printf("=================InitAcceptData,reshare,get group sigs err = %v, key = %v =================\n",err,key)
+	    res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
+	    ch <- res
+	    return err
+	}
+
+	ac := &AcceptReShareData{Initiator:sender,Account: from, GroupId: rh.GroupId, TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold, PubAccount:rh.Account, Mode:rh.Mode, Sigs:sigs, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
+	err = SaveAcceptReShareData(ac)
+	fmt.Printf("%v ===================finish call SaveAcceptReShareData, err = %v,workid = %v,account = %v,group id = %v,pubkey = %v,threshold = %v,key = %v =========================\n", common.CurrentTime(), err, workid, from, rh.GroupId, rh.PubKey, rh.ThresHold, key)
+	if err == nil {
+	    w := workers[workid]
+	    w.sid = key 
+	    w.groupid = rh.TSGroupId 
+	    w.limitnum = rh.ThresHold
+	    gcnt, _ := GetGroup(w.groupid)
+	    w.NodeCnt = gcnt
+	    w.ThresHold = w.NodeCnt
+
+	    nums := strings.Split(w.limitnum, "/")
+	    if len(nums) == 2 {
+		nodecnt, err := strconv.Atoi(nums[1])
+		if err == nil {
+		    w.NodeCnt = nodecnt
+		}
+
+		w.ThresHold = gcnt
+	    }
+
+	    w.DcrmFrom = rh.PubKey  // pubkey replace dcrmfrom in reshare 
+
+	    var reply bool
+	    var tip string
+	    timeout := make(chan bool, 1)
+	    go func(wid int) {
+		    cur_enode = discover.GetLocalID().String() //GetSelfEnode()
+		    agreeWaitTime := 10 * time.Minute
+		    agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
+
+		    wtmp2 := workers[wid]
+
+		    for {
+			    select {
+			    case account := <-wtmp2.acceptReShareChan:
+				    common.Debug("InitAcceptData", "account= ", account, "key = ", key)
+				    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
+				    fmt.Printf("%v ================== InitAcceptData, get all AcceptReShareRes, raw = %v, result = %v,key = %v ============================\n", common.CurrentTime(), raw,ars,key)
+				    
+				    //bug
+				    reply = true
+				    for _,nr := range ars {
+					if !strings.EqualFold(nr.Status,"Agree") {
+					    reply = false
+					    break
+					}
+				    }
+				    //
+
+				    if !reply {
+					    tip = "don't accept reshare"
+					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Failure", "", "don't accept reshare", "don't accept reshare", nil, wid)
+				    } else {
+					    tip = ""
+					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "pending", "", "", "", ars, wid)
+				    }
+
+				    ///////
+				    timeout <- true
+				    return
+			    case <-agreeWaitTimeOut.C:
+				    fmt.Printf("%v ================== InitAcceptData, agree wait timeout. raw = %v, key = %v =====================\n", common.CurrentTime(), raw,key)
+				    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
+				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+				    reply = false
+				    tip = "get other node accept reshare result timeout"
+				    //
+
+				    timeout <- true
+				    return
+			    }
+		    }
+	    }(workid)
+
+	    if len(workers[workid].acceptWaitReShareChan) == 0 {
+		    workers[workid].acceptWaitReShareChan <- "go on"
+	    }
+
+	    DisAcceptMsg(raw,workid)
+	    HandleC1Data(nil,key,workid)
+	    
+	    <-timeout
+
+	    if !reply {
+		    //////////////////////reshare result start/////////////////////////
+		    if tip == "get other node accept reshare result timeout" {
+			    ars := GetAllReplyFromGroup(workid,rh.GroupId,Rpc_RESHARE,sender)
+			    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars,workid)
+		    } else {
+			    /////////////TODO tmp
+			    //sid-enode:SendReShareRes:Success:rsv
+			    //sid-enode:SendReShareRes:Fail:err
+			    mp := []string{w.sid, cur_enode}
+			    enode := strings.Join(mp, "-")
+			    s0 := "SendReShareRes"
+			    s1 := "Fail"
+			    s2 := "don't accept reshare."
+			    ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
+			    SendMsgToDcrmGroup(ss, rh.GroupId)
+			    DisMsg(ss)
+			    _, _, err := GetChannelValue(ch_t, w.bsendreshareres)
+			    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
+			    if err != nil {
+				    tip = "get other node terminal accept reshare result timeout" ////bug
+				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", tip,tip, ars, workid)
+			    } else if w.msg_sendreshareres.Len() != w.ThresHold {
+				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, workid)
+			    } else {
+				    reply2 := "false"
+				    lohash := ""
+				    iter := w.msg_sendreshareres.Front()
+				    for iter != nil {
+					    mdss := iter.Value.(string)
+					    ms := strings.Split(mdss, common.Sep)
+					    if strings.EqualFold(ms[2], "Success") {
+						    reply2 = "true"
+						    lohash = ms[3]
+						    break
+					    }
+
+					    lohash = ms[3]
+					    iter = iter.Next()
+				    }
+
+				    if reply2 == "true" {
+					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"true", "true", "Success", lohash," "," ",ars, workid)
+				    } else {
+					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "",lohash,lohash,ars, workid)
+				    }
+			    }
+		    }
+
+		    res2 := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("don't accept reshare.")}
+		    ch <- res2
+		    return fmt.Errorf("don't accept reshare.")
+	    }
+
+	    rch := make(chan interface{}, 1)
+	    reshare(w.sid,from,rh.GroupId,rh.PubKey,rh.Account,rh.Mode,sigs,rch)
+	    chret, tip, cherr := GetChannelValue(ch_t, rch)
+	    if chret != "" {
+		    res2 := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
+		    ch <- res2
+		    return nil 
+	    }
+
+	    if tip == "get other node accept reshare result timeout" {
+		    ars := GetAllReplyFromGroup(workid,rh.GroupId,Rpc_RESHARE,sender)
+		    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars,workid)
+	    } else {
+		    /////////////TODO tmp
+		    //sid-enode:SendReShareRes:Success:rsv
+		    //sid-enode:SendReShareRes:Fail:err
+		    mp := []string{w.sid, cur_enode}
+		    enode := strings.Join(mp, "-")
+		    s0 := "SendReShareRes"
+		    s1 := "Fail"
+		    s2 := "don't accept reshare."
+		    ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
+		    SendMsgToDcrmGroup(ss, rh.GroupId)
+		    DisMsg(ss)
+		    _, _, err := GetChannelValue(ch_t, w.bsendreshareres)
+		    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
+		    if err != nil {
+			    tip = "get other node terminal accept reshare result timeout" ////bug
+			    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", tip,tip, ars, workid)
+		    } else if w.msg_sendsignres.Len() != w.ThresHold {
+			    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, workid)
+		    } else {
+			    reply2 := "false"
+			    lohash := ""
+			    iter := w.msg_sendreshareres.Front()
+			    for iter != nil {
+				    mdss := iter.Value.(string)
+				    ms := strings.Split(mdss, common.Sep)
+				    if strings.EqualFold(ms[2], "Success") {
+					    reply2 = "true"
+					    lohash = ms[3]
+					    break
+				    }
+
+				    lohash = ms[3]
+				    iter = iter.Next()
+			    }
+
+			    if reply2 == "true" {
+				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"true", "true", "Success", lohash," "," ",ars, workid)
+			    } else {
+				    AcceptReShare(sender,from, rh.GroupId,rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "",lohash,lohash,ars,workid)
+			    }
+		    }
+	    }
+
+	    if cherr != nil {
+		    res2 := RpcDcrmRes{Ret:"", Tip: tip, Err: cherr}
+		    ch <- res2
+		    return cherr 
+	    }
+
+	    res2 := RpcDcrmRes{Ret:"", Tip: tip, Err: fmt.Errorf("reshare fail.")}
+	    ch <- res2
+	    return fmt.Errorf("reshare fail.")
+	}
+    }
+
     acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
     if ok {
 	fmt.Printf("===============InitAcceptData, check accept reqaddr raw success, raw = %v, key = %v, from = %v, txdata = %v =================\n",raw,acceptreq.Key,from,acceptreq)
@@ -1768,13 +2092,101 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	return nil
     }
 
+    acceptrh,ok := txdata.(*TxDataAcceptReShare)
+    if ok {
+	fmt.Printf("===============InitAcceptData, check accept reshare raw success, raw = %v, key = %v, from = %v, txdata = %v =================\n",raw,acceptrh.Key,from,acceptrh)
+	w, err := FindWorker(acceptrh.Key)
+	if err != nil || w == nil {
+	    c1data := acceptrh.Key + "-" + from
+	    C1Data.WriteMap(strings.ToLower(c1data),raw)
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "get accept data fail from db.", Err: fmt.Errorf("get accept data fail from db")}
+	    ch <- res
+	    return fmt.Errorf("get accept data fail from db.")
+	}
+
+	exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+	if !exsit {
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get accept data fail from db", Err: fmt.Errorf("get accept data fail from db")}
+	    ch <- res
+	    return fmt.Errorf("get accept data fail from db.")
+	}
+
+	ac,ok := da.(*AcceptReShareData)
+	if !ok || ac == nil {
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:decode accept data fail", Err: fmt.Errorf("decode accept data fail")}
+	    ch <- res
+	    return fmt.Errorf("decode accept data fail")
+	}
+
+	status := "Pending"
+	accept := "false"
+	if acceptrh.Accept == "AGREE" {
+		accept = "true"
+	} else {
+		status = "Failure"
+	}
+
+	id,_ := GetWorkerId(w)
+	DisAcceptMsg(raw,id)
+	HandleC1Data(nil,acceptrh.Key,id)
+
+	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_RESHARE,ac.Initiator)
+	tip,err := AcceptReShare(ac.Initiator,ac.Account, ac.GroupId, ac.TSGroupId,ac.PubKey, ac.LimitNum, ac.Mode,"false", accept, status, "", "", "", ars,ac.WorkId)
+	if err != nil {
+	    res := RpcDcrmRes{Ret:"Failure", Tip: tip, Err: err}
+	    ch <- res
+	    return err 
+	}
+
+	res := RpcDcrmRes{Ret:"Success", Tip: "", Err: nil}
+	ch <- res
+	return nil
+    }
+
     res := RpcDcrmRes{Ret: "", Tip: "init accept data fail.", Err: fmt.Errorf("init accept data fail")}
     ch <- res
     return fmt.Errorf("init accept data fail")
 }
 
 func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
-    if ac == nil || key == "" || workid < 0 || workid >= len(workers) {
+    //reshare only
+    if ac == nil {
+	exsit,da := GetValueFromPubKeyData(key)
+	if !exsit {
+	    return
+	}
+
+	ac,ok := da.(*AcceptReShareData)
+	if !ok || ac == nil {
+	    return
+	}
+
+	_, enodes := GetGroup(ac.GroupId)
+	nodes := strings.Split(enodes, common.Sep2)
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+	    pk := "04" + node2 
+	     h := coins.NewCryptocoinHandler("FSN")
+	     if h == nil {
+		continue
+	     }
+
+	    fr, err := h.PublicKeyToAddress(pk)
+	    if err != nil {
+		continue
+	    }
+
+	    c1data := key + "-" + fr
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		DisAcceptMsg(c1.(string),workid)
+		go C1Data.DeleteMap(strings.ToLower(c1data))
+	    }
+	}
+    }
+    //reshare only
+
+    if key == "" || workid < 0 || workid >= len(workers) {
 	return
     }
    
@@ -1912,6 +2324,33 @@ func DisAcceptMsg(raw string,workid int) {
 	}
     }
     
+    _,ok = txdata.(*TxDataReShare)
+    if ok {
+	if Find(w.msg_acceptreshareres, raw) {
+	    return
+	}
+
+	w.msg_acceptreshareres.PushBack(raw)
+	if w.msg_acceptreshareres.Len() >= w.NodeCnt {
+	    if !CheckReply(w.msg_acceptreshareres,Rpc_RESHARE,key) {
+		return
+	    }
+
+	    w.bacceptreshareres <- true
+	    exsit,da := GetValueFromPubKeyData(key)
+	    if !exsit {
+		return
+	    }
+
+	    ac,ok := da.(*AcceptReShareData)
+	    if !ok || ac == nil {
+		return
+	    }
+
+	    workers[ac.WorkId].acceptReShareChan <- "go on"
+	}
+    }
+    
     acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
     if ok {
 	if Find(w.msg_acceptreqaddrres,raw) {
@@ -1990,6 +2429,33 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    workers[ac.WorkId].acceptSignChan <- "go on"
+	}
+    }
+    
+    acceptreshare,ok := txdata.(*TxDataAcceptReShare)
+    if ok {
+	if Find(w.msg_acceptreshareres, raw) {
+	    return
+	}
+
+	w.msg_acceptreshareres.PushBack(raw)
+	if w.msg_acceptreshareres.Len() >= w.NodeCnt {
+	    if !CheckReply(w.msg_acceptreshareres,Rpc_RESHARE,acceptreshare.Key) {
+		return
+	    }
+
+	    w.bacceptreshareres <- true
+	    exsit,da := GetValueFromPubKeyData(acceptreshare.Key)
+	    if !exsit {
+		return
+	    }
+
+	    ac,ok := da.(*AcceptReShareData)
+	    if !ok || ac == nil {
+		return
+	    }
+
+	    workers[ac.WorkId].acceptReShareChan <- "go on"
 	}
     }
 }
@@ -2094,340 +2560,51 @@ func LockOut(raw string) (string, string, error) {
     return key, "", nil
 }
 
-////////reshare start//////
-
-type ReShareData struct {
-    Account string
-    Nonce string
-    JsonStr string
-    Key       string
-}
-
-func RecivReShare() {
-	for {
-		select {
-		case data := <-ReShareCh:
-			//fmt.Printf("%v ==============================RecivReShare,get new job, key = %v ============================================\n", common.CurrentTime(),data.Key)
-			//exsit,_ := GetValueFromPubKeyData(data.Key)
-			//if exsit == false {
-				rh := TxDataReShare{}
-				err2 := json.Unmarshal([]byte(data.JsonStr), &rh)
-				if err2 != nil {
-				    fmt.Printf("%v ==============================RecivReShare,unmarshal fail, err = %v, key = %v ============================================\n", common.CurrentTime(),err2,data.Key)
-				}
-
-				ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-				ac := &AcceptReShareData{Initiator:cur_enode,Account: data.Account, GroupId: rh.GroupId,TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold, PubAccount:rh.Account, Mode:rh.Mode, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId: -1}
-				    err := SaveAcceptReShareData(ac)
-				    if err == nil {
-					    fmt.Printf("%v ==============================RecivReShare,finish call SaveAcceptReShareData, err = %v,account = %v,group id = %v,threshold = %v,key = %v ============================================\n", common.CurrentTime(), err, data.Account, rh.GroupId, rh.ThresHold, data.Key)
-
-					    go func(d ReShareData,rhda *TxDataReShare,resh *AcceptReShareData) {
-						nums := strings.Split(rhda.ThresHold, "/")
-						nodecnt, _ := strconv.Atoi(nums[1])
-						if nodecnt <= 1 {
-						    return
-						}
-
-						sigs := strings.Split(rhda.Sigs,"|")
-						//SigN = enode://xxxxxxxx@ip:portxxxxxxxxxxxxxxxxxxxxxx
-						_, enodes := GetGroup(rhda.GroupId)
-						nodes := strings.Split(enodes, common.Sep2)
-						/////////////////////tmp code //////////////////////
-						//if reqda.Mode == "0" {
-							if nodecnt != len(sigs) {
-							    return
-							}
-
-							mp := []string{d.Key, cur_enode}
-							enode := strings.Join(mp, "-")
-							s0 := "GroupAccounts_ReShare"
-							s1 := strconv.Itoa(nodecnt)
-							ss := enode + common.Sep + s0 + common.Sep + s1
-
-							sstmp := s1
-							for j := 0; j < nodecnt; j++ {
-								en := strings.Split(sigs[j], "@")
-								for _, node := range nodes {
-								    node2 := ParseNode(node)
-								    enId := strings.Split(en[0],"//")
-								    if len(enId) < 2 {
-									return
-								    }
-
-								    if strings.EqualFold(node2, enId[1]) {
-									enodesigs := []rune(sigs[j])
-									if len(enodesigs) <= len(node) {
-									    return
-									}
-
-									sig := enodesigs[len(node):]
-									//sigbit, _ := hex.DecodeString(string(sig[:]))
-									sigbit := common.FromHex(string(sig[:]))
-									if sigbit == nil {
-									    return
-									}
-
-									pub,err := secp256k1.RecoverPubkey(crypto.Keccak256([]byte(node2)),sigbit)
-									if err != nil {
-									    return
-									}
-									
-									h := coins.NewCryptocoinHandler("FSN")
-									if h != nil {
-									    pubkey := hex.EncodeToString(pub)
-									    from, err := h.PublicKeyToAddress(pubkey)
-									    if err != nil {
-										return
-									    }
-									    
-									    ss += common.Sep
-									    ss += node2 
-									    ss += common.Sep
-									    ss += from
-									    
-									    sstmp += common.Sep
-									    sstmp += node2
-									    sstmp += common.Sep
-									    sstmp += from
-									}
-								    }
-								}
-
-							}
-
-							SendMsgToDcrmGroup(ss, rhda.GroupId)
-							resh.Sigs = sstmp
-							if SaveAcceptReShareData(resh) != nil { //re-save
-							    return
-							}
-						//} 
-						    for i := 0; i < 1; i++ {
-							    ret, _, err2 := SendReShare(d.Account, "0", d.JsonStr,d.Key)
-							    if err2 == nil && ret != "" {
-								    return
-							    }
-
-							    time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-						    }
-					    }(data,&rh,ac)
-					    /////
-					    /*dcrmpks, _ := hex.DecodeString(rh.PubKey)
-					    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
-					    if exsit {
-						_,ok := da.(*PubKeyData)
-						if ok == true {
-						    keys := (da.(*PubKeyData)).RefReShareKeys
-						    if keys == "" {
-							keys = data.Key
-						    } else {
-							keys = keys + ":" + data.Key
-						    }
-
-						    pubs3 := &PubKeyData{Key:(da.(*PubKeyData)).Key,Account: (da.(*PubKeyData)).Account, Pub: (da.(*PubKeyData)).Pub, Save: (da.(*PubKeyData)).Save, Nonce: (da.(*PubKeyData)).Nonce, GroupId: (da.(*PubKeyData)).GroupId, LimitNum: (da.(*PubKeyData)).LimitNum, Mode: (da.(*PubKeyData)).Mode,KeyGenTime:(da.(*PubKeyData)).KeyGenTime,RefLockOutKeys:(da.(*PubKeyData)).RefLockOutKeys,RefSignKeys:(da.(*PubKeyData)).RefSignKeys,RefReShareKeys:keys}
-						    epubs, err := Encode2(pubs3)
-						    if err == nil {
-							ss3, err := Compress([]byte(epubs))
-							if err == nil {
-							    kd := KeyData{Key:dcrmpks[:], Data: ss3}
-							    PubKeyDataChan <- kd
-							    LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs3)
-							    //fmt.Printf("%v ==============================RecivReShare,reset PubKeyData success, key = %v ============================================\n", common.CurrentTime(), data.Key)
-							}
-						    }
-						}
-					    }*/
-					    /////
-				    }
-			//}
-		}
-	}
-}
-
 func ReShare(raw string) (string, string, error) {
-	tx := new(types.Transaction)
-	raws := common.FromHex(raw)
-	if err := rlp.DecodeBytes(raws, tx); err != nil {
-		return "", "raw data error", err
-	}
+    fmt.Printf("%v =====================ReShare call CheckRaw ================\n",common.CurrentTime())
+    key,_,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	fmt.Printf("============ReShare,err = %v ==========\n",err)
+	return "",err.Error(),err
+    }
 
-	signer := types.NewEIP155Signer(big.NewInt(30400)) //
-	from, err := types.Sender(signer, tx)
-	if err != nil {
-	    return "", "recover fusion account fail from raw data,maybe raw data error", err
-	}
-	
-	h := coins.NewCryptocoinHandler("FSN")
-	if h == nil {
-	    return "", "get fsn cointy handle fail", fmt.Errorf("get fsn cointy handle fail")
-	}
-	
-	//pk := hex.EncodeToString(cur_enode)
-	pk := "04" + cur_enode
-	fr, err := h.PublicKeyToAddress(pk)
-	if err != nil {
-	    fmt.Printf("%v=====================ReShare, pubkey to addr fail and return, cur_enode = %v, pk = %v, from = %v, fr = %v, err = %v, ==================\n",common.CurrentTime(),cur_enode,pk,from.Hex(),fr,err)
-	    return "", "check current enode account fail from raw data,maybe raw data error", err
-	}
+    rh,ok := txdata.(*TxDataReShare)
+    if !ok {
+	return "","check raw fail,it is not *TxDataReShare",fmt.Errorf("check raw fail,it is not *TxDataReShare")
+    }
 
-	if !strings.EqualFold(from.Hex(), fr) {
-	    fmt.Printf("%v=====================ReShare, pubkey to addr fail and return, cur_enode = %v, pk = %v, from = %v, fr = %v, err = %v, ==================\n",common.CurrentTime(),cur_enode,pk,from.Hex(),fr,err)
-	    return "", "check current enode account fail from raw data,maybe raw data error", err
-	}
-
-	rh := TxDataReShare{}
-	err = json.Unmarshal(tx.Data(), &rh)
-	if err != nil {
-	    return "", "recover tx.data json string fail from raw data,maybe raw data error", err
-	}
-
-	if rh.TxType != "RESHARE" {
-		return "", "transaction data format error,it is not RESHARE tx", fmt.Errorf("tx raw data error,it is not reshare tx.")
-	}
-
-	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.Account == "" || rh.Mode == "" || rh.TimeStamp == "" {
-		return "", "parameter error from raw data,maybe raw data error", fmt.Errorf("param error.")
-	}
-
-	////
-	nums := strings.Split(rh.ThresHold, "/")
-	if len(nums) != 2 {
-		return "", "transacion data format error,threshold is not right", fmt.Errorf("tx.data error.")
-	}
-	nodecnt, err := strconv.Atoi(nums[1])
-	if err != nil {
-		return "", err.Error(),err
-	}
-	limit, err := strconv.Atoi(nums[0])
-	if err != nil {
-		return "", err.Error(),err
-	}
-	if nodecnt < limit || limit < 2 {
-	    return "","threshold format error",fmt.Errorf("threshold format error")
-	}
-
-	nc,_ := GetGroup(rh.GroupId)
-	if nc < limit || nc > nodecnt {
-	    return "","check group node count error",fmt.Errorf("check group node count error")
-	}
-	
-	//key = hash(account + groupid + tsgroupid + pubkey + threshold + mode)
-	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + rh.GroupId + ":" + rh.TSGroupId + ":" + rh.PubKey + ":" + rh.ThresHold + ":" + rh.Mode))).Hex()
-	data := ReShareData{Account:from.Hex(),Nonce:"0",JsonStr:string(tx.Data()),Key: key}
-	ReShareCh <- data
-
-	return key, "", nil
+    fmt.Printf("============ReShare,SendMsgToDcrmGroup, raw = %v, gid = %v ,key = %v ==========\n",raw,rh.GroupId,key)
+    SendMsgToDcrmGroup(raw, rh.GroupId)
+    SetUpMsgList(raw,cur_enode)
+    return key, "", nil
 }
 
 func RpcAcceptReShare(raw string) (string, string, error) {
-	tx := new(types.Transaction)
-	raws := common.FromHex(raw)
-	if err := rlp.DecodeBytes(raws, tx); err != nil {
-		return "Failure", "raw data error", err
-	}
+    fmt.Printf("%v =====================RpcAcceptReShare call CheckRaw ================\n",common.CurrentTime())
+    _,_,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	fmt.Printf("============RpcAcceptReShare,CheckRaw err = %v ==========\n",err)
+	return "Failure",err.Error(),err
+    }
 
-	signer := types.NewEIP155Signer(big.NewInt(30400)) //
-	from, err := types.Sender(signer, tx)
-	if err != nil {
-	    return "Failure", "recover fusion account fail from raw data,maybe raw data error", err
-	}
+    acceptrh,ok := txdata.(*TxDataAcceptReShare)
+    if !ok {
+	return "Failure","check raw fail,it is not *TxDataAcceptReShare",fmt.Errorf("check raw fail,it is not *TxDataAcceptReShare")
+    }
 
-	h := coins.NewCryptocoinHandler("FSN")
-	if h == nil {
-	    return "Failure", "get fsn cointy handle fail", fmt.Errorf("get fsn cointy handle fail")
-	}
-
-	pk := "04" + cur_enode
-	fr, err := h.PublicKeyToAddress(pk)
-	if err != nil {
-	    fmt.Printf("%v===============RpcAcceptReShare, pubkey to addr fail,from = %v, fr = %v, err = %v ====================\n",common.CurrentTime(),from.Hex(),fr,err)
-	    return "Failure", "check current enode account fail from raw data,maybe raw data error", err
-	}
-
-	if !strings.EqualFold(from.Hex(), fr) {
-	    fmt.Printf("%v===============RpcAcceptReShare, from != fr, from = %v, fr = %v, ====================\n",common.CurrentTime(),from.Hex(),fr)
-	    return "Failure", "check current enode account fail from raw data,maybe raw data error", err
-	}
-
-	acceptreshare := TxDataAcceptReShare{}
-	err = json.Unmarshal(tx.Data(), &acceptreshare)
-	if err != nil {
-	    fmt.Printf("%v===============RpcAcceptReShare, unmarshal txdata fail, err = %v, ====================\n",common.CurrentTime(),err)
-	    return "Failure", "recover tx.data json string fail from raw data,maybe raw data error", err
-	}
-
-	if acceptreshare.TxType != "ACCEPTRESHARE" {
-	    return "Failure", "transaction data format error,it is not ACCEPTRESHARE tx", fmt.Errorf("tx.data error,it is not ACCEPTRESHARE tx.")
-	}
-
-	if acceptreshare.Accept != "AGREE" && acceptreshare.Accept != "DISAGREE" {
-	    return "Failure", "transaction data format error,the lastest segment is not AGREE or DISAGREE", fmt.Errorf("transaction data format error")
-	}
-
-	status := "Pending"
-	accept := "false"
-	if acceptreshare.Accept == "AGREE" {
-		accept = "true"
-	} else {
-		status = "Failure"
-	}
-
-	exsit,da := GetValueFromPubKeyData(acceptreshare.Key)
-	///////
-	if !exsit {
-		return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
-	}
-
+    exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+    if exsit {
 	ac,ok := da.(*AcceptReShareData)
-	if !ok {
-	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
+	if ok && ac != nil {
+	    fmt.Printf("============RpcAcceptReShare,SendMsgToDcrmGroup, raw = %v, gid = %v ,key = %v ==========\n",raw,ac.GroupId,acceptrh.Key)
+	    SendMsgToDcrmGroup(raw, ac.GroupId)
+	    SetUpMsgList(raw,cur_enode)
+	    return "Success", "", nil
 	}
+    }
 
-	if ac == nil {
-	    return "Failure", "dcrm back-end internal error:get accept result from db fail", fmt.Errorf("get accept result from db fail")
-	}
-
-	///////
-	mp := []string{acceptreshare.Key, cur_enode}
-	enode := strings.Join(mp, "-")
-	s0 := "AcceptReShareRes"
-	s1 := accept
-	s2 := acceptreshare.TimeStamp
-	ss2 := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-	SendMsgToDcrmGroup(ss2, ac.GroupId)
-	DisMsg(ss2)
-	//fmt.Printf("%v ================== AcceptReShare, finish send AcceptReShareRes to other nodes ,key = %v ============================\n", common.CurrentTime(), acceptreshare.Key)
-	////fix bug: get C11 timeout
-	_, enodes := GetGroup(ac.GroupId)
-	nodes := strings.Split(enodes, common.Sep2)
-	for _, node := range nodes {
-	    node2 := ParseNode(node)
-	    c1data := acceptreshare.Key + "-" + node2 + common.Sep + "AcceptReShareRes"
-	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-	    if exist {
-		DisMsg(c1.(string))
-		go C1Data.DeleteMap(strings.ToLower(c1data))
-	    }
-	}
-	////
-
-	w, err := FindWorker(acceptreshare.Key)
-	if err != nil {
-	    return "Failure",err.Error(),err
-	}
-
-	id,_ := GetWorkerId(w)
-	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_RESHARE,ac.Initiator)
-	
-	tip,err := AcceptReShare(ac.Initiator,ac.Account, ac.GroupId, ac.TSGroupId,ac.PubKey, ac.LimitNum, ac.Mode,"false", accept, status, "", "", "", ars,ac.WorkId)
-	if err != nil {
-		return "Failure", tip, err
-	}
-
-	return "Success", "", nil
+    return "Failure","accept fail",fmt.Errorf("accept fail")
 }
-
-///////reshare end////////
 
 func Sign(raw string) (string, string, error) {
     fmt.Printf("%v =====================Sign call CheckRaw ================\n",common.CurrentTime())
@@ -2467,163 +2644,6 @@ func get_sign_hash(hash []string,keytype string) string {
 }
 
 func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, error) {
-	/*exsit,da := GetValueFromPubKeyData(strings.ToLower(geter_acc))
-	if exsit == false {
-	    return nil,"",fmt.Errorf("get value from pubkeydata fail.")
-	}
-
-	keys := strings.Split(string(da.([]byte)),":")
-	for _,key := range keys {
-	    exsit,data := GetValueFromPubKeyData(key)
-	    if exsit == false {
-		continue
-	    }
-
-	    ac,ok := data.(*AcceptReqAddrData)
-	    if ok == false {
-		continue
-	    }
-
-	    if ac == nil {
-		    continue
-	    }
-
-	    if ac.Mode == "1" {
-		    if !strings.EqualFold(ac.Account,geter_acc) {
-			continue
-		    }
-	    }
-
-	    if ac.Mode == "0" && !CheckAcc(cur_enode,geter_acc,ac.Sigs) {
-		continue
-	    }
-
-	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
-	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-	    if exsit == false || data2 == nil {
-		continue
-	    }
-
-	    pd,ok := data2.(*PubKeyData)
-	    if ok == false {
-		continue
-	    }
-
-	    if pd == nil {
-		continue
-	    }
-
-	    if pd.Pub == "" || pd.GroupId == "" || pd.Mode == "" {
-		    continue
-	    }
-
-	    pb := pd.Pub
-	    pubkeyhex := hex.EncodeToString([]byte(pb))
-	    if strings.EqualFold(pubkey, pubkeyhex) == false {
-		    continue
-	    }
-
-	    keytmp, err2 := hex.DecodeString(pubkey)
-	    if err2 != nil {
-		    return nil, "decode pubkey fail", err2
-	    }
-
-	    ret, tip, err := GetPubKeyData(string(keytmp), pubkey, "ALL")
-	    var m interface{}
-	    if err == nil {
-		    dp := DcrmPubkeyRes{}
-		    _ = json.Unmarshal([]byte(ret), &dp)
-		    balances := make([]SubAddressBalance, 0)
-		    var wg sync.WaitGroup
-		    ret  := common.NewSafeMap(10)
-		    //var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
-		    for cointype, subaddr := range dp.DcrmAddress {
-			    wg.Add(1)
-			    go func(cointype, subaddr string) {
-				    defer wg.Done()
-				    balance, _, err := GetBalance(pubkey, cointype, subaddr)
-				    if err != nil {
-					    balance = "0"
-				    }
-				    //ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
-				    ret.WriteMap(strings.ToLower(cointype),&SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance})
-			    }(cointype, subaddr)
-		    }
-		    wg.Wait()
-		    for _, cointype := range coins.Cointypes {
-			    subaddrbal,exist := ret.ReadMap(strings.ToLower(cointype))
-			    if exist == true && subaddrbal != nil {
-				subbal,ok := subaddrbal.(*SubAddressBalance)
-				if ok == true && subbal != nil {
-				    balances = append(balances, *subbal)
-				    fmt.Printf("balances: %v\n", balances)
-				    ret.DeleteMap(strings.ToLower(cointype))
-				}
-			    }
-		    }
-		    m = &DcrmAccountsBalanceRes{PubKey: pubkey, Balances: balances}
-	    } else {
-	    }
-
-	    return m, tip, err
-	}
-
-	return nil, "get accounts balance fail", fmt.Errorf("get accounts balance fail")*/
-
-	/*found := false
-	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
-	    wg.Add(1)
-	    go func(key string,value interface{}) {
-		defer wg.Done()
-
-		vv,ok := value.(*AcceptReqAddrData)
-		if vv == nil || !ok {
-		    return
-		}
-
-		if vv.Mode == "1" {
-			if !strings.EqualFold(vv.Account,geter_acc) {
-			    return
-			}
-		}
-
-		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
-		    return
-		}
-
-		dcrmpks, _ := hex.DecodeString(vv.PubKey)
-		exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-		if !exsit || data2 == nil {
-		    return
-		}
-
-		pd,ok := data2.(*PubKeyData)
-		if !ok || pd == nil {
-		    return
-		}
-
-		if pd.Pub == "" || pd.GroupId == "" || pd.Mode == "" {
-		    return
-		}
-
-		pubkeyhex := hex.EncodeToString([]byte(pd.Pub))
-		if !strings.EqualFold(pubkey, pubkeyhex) {
-		    return
-		}
-
-		found = true
-
-	    }(k,v)
-	}
-	LdbPubKeyData.RUnlock()
-	wg.Wait()
-
-	if !found {
-	    return nil, "get accounts balance fail", fmt.Errorf("get accounts balance fail")
-	}*/
-	
 	keytmp, err2 := hex.DecodeString(pubkey)
 	if err2 != nil {
 		return nil, "decode pubkey fail", err2
@@ -2715,8 +2735,6 @@ func GetBalance(account string, cointype string, dcrmaddr string) (string, strin
 func init() {
 	p2pdcrm.RegisterRecvCallback(Call2)
 	p2pdcrm.SdkProtocol_registerBroadcastInGroupCallback(Call)
-	p2pdcrm.SdkProtocol_registerSendToGroupCallback(DcrmCall)
-	p2pdcrm.SdkProtocol_registerSendToGroupReturnCallback(DcrmCallRet)
 	p2pdcrm.RegisterCallback(Call)
 
 	RegP2pGetGroupCallBack(p2pdcrm.SdkProtocol_getGroup)
@@ -3511,108 +3529,6 @@ type TxDataReqAddr struct {
     Sigs string
 }
 
-type ReShareSendMsgToDcrm struct {
-	Account   string
-	Nonce     string
-	TxData     string
-	Key       string
-}
-
-func (self *ReShareSendMsgToDcrm) Run(workid int, ch chan interface{}) bool {
-	if workid < 0 || workid >= RPCMaxWorker {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id error", Err: GetRetErr(ErrGetWorkerIdError)}
-		ch <- res
-		return false
-	}
-
-	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-	msg, err := json.Marshal(self)
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
-		ch <- res
-		return false
-	}
-
-	sm := &SendMsg{MsgType: "rpc_reshare", Nonce: self.Key, WorkId: workid, Msg: string(msg)}
-	res, err := Encode2(sm)
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode SendMsg fail in reshare", Err: err}
-		ch <- res
-		return false
-	}
-
-	res, err = Compress([]byte(res))
-	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress SendMsg data error in reshare", Err: err}
-		ch <- res
-		return false
-	}
-
-	rh := TxDataReShare{}
-	err = json.Unmarshal([]byte(self.TxData), &rh)
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "recover tx.data json string fail from raw data,maybe raw data error", Err: err}
-	    ch <- res
-	    return false
-	}
-
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "true", "Pending", "", "", "", nil, workid)
-	
-	SendToGroupAllNodes(rh.GroupId, res)
-
-	w := workers[workid]
-
-	////
-	//fmt.Printf("%v =============ReShareSendMsgToDcrm.Run,Waiting For Result, key = %v ========================\n", common.CurrentTime(), self.Key)
-	<-w.acceptWaitReShareChan
-	var tip string
-
-	///////
-	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-	//if rh.Mode == "0" {
-		mp := []string{self.Key, cur_enode}
-		enode := strings.Join(mp, "-")
-		s0 := "AcceptReShareRes"
-		s1 := "true"
-		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + tt
-		SendMsgToDcrmGroup(ss, rh.GroupId)
-		DisMsg(ss)
-		//fmt.Printf("%v ================== ReShareSendMsgToDcrm.Run , finish send AcceptReShareRes to other nodes, key = %v ============================\n", common.CurrentTime(), self.Key)
-		
-		////fix bug: get C11 timeout
-		_, enodes := GetGroup(rh.GroupId)
-		nodes := strings.Split(enodes, common.Sep2)
-		for _, node := range nodes {
-		    node2 := ParseNode(node)
-		    c1data := self.Key + "-" + node2 + common.Sep + "AcceptReShareRes"
-		    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-		    if exist {
-			DisMsg(c1.(string))
-			go C1Data.DeleteMap(strings.ToLower(c1data))
-		    }
-		}
-		////
-	//}
-
-	time.Sleep(time.Duration(1) * time.Second)
-	ars := GetAllReplyFromGroup(-1,rh.GroupId,Rpc_RESHARE,cur_enode)
-	AcceptReShare(cur_enode,self.Account, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"", "", "", "", "", "", ars, workid)
-	//fmt.Printf("%v ===================ReShareSendMsgToDcrm.Run, finish agree this reshare oneself. key = %v ============================\n", common.CurrentTime(), self.Key)
-	
-	chret, tip, cherr := GetChannelValue(sendtogroup_lilo_timeout, w.ch)
-	fmt.Printf("%v ==============ReShareSendMsgToDcrm.Run,Get Result = %v, err = %v, key = %v =================\n", common.CurrentTime(), chret, cherr, self.Key)
-	if cherr != nil {
-		res2 := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
-		ch <- res2
-		return false
-	}
-
-	res2 := RpcDcrmRes{Ret: chret, Tip: tip, Err: cherr}
-	ch <- res2
-
-	return true
-}
-
 type RpcType int32
 
 const (
@@ -3762,20 +3678,56 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptreshareres.Front()
 		for iter != nil {
 		    mdss := iter.Value.(string)
-		    ms := strings.Split(mdss, common.Sep)
-		    prexs := strings.Split(ms[0], "-")
-		    node3 := prexs[1]
-		    if strings.EqualFold(node3,node2) {
-			if strings.EqualFold(ms[2],"false") {
-			    sta = "DisAgree"
-			} else {
-			    sta = "Agree"
+		    _,from,_,txdata,err := CheckRaw(mdss)
+		    if err != nil {
+			iter = iter.Next()
+			continue
+		    }
+
+		    rh,ok := txdata.(*TxDataReShare)
+		    if ok {
+			h := coins.NewCryptocoinHandler("FSN")
+			if h == nil {
+			    iter = iter.Next()
+			    continue
+			}
+			
+			pk := "04" + node2 
+			fr, err := h.PublicKeyToAddress(pk)
+			if err != nil {
+			    iter = iter.Next()
+			    continue
 			}
 
-			ts = ms[3]
-			break
+			if strings.EqualFold(from, fr) {
+			    sta = "Agree"
+			    ts = rh.TimeStamp
+			    break
+			}
 		    }
-		    
+
+		    acceptrh,ok := txdata.(*TxDataAcceptReShare)
+		    if ok {
+			h := coins.NewCryptocoinHandler("FSN")
+			if h == nil {
+			    iter = iter.Next()
+			    continue
+			}
+			
+			pk := "04" + node2 
+			fr, err := h.PublicKeyToAddress(pk)
+			if err != nil {
+			    iter = iter.Next()
+			    continue
+			}
+
+			if strings.EqualFold(from, fr) {
+			    sta = "Agree"
+			    ts = acceptrh.TimeStamp
+			    break
+			}
+		    }
+
 		    iter = iter.Next()
 		}
 		
@@ -3881,21 +3833,6 @@ type NodeReply struct {
     Status string
     TimeStamp string
     Initiator string // "1"/"0"
-}
-
-func SendReShare(acc string, nonce string, txdata string,key string) (string, string, error) {
-	v := ReShareSendMsgToDcrm{Account: acc, Nonce: nonce, TxData:txdata, Key: key}
-	rch := make(chan interface{}, 1)
-	req := RPCReq{rpcdata: &v, ch: rch}
-
-	RPCReqQueueCache <- req
-	chret, tip, cherr := GetChannelValue(600, req.ch)
-
-	if cherr != nil {
-		return chret, tip, cherr
-	}
-
-	return chret, "", nil
 }
 
 func GetChannelValue(t int, obj interface{}) (string, string, error) {

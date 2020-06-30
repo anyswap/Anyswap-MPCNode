@@ -828,6 +828,15 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("can not sign with different mode in pubkey.")
 	}
 
+	if len(sig.MsgContext) > 16 {
+	    return "","","",nil,fmt.Errorf("msgcontext counts must <= 16")
+	}
+	for _,item := range sig.MsgContext {
+	    if len(item) > 1024*1024 {
+		return "","","",nil,fmt.Errorf("msgcontext item size must <= 1M")
+	    }
+	}
+
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + get_sign_hash(hash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	fmt.Printf("%v =================CheckRaw, it is sign tx, raw = %v, key = %v, sig = %v ==================\n",common.CurrentTime(),raw,key,&sig)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
@@ -938,6 +947,15 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	if acceptsig.MsgHash == nil {
 	    return "","","",nil,fmt.Errorf("accept data error.")
+	}
+
+	if len(acceptsig.MsgContext) > 16 {
+	    return "","","",nil,fmt.Errorf("msgcontext counts must <= 16")
+	}
+	for _,item := range acceptsig.MsgContext {
+	    if len(item) > 1024*1024 {
+		return "","","",nil,fmt.Errorf("msgcontext item size must <= 1M")
+	    }
 	}
 
 	if acceptsig.Accept != "AGREE" && acceptsig.Accept != "DISAGREE" {
@@ -1461,10 +1479,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		_, err := SetSignNonce(from,nonce)
 		if err == nil {
+		    fmt.Printf("===============InitAcceptData,set sign nonce finish, key = %v =================\n",key)
 		    ars := GetAllReplyFromGroup(workid,sig.GroupId,Rpc_SIGN,sender)
 		    ac := &AcceptSignData{Initiator:sender,Account: from, GroupId: sig.GroupId, Nonce: nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext: sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
 		    err = SaveAcceptSignData(ac)
 		    if err == nil {
+			fmt.Printf("===============InitAcceptData,save sign accept data finish, ars = %v, key = %v =================\n",ars,key)
 			w := workers[workid]
 			w.sid = key 
 			w.groupid = sig.GroupId 
@@ -1544,6 +1564,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 
 				DisAcceptMsg(raw,workid)
+				fmt.Printf("===============InitAcceptData, call DisAcceptMsg finish, key = %v =================\n",key)
 				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_SIGN)
 				exsit,da := GetValueFromPubKeyData(reqaddrkey)
 				if !exsit {
@@ -1557,6 +1578,8 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				    ch <- res
 				    return fmt.Errorf("get reqaddr sigs data fail") 
 				}
+
+				fmt.Printf("===============InitAcceptData, call HandleC1Data, reqaddrkey = %v, key = %v =================\n",reqaddrkey,key)
 
 				HandleC1Data(acceptreqdata,key,workid)
 
@@ -1622,6 +1645,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,workid)
 			}
 
+			fmt.Printf("===============InitAcceptData,begin to sign, sig.MsgHash = %v, sig.Mode = %v, key = %v =================\n",sig.MsgHash,sig.Mode,key)
 			rch := make(chan interface{}, 1)
 			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,rch)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
@@ -2248,6 +2272,7 @@ func DisAcceptMsg(raw string,workid int) {
 
     fmt.Printf("%v =====================DisAcceptMsg call CheckRaw ================\n",common.CurrentTime())
     key,_,_,txdata,err := CheckRaw(raw)
+    fmt.Printf("%v =====================DisAcceptMsg key = %v, err = %v ================\n",common.CurrentTime(),key,err)
     if err != nil {
 	return
     }
@@ -2315,9 +2340,11 @@ func DisAcceptMsg(raw string,workid int) {
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,key) {
+		fmt.Printf("%v =====================DisAcceptMsg,check reply fail,key = %v ================\n",common.CurrentTime(),key)
 		return
 	    }
 
+	    fmt.Printf("%v =====================DisAcceptMsg,check reply success,key = %v ================\n",common.CurrentTime(),key)
 	    w.bacceptsignres <- true
 	    exsit,da := GetValueFromPubKeyData(key)
 	    if !exsit {

@@ -629,6 +629,15 @@ func acceptSign() {
 		var keyStr string
 		var msgHash []string
 		var msgContext []string
+		
+		if len(hashs) == 0 {
+		    hashs = append(hashs,common.ToHex(crypto.Keccak256([]byte(*memo))))
+		}
+
+		if len(contexts) == 0 {
+		    contexts = append(contexts,*memo)
+		}
+
 		if *key != "" {
 			i = len(keyList)
 			keyStr = *key

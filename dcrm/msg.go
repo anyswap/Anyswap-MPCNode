@@ -144,6 +144,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
+	    fmt.Printf("%v =================GetRawReply,it is TxDataSign,sig = %v=====================\n",common.CurrentTime(),sig)
 	    reply := &RawReply{From:from,Accept:"true",TimeStamp:sig.TimeStamp}
 	    tmp,ok := ret[from]
 	    if !ok {
@@ -220,6 +221,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
+	    fmt.Printf("%v =================GetRawReply,it is TxDataAcceptSign, acceptsig = %v=====================\n",common.CurrentTime(),acceptsig)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -340,28 +342,128 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
     }
 
     ret := GetRawReply(l)
-    //sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
-    mms := strings.Split(ac.Sigs, common.Sep)
-    count := (len(mms) - 1)/2
-    if count <= 0 {
-	return false
-    }
 
-    for j:=0;j<count;j++ {
-	found := false
-	for _,v := range ret {
-	    if strings.EqualFold(v.From,mms[2*j+2]) { //allow user login diffrent node
-		found = true
-		break
+    if rt == Rpc_REQADDR {
+	//sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
+	mms := strings.Split(ac.Sigs, common.Sep)
+	count := (len(mms) - 1)/2
+	if count <= 0 {
+	    fmt.Printf("%v ===================== CheckReply,reqaddr, ac.Sigs = %v, count = %v, k = %v, key = %v, ret = %v ================\n",common.CurrentTime(),ac.Sigs,count,k,key,ret)
+	    return false
+	}
+
+	for j:=0;j<count;j++ {
+	    found := false
+	    for _,v := range ret {
+		    fmt.Printf("%v ===================== CheckReply,reqaddr, ac.Sigs = %v, count = %v, k = %v, key = %v, ret.v = %v, v.From = %v,mms[2j+2] =  %v ================\n",common.CurrentTime(),ac.Sigs,count,k,key,v,v.From,mms[2*j+2])
+		if strings.EqualFold(v.From,mms[2*j+2]) { //allow user login diffrent node
+		    found = true
+		    break
+		}
+	    }
+
+	    if found == false {
+		fmt.Printf("%v ===================== CheckReply,reqaddr, return false. ac.Sigs = %v, count = %v, k = %v, key = %v, ================\n",common.CurrentTime(),ac.Sigs,count,k,key)
+		return false
 	    }
 	}
 
-	if found == false {
-	    return false
-	}
+	return true
     }
 
-    return true
+    if rt == Rpc_LOCKOUT {
+	exsit,data := GetValueFromPubKeyData(key)
+	if !exsit {
+	    return false
+	}
+
+	lo,ok := data.(*AcceptLockOutData)
+	if !ok || lo == nil {
+	    return false
+	}
+
+	mms := strings.Split(ac.Sigs, common.Sep)
+	_, enodes := GetGroup(lo.GroupId)
+	nodes := strings.Split(enodes, common.Sep2)
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+	    foundeid := false
+	    for k,v := range mms {
+		if strings.EqualFold(v,node2) {
+		    foundeid = true
+		    found := false
+		    for _,vv := range ret {
+			    fmt.Printf("%v ===================== CheckReply,lockout,ac.Sigs = %v, k = %v, key = %v, vv.From = %v,mms[k+1] =  %v ================\n",common.CurrentTime(),ac.Sigs,k,key,vv.From,mms[k+1])
+			if strings.EqualFold(vv.From,mms[k+1]) { //allow user login diffrent node
+			    found = true
+			    break
+			}
+		    }
+
+		    if found == false {
+			fmt.Printf("%v ===================== CheckReply,lockout,return false,ac.Sigs = %v, k = %v, key = %v ================\n",common.CurrentTime(),ac.Sigs,k,key)
+			return false
+		    }
+
+		    break
+		}
+	    }
+
+	    if !foundeid {
+		return false
+	    }
+	}
+
+	return true
+    }
+
+    if rt == Rpc_SIGN {
+	exsit,data := GetValueFromPubKeyData(key)
+	if !exsit {
+	    return false
+	}
+
+	sig,ok := data.(*AcceptSignData)
+	if !ok || sig == nil {
+	    return false
+	}
+
+	mms := strings.Split(ac.Sigs, common.Sep)
+	_, enodes := GetGroup(sig.GroupId)
+	nodes := strings.Split(enodes, common.Sep2)
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+	    foundeid := false
+	    for k,v := range mms {
+		if strings.EqualFold(v,node2) {
+		    foundeid = true
+		    found := false
+		    for _,vv := range ret {
+			    fmt.Printf("%v ===================== CheckReply,sign,ac.Sigs = %v, k = %v, key = %v, vv.From = %v,mms[k+1] =  %v ================\n",common.CurrentTime(),ac.Sigs,k,key,vv.From,mms[k+1])
+			if strings.EqualFold(vv.From,mms[k+1]) { //allow user login diffrent node
+			    found = true
+			    break
+			}
+		    }
+
+		    if found == false {
+			fmt.Printf("%v ===================== CheckReply,sign,return false,ac.Sigs = %v, k = %v, key = %v ================\n",common.CurrentTime(),ac.Sigs,k,key)
+			return false
+		    }
+
+		    break
+		}
+	    }
+
+	    if !foundeid {
+		return false
+	    }
+	}
+
+	return true
+    }
+
+    return false 
 }
 
 //=========================================

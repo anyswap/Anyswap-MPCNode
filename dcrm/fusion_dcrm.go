@@ -571,6 +571,35 @@ func GetGroupSigsDataByRaw(raw string) (string,error) {
     return "",fmt.Errorf("group sigs error")
 }
 
+func IsValidReShareAccept(from string,gid string) bool {
+    if from == "" || gid == "" {
+	return false
+    }
+
+    h := coins.NewCryptocoinHandler("FSN")
+    if h == nil {
+	return false
+    }
+    
+    _, enodes := GetGroup(gid)
+    nodes := strings.Split(enodes, common.Sep2)
+    for _, node := range nodes {
+	node2 := ParseNode(node)
+	pk := "04" + node2 
+	
+	fr, err := h.PublicKeyToAddress(pk)
+	if err != nil {
+	    return false
+	}
+
+	if strings.EqualFold(from, fr) {
+	    return true
+	}
+    }
+
+    return false
+}
+
 func CheckRaw(raw string) (string,string,string,interface{},error) {
     if raw == "" {
 	return "","","",nil,fmt.Errorf("raw data empty")
@@ -807,19 +836,8 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     rh := TxDataReShare{}
     err = json.Unmarshal(tx.Data(), &rh)
     if err == nil && rh.TxType == "RESHARE" {
-	h := coins.NewCryptocoinHandler("FSN")
-	if h == nil {
-	    return "","","",nil,fmt.Errorf("get fsn cointype handle fail")
-	}
-	
-	pk := "04" + cur_enode
-	fr, err := h.PublicKeyToAddress(pk)
-	if err != nil {
-	    return "","","",nil,err
-	}
-
-	if !strings.EqualFold(from.Hex(), fr) {
-	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data,maybe raw data error")
+	if !IsValidReShareAccept(from.Hex(),rh.GroupId) {
+	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
 	}
 
 	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.Account == "" || rh.Mode == "" || rh.TimeStamp == "" {
@@ -951,21 +969,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     acceptrh := TxDataAcceptReShare{}
     err = json.Unmarshal(tx.Data(), &acceptrh)
     if err == nil && acceptrh.TxType == "ACCEPTRESHARE" {
-	h := coins.NewCryptocoinHandler("FSN")
-	if h == nil {
-	    return "","","",nil,fmt.Errorf("get fsn cointype handle fail")
-	}
-	
-	pk := "04" + cur_enode
-	fr, err := h.PublicKeyToAddress(pk)
-	if err != nil {
-	    return "","","",nil,err
-	}
-
-	if !strings.EqualFold(from.Hex(), fr) {
-	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data,maybe raw data error")
-	}
-
 	if acceptrh.Accept != "AGREE" && acceptrh.Accept != "DISAGREE" {
 	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
 	}
@@ -984,6 +987,10 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("mode = 1,do not need to accept")
 	}
 	
+	if !IsValidReShareAccept(from.Hex(),ac.GroupId) {
+	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
+	}
+
 	fmt.Printf("%v =================CheckRaw, it is acceptreshare tx, raw = %v, key = %v, acceptrh = %v ==================\n",common.CurrentTime(),raw,acceptrh.Key,&acceptrh)
 	return "",from.Hex(),"",&acceptrh,nil
     }

@@ -2183,6 +2183,8 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 		go C1Data.DeleteMap(strings.ToLower(c1data))
 	    }
 	}
+
+	return
     }
     //reshare only
 

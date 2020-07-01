@@ -2084,6 +2084,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("decode accept data fail")
 	}
 
+	if ac.Deal == "true" || ac.Status == "Success" {
+	    res := RpcDcrmRes{Ret:"", Tip: "sign has success before", Err: fmt.Errorf("sign has success before")}
+	    ch <- res
+	    return fmt.Errorf("sign has success before")
+	}
+
 	status := "Pending"
 	accept := "false"
 	if acceptsig.Accept == "AGREE" {
@@ -3171,7 +3177,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		    return
 		}
 
-		fmt.Printf("%v================GetCurNodeSignInfo, vv = %v, vv.Deal = %v, vv.Status = %v ====================\n",common.CurrentTime(),vv,vv.Deal,vv.Status,key)
+		fmt.Printf("%v================GetCurNodeSignInfo, vv = %v, vv.Deal = %v, vv.Status = %v, key = %v ====================\n",common.CurrentTime(),vv,vv.Deal,vv.Status,key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}

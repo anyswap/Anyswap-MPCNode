@@ -281,6 +281,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	ac,ok := da.(*AcceptSignData)
 
 	if !ok {
+		fmt.Printf("%v =====================AcceptSign, accept data error, key = %v =================================\n", common.CurrentTime(), key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -347,6 +348,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	PubKeyDataChan <- kdtmp
 
 	LdbPubKeyData.WriteMap(key, ac2)
+	fmt.Printf("%v =====================AcceptSign, new deal = %v, new accept = %v, new status = %v, key = %v =================================\n", common.CurrentTime(), de, acp, sts, key)
 	return "", nil
 }
 

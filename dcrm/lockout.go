@@ -207,7 +207,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 		SendMsgToDcrmGroup(ss, w.groupid)
 		///////////////
 
-		//msg = fusionaccount:pubkey:unsignhash:keytype:groupid:nonce:threshold:mode:key:timestamp
+		fmt.Printf("%v ================sign,success sign and call AcceptSign. key =%v ==================\n", common.CurrentTime(), wsid)
 		tip,reply := AcceptSign("",account,pubkey,unsignhash,keytype,w.groupid,nonce,w.limitnum,mode,"true", "true", "Success", result,"","",nil,w.id)
 		if reply != nil {
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update sign status error.")}

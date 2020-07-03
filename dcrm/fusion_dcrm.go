@@ -495,18 +495,22 @@ func GetGroupSigsDataByRaw(raw string) (string,error) {
 	}
     }
 
-    if threshold == "" || mode == "" || groupsigs == "" || groupid == "" {
+    if threshold == "" || mode == "" || groupid == "" {
 	return "",fmt.Errorf("raw data error,it is not REQDCRMADDR tx or RESHARE tx")
+    }
+
+    if mode == "1" {
+	return "",nil
+    }
+
+    if mode == "0" && groupsigs == "" {
+	return "",fmt.Errorf("raw data error,must have sigs data when mode = 0")
     }
 
     nums := strings.Split(threshold, "/")
     nodecnt, _ := strconv.Atoi(nums[1])
     if nodecnt <= 1 {
 	return "",fmt.Errorf("threshold error")
-    }
-
-    if mode == "1" {
-	return "",nil
     }
 
     sigs := strings.Split(groupsigs,"|")
@@ -1476,8 +1480,9 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
 	    fmt.Printf("===============InitAcceptData, sign cur_nonce_num = %v, sign new_nonce_num = %v, key = %v =================\n",cur_nonce_num,new_nonce_num,key)
-	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-		_, err := SetSignNonce(from,nonce)
+	    //if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
+		//_, err := SetSignNonce(from,nonce)
+		_, err := SetSignNonce(from,cur_nonce) //bug
 		if err == nil {
 		    fmt.Printf("===============InitAcceptData,set sign nonce finish, key = %v =================\n",key)
 		    ars := GetAllReplyFromGroup(workid,sig.GroupId,Rpc_SIGN,sender)
@@ -1712,7 +1717,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			return fmt.Errorf("sign fail.")
 		    }
 		}
-	    }
+	    //}
 	}
     }
 

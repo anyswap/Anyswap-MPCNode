@@ -127,22 +127,6 @@ func GetSkU1FromLocalDb(key string) []byte {
 
 func GetPubKeyDataValueFromDb(key string) []byte {
 	lock.Lock()
-	/*dir := GetDbDir()
-	////////
-	db, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	//bug
-	if err != nil {
-	    fmt.Printf("===================GetPubKeyDataValueFromDb, err = %v ===================\n",err)
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			if err == nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}*/
-	//
 	if db == nil {
 	    fmt.Printf("===================GetPubKeyDataValueFromDb, db is nil ===================\n")
 	    dir := GetDbDir()
@@ -160,22 +144,26 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 		    }
 	    }
 	    if err != nil {
-		db = nil
-	    } else {
-		db = dbtmp
-	    }
-
 		lock.Unlock()
 		return nil
+	    } else {
+		db = dbtmp
+		da, err := db.Get([]byte(key))
+		if err != nil {
+		    lock.Unlock()
+		    return nil
+		}
+
+		lock.Unlock()
+		return da
+	    }
 	}
 
 	da, err := db.Get([]byte(key))
-	////bug
 	if err != nil {
 	    dir := GetDbDir()
 	    ////////
 	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	    //bug
 	    if err != nil {
 		    for i := 0; i < 100; i++ {
 			    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
@@ -187,22 +175,20 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 		    }
 	    }
 	    if err != nil {
-		//db = nil
+		lock.Unlock()
+		return nil
 	    } else {
 		db = dbtmp
-	    }
-	    
-	    da, err = db.Get([]byte(key))
-	    if err != nil {
-		    fmt.Printf("===================GetPubKeyDataValueFromDb, 222222, err = %v ===================\n",err)
+		da, err := db.Get([]byte(key))
+		if err != nil {
 		    lock.Unlock()
 		    return nil
+		}
+
+		lock.Unlock()
+		return da
 	    }
-	    
-	    lock.Unlock()
-	    return da
 	}
-	///bug
 
 	lock.Unlock()
 	return da
@@ -329,66 +315,72 @@ func SaveSkU1ToDb() {
 
 func GetAllPubKeyDataFromDb() *common.SafeMap {
 	kd := common.NewSafeMap(10)
-	/*dir := GetDbDir()
-	//fmt.Printf("%v ==============GetAllPubKeyDataFromDb,start read from db,dir = %v ===============\n", common.CurrentTime(), dir)
-	db, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			if err == nil && db != nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}*/
-	//
 	if db != nil {
-		//fmt.Printf("%v ==============GetAllPubKeyDataFromDb,open db success.dir = %v ===============\n", common.CurrentTime(), dir)
-		iter := db.NewIterator()
-		for iter.Next() {
-			key := string(iter.Key())
-			value := string(iter.Value())
+	    iter := db.NewIterator()
+	    for iter.Next() {
+		key := string(iter.Key())
+		value := string(iter.Value())
 
-			ss, err := UnCompress(value)
-			if err == nil {
-			    pubs3, err := Decode2(ss, "PubKeyData")
-			    if err == nil {
-				pd,ok := pubs3.(*PubKeyData)
-				if ok {
-				    kd.WriteMap(key, pd)
-				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read PubKeyData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-				    continue
-				}
-			    }
-			    
-			    pubs, err := Decode2(ss, "AcceptReqAddrData")
-			    if err == nil {
-				pd,ok := pubs.(*AcceptReqAddrData)
-				if ok {
-				    kd.WriteMap(key, pd)
-				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-				    continue
-				}
-			    }
-			    
-			    pubs2, err := Decode2(ss, "AcceptLockOutData")
-			    if err == nil {
-				pd,ok := pubs2.(*AcceptLockOutData)
-				if ok {
-				    kd.WriteMap(key, pd)
-				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-				    continue
-				}
-			    }
-			    
+		ss, err := UnCompress(value)
+		if err == nil {
+		    pubs3, err := Decode2(ss, "PubKeyData")
+		    if err == nil {
+			pd,ok := pubs3.(*PubKeyData)
+			if ok {
+			    kd.WriteMap(key, pd)
+			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read PubKeyData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+			    continue
 			}
+		    }
+		    
+		    pubs, err := Decode2(ss, "AcceptReqAddrData")
+		    if err == nil {
+			pd,ok := pubs.(*AcceptReqAddrData)
+			if ok {
+			    kd.WriteMap(key, pd)
+			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+			    continue
+			}
+		    }
+		    
+		    pubs2, err := Decode2(ss, "AcceptLockOutData")
+		    if err == nil {
+			pd,ok := pubs2.(*AcceptLockOutData)
+			if ok {
+			    kd.WriteMap(key, pd)
+			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+			    continue
+			}
+		    }
 
-			kd.WriteMap(key, []byte(value))
+		    pubs4, err := Decode2(ss, "AcceptSignData")
+		    if err == nil {
+			pd,ok := pubs4.(*AcceptSignData)
+			if ok {
+			    kd.WriteMap(key, pd)
+			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+			    continue
+			}
+		    }
+		    
+		    pubs5, err := Decode2(ss, "AcceptReShareData")
+		    if err == nil {
+			pd,ok := pubs5.(*AcceptReShareData)
+			if ok {
+			    kd.WriteMap(key, pd)
+			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
+			    continue
+			}
+		    }
+		    
+		    continue
 		}
-		iter.Release()
-	//	db.Close()
+
+		kd.WriteMap(key, []byte(value))
+	    }
+	    
+	    iter.Release()
+    //	db.Close()
 	}
 
 	return kd
@@ -399,22 +391,60 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 	return false,nil
     }
 
-    //var data []byte
     datmp, exsit := LdbPubKeyData.ReadMap(key)
     if !exsit {
-	    /*da := GetPubKeyDataValueFromDb(key)
-	    if da == nil {
-		    exsit = false
-	    } else {
-		    exsit = true
-		    data = da
-		    //fmt.Printf("%v==============GetValueFromPubKeyData,get data from db = %v================\n",common.CurrentTime(),string(data))
-	    }*/
-    } else {
-	    //data = []byte(fmt.Sprintf("%v", datmp))
-	    //data = datmp.([]byte)
-	    //fmt.Printf("%v==============GetValueFromPubKeyData,get data from memory = %v================\n",common.CurrentTime(),string(data))
-	    exsit = true
+	da := GetPubKeyDataValueFromDb(key)
+	if da == nil {
+	    return false,nil
+	}
+
+	ss, err := UnCompress(string(da))
+	if err != nil {
+	    fmt.Printf("========================GetValueFromPubKeyData, uncompress err = %v ========================\n",err)
+	    return true,da
+	}
+
+	pubs3, err := Decode2(ss, "PubKeyData")
+	if err == nil {
+	    pd,ok := pubs3.(*PubKeyData)
+	    if ok {
+		return true,pd
+	    }
+	}
+	
+	pubs, err := Decode2(ss, "AcceptReqAddrData")
+	if err == nil {
+	    pd,ok := pubs.(*AcceptReqAddrData)
+	    if ok {
+		return true,pd
+	    }
+	}
+	
+	pubs2, err := Decode2(ss, "AcceptLockOutData")
+	if err == nil {
+	    pd,ok := pubs2.(*AcceptLockOutData)
+	    if ok {
+		return true,pd
+	    }
+	}
+
+	pubs4, err := Decode2(ss, "AcceptSignData")
+	if err == nil {
+	    pd,ok := pubs4.(*AcceptSignData)
+	    if ok {
+		return true,pd
+	    }
+	}
+	
+	pubs5, err := Decode2(ss, "AcceptReShareData")
+	if err == nil {
+	    pd,ok := pubs5.(*AcceptReShareData)
+	    if ok {
+		return true,pd
+	    }
+	}
+	
+	return true,da
     }
 
     return exsit,datmp

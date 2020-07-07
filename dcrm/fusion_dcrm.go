@@ -264,8 +264,6 @@ func IsInGroup(enode string, groupId string) bool {
 func InitDev(keyfile string) {
 	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
 
-	//LdbPubKeyData = GetAllPubKeyDataFromDb()
-
 	go SavePubKeyDataToDb()
 	go SaveSkU1ToDb()
 	go CommitRpcReq()

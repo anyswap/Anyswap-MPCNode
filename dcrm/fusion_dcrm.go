@@ -894,7 +894,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	exsit,da := GetValueFromPubKeyData(acceptreq.Key)
 	if !exsit {
-	    return "","","",nil,fmt.Errorf("get accept data fail from db")
+	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw reqaddr accept data")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
@@ -925,7 +925,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	exsit,da := GetValueFromPubKeyData(acceptlo.Key)
 	if !exsit {
-	    return "","","",nil,fmt.Errorf("get accept data fail from db")
+	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw lockout accept data")
 	}
 
 	ac,ok := da.(*AcceptLockOutData)
@@ -1947,16 +1947,16 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	if err != nil || w == nil {
 	    c1data := acceptreq.Key + "-" + from
 	    C1Data.WriteMap(strings.ToLower(c1data),raw)
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "get accept data fail from db.", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "get reqaddr accept data fail from db.", Err: fmt.Errorf("get reqaddr accept data fail from db when no find worker")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get reqaddr accept data fail from db when no find worker.")
 	}
 
 	exsit,da := GetValueFromPubKeyData(acceptreq.Key)
 	if !exsit {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get accept data fail from db", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get reqaddr accept data fail from db", Err: fmt.Errorf("get reqaddr accept data fail from db in init accept data")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get reqaddr accept data fail from db in init accept data.")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
@@ -1998,16 +1998,16 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	if err != nil || w == nil {
 	    c1data := acceptlo.Key + "-" + from
 	    C1Data.WriteMap(strings.ToLower(c1data),raw)
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "get accept data fail from db.", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "get lockout accept data fail from db when no find worker.", Err: fmt.Errorf("get lockout accept data fail from db when no find worker")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get lockout accept data fail from db when no find worker.")
 	}
 
 	exsit,da := GetValueFromPubKeyData(acceptlo.Key)
 	if !exsit {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get accept data fail from db", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get lockout accept data fail from db in init accept data", Err: fmt.Errorf("get lockout accept data fail from db in init accept data")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get lockout accept data fail from db in init accept data.")
 	}
 
 	ac,ok := da.(*AcceptLockOutData)
@@ -2070,16 +2070,16 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	if err != nil || w == nil {
 	    c1data := acceptsig.Key + "-" + from
 	    C1Data.WriteMap(strings.ToLower(c1data),raw)
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "get accept data fail from db.", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "get sign accept data fail from db when no find worker.", Err: fmt.Errorf("get sign accept data fail from db when no find worker")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get sign accept data fail from db when no find worker.")
 	}
 
 	exsit,da := GetValueFromPubKeyData(acceptsig.Key)
 	if !exsit {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get accept data fail from db", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get sign accept data fail from db in init accept data", Err: fmt.Errorf("get sign accept data fail from db in init accept data")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get sign accept data fail from db in init accept data.")
 	}
 
 	ac,ok := da.(*AcceptSignData)
@@ -2141,16 +2141,16 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	if err != nil || w == nil {
 	    c1data := acceptrh.Key + "-" + from
 	    C1Data.WriteMap(strings.ToLower(c1data),raw)
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "get accept data fail from db.", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "get reshare accept data fail from db when no find worker.", Err: fmt.Errorf("get reshare accept data fail from db when no find worker")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get reshare accept data fail from db whern no find worker.")
 	}
 
 	exsit,da := GetValueFromPubKeyData(acceptrh.Key)
 	if !exsit {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get accept data fail from db", Err: fmt.Errorf("get accept data fail from db")}
+	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get reshare accept data fail from db in init accept data", Err: fmt.Errorf("get reshare accept data fail from db in init accept data")}
 	    ch <- res
-	    return fmt.Errorf("get accept data fail from db.")
+	    return fmt.Errorf("get reshare accept data fail from db in init accept data.")
 	}
 
 	ac,ok := da.(*AcceptReShareData)
@@ -2881,18 +2881,14 @@ type ReqAddrStatus struct {
 func GetReqAddrStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if !exsit {
+	if !exsit || da == nil {
 		fmt.Printf("%v =====================GetReqAddrStatus,no exist key, key = %v ======================\n", common.CurrentTime(), key)
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
-	}
-
-	if da == nil {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		return "", "dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
 	if !ok {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		return "", "dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus")
 	}
 
 	los := &ReqAddrStatus{Status: ac.Status, PubKey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
@@ -2913,17 +2909,13 @@ type LockOutStatus struct {
 func GetLockOutStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if !exsit {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
-	}
-
-	if da == nil {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	if !exsit || da == nil {
+		return "", "dcrm back-end internal error:get lockout accept data fail from db when GetLockOutStatus", fmt.Errorf("dcrm back-end internal error:get lockout accept data fail from db when GetLockOutStatus")
 	}
 
 	ac,ok := da.(*AcceptLockOutData)
 	if !ok {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		return "", "dcrm back-end internal error:get lockout accept data error from db when GetLockOutStatus", fmt.Errorf("dcrm back-end internal error:get lockout accept data error from db when GetLockOutStatus")
 	}
 	los := &LockOutStatus{Status: ac.Status, OutTxHash: ac.OutTxHash, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
 	ret,_ := json.Marshal(los)
@@ -2942,17 +2934,13 @@ type SignStatus struct {
 func GetSignStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if !exsit {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
-	}
-
-	if da == nil {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	if !exsit || da == nil {
+		return "", "dcrm back-end internal error:get sign accept data fail from db when GetSignStatus", fmt.Errorf("dcrm back-end internal error:get sign accept data fail from db when GetSignStatus")
 	}
 
 	ac,ok := da.(*AcceptSignData)
 	if !ok {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		return "", "dcrm back-end internal error:get sign accept data error from db when GetSignStatus", fmt.Errorf("dcrm back-end internal error:get sign accept data error from db when GetSignStatus")
 	}
 
 	rsvs := strings.Split(ac.Rsv,":")
@@ -2973,17 +2961,13 @@ type ReShareStatus struct {
 func GetReShareStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
-	if !exsit {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
-	}
-
-	if da == nil {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+	if !exsit || da == nil  {
+		return "", "dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus")
 	}
 
 	ac,ok := da.(*AcceptReShareData)
 	if !ok {
-		return "", "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		return "", "dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus")
 	}
 
 	los := &ReShareStatus{Status: ac.Status, Pubkey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}

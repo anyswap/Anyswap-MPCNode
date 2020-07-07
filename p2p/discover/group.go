@@ -1167,7 +1167,14 @@ func callPriKeyEvent(msg string) {
 func callMsgEvent(e interface{}, p2pType int, fromID string) <-chan string {
 	switch p2pType {
 	case Sdkprotocol_type:
-		return sdkcallback(e, fromID)
+		if sdkcallback != nil {
+			return sdkcallback(e, fromID)
+		} else {
+			fmt.Printf("==== callMsgEvent() ====, error: callback func is nil, RegisterSdkMsgCallback not called\n")
+			ch := make(chan string)
+			ch <- "RegisterSdkMsgCallback not called"
+			return ch
+		}
 	case Dcrmprotocol_type:
 		return dcrmcallback(e)
 	case Xprotocol_type:
@@ -1203,7 +1210,9 @@ func RegisterSdkMsgRetCallback(sdkbackfunc func(interface{}, string)) {
 	sdkretcallback = sdkbackfunc
 }
 func callsdkReturn(e interface{}, fromID string) {
-	sdkretcallback(e, fromID)
+	if sdkretcallback != nil {
+		sdkretcallback(e, fromID)
+	}
 }
 
 //return

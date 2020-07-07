@@ -356,7 +356,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			    pubs3, err := Decode2(ss, "PubKeyData")
 			    if err == nil {
 				pd,ok := pubs3.(*PubKeyData)
-				if ok == true {
+				if ok {
 				    kd.WriteMap(key, pd)
 				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read PubKeyData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 				    continue
@@ -366,7 +366,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			    pubs, err := Decode2(ss, "AcceptReqAddrData")
 			    if err == nil {
 				pd,ok := pubs.(*AcceptReqAddrData)
-				if ok == true {
+				if ok {
 				    kd.WriteMap(key, pd)
 				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 				    continue
@@ -376,7 +376,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			    pubs2, err := Decode2(ss, "AcceptLockOutData")
 			    if err == nil {
 				pd,ok := pubs2.(*AcceptLockOutData)
-				if ok == true {
+				if ok {
 				    kd.WriteMap(key, pd)
 				    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 				    continue

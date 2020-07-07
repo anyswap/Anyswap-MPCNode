@@ -67,7 +67,6 @@ func GetReqAddrNonce(account string) (string, string, error) {
 	var da []byte
 	datmp, exsit := LdbPubKeyData.ReadMap(key2)
 	if !exsit {
-		//fmt.Printf("%v ==============GetReqAddrNonce,no exsit in memory,so want to read from db, account = %v,account hash = %v ================\n", common.CurrentTime(), account, key2)
 		da2 := GetPubKeyDataValueFromDb(key2)
 		if da2 == nil {
 			exsit = false
@@ -79,9 +78,7 @@ func GetReqAddrNonce(account string) (string, string, error) {
 		da = datmp.([]byte)
 	}
 	///////
-	if exsit == false {
-		//fmt.Printf("%v =========GetReqAddrNonce,no exist ,so return 0,account = %v,account hash = %v =================\n", common.CurrentTime(), account, key2)
-		//return "","dcrm back-end internal error:get req addr nonce from db fail",fmt.Errorf("map not found, account = %s",account)
+	if !exsit {
 		return "0", "", nil
 	}
 
@@ -273,7 +270,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	    }
 
 	    ok = KeyGenerate_DECDSA(msgprex, ch, id, cointype)
-	    if ok == true {
+	    if ok {
 		break
 	    }
 	    
@@ -420,67 +417,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		}
 	}
 
-	////set pubkey to account map
-	/*exsit,da := GetValueFromPubKeyData(msgprex)
-	///////
-	if exsit == false {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get accept result from db fail", Err: err}
-		ch <- res
-		return
-	}
-
-	ac,ok := da.(*AcceptReqAddrData)
-	if ok == false {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get accept result from db fail", Err: err}
-		ch <- res
-		return
-	}
-
-	if mode == "0" {
-	    sigs := strings.Split(ac.Sigs,common.Sep)
-	    cnt,_ := strconv.Atoi(sigs[0])
-	    for j := 0;j<cnt;j++ {
-		fr := sigs[2*j+2]
-		exsit,da := GetValueFromPubKeyData(strings.ToLower(fr))
-		if exsit == false {
-		    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: pubkeyhex}
-		    PubKeyDataChan <- kdtmp
-		    LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(pubkeyhex))
-		} else {
-		    //
-		    found := false
-		    keys := strings.Split(string(da.([]byte)),":")
-		    for _,v := range keys {
-			if strings.EqualFold(v,pubkeyhex) {
-			    found = true
-			    break
-			}
-		    }
-		    //
-
-		    if !found {
-			da2 := string(da.([]byte)) + ":" + pubkeyhex
-			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
-			PubKeyDataChan <- kdtmp
-			LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
-		    }
-		}
-	    }
-	} else {
-	    exsit,da := GetValueFromPubKeyData(strings.ToLower(account))
-	    if exsit == false {
-		kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: pubkeyhex}
-		PubKeyDataChan <- kdtmp
-		LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(pubkeyhex))
-	    } else {
-		da2 := string(da.([]byte)) + ":" + pubkeyhex
-		kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
-		PubKeyDataChan <- kdtmp
-		LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
-	    }
-	}*/
-	/////////////////////////////
-
 	res := RpcDcrmRes{Ret: pubkeyhex, Tip: "", Err: nil}
 	ch <- res
 }
@@ -606,7 +542,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedzk)
 	/////////////////////////request data from dcrm group
-	suss = false
 	if cherr != nil {
 	    suss = ReqDataFromGroup(msgprex,w.id,"EDZK",reqdata_trytimes,reqdata_timeout)
 	} else {
@@ -660,7 +595,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedd11)
 	/////////////////////////request data from dcrm group
-	suss = false
 	if cherr != nil {
 	    suss = ReqDataFromGroup(msgprex,w.id,"EDD11",reqdata_trytimes,reqdata_timeout)
 	} else {
@@ -813,7 +747,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedshare1)
 	/////////////////////////request data from dcrm group
-	suss = false
 	if cherr != nil {
 	    suss = ReqDataFromGroup(msgprex,w.id,"EDSHARE1",reqdata_trytimes,reqdata_timeout)
 	} else {
@@ -872,7 +805,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedcfsb)
 	/////////////////////////request data from dcrm group
-	suss = false
 	if cherr != nil {
 	    suss = ReqDataFromGroup(msgprex,w.id,"EDCFSB",reqdata_trytimes,reqdata_timeout)
 	} else {
@@ -1053,7 +985,7 @@ func findmsg(l *list.List,node string) bool {
 	}
 
 	mdss,ok := iter.Value.(string)
-	if ok == false {
+	if !ok {
 	    iter = iter.Next()
 	    continue
 	}
@@ -1296,16 +1228,13 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	DisMsg(ss)
 
 	////fix bug: get C1 timeout
-	//fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle C1, w.groupid = %v, key = %v=================\n", common.CurrentTime(),w.groupid,msgprex)
 	_, enodestmp := GetGroup(w.groupid)
 	nodestmp := strings.Split(enodestmp, common.Sep2)
 	for _, node := range nodestmp {
 	    node2 := ParseNode(node)
 	    c1data := msgprex + "-" + node2 + common.Sep + "C1"
-	    //fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle C1, w.groupid = %v, c1data = %v, key = %v=================\n", common.CurrentTime(),w.groupid,c1data,msgprex)
 	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
 	    if exist {
-		//fmt.Printf("%v ===============DECDSAGenKeyRoundOne,handle prex C1 data, exist is true in C1Data, w.groupid = %v, c1data = %v, msg = %v, key = %v=================\n", common.CurrentTime(),w.groupid,c1data,c1.(string),msgprex)
 		DisMsg(c1.(string))
 		go C1Data.DeleteMap(strings.ToLower(c1data))
 	    }
@@ -1315,9 +1244,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	// 1. Receive Broadcast
 	// commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
 	// u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk
-	//fmt.Printf("%v===================DECDSAGenKeyRoundOne,send C1 finish, key = %v====================\n",common.CurrentTime(),msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bc1)
-	//fmt.Printf("%v===================DECDSAGenKeyRoundOne,finish get C1,key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
 
 	/////////////////////////request data from dcrm group
 	suss := false

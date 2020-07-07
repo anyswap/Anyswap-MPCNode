@@ -307,7 +307,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		}
 	    }
 
-	    if found == false {
+	    if !found {
 		return false
 	    }
 	}
@@ -328,12 +328,12 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
     }
 
     exsit,da := GetValueFromPubKeyData(k)
-    if exsit == false {
+    if !exsit {
 	return false
     }
 
     ac,ok := da.(*AcceptReqAddrData)
-    if ok == false {
+    if !ok {
 	return false
     }
 
@@ -362,7 +362,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		}
 	    }
 
-	    if found == false {
+	    if !found {
 		fmt.Printf("%v ===================== CheckReply,reqaddr, return false. ac.Sigs = %v, count = %v, k = %v, key = %v, ================\n",common.CurrentTime(),ac.Sigs,count,k,key)
 		return false
 	    }
@@ -400,7 +400,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 			}
 		    }
 
-		    if found == false {
+		    if !found {
 			fmt.Printf("%v ===================== CheckReply,lockout,return false,ac.Sigs = %v, k = %v, key = %v ================\n",common.CurrentTime(),ac.Sigs,k,key)
 			return false
 		    }
@@ -446,7 +446,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 			}
 		    }
 
-		    if found == false {
+		    if !found {
 			fmt.Printf("%v ===================== CheckReply,sign,return false,ac.Sigs = %v, k = %v, key = %v ================\n",common.CurrentTime(),ac.Sigs,k,key)
 			return false
 		    }

@@ -1380,7 +1380,6 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RP
 	// receive c_kw from proper node, MtA(k, w)    zk
 	_, tip, cherr = GetChannelValue(ch_t, w.bmkw)
 	/////////////////////////request data from dcrm group
-	suss = false
 	if cherr != nil {
 	    suss = ReqDataFromGroup(msgprex,w.id,"MKW",reqdata_trytimes,reqdata_timeout)
 	} else {

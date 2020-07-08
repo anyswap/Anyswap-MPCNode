@@ -3150,7 +3150,10 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 
 func SendMsgToDcrmGroup(msg string, groupid string) {
 	fmt.Printf("%v =========SendMsgToDcrmGroup,msg = %v, send to group id = %v =================\n", common.CurrentTime(), msg,groupid)
-	BroadcastInGroupOthers(groupid, msg)
+	_,err := BroadcastInGroupOthers(groupid, msg)
+	if err != nil {
+	    fmt.Printf("%v =================SendMsgToDcrmGroup,send msg to dcrm group err = %v =================\n",common.CurrentTime(),err)
+	}
 
 	/*_, nodes := GetGroup(groupid)
 	others := strings.Split(nodes, common.Sep2)
@@ -3220,7 +3223,11 @@ func SendMsgToPeer(enodes string, msg string) {
 		return
 	}
 
-	SendToPeer(enodes, cm)
+	err = SendToPeer(enodes, cm)
+	if err != nil {
+	    fmt.Printf("%v =========SendMsgToPeer,send to peer fail,err = %v =================\n", common.CurrentTime(), err)
+	    return
+	}
 }
 
 ////ed
@@ -3404,8 +3411,20 @@ func Sign_ed(msgprex string, save string, sku1 *big.Int, message string, cointyp
 	var rDigest [64]byte
 
 	h := sha512.New()
-	h.Write(sk[32:])
-	h.Write([]byte(message))
+	_,err := h.Write(sk[32:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write sk fail in caling R", Err: err}
+	    ch <- res
+	    return ""
+	}
+
+	_,err = h.Write([]byte(message))
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write message fail in caling R", Err: err}
+	    ch <- res
+	    return ""
+	}
+
 	h.Sum(rDigest[:0])
 	ed.ScReduce(&r, &rDigest)
 
@@ -3614,9 +3633,27 @@ func Sign_ed(msgprex string, save string, sku1 *big.Int, message string, cointyp
 	var kDigest [64]byte
 
 	h = sha512.New()
-	h.Write(FinalRBytes[:])
-	h.Write(pkfinal[:])
-	h.Write(([]byte(message))[:])
+	_,err = h.Write(FinalRBytes[:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write final r fail in caling k", Err: fmt.Errorf("write final r fail in caling k")}
+	    ch <- res
+	    return ""
+	}
+
+	_,err = h.Write(pkfinal[:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write pk fail in caling k", Err: fmt.Errorf("write pk fail in caling k")}
+	    ch <- res
+	    return ""
+	}
+
+	_,err = h.Write(([]byte(message))[:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write message fail in caling k", Err: fmt.Errorf("write message fail in caling k")}
+	    ch <- res
+	    return ""
+	}
+
 	h.Sum(kDigest[:0])
 
 	ed.ScReduce(&k, &kDigest)
@@ -3782,9 +3819,27 @@ func Sign_ed(msgprex string, save string, sku1 *big.Int, message string, cointyp
 	var kDigest2 [64]byte
 
 	h = sha512.New()
-	h.Write(FinalRBytes[:])
-	h.Write(pkfinal[:])
-	h.Write(([]byte(message))[:])
+	_,err = h.Write(FinalRBytes[:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write final r fail in caling k2", Err: fmt.Errorf("write final r fail in caling k2.")}
+	    ch <- res
+	    return ""
+	}
+
+	_,err = h.Write(pkfinal[:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write final pk fail in caling k2", Err: fmt.Errorf("write final pk fail in caling k2.")}
+	    ch <- res
+	    return ""
+	}
+
+	_,err = h.Write(([]byte(message))[:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write message fail in caling k2", Err: fmt.Errorf("write message fail in caling k2.")}
+	    ch <- res
+	    return ""
+	}
+
 	h.Sum(kDigest2[:0])
 
 	ed.ScReduce(&k2, &kDigest2)
@@ -3899,9 +3954,21 @@ func EdVerify(input InputVerify) bool {
 	var kDigest [64]byte
 
 	h := sha512.New()
-	h.Write(input.FinalR[:])
-	h.Write(input.FinalPk[:])
-	h.Write(input.Message[:])
+	_,err := h.Write(input.FinalR[:])
+	if err != nil {
+	    return false
+	}
+
+	_,err = h.Write(input.FinalPk[:])
+	if err != nil {
+	    return false
+	}
+
+	_,err = h.Write(input.Message[:])
+	if err != nil {
+	    return false
+	}
+
 	h.Sum(kDigest[:0])
 
 	ed.ScReduce(&k, &kDigest)
@@ -3947,16 +4014,20 @@ func DoubleHash(id string, cointype string) *big.Int {
 
 	// First, hash with the keccak256
 	keccak256 := sha3.NewKeccak256()
-	//keccak256.Write(rnd.Bytes())
-
-	keccak256.Write([]byte(id))
+	_,err := keccak256.Write([]byte(id))
+	if err != nil {
+	    return nil
+	}
 
 	digestKeccak256 := keccak256.Sum(nil)
 
 	//second, hash with the SHA3-256
 	sha3256 := sha3.New256()
 
-	sha3256.Write(digestKeccak256)
+	_,err = sha3256.Write(digestKeccak256)
+	if err != nil {
+	    return nil
+	}
 
 	if types.IsDefaultED25519(cointype) {
 		var digest [32]byte
@@ -4037,16 +4108,21 @@ func DoubleHash2(id string, keytype string) *big.Int {
 
 	// First, hash with the keccak256
 	keccak256 := sha3.NewKeccak256()
-	//keccak256.Write(rnd.Bytes())
+	_,err := keccak256.Write([]byte(id))
+	if err != nil {
+	    return nil
+	}
 
-	keccak256.Write([]byte(id))
 
 	digestKeccak256 := keccak256.Sum(nil)
 
 	//second, hash with the SHA3-256
 	sha3256 := sha3.New256()
 
-	sha3256.Write(digestKeccak256)
+	_,err = sha3256.Write(digestKeccak256)
+	if err != nil {
+	    return nil
+	}
 
 	if keytype == "ED25519" {
 	    var digest [32]byte

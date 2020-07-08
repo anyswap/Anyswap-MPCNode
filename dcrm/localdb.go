@@ -219,7 +219,11 @@ func SavePubKeyDataToDb() {
 			//
 			if db != nil {
 			    if kd.Data == "CLEAN" {
-				db.Delete(kd.Key)
+				err := db.Delete(kd.Key)
+				if err != nil {
+				    PubKeyDataChan <- kd
+				    return
+				}
 			    } else {
 				err := db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
@@ -240,7 +244,11 @@ func SavePubKeyDataToDb() {
 					//dbsk = nil
 				    } else {
 					db = dbtmp
-					db.Put(kd.Key, []byte(kd.Data))
+					err = db.Put(kd.Key, []byte(kd.Data))
+					if err != nil {
+					    PubKeyDataChan <- kd
+					    return
+					}
 				    }
 
 				}
@@ -299,7 +307,11 @@ func SaveSkU1ToDb() {
 				    //dbsk = nil
 				} else {
 				    dbsk = dbsktmp
-				    dbsk.Put(kd.Key, []byte(cm))
+				    err = dbsk.Put(kd.Key, []byte(cm))
+				    if err != nil {
+					SkU1Chan <- kd
+					return
+				    }
 				}
 
 			    }

@@ -50,8 +50,6 @@ import (
 var (
 	cur_enode  string
 	init_times = 0
-	sendtogroup_lilo_timeout = 1000  
-	sendtogroup_timeout      = 1000
 	KeyFile    string
 	
 	lock                     sync.Mutex
@@ -1094,7 +1092,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 					if wid < 0 || wid >= len(workers) || workers[wid] == nil {
 						ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)	
-						AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "workid error", "workid error", ars, wid,"")
+						_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "workid error", "workid error", ars, wid,"")
+						if err != nil {
+						    tip = "accept reqaddr error"
+						    reply = false
+						    timeout <- true
+						    return
+						}
+
 						tip = "worker id error"
 						reply = false
 						timeout <- true
@@ -1121,10 +1126,20 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 							if !reply {
 								tip = "don't accept req addr"
-								AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid,"")
+								_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "false", "Failure", "", "don't accept req addr", "don't accept req addr", ars, wid,"")
+								if err != nil {
+								    tip = "don't accept req addr and accept reqaddr error"
+								    timeout <- true
+								    return
+								}
 							} else {
 								tip = ""
-								AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, wid,"")
+								_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, wid,"")
+								if err != nil {
+								    tip = "accept reqaddr error"
+								    timeout <- true
+								    return
+								}
 							}
 
 							///////
@@ -1134,7 +1149,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 							fmt.Printf("%v ================== InitAcceptData, agree wait timeout, raw = %v, key = %v ============================\n", common.CurrentTime(), raw,key)
 							ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 							//bug: if self not accept and timeout
-							AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
+							_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
+							if err != nil {
+							    tip = "get other node accept req addr result timeout and accept reqaddr fail"
+							    reply = false
+							    timeout <- true
+							    return
+							}
+
 							tip = "get other node accept req addr result timeout"
 							reply = false
 							//
@@ -1159,9 +1181,15 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 				if !reply {
 					if tip == "get other node accept req addr result timeout" {
-						AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Timeout", "", tip, "don't accept req addr.", ars, workid,"")
+						_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Timeout", "", tip, "don't accept req addr.", ars, workid,"")
 					} else {
-						AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, "don't accept req addr.", ars, workid,"")
+						_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, "don't accept req addr.", ars, workid,"")
+					}
+
+					if err != nil {
+					    res := RpcDcrmRes{Ret:"", Tip: tip, Err: fmt.Errorf("don't accept req addr.")}
+					    ch <- res
+					    return fmt.Errorf("don't accept req addr.")
 					}
 
 					res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_req_dcrmaddr", Tip: tip, Err: fmt.Errorf("don't accept req addr.")}
@@ -1174,7 +1202,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
-				AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, workid,"")
+				_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId,nonce, req.ThresHold, req.Mode, "false", "true", "Pending", "", "", "", ars, workid,"")
+				if err != nil {
+				    res := RpcDcrmRes{Ret:"", Tip: err.Error(), Err: err}
+				    ch <- res
+				    return err
+				}
 			}
 
 			fmt.Printf("%v ================== InitAcceptData, start call dcrm_genPubKey, w.id = %v, w.groupid = %v, key = %v ============================\n", common.CurrentTime(), w.id,w.groupid,key)
@@ -1184,7 +1217,13 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			fmt.Printf("%v ================== InitAcceptData , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr,key)
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
-				AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, workid,"")
+				_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, workid,"")
+				if err != nil {
+				    res := RpcDcrmRes{Ret:"", Tip:err.Error(), Err:err}
+				    ch <- res
+				    return err
+				}
+
 				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_req_dcrmaddr", Tip: tip, Err: cherr}
 				ch <- res
 				return cherr 
@@ -1286,10 +1325,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 							if !reply {
 								tip = "don't accept lockout"
-								AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Failure", "", "don't accept lockout", "don't accept lockout", ars, wid)
+								_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Failure", "", "don't accept lockout", "don't accept lockout", ars, wid)
 							} else {
 								tip = ""
-								AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, wid)
+								_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, wid)
+							}
+
+							if err != nil {
+							    tip = "accept lock data error"
 							}
 
 							///////
@@ -1298,9 +1341,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						case <-agreeWaitTimeOut.C:
 							fmt.Printf("%v ================== InitAcceptData , agree wait timeout. raw = %v, key = %v,=====================\n", common.CurrentTime(), raw,key)
 							ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-							AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
+							_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
 							reply = false
 							tip = "get other node accept lockout result timeout"
+							if err != nil {
+							    tip = "get other node accept lockout result timeout and accept lockout data fail"
+							}
 							//
 
 							timeout <- true
@@ -1337,7 +1383,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				if !reply {
 					if tip == "get other node accept lockout result timeout" {
 						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-						AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, workid)
+						_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, workid)
 					} else {
 						/////////////TODO
 						//sid-enode:SendLockOutRes:Success:lockout_tx_hash
@@ -1354,9 +1400,17 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
 						if err != nil {
 							tip = "get other node terminal accept lockout result timeout" ////bug
-							AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, workid)
+							_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, workid)
+							if err != nil {
+							    tip = tip + "accept lockout data fail"
+							}
+
 						} else if w.msg_sendlockoutres.Len() != w.ThresHold {
-							AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, workid)
+							_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, workid)
+							if err != nil {
+							    tip = tip + "accept lockout data fail"
+							}
+
 						} else {
 							reply2 := "false"
 							lohash := ""
@@ -1375,9 +1429,17 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 							}
 
 							if reply2 == "true" {
-								AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, workid)
+								_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, workid)
+								if err != nil {
+								    tip = tip + "accept lockout data fail"
+								}
+
 							} else {
-								AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, workid)
+								_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, workid)
+								if err != nil {
+								    tip = tip + "accept lockout data fail"
+								}
+
 							}
 						}
 					}
@@ -1392,7 +1454,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 
 				ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-				AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, workid)
+				_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, workid)
+				if err != nil {
+				    res := RpcDcrmRes{Ret:"", Tip:err.Error(), Err: err}
+				    ch <- res
+				    return err
+				}
 			}
 
 			rch := make(chan interface{}, 1)
@@ -1409,7 +1476,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 			ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
 			if tip == "get other node accept lockout result timeout" {
-				AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, cherr.Error(), ars, workid)
+				_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, cherr.Error(), ars, workid)
 			} else {
 				/////////////TODO
 				//sid-enode:SendLockOutRes:Success:lockout_tx_hash
@@ -1425,9 +1492,17 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				_, _, err := GetChannelValue(ch_t, w.bsendlockoutres)
 				if err != nil {
 					tip = "get other node terminal accept lockout result timeout" ////bug
-					AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, workid)
+					_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, workid)
+					if err != nil {
+					    tip = tip + " and accept lockout data fail"
+					}
+			
 				} else if w.msg_sendlockoutres.Len() != w.ThresHold {
-					AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars,workid)
+					_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars,workid)
+					if err != nil {
+					    tip = tip + " and accept lockout data fail"
+					}
+			
 				} else {
 					reply2 := "false"
 					lohash := ""
@@ -1446,13 +1521,21 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 					}
 
 					if reply2 == "true" {
-						AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, workid)
+						_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, workid)
+						if err != nil {
+						    tip = tip + " and accept lockout data fail"
+						}
+			
 					} else {
-						AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, workid)
+						_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, workid)
+						if err != nil {
+						    tip = tip + " and accept lockout data fail"
+						}
+			
 					}
 				}
 			}
-			
+
 			if cherr != nil {
 				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_lockout", Tip: tip, Err: cherr}
 				ch <- res
@@ -1539,10 +1622,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 							if !reply {
 								tip = "don't accept sign"
-								AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
+								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
 							} else {
 								tip = ""
-								AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Pending", "", "", "", ars,wid)
+								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Pending", "", "", "", ars,wid)
+							}
+
+							if err != nil {
+							    tip = tip + " and accept sign data fail"
 							}
 
 							///////
@@ -1551,9 +1638,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						case <-agreeWaitTimeOut.C:
 							fmt.Printf("%v ================== InitAcceptData , agree wait timeout. raw = %v, key = %v,=====================\n", common.CurrentTime(), raw,key)
 							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-							AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
+							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
 							reply = false
 							tip = "get other node accept sign result timeout"
+							if err != nil {
+							    tip = tip + " and accept sign data fail"
+							}
 							//
 
 							timeout <- true
@@ -1591,7 +1681,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				if !reply {
 					if tip == "get other node accept sign result timeout" {
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-						AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,workid)
+						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,workid)
 					} else {
 						//sid-enode:SendSignRes:Success:rsv
 						//sid-enode:SendSignRes:Fail:err
@@ -1607,9 +1697,17 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 						if err != nil {
 							tip = "get other node terminal accept sign result timeout" ////bug
-							AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars,workid)
+							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars,workid)
+							if err != nil {
+							    tip = tip + " and accept sign data fail"
+							}
+
 						} else if w.msg_sendsignres.Len() != w.ThresHold {
-							AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,workid)
+							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,workid)
+							if err != nil {
+							    tip = tip + " and accept sign data fail"
+							}
+
 						} else {
 							reply2 := "false"
 							lohash := ""
@@ -1628,9 +1726,17 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 							}
 
 							if reply2 == "true" {
-								AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars,workid)
+								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars,workid)
+								if err != nil {
+								    tip = tip + " and accept sign data fail"
+								}
+
 							} else {
-								AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash,lohash, ars,workid)
+								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash,lohash, ars,workid)
+								if err != nil {
+								    tip = tip + " and accept sign data fail"
+								}
+
 							}
 						}
 					}
@@ -1645,7 +1751,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 
 				ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-				AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,workid)
+				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,workid)
+				if err != nil {
+				    res := RpcDcrmRes{Ret:"", Tip: err.Error(), Err:err}
+				    ch <- res
+				    return err
+				}
 			}
 
 			fmt.Printf("===============InitAcceptData,begin to sign, sig.MsgHash = %v, sig.Mode = %v, key = %v =================\n",sig.MsgHash,sig.Mode,key)
@@ -1661,7 +1772,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 			ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 			if tip == "get other node accept sign result timeout" {
-				AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip,cherr.Error(),ars,workid)
+				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip,cherr.Error(),ars,workid)
 			} else {
 				//sid-enode:SendSignRes:Success:rsv
 				//sid-enode:SendSignRes:Fail:err
@@ -1676,9 +1787,17 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				_, _, err := GetChannelValue(ch_t, w.bsendsignres)
 				if err != nil {
 					tip = "get other node terminal accept sign result timeout" ////bug
-					AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars, workid)
+					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars, workid)
+					if err != nil {
+					    tip = tip + " and accept sign data fail"
+					}
+
 				} else if w.msg_sendsignres.Len() != w.ThresHold {
-					AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, workid)
+					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, workid)
+					if err != nil {
+					    tip = tip + " and accept sign data fail"
+					}
+
 				} else {
 					reply2 := "false"
 					lohash := ""
@@ -1697,9 +1816,16 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 					}
 
 					if reply2 == "true" {
-						AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars, workid)
+						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars, workid)
+						if err != nil {
+						    tip = tip + " and accept sign data fail"
+						}
+
 					} else {
-						AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash, lohash, ars, workid)
+						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash, lohash, ars, workid)
+						if err != nil {
+						    tip = tip + " and accept sign data fail"
+						}
 					}
 				}
 			}
@@ -1784,10 +1910,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 				    if !reply {
 					    tip = "don't accept reshare"
-					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Failure", "", "don't accept reshare", "don't accept reshare", nil, wid)
+					    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Failure", "", "don't accept reshare", "don't accept reshare", nil, wid)
 				    } else {
 					    tip = ""
-					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "pending", "", "", "", ars, wid)
+					    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "pending", "", "", "", ars, wid)
+				    }
+
+				    if err != nil {
+					tip = tip + " and accept reshare data fail"
 				    }
 
 				    ///////
@@ -1796,9 +1926,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			    case <-agreeWaitTimeOut.C:
 				    fmt.Printf("%v ================== InitAcceptData, agree wait timeout. raw = %v, key = %v =====================\n", common.CurrentTime(), raw,key)
 				    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
-				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
+				    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
 				    reply = false
 				    tip = "get other node accept reshare result timeout"
+				    if err != nil {
+					tip = tip + " and accept reshare data fail"
+				    }
 				    //
 
 				    timeout <- true
@@ -1820,7 +1953,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 		    //////////////////////reshare result start/////////////////////////
 		    if tip == "get other node accept reshare result timeout" {
 			    ars := GetAllReplyFromGroup(workid,rh.GroupId,Rpc_RESHARE,sender)
-			    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars,workid)
+			    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars,workid)
 		    } else {
 			    /////////////TODO tmp
 			    //sid-enode:SendReShareRes:Success:rsv
@@ -1837,9 +1970,16 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
 			    if err != nil {
 				    tip = "get other node terminal accept reshare result timeout" ////bug
-				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", tip,tip, ars, workid)
+				    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", tip,tip, ars, workid)
+				    if err != nil {
+					tip = tip + " and accept reshare data fail"
+				    }
+
 			    } else if w.msg_sendreshareres.Len() != w.ThresHold {
-				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, workid)
+				    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, workid)
+				    if err != nil {
+					tip = tip + " and accept reshare data fail"
+				    }
 			    } else {
 				    reply2 := "false"
 				    lohash := ""
@@ -1858,9 +1998,15 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				    }
 
 				    if reply2 == "true" {
-					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"true", "true", "Success", lohash," "," ",ars, workid)
+					    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold, rh.Mode,"true", "true", "Success", lohash," "," ",ars, workid)
+					    if err != nil {
+						tip = tip + " and accept reshare data fail"
+					    }
 				    } else {
-					    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "",lohash,lohash,ars, workid)
+					    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "",lohash,lohash,ars, workid)
+					    if err != nil {
+						tip = tip + " and accept reshare data fail"
+					    }
 				    }
 			    }
 		    }
@@ -1881,7 +2027,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 	    if tip == "get other node accept reshare result timeout" {
 		    ars := GetAllReplyFromGroup(workid,rh.GroupId,Rpc_RESHARE,sender)
-		    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars,workid)
+		    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars,workid)
 	    } else {
 		    /////////////TODO tmp
 		    //sid-enode:SendReShareRes:Success:rsv
@@ -1898,9 +2044,15 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 		    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
 		    if err != nil {
 			    tip = "get other node terminal accept reshare result timeout" ////bug
-			    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", tip,tip, ars, workid)
+			    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Timeout", "", tip,tip, ars, workid)
+			    if err != nil {
+				tip = tip + " and accept reshare data fail"
+			    }
 		    } else if w.msg_sendsignres.Len() != w.ThresHold {
-			    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, workid)
+			    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "", "get other node reshare result fail","get other node reshare result fail",ars, workid)
+			    if err != nil {
+				tip = tip + " and accept reshare data fail"
+			    }
 		    } else {
 			    reply2 := "false"
 			    lohash := ""
@@ -1919,9 +2071,15 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			    }
 
 			    if reply2 == "true" {
-				    AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"true", "true", "Success", lohash," "," ",ars, workid)
+				    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"true", "true", "Success", lohash," "," ",ars, workid)
+				    if err != nil {
+					tip = tip + " and accept reshare data fail"
+				    }
 			    } else {
-				    AcceptReShare(sender,from, rh.GroupId,rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "",lohash,lohash,ars,workid)
+				    _,err = AcceptReShare(sender,from, rh.GroupId,rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "", "Failure", "",lohash,lohash,ars,workid)
+				    if err != nil {
+					tip = tip + " and accept reshare data fail"
+				    }
 			    }
 		    }
 	    }
@@ -3505,7 +3663,11 @@ func Compress(c []byte) (string, error) {
 		return "", err
 	}
 
-	w.Write(c)
+	_,err = w.Write(c)
+	if err != nil {
+	    return "",err
+	}
+
 	w.Close()
 
 	s := in.String()
@@ -3528,7 +3690,11 @@ func UnCompress(s string) (string, error) {
 	}
 
 	var out bytes.Buffer
-	io.Copy(&out, r)
+	_,err = io.Copy(&out, r)
+	if err != nil {
+	    return "",err
+	}
+
 	return out.String(), nil
 }
 
@@ -3543,7 +3709,10 @@ func (h DcrmHash) Hex() string { return hexutil.Encode(h[:]) }
 func Keccak256Hash(data ...[]byte) (h DcrmHash) {
 	d := sha3.NewKeccak256()
 	for _, b := range data {
-		d.Write(b)
+	    _,err := d.Write(b)
+	    if err != nil {
+		return h 
+	    }
 	}
 	d.Sum(h[:0])
 	return h

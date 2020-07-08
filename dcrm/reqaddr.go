@@ -20,7 +20,6 @@ import (
 	"bytes"
 	cryptorand "crypto/rand"
 	"crypto/sha512"
-	"container/list"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -698,8 +697,20 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	}
 	h := sha512.New()
 	dpk := dpks[cur_enode]
-	h.Write(dpk[32:])
-	h.Write(PkSet)
+	_,err := h.Write(dpk[32:])
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write dpk fail in calcing SHA256(PkU1, {PkU2, PkU3}", Err: fmt.Errorf("write dpk fail in calcing SHA256(PkU1, {PkU2, PkU3}.")}
+	    ch <- res
+	    return false
+	}
+
+	_,err = h.Write(PkSet)
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write pkset fail in calcing SHA256(PkU1, {PkU2, PkU3}", Err: fmt.Errorf("write pkset fail in calcing SHA256(PkU1, {PkU2, PkU3}.")}
+	    ch <- res
+	    return false
+	}
+
 	h.Sum(aDigest[:0])
 	ed.ScReduce(&a, &aDigest)
 
@@ -895,8 +906,18 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		copy(temPk[:], t[32:])
 
 		h.Reset()
-		h.Write(temPk[:])
-		h.Write(PkSet2)
+		_,err = h.Write(temPk[:])
+		if err != nil {
+		    res := RpcDcrmRes{Ret: "", Tip:err.Error(), Err:err}
+		    ch <- res
+		    return false
+		}
+		_,err = h.Write(PkSet2)
+		if err != nil {
+		    res := RpcDcrmRes{Ret: "", Tip:err.Error(), Err:err}
+		    ch <- res
+		    return false
+		}
 		h.Sum(aDigest2[:0])
 		ed.ScReduce(&a2, &aDigest2)
 
@@ -939,8 +960,18 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		copy(temPk[:], t[32:])
 
 		h.Reset()
-		h.Write(temPk[:])
-		h.Write(PkSet2)
+		_,err = h.Write(temPk[:])
+		if err != nil {
+		    res := RpcDcrmRes{Ret: "", Tip:err.Error(), Err:err}
+		    ch <- res
+		    return false
+		}
+		_,err = h.Write(PkSet2)
+		if err != nil {
+		    res := RpcDcrmRes{Ret: "", Tip:err.Error(), Err:err}
+		    ch <- res
+		    return false
+		}
 		h.Sum(aDigest2[:0])
 		ed.ScReduce(&a2, &aDigest2)
 
@@ -969,43 +1000,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	w.edpk.PushBack(string(finalPkBytes[:]))
 
 	return true
-}
-
-func findmsg(l *list.List,node string) bool {
-    if l == nil || node == "" {
-	return false
-    }
-
-    found := false
-    iter := l.Front() //////by type
-    for iter != nil {
-	if iter.Value == nil {
-	    iter = iter.Next()
-	    continue
-	}
-
-	mdss,ok := iter.Value.(string)
-	if !ok {
-	    iter = iter.Next()
-	    continue
-	}
-
-	ms := strings.Split(mdss, common.Sep)
-	prexs := strings.Split(ms[0], "-")
-	if len(prexs) < 2 {
-	    iter = iter.Next()
-	    continue
-	}
-
-	node2 := prexs[1]
-	if strings.EqualFold(node2,node) {
-	    found = true
-	    break
-	}
-	iter = iter.Next()
-    }
-
-    return found
 }
 
 func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeout int) bool {

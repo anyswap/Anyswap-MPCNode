@@ -53,11 +53,20 @@ func main() {
 }
 
 func StartDcrm(c *cli.Context) {
+    	SetLogger()
 	startP2pNode()
 	time.Sleep(time.Duration(5) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
 	dcrm.Start()
 	select {} // note for server, or for client
+}
+
+func SetLogger() {
+	  fmt.Printf("%v ==================SetLogger, log file = %v =================\n",common.CurrentTime(),log)
+          common.SetLogger(uint32(verbosity), json, color)
+         if log != "" {
+                 common.SetLogFile(log, rotate, maxage)
+         }
 }
 
 //========================= init ========================
@@ -71,6 +80,13 @@ var (
 	pubkey    string
 	genKey    string
 	datadir   string
+	log   string
+	rotate   uint64
+	maxage   uint64
+	verbosity   uint64
+	json   bool
+	color   bool
+
 	app       = cli.NewApp()
 	statDir   = "stat"
 	Version   = ""
@@ -104,6 +120,12 @@ func init() {
 		cli.StringFlag{Name: "pubkey", Value: "", Usage: "public key from web user", Destination: &pubkey},
 		cli.StringFlag{Name: "genkey", Value: "", Usage: "generate a node key", Destination: &genKey},
 		cli.StringFlag{Name: "datadir", Value: "", Usage: "data dir", Destination: &datadir},
+		cli.StringFlag{Name: "log", Value: "", Usage: "Specify log file, support rotate", Destination: &log},
+		cli.Uint64Flag{Name: "rotate", Value: 24, Usage: "log rotation time (unit hour)", Destination: &rotate},
+		cli.Uint64Flag{Name: "maxage", Value: 720, Usage: "log max age (unit hour)", Destination: &maxage},
+		cli.Uint64Flag{Name: "verbosity", Value: 4, Usage: "log verbosity (0:panic, 1:fatal, 2:error, 3:warn, 4:info, 5:debug, 6:trace)", Destination: &verbosity},
+		cli.BoolFlag{Name: "json", Usage: "output log in json format",Destination: &json},
+		cli.BoolFlag{Name: "color", Usage: "output log in color text format", Destination: &color},
 	}
 }
 

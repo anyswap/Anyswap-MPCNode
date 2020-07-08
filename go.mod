@@ -43,6 +43,8 @@ require (
 	github.com/jackpal/go-nat-pmp v1.0.2
 	github.com/jirfag/go-printf-func-name v0.0.0-20200119135958-7558a9eaa5af // indirect
 	github.com/julienschmidt/httprouter v1.3.0
+	github.com/lestrrat-go/file-rotatelogs v2.3.0+incompatible
+	github.com/lestrrat-go/strftime v1.0.1 // indirect
 	github.com/libp2p/go-conn-security v0.1.0 // indirect
 	github.com/libp2p/go-libp2p v6.0.23+incompatible
 	github.com/libp2p/go-libp2p-circuit v0.1.4 // indirect
@@ -87,6 +89,7 @@ require (
 	github.com/tendermint/tendermint v0.32.9
 	github.com/tetafro/godot v0.4.2 // indirect
 	github.com/timakin/bodyclose v0.0.0-20200424151742-cb6215831a94 // indirect
+	github.com/urfave/cli/v2 v2.2.0 // indirect
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-smux-multiplex v3.0.16+incompatible // indirect
 	github.com/whyrusleeping/go-smux-multistream v2.0.2+incompatible // indirect

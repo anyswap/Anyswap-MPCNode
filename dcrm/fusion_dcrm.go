@@ -2997,8 +2997,7 @@ func receiveGroupInfo(msg interface{}) {
 }
 
 func Init(groupId string) {
-	out := "=============Init================" + " get group id = " + groupId + ", init_times = " + strconv.Itoa(init_times)
-	fmt.Println(out)
+	common.Info("======================Init==========================","get group id",groupId,"init_times",strconv.Itoa(init_times))
 
 	if !PutGroup(groupId) {
 		out := "=============Init================" + " get group id = " + groupId + ", put group id fail "

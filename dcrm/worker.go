@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 var (
@@ -420,7 +421,8 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 
 func (w *RPCReqWorker) Clear() {
 
-    	//fmt.Printf("%v======================RpcReqWorker.Clear, w.id = %v, w.groupid = %v, key = %v ==========================\n",common.CurrentTime(),w.id,w.groupid,w.sid)
+	common.Info("======================RpcReqWorker.Clear======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
+
 	w.sid = ""
 	w.groupid = ""
 	w.limitnum = ""
@@ -826,7 +828,8 @@ func (w *RPCReqWorker) Clear() {
 }
 
 func (w *RPCReqWorker) Clear2() {
-	//fmt.Printf("%v================= RpcReqWorker.Clear2, w.id = %v ===================\n",common.CurrentTime(),w.id)
+	common.Info("======================RpcReqWorker.Clear2======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
+	
 	var next *list.Element
 
 	for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {

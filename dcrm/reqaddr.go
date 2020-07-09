@@ -92,10 +92,7 @@ func SetReqAddrNonce(account string, nonce string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-
-	//fmt.Printf("%v =========SetReqAddrNonce,account = %v,account hash = %v,nonce = %v =================\n", common.CurrentTime(), account, key, nonce)
 	LdbPubKeyData.WriteMap(key, []byte(nonce))
-
 	return "", nil
 }
 
@@ -116,7 +113,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	if types.IsDefaultED25519(cointype) {
 		ok2 := false
 		for j := 0;j < recalc_times;j++ { //try 20 times
-		    //fmt.Printf("%v===============dcrm_genPubKey, it is ed25519,recalc j = %v, key = %v ================\n",common.CurrentTime(),j,msgprex)
 		    if len(ch) != 0 {
 			<-ch
 		    }
@@ -167,7 +163,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
 		epubs, err := Encode2(pubs)
 		if err != nil {
-			//fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
+			common.Info("===============dcrm_genPubKey,encode fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ed pubkey", Err: err}
 			ch <- res
 			return
@@ -175,16 +171,16 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		ss, err := Compress([]byte(epubs))
 		if err != nil {
-			//fmt.Printf("%v ===============dcrm_genPubKey,compress fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
+			common.Info("===============dcrm_genPubKey,commpress fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ed pubkey", Err: err}
 			ch <- res
 			return
 		}
 
-		//fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
+		common.Info("===============dcrm_genPubKey,start call AcceptReqAddr to update success status=================","account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
 		tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id,"")
 		if reply != nil {
-			//fmt.Printf("%v ===============dcrm_genPubKey,update reqaddr status,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), reply,account, pubkeyhex, nonce,rk)
+			common.Info("===============dcrm_genPubKey,update reqaddr status=================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
 			ch <- res
 			return
@@ -263,7 +259,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	ok := false
 	for j := 0;j < recalc_times;j++ { //try 20 times
-	    //fmt.Printf("%v===============dcrm_genPubKey, recalc j = %v, key = %v ================\n",common.CurrentTime(),j,msgprex)
 	    if len(ch) != 0 {
 		<-ch
 	    }
@@ -327,7 +322,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
 	epubs, err := Encode2(pubs)
 	if err != nil {
-		fmt.Printf("%v ===============dcrm_genPubKey,encode fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
+		common.Info("===============dcrm_genPubKey,encode fail===================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
 		ch <- res
 		return
@@ -335,19 +330,17 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	ss, err := Compress([]byte(epubs))
 	if err != nil {
-		fmt.Printf("%v ===============dcrm_genPubKey,compress fail,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), err,account, pubkeyhex, nonce,rk)
+		common.Info("===============dcrm_genPubKey,compress fail===================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
 		ch <- res
 		return
 	}
 
-	//fmt.Printf("%v ===============dcrm_genPubKey,success encode and compress pubkey,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
-	
-	//fmt.Printf("%v ===============dcrm_genPubKey,start call AcceptReqAddr to update success status, account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), account, pubkeyhex, nonce,rk)
+	common.Info("===============dcrm_genPubKey,start call AcceptReqAddr to update success status===================","account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
 
 	tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id,"")
 	if reply != nil {
-		//fmt.Printf("%v ===============dcrm_genPubKey,update reqaddr status,err = %v,account = %v,pubkey = %v,nonce =%v,key = %v ==================\n", common.CurrentTime(), reply,account, pubkeyhex, nonce,rk)
+		common.Info("===============dcrm_genPubKey,update reqaddr status===================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
 		ch <- res
 		return
@@ -388,8 +381,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		/////
 		LdbPubKeyData.WriteMap(string(ys), pubs)
 		////
-		//test,_ := new(big.Int).SetString(string(ys),0)
-		//fmt.Printf("%v===============dcrm_genPubKey, 555555555, k = %v, key = %v ================\n",common.CurrentTime(),test,msgprex)
 
 		for _, ct := range coins.Cointypes {
 			if strings.EqualFold(ct, "ALL") {
@@ -431,7 +422,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	w := workers[id]
 	GroupId := w.groupid
-	fmt.Println("========KeyGenerate_ed============", "GroupId", GroupId)
 	if GroupId == "" {
 		res := RpcDcrmRes{Ret: "", Tip: "get group id fail", Err: fmt.Errorf("get group id fail.")}
 		ch <- res
@@ -1284,7 +1274,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 
 		    if !found {
 			c1data := msgprex + "-" + node2 + common.Sep + "C1"
-			fmt.Printf("%v=================== DECDSAGenKeyRoundOne,get C1 timeout, !!!!!!!!! No Reciv The C1 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),c1data,node,msgprex)
+			common.Info("=================== DECDSAGenKeyRoundOne,get C1 timeout================","No Reciv The C1 Data",c1data,"from Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -1392,9 +1382,9 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	// 1. Receive Broadcast
 	// commitU1G.D, commitU2G.D, commitU3G.D, commitU4G.D, commitU5G.D
 	// u1PolyG, u2PolyG, u3PolyG, u4PolyG, u5PolyG
-	//fmt.Printf("%v===================send D1 finish, key = %v====================\n",common.CurrentTime(),msgprex)
+	common.Info("===================send D1 finish===============","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bd1_1)
-	//fmt.Printf("%v===================finish get D1, key = %v,err = %v====================\n",common.CurrentTime(),msgprex,cherr)
+	common.Info("===================finish get D1===============","key",msgprex,"err",cherr)
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
@@ -1429,7 +1419,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 
 		    if !found {
 			d1data := msgprex + "-" + node2 + common.Sep + "D1"
-			fmt.Printf("%v=================== DECDSAGenKeyRoundThree,get D1 timeout, !!!!!!!!! No Reciv The D1 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),d1data,node,msgprex)
+			common.Info("=================== DECDSAGenKeyRoundThree,get D1 timeout======================","No Reciv The D1 Data",d1data,"From Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -1486,7 +1476,6 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 		mm := strings.Split(v, common.Sep)
 		//bug
 		if len(mm) < 4 {
-			fmt.Printf("===================!!! KeyGenerate_ECDSA,fill ec2.ShareStruct map error. !!!,Nonce =%v ==================\n", msgprex)
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("fill ec2.ShareStruct map error.")}
 			ch <- res
 			return nil, nil, false
@@ -1789,9 +1778,9 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 
 	// 1. Receive Broadcast zk
 	// u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
-	//fmt.Printf("%v===================send NTILDEH1H2 finish,key = %v===============\n",common.CurrentTime(),msgprex)
+	common.Info("===================send NTILDEH1H2 finish===================","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
-	//fmt.Printf("%v===================finish get NTILDEH1H2, key = %v,err = %v====================\n",common.CurrentTime(),msgprex,cherr)
+	common.Info("===================finish get NTILDEH1H2===================","key",msgprex,"err",cherr)
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
@@ -1827,7 +1816,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 
 		    if !found {
 			zkfactdata := msgprex + "-" + node2 + common.Sep + "NTILDEH1H2"
-			fmt.Printf("%v=================== DECDSAGenKeyRoundFour,get NTILDEH1H2 timeout, !!!!!!!!! No Reciv The NTILDEH1H2 Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),zkfactdata,node,msgprex)
+			common.Info("=================== DECDSAGenKeyRoundFour,get NTILDEH1H2 timeout ==================","No Reciv The NTILDEH1H2 Data",zkfactdata,"From Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -1862,9 +1851,9 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker,
 
 	// 9. Receive Broadcast zk
 	// u1zkUProof, u2zkUProof, u3zkUProof, u4zkUProof, u5zkUProof
-	//fmt.Printf("%v===================send ZKUPROOF finish, key = %v===================\n",common.CurrentTime(),msgprex)
+	common.Info("===================send ZKUPROOF finish=================","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzku)
-	//fmt.Printf("%v===================finish get ZKUPROOF, key = %v,cherr = %v====================\n",common.CurrentTime(),msgprex,cherr)
+	common.Info("===================finish get ZKUPROOF=================","key",msgprex,"err",cherr)
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
@@ -1900,7 +1889,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker,
 
 		    if !found {
 			zkudata := msgprex + "-" + node2 + common.Sep + "ZKUPROOF"
-			fmt.Printf("%v=================== DECDSAGenKeyRoundFive,get ZKUPROOF timeout, !!!!!!!!! No Reciv The ZKUPROOF Data: %v From Node: %v, !!!!!!!!!!!!,key = %v ==================\n",common.CurrentTime(),zkudata,node,msgprex)
+			common.Info("=================== DECDSAGenKeyRoundFive,get ZKUPROOF timeout=================","No Reciv The ZKUPROOF Data",zkudata,"From Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -2150,71 +2139,63 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 	if !status {
 		return status
 	}
-	//fmt.Printf("%v=================generate key,round one finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,round one finish================","key",msgprex)
 
 	u1Shares, status := DECDSAGenKeyRoundTwo(msgprex, cointype, ch, w, u1Poly, ids)
 	if !status {
 		return status
 	}
-	//fmt.Printf("%v=================generate key,round two finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,round two finish================","key",msgprex)
 
 	if !DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, ids) {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,round three finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,round three finish================","key",msgprex)
 
 	sstruct, ds, status := DECDSAGenKeyVerifyShareData(msgprex, cointype, ch, w, u1PolyG, u1Shares, ids)
 	if !status {
 		return status
 	}
-	//fmt.Printf("%v=================generate key,verify share data finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,verify share data finish================","key",msgprex)
 
 	cs, udecom, status := DECDSAGenKeyVerifyCommitment(msgprex, cointype, ch, w, ds, commitU1G, ids)
 	if !status {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,verify commitment finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,verify commitment finish================","key",msgprex)
 
 	ug, status := DECDSAGenKeyCalcPubKey(msgprex, cointype, ch, w, udecom, ids)
 	if !status {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,calc pubkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,calc pubkey finish================","key",msgprex)
 
 	skU1, status := DECDSAGenKeyCalcPrivKey(msgprex, cointype, ch, w, sstruct, ids)
 	if !status {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,calc privkey finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,calc privkey finish================","key",msgprex)
 
 	u1NtildeH1H2, status := DECDSAGenKeyRoundFour(msgprex, ch, w)
 	if !status {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,round four finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,round four finish================","key",msgprex)
 
 	if !DECDSAGenKeyRoundFive(msgprex, ch, w, u1) {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,round five finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,round five finish================","key",msgprex)
 
 	if !DECDSAGenKeyVerifyZKU(msgprex, cointype, ch, w, ids, ug) {
 		return false
 	}
-	//fmt.Printf("%v=================generate key,verify zk of u1 finish, key = %v ===================\n",common.CurrentTime(),msgprex)
+	common.Info("================generate key,verify zk of u1 finish================","key",msgprex)
 
 	if !DECDSAGenKeySaveData(cointype, ids, w, ch, skU1, u1PaillierPk, u1PaillierSk, cs, u1NtildeH1H2) {
 		return false
 	}
-	fmt.Printf("%v=================generate key, u1 = %v, sku1 = %v, key = %v ===================\n",common.CurrentTime(),u1,skU1,msgprex)
-	for k,id := range ids {
-	    enodes := GetEnodesByUid(id, cointype, w.groupid)
-	    if IsCurNode(enodes, cur_enode) {
-		fmt.Printf("%v=================generate key, it is cur node,k = %v,id = %v, key = %v ===================\n",common.CurrentTime(),k,id,msgprex)
-	    }
-	    fmt.Printf("%v=================generate key, id = %v, key = %v ===================\n",common.CurrentTime(),id,msgprex)
-	}
-
+	common.Info("================generate key================","u1",u1,"sku1",skU1,"key",msgprex)
 	//*******************!!!Distributed ECDSA End!!!**********************************
 	return true
 }

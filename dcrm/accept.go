@@ -21,60 +21,6 @@ import (
     "fmt"
 )
 
-func GetAcceptReqAddrRes(account string, cointype string, groupid string, nonce string, threshold string, mode string) (string, bool) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-	fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,acc =%v,cointype =%v,groupid =%v,nonce =%v,threshold =%v,mode =%v,key =%v !!!!============================\n", common.CurrentTime(), account, cointype, groupid, nonce, threshold, mode, key)
-	exsit,da := GetValueFromPubKeyData(key)
-	///////
-	if !exsit {
-		fmt.Printf("%v ===================!!!!GetAcceptReqAddrRes,no exsit key =%v !!!!============================\n", common.CurrentTime(), key)
-		return "dcrm back-end internal error:get accept result from db fail", false
-	}
-
-	ac,ok := da.(*AcceptReqAddrData)
-	if !ok {
-		return "dcrm back-end internal error:get accept result from db fail", false
-	}
-
-	fmt.Printf("%v ===================!!!! GetAcceptReqAddrRes,ac.Accept =%v,key =%v !!!!============================\n", common.CurrentTime(),ac.Accept, key)
-
-	var rp bool
-	if strings.EqualFold(ac.Accept, "false") {
-		rp = false
-	} else {
-		rp = true
-	}
-
-	return "", rp
-}
-
-func GetAcceptLockOutRes(account string, groupid string, nonce string, dcrmfrom string, threshold string) (string, bool) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-	fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,acc =%v,groupid =%v,nonce =%v,dcrmfrom =%v,threshold =%v,key =%v !!!!============================\n", common.CurrentTime(), account, groupid, nonce, dcrmfrom, threshold, key)
-	exsit,da := GetValueFromPubKeyData(key)
-	///////
-	if !exsit {
-		fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,no exsit key =%v !!!!============================\n", common.CurrentTime(), key)
-		return "dcrm back-end internal error:get accept result from db fail", false
-	}
-
-	ac,ok := da.(*AcceptLockOutData)
-	if !ok {
-		return "dcrm back-end internal error:get accept result from db fail", false
-	}
-
-	fmt.Printf("%v ===================!!!! GetAcceptLockOutRes,ac.Accept =%v, key =%v !!!!============================\n", common.CurrentTime(), ac.Accept, key)
-
-	var rp bool
-	if strings.EqualFold(ac.Accept, "false") {
-		rp = false
-	} else {
-		rp = true
-	}
-
-	return "", rp
-}
-
 type TxDataAcceptReqAddr struct {
     TxType string
     Key string
@@ -87,7 +33,7 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
-		fmt.Printf("%v =====================AcceptReqAddr,no exist key, key = %v ======================\n", common.CurrentTime(), key)
+		common.Info("=====================AcceptReqAddr,no exist key=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -150,13 +96,13 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 
 	e, err := Encode2(ac2)
 	if err != nil {
-		fmt.Printf("%v =====================AcceptReqAddr,encode fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptReqAddr,encode fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:encode accept data fail", err
 	}
 
 	es, err := Compress([]byte(e))
 	if err != nil {
-		fmt.Printf("%v =====================AcceptReqAddr,compress fail,err = %v,key = %v ======================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptReqAddr,compress fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
@@ -164,7 +110,7 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	PubKeyDataChan <- kdtmp
 
 	LdbPubKeyData.WriteMap(key, ac2)
-	fmt.Printf("%v =====================AcceptReqAddr,write map success, status = %v,key = %v ======================\n", common.CurrentTime(), ac2.Status, key)
+	common.Info("=====================AcceptReqAddr,write map success====================","status",ac2.Status,"key",key)
 	return "", nil
 }
 
@@ -184,7 +130,7 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
-		fmt.Printf("%v =====================AcceptLockOut, no exist key = %v =================================\n", common.CurrentTime(), key)
+		common.Info("=====================AcceptLockOut,no exist key=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -243,13 +189,13 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 
 	e, err := Encode2(ac2)
 	if err != nil {
-		fmt.Printf("%v =====================AcceptLockOut, encode fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptLockOut,encode fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:encode accept data fail", err
 	}
 
 	es, err := Compress([]byte(e))
 	if err != nil {
-		fmt.Printf("%v =====================AcceptLockOut, compress fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptLockOut,compress fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
@@ -274,14 +220,14 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
-		fmt.Printf("%v =====================AcceptSign, no exist key = %v =================================\n", common.CurrentTime(), key)
+		common.Info("=====================AcceptSign,no exist key=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptSignData)
 
 	if !ok {
-		fmt.Printf("%v =====================AcceptSign, accept data error, key = %v =================================\n", common.CurrentTime(), key)
+		common.Info("=====================AcceptLockOut, accept data error=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -334,13 +280,13 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 
 	e, err := Encode2(ac2)
 	if err != nil {
-		fmt.Printf("%v =====================AcceptSign, encode fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptSign,encode fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:encode accept data fail", err
 	}
 
 	es, err := Compress([]byte(e))
 	if err != nil {
-		fmt.Printf("%v =====================AcceptSign, compress fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptSign,compress fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
@@ -348,7 +294,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	PubKeyDataChan <- kdtmp
 
 	LdbPubKeyData.WriteMap(key, ac2)
-	fmt.Printf("%v =====================AcceptSign, new deal = %v, new accept = %v, new status = %v, key = %v =================================\n", common.CurrentTime(), de, acp, sts, key)
+	common.Info("=====================AcceptSign========================","new deal",de,"new accept",acp,"new status",sts,"key",key)
 	return "", nil
 }
 
@@ -490,13 +436,13 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 
 	alos, err := Encode2(ac)
 	if err != nil {
-	    fmt.Printf("%v========================SaveAcceptSignData,enode err = %v ================================\n",common.CurrentTime(),err)
+	    common.Info("========================SaveAcceptSignData======================","enode err",err,"key",key)
 	    return err
 	}
 
 	ss, err := Compress([]byte(alos))
 	if err != nil {
-	    fmt.Printf("%v========================SaveAcceptSignData,compress err = %v ================================\n",common.CurrentTime(),err)
+		common.Info("========================SaveAcceptSignData======================","compress err",err,"key",key)
 		return err
 	}
 
@@ -540,13 +486,13 @@ func SaveAcceptReShareData(ac *AcceptReShareData) error {
 
 	alos, err := Encode2(ac)
 	if err != nil {
-	    fmt.Printf("%v==================SaveAcceptReShareData, encode fail, err = %v ====================\n",common.CurrentTime(),err)
+		common.Info("========================SaveAcceptReShareData======================","enode err",err,"key",key)
 		return err
 	}
 
 	ss, err := Compress([]byte(alos))
 	if err != nil {
-	    fmt.Printf("%v==================SaveAcceptReShareData, compress fail, err = %v ====================\n",common.CurrentTime(),err)
+		common.Info("========================SaveAcceptReShareData======================","compress err",err,"key",key)
 		return err
 	}
 
@@ -569,7 +515,7 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
-		fmt.Printf("%v =====================AcceptReShare, no exist key = %v =================================\n", common.CurrentTime(), key)
+		common.Info("=====================AcceptReShare, no exist======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -628,13 +574,13 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
 
 	e, err := Encode2(ac2)
 	if err != nil {
-		fmt.Printf("%v =====================AcceptReShare, encode fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptReShare, encode fail======================","err",err,"key",key)
 		return "dcrm back-end internal error:encode accept data fail", err
 	}
 
 	es, err := Compress([]byte(e))
 	if err != nil {
-		fmt.Printf("%v =====================AcceptReShare, compress fail,err = %v, key = %v =================================\n", common.CurrentTime(), err, key)
+		common.Info("=====================AcceptReShare, compress fail======================","err",err,"key",key)
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 

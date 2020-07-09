@@ -20,7 +20,7 @@ import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
     "time"
-    "fmt"
+    //"fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
@@ -50,7 +50,7 @@ func GetSkU1FromLocalDb(key string) []byte {
 	}*/
 	//
 	if dbsk == nil {
-	    fmt.Printf("=====================GetSkU1FromLocalDb, dbsk is nil =====================\n")
+	    common.Info("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
 	    dir := GetSkU1Dir()
 	    ////////
 	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -128,7 +128,7 @@ func GetSkU1FromLocalDb(key string) []byte {
 func GetPubKeyDataValueFromDb(key string) []byte {
 	lock.Lock()
 	if db == nil {
-	    fmt.Printf("===================GetPubKeyDataValueFromDb, db is nil ===================\n")
+	    common.Info("===================GetPubKeyDataValueFromDb, db is nil ===================")
 	    dir := GetDbDir()
 	    ////////
 	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -412,7 +412,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 
 	ss, err := UnCompress(string(da))
 	if err != nil {
-	    fmt.Printf("========================GetValueFromPubKeyData, uncompress err = %v ========================\n",err)
+	    common.Info("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
 	    return true,da
 	}
 
@@ -474,19 +474,19 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
     ss, err := UnCompress(string(da))
     if err != nil {
-	fmt.Printf("========================GetPubKeyDataFromLocalDb, uncompress err = %v ========================\n",err)
+	common.Info("========================GetPubKeyDataFromLocalDb, uncompress err=======================","err",err,"key",key)
 	return false,nil
     }
 
     pubs, err := Decode2(ss, "PubKeyData")
     if err != nil {
-	fmt.Printf("========================GetPubKeyDataFromLocalDb, decode err = %v ========================\n",err)
+	common.Info("========================GetPubKeyDataFromLocalDb, decode err=======================","err",err,"key",key)
 	return false,nil
     }
 
     pd,ok := pubs.(*PubKeyData)
     if !ok {
-	fmt.Printf("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================\n")
+	common.Info("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================")
 	return false,nil
     }
 

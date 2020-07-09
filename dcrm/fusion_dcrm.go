@@ -1617,10 +1617,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 							if !reply {
 								tip = "don't accept sign"
-								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
+								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
 							} else {
 								tip = ""
-								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Pending", "", "", "", ars,wid)
+								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "", "", ars,wid)
 							}
 
 							if err != nil {
@@ -1633,7 +1633,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						case <-agreeWaitTimeOut.C:
 							common.Info("================== InitAcceptData , agree wait timeout=============","raw ",raw,"key ",key)
 							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
+							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
 							reply = false
 							tip = "get other node accept sign result timeout"
 							if err != nil {
@@ -1676,7 +1676,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				if !reply {
 					if tip == "get other node accept sign result timeout" {
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,workid)
+						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,workid)
 					} else {
 						//sid-enode:SendSignRes:Success:rsv
 						//sid-enode:SendSignRes:Fail:err
@@ -1692,13 +1692,13 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 						if err != nil {
 							tip = "get other node terminal accept sign result timeout" ////bug
-							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars,workid)
+							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip, tip, ars,workid)
 							if err != nil {
 							    tip = tip + " and accept sign data fail"
 							}
 
 						} else if w.msg_sendsignres.Len() != w.ThresHold {
-							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,workid)
+							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,workid)
 							if err != nil {
 							    tip = tip + " and accept sign data fail"
 							}
@@ -1727,7 +1727,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 								}
 
 							} else {
-								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash,lohash, ars,workid)
+								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", lohash,lohash, ars,workid)
 								if err != nil {
 								    tip = tip + " and accept sign data fail"
 								}
@@ -1767,7 +1767,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 			ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 			if tip == "get other node accept sign result timeout" {
-				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip,cherr.Error(),ars,workid)
+				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip,cherr.Error(),ars,workid)
 			} else {
 				//sid-enode:SendSignRes:Success:rsv
 				//sid-enode:SendSignRes:Fail:err
@@ -1782,13 +1782,13 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				_, _, err := GetChannelValue(ch_t, w.bsendsignres)
 				if err != nil {
 					tip = "get other node terminal accept sign result timeout" ////bug
-					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Timeout", "", tip, tip, ars, workid)
+					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip, tip, ars, workid)
 					if err != nil {
 					    tip = tip + " and accept sign data fail"
 					}
 
 				} else if w.msg_sendsignres.Len() != w.ThresHold {
-					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, workid)
+					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, workid)
 					if err != nil {
 					    tip = tip + " and accept sign data fail"
 					}
@@ -1817,7 +1817,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						}
 
 					} else {
-						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "", "Failure", "", lohash, lohash, ars, workid)
+						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", lohash, lohash, ars, workid)
 						if err != nil {
 						    tip = tip + " and accept sign data fail"
 						}
@@ -2239,10 +2239,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("decode accept data fail")
 	}
 
-	if ac.Deal == "true" || ac.Status == "Success" {
-	    res := RpcDcrmRes{Ret:"", Tip: "sign has success before", Err: fmt.Errorf("sign has success before")}
+	if ac.Deal == "true" || ac.Status == "Success" || ac.Status == "Failure" || ac.Status == "Timeout" {
+	    res := RpcDcrmRes{Ret:"", Tip: "sign has handled before", Err: fmt.Errorf("sign has handled before")}
 	    ch <- res
-	    return fmt.Errorf("sign has success before")
+	    return fmt.Errorf("sign has handled before")
 	}
 
 	status := "Pending"

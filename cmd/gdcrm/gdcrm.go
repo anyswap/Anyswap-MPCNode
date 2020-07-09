@@ -57,12 +57,11 @@ func StartDcrm(c *cli.Context) {
 	startP2pNode()
 	time.Sleep(time.Duration(5) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
-	dcrm.Start()
+	dcrm.Start(waitmsg)
 	select {} // note for server, or for client
 }
 
 func SetLogger() {
-	  fmt.Printf("%v ==================SetLogger, log file = %v =================\n",common.CurrentTime(),log)
           common.SetLogger(uint32(verbosity), json, color)
          if log != "" {
                  common.SetLogFile(log, rotate, maxage)
@@ -86,6 +85,7 @@ var (
 	verbosity   uint64
 	json   bool
 	color   bool
+	waitmsg   uint64
 
 	app       = cli.NewApp()
 	statDir   = "stat"
@@ -126,6 +126,7 @@ func init() {
 		cli.Uint64Flag{Name: "verbosity", Value: 4, Usage: "log verbosity (0:panic, 1:fatal, 2:error, 3:warn, 4:info, 5:debug, 6:trace)", Destination: &verbosity},
 		cli.BoolFlag{Name: "json", Usage: "output log in json format",Destination: &json},
 		cli.BoolFlag{Name: "color", Usage: "output log in color text format", Destination: &color},
+		cli.Uint64Flag{Name: "waitmsg", Value: 700, Usage: "the time to wait p2p msg", Destination: &waitmsg},
 	}
 }
 

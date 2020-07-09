@@ -58,7 +58,7 @@ var (
 	dbsk *ethdb.LDBDatabase
 )
 
-func Start() {
+func Start(waitmsg uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	InitDev(KeyFile)
@@ -100,6 +100,8 @@ func Start() {
 	}
 	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
+
+	ch_t = int(waitmsg)
 }
 
 func PutGroup(groupId string) bool {
@@ -1214,7 +1216,8 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			dcrm_genPubKey(w.sid, from, "ALL", rch, req.Mode, nonce)
 			fmt.Printf("%v ================== InitAcceptData, finish call dcrm_genPubKey,key = %v ============================\n", common.CurrentTime(),key)
 			chret, tip, cherr := GetChannelValue(ch_t, rch)
-			fmt.Printf("%v ================== InitAcceptData , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v,=====================\n", common.CurrentTime(), chret, cherr,key)
+			//fmt.Printf("%v ================== InitAcceptData , finish dcrm_genPubKey,get return value = %v,err = %v,key = %v, ch_t = %v =====================\n", common.CurrentTime(), chret, cherr,key,ch_t)
+			common.Info("================== InitAcceptData , finish dcrm_genPubKey ===================","get return value ",chret,"err ",cherr,"key ",key)
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 				_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, workid,"")

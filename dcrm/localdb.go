@@ -200,23 +200,9 @@ type KeyData struct {
 }
 
 func SavePubKeyDataToDb() {
-	for {
+	/*for {
 		select {
 		case kd := <-PubKeyDataChan:
-			/*dir := GetDbDir()
-			db, err := ethdb.NewLDBDatabase(dir, cache, handles)
-			//bug
-			if err != nil {
-				for i := 0; i < 100; i++ {
-					db, err = ethdb.NewLDBDatabase(dir, cache, handles)
-					if err == nil && db != nil {
-						break
-					}
-
-					time.Sleep(time.Duration(1000000))
-				}
-			}*/
-			//
 			if db != nil {
 			    if kd.Data == "CLEAN" {
 				err := db.Delete(kd.Key)
@@ -261,26 +247,57 @@ func SavePubKeyDataToDb() {
 			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		}
 	}
+	*/
+	for {
+		kd := <-PubKeyDataChan
+		if db != nil {
+		    if kd.Data == "CLEAN" {
+			err := db.Delete(kd.Key)
+			if err != nil {
+			    PubKeyDataChan <- kd
+			}
+		    } else {
+			err := db.Put(kd.Key, []byte(kd.Data))
+			if err != nil {
+			    dir := GetDbDir()
+			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+			    //bug
+			    if err != nil {
+				    for i := 0; i < 100; i++ {
+					    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+					    if err == nil {
+						    break
+					    }
+
+					    time.Sleep(time.Duration(1000000))
+				    }
+			    }
+			    if err != nil {
+				//dbsk = nil
+			    } else {
+				db = dbtmp
+				err = db.Put(kd.Key, []byte(kd.Data))
+				if err != nil {
+				    PubKeyDataChan <- kd
+				}
+			    }
+
+			}
+			//db.Close()
+		    }
+		} else {
+			PubKeyDataChan <- kd
+		}
+
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+	    }
 }
 
 func SaveSkU1ToDb() {
+	/*
 	for {
 		select {
 		case kd := <-SkU1Chan:
-			/*dir := GetSkU1Dir()
-			db, err := ethdb.NewLDBDatabase(dir, cache, handles)
-			//bug
-			if err != nil {
-				for i := 0; i < 100; i++ {
-					db, err = ethdb.NewLDBDatabase(dir, cache, handles)
-					if err == nil && db != nil {
-						break
-					}
-
-					time.Sleep(time.Duration(1000000))
-				}
-			}*/
-			//
 			if dbsk != nil {
 			    cm,err := EncryptMsg(kd.Data,cur_enode)
 			    if err != nil {
@@ -323,6 +340,50 @@ func SaveSkU1ToDb() {
 			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		}
 	}
+	*/
+	for {
+		kd := <-SkU1Chan
+		if dbsk != nil {
+		    cm,err := EncryptMsg(kd.Data,cur_enode)
+		    if err != nil {
+			SkU1Chan <- kd
+			continue	
+		    }
+
+		    err = dbsk.Put(kd.Key, []byte(cm))
+		    if err != nil {
+			dir := GetSkU1Dir()
+			dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+			//bug
+			if err != nil {
+				for i := 0; i < 100; i++ {
+					dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+					if err == nil {
+						break
+					}
+
+					time.Sleep(time.Duration(1000000))
+				}
+			}
+			if err != nil {
+			    //dbsk = nil
+			} else {
+			    dbsk = dbsktmp
+			    err = dbsk.Put(kd.Key, []byte(cm))
+			    if err != nil {
+				SkU1Chan <- kd
+				continue
+			    }
+			}
+
+		    }
+		//	db.Close()
+		} else {
+			SkU1Chan <- kd
+		}
+
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+	    }
 }
 
 func GetAllPubKeyDataFromDb() *common.SafeMap {

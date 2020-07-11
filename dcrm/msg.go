@@ -28,8 +28,6 @@ import (
 
 var (
 	C1Data  = common.NewSafeMap(10)
-	DecdsaMap  = common.NewSafeMap(10)
-	GAccs  = common.NewSafeMap(10)
 	
 	//callback
 	GetGroup               func(string) (int, string)
@@ -39,9 +37,6 @@ var (
 	SendToPeer             func(string, string) error
 	ParseNode              func(string) string
 	GetEosAccount          func() (string, string, string)
-
-	DcrmCalls   = common.NewSafeMap(10)
-
 )
 
 //p2p callback

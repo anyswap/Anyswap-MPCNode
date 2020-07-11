@@ -146,7 +146,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	rch := make(chan interface{}, 1)
 	if keytype == "ED25519" {
 	    sign_ed(wsid,unsignhash,save,sku1,dcrmpub,keytype,rch)
-	    ret, tip, cherr := GetChannelValue(ch_t, rch)
+	    ret, tip, cherr := GetChannelValue(waitall, rch)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		    ch <- res
@@ -157,7 +157,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	    cherrtmp = cherr
 	} else {
 	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,rch)
-	    ret, tip, cherr := GetChannelValue(ch_t,rch)
+	    ret, tip, cherr := GetChannelValue(waitall,rch)
 	    common.Info("=================sign==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
@@ -288,17 +288,17 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		    return 
 		}
 		
-		common.Info("======================sign_ec, encode success=================","vv",vv,"msgprex",msgprex,"key",key,"val",val)
+		common.Info("======================sign_ec, encode success=================","vv",vv,"msgprex",msgprex,"key",key)
 		rch := make(chan interface{}, 1)
 		SetUpMsgList3(val,cur_enode,rch)
-		_, _,cherr := GetChannelValue(ch_t,rch)
+		_, _,cherr := GetChannelValue(waitall,rch)
 		if cherr != nil {
-		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"val",val,"cherr",cherr)
+		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
 		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
 		    ch <- res
 		    return 
 		}
-		common.Info("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key,"val",val)
+		common.Info("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key)
 	    }(v)
 	}
 	wg.Wait()
@@ -436,7 +436,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	for _, digest := range digests {
 		if types.IsDefaultED25519(cointype) {
 			bak_sig := dcrm_sign_ed(wsid, digest, save, sku1,dcrmpub, cointype, rch)
-			ret, tip, cherr := GetChannelValue(ch_t, rch)
+			ret, tip, cherr := GetChannelValue(waitall, rch)
 			if cherr != nil {
 				res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 				ch <- res
@@ -452,7 +452,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 		}
 
 		bak_sig := dcrm_sign(wsid, digest, save, sku1,dcrmpkx, dcrmpky, cointype, rch)
-		ret, tip, cherr := GetChannelValue(ch_t, rch)
+		ret, tip, cherr := GetChannelValue(waitall, rch)
 		if cherr != nil {
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 			ch <- res

@@ -50,6 +50,11 @@ import (
 var (
 	cur_enode  string
 	init_times = 0
+	ch_t                     = 700 
+	recalc_times = 20
+	waitall                     = ch_t * recalc_times
+	reqdata_trytimes = 5
+	reqdata_timeout = 60
 	KeyFile    string
 	
 	lock                     sync.Mutex
@@ -102,6 +107,7 @@ func Start(waitmsg uint64) {
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 
 	ch_t = int(waitmsg)
+	waitall = ch_t * recalc_times
 }
 
 func PutGroup(groupId string) bool {
@@ -1210,7 +1216,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 			common.Info("================== InitAcceptData, start call dcrm_genPubKey====================","w.id ",w.id,"w.groupid ",w.groupid,"key ",key)
 			dcrm_genPubKey(w.sid, from, "ALL", rch, req.Mode, nonce)
-			chret, tip, cherr := GetChannelValue(ch_t, rch)
+			chret, tip, cherr := GetChannelValue(waitall, rch)
 			common.Info("================== InitAcceptData , finish dcrm_genPubKey ===================","get return value ",chret,"err ",cherr,"key ",key)
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
@@ -1462,7 +1468,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			rch := make(chan interface{}, 1)
 			common.Info("================== InitAcceptData , start call validate_lockout================","key ",key)
 			validate_lockout(w.sid,from,lo.DcrmAddr,lo.Cointype, lo.Value, lo.DcrmTo,nonce, lo.Memo,rch)
-			chret, tip, cherr := GetChannelValue(ch_t, rch)
+			chret, tip, cherr := GetChannelValue(waitall, rch)
 			common.Info("================== InitAcceptData, finish and get validate_lockout=================","return value ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
 				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_lockout" + common.Sep + chret, Tip: "", Err: nil}
@@ -1619,6 +1625,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 								tip = "don't accept sign"
 								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
 							} else {
+							    	common.Info("=======================InitAcceptData,11111111111111,set sign pending=============================")
 								tip = ""
 								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "", "", ars,wid)
 							}
@@ -1688,7 +1695,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 						SendMsgToDcrmGroup(ss, w.groupid)
 						DisMsg(ss)
-						_, _, err := GetChannelValue(ch_t, w.bsendsignres)
+						_, _, err := GetChannelValue(waitall, w.bsendsignres)
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 						if err != nil {
 							tip = "get other node terminal accept sign result timeout" ////bug
@@ -1746,6 +1753,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 
 				ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
+				common.Info("=======================InitAcceptData,2222222222222222222,set sign pending=============================")
 				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,workid)
 				if err != nil {
 				    res := RpcDcrmRes{Ret:"", Tip: err.Error(), Err:err}
@@ -1757,10 +1765,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			common.Info("===============InitAcceptData,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
 			rch := make(chan interface{}, 1)
 			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,rch)
-			chret, tip, cherr := GetChannelValue(ch_t, rch)
+			chret, tip, cherr := GetChannelValue(waitall, rch)
 			common.Info("================== InitAcceptData================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
-				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_sign" + common.Sep + chret, Tip: "", Err: nil}
+				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
 				ch <- res
 				return nil
 			}
@@ -1779,7 +1787,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 				SendMsgToDcrmGroup(ss, w.groupid)
 				DisMsg(ss)
-				_, _, err := GetChannelValue(ch_t, w.bsendsignres)
+				_, _, err := GetChannelValue(waitall, w.bsendsignres)
 				if err != nil {
 					tip = "get other node terminal accept sign result timeout" ////bug
 					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip, tip, ars, workid)
@@ -2272,6 +2280,13 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	HandleC1Data(acceptreqdata,acceptsig.Key,id)
 
 	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_SIGN,ac.Initiator)
+	common.Info("=======================InitAcceptData,333333333333333333333333,set sign status =============================","status",status,"ac.Deal",ac.Deal,"ac.Status",ac.Status)
+	if ac.Deal == "true" || ac.Status == "Success" || ac.Status == "Failure" || ac.Status == "Timeout" {
+	    res := RpcDcrmRes{Ret:"", Tip: "sign has handled before", Err: fmt.Errorf("sign has handled before")}
+	    ch <- res
+	    return fmt.Errorf("sign has handled before")
+	}
+
 	tip, err := AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.MsgHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: tip, Err: err}

@@ -40,10 +40,6 @@ import (
 
 var (
 	PaillierKeyLength        = 2048
-	ch_t                     = 700 
-	reqdata_trytimes = 5
-	reqdata_timeout = 60
-	recalc_times = 20
 )
 
 type PubKeyData struct {
@@ -56,8 +52,6 @@ type PubKeyData struct {
 	LimitNum string
 	Mode     string
 	KeyGenTime string
-	RefLockOutKeys string //key1:key2...
-	RefSignKeys string //key1:key2...
 	RefReShareKeys string //key1:key2...
 }
 

@@ -283,8 +283,8 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		val,err := Encode2(sd)
 		if err != nil {
 		    common.Info("======================sign_ec, encode error==================","vv",vv,"msgprex",msgprex,"key",key,"err",err)
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:marshal sign data error", Err: err}
-		    ch <- res
+		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:marshal sign data error", Err: err}
+		    //ch <- res
 		    return 
 		}
 		
@@ -293,9 +293,10 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		SetUpMsgList3(val,cur_enode,rch)
 		_, _,cherr := GetChannelValue(waitall,rch)
 		if cherr != nil {
+
 		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
-		    ch <- res
+		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
+		    //ch <- res
 		    return 
 		}
 		common.Info("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key)
@@ -316,12 +317,15 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 
 	ret += "NULL"
 	tmps := strings.Split(ret, ":")
+	common.Info("======================sign_ec=====================","return result",ret,"len(tmps)",len(tmps),"len(tmp)",len(tmp),"key",msgprex)
 	if len(tmps) == (len(tmp) + 1) {
 	    res := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
 	    ch <- res
+	    return ""
 	}
 
-	common.Info("======================sign_ec=====================","return result",ret,"len(tmps)",len(tmps),"len(tmp)",len(tmp),"key",msgprex)
+	res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: fmt.Errorf("sign fail")}
+	ch <- res
 	return "" 
 }
 

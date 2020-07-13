@@ -26,8 +26,8 @@ import (
 
 var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
-	PubKeyDataChan = make(chan KeyData, 1000)
-	SkU1Chan = make(chan KeyData, 1000)
+	PubKeyDataChan = make(chan KeyData, 10000)
+	SkU1Chan = make(chan KeyData, 10000)
 	cache = 0 
 	handles = 0
 )
@@ -254,7 +254,7 @@ func SavePubKeyDataToDb() {
 		    if kd.Data == "CLEAN" {
 			err := db.Delete(kd.Key)
 			if err != nil {
-			    PubKeyDataChan <- kd
+			    //PubKeyDataChan <- kd
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
@@ -278,7 +278,7 @@ func SavePubKeyDataToDb() {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-				    PubKeyDataChan <- kd
+				    //PubKeyDataChan <- kd
 				}
 			    }
 
@@ -286,7 +286,7 @@ func SavePubKeyDataToDb() {
 			//db.Close()
 		    }
 		} else {
-			PubKeyDataChan <- kd
+			//PubKeyDataChan <- kd
 		}
 
 		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na

@@ -1766,7 +1766,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			rch := make(chan interface{}, 1)
 			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,rch)
 			chret, tip, cherr := GetChannelValue(waitall, rch)
-			common.Info("================== InitAcceptData================","return sign result ",chret,"err ",cherr,"key ",key)
+			common.Info("================== InitAcceptData,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
 				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
 				ch <- res

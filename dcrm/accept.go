@@ -290,11 +290,13 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
-	kdtmp := KeyData{Key: []byte(key), Data: es}
-	PubKeyDataChan <- kdtmp
-
 	LdbPubKeyData.WriteMap(key, ac2)
-	common.Info("=====================AcceptSign========================","new deal",de,"new accept",acp,"new status",sts,"key",key)
+	go func() {
+	    kdtmp := KeyData{Key: []byte(key), Data: es}
+	    PubKeyDataChan <- kdtmp
+	}()
+
+	common.Info("=====================AcceptSign,finish.========================","new deal",de,"new accept",acp,"new status",sts,"key",key)
 	return "", nil
 }
 
@@ -446,10 +448,11 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 		return err
 	}
 
-	kdtmp := KeyData{Key: []byte(key), Data: ss}
-	PubKeyDataChan <- kdtmp
-
 	LdbPubKeyData.WriteMap(key, ac)
+	go func() {
+	    kdtmp := KeyData{Key: []byte(key), Data: ss}
+	    PubKeyDataChan <- kdtmp
+	}()
 	return nil
 }
 

@@ -605,6 +605,27 @@ func IsValidReShareAccept(from string,gid string) bool {
     return false
 }
 
+func CheckGroupEnode(gid string) bool {
+    if gid == "" {
+	return false
+    }
+
+    groupenode := make(map[string]bool)
+    _, enodes := GetGroup(gid)
+    nodes := strings.Split(enodes, common.Sep2)
+    for _, node := range nodes {
+	node2 := ParseNode(node)
+	_, ok := groupenode[strings.ToLower(node2)]
+	if ok {
+	    return false
+	}
+
+	groupenode[strings.ToLower(node2)] = true
+    }
+
+    return true
+}
+
 func CheckRaw(raw string) (string,string,string,interface{},error) {
     if raw == "" {
 	return "","","",nil,fmt.Errorf("raw data empty")
@@ -670,6 +691,10 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	if nc != nodecnt {
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
+
+	if !CheckGroupEnode(groupid) {
+	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
+	}
 	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
@@ -715,6 +740,11 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	if nc < limit || nc > nodecnt {
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
+	
+	if !CheckGroupEnode(groupid) {
+	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
+	}
+	
 	////
 
 	//check mode
@@ -817,6 +847,10 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 
+	if !CheckGroupEnode(groupid) {
+	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
+	}
+	
 	//check mode
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))

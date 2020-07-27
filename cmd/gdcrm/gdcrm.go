@@ -31,6 +31,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/fsn-dev/dcrm-walletService/crypto"
@@ -54,6 +55,15 @@ func main() {
 
 func StartDcrm(c *cli.Context) {
     	SetLogger()
+	go func() {
+	    <-signalChan
+	    stopLock.Lock()
+	    common.Info("=============================Cleaning before stop...======================================")
+	    stopLock.Unlock()
+	    os.Exit(0)
+	}()
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
 	startP2pNode()
 	time.Sleep(time.Duration(5) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
@@ -90,6 +100,9 @@ var (
 	app       = cli.NewApp()
 	statDir   = "stat"
 	Version   = ""
+
+	stopLock sync.Mutex
+	signalChan = make(chan os.Signal, 1)
 )
 
 const privateNet bool = false

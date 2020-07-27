@@ -63,7 +63,7 @@ var (
 	dbsk *ethdb.LDBDatabase
 )
 
-func Start(waitmsg uint64) {
+func Start(waitmsg uint64,trytimes uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	InitDev(KeyFile)
@@ -107,6 +107,7 @@ func Start(waitmsg uint64) {
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 
 	ch_t = int(waitmsg)
+	recalc_times = int(trytimes)
 	waitall = ch_t * recalc_times
 }
 

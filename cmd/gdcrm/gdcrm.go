@@ -67,7 +67,7 @@ func StartDcrm(c *cli.Context) {
 	startP2pNode()
 	time.Sleep(time.Duration(5) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
-	dcrm.Start(waitmsg)
+	dcrm.Start(waitmsg,trytimes)
 	select {} // note for server, or for client
 }
 
@@ -96,6 +96,7 @@ var (
 	json   bool
 	color   bool
 	waitmsg   uint64
+	trytimes   uint64
 
 	app       = cli.NewApp()
 	statDir   = "stat"
@@ -140,6 +141,7 @@ func init() {
 		cli.BoolFlag{Name: "json", Usage: "output log in json format",Destination: &json},
 		cli.BoolFlag{Name: "color", Usage: "output log in color text format", Destination: &color},
 		cli.Uint64Flag{Name: "waitmsg", Value: 700, Usage: "the time to wait p2p msg", Destination: &waitmsg},
+		cli.Uint64Flag{Name: "trytimes", Value: 20, Usage: "the times to try key-gen/sign", Destination: &trytimes},
 	}
 }
 

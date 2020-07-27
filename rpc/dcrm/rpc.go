@@ -45,7 +45,7 @@ type Service struct{}
 // raw: tx raw data
 //return pubkey and coins addr
 func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数名首字母必须大写
-	common.Info("===============ReqDcrmAddr================","raw",raw)
+	common.Debug("===============ReqDcrmAddr================","raw",raw)
 
 	data := make(map[string]interface{})
 	if raw == "" {
@@ -59,7 +59,7 @@ func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数�
 	}
 
 	ret, tip, err := dcrm.ReqDcrmAddr(raw)
-	common.Info("=================ReqDcrmAddr==================","ret",ret,"tip",tip,"err",err,"raw",raw)
+	common.Debug("=================ReqDcrmAddr==================","ret",ret,"tip",tip,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -180,11 +180,11 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) Sign(raw string) map[string]interface{} {
-	common.Info("===================Sign=====================","raw",raw)
+	common.Debug("===================Sign=====================","raw",raw)
 
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.Sign(raw)
-	common.Info("===================Sign=====================","key",key,"err",err,"raw",raw)
+	common.Debug("===================Sign=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -205,11 +205,11 @@ func (this *Service) Sign(raw string) map[string]interface{} {
 }
 
 func (this *Service) ReShare(raw string) map[string]interface{} {
-	common.Info("===================ReShare=====================","raw",raw)
+	common.Debug("===================ReShare=====================","raw",raw)
 
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.ReShare(raw)
-	common.Info("===================Sign=====================","key",key,"err",err,"raw",raw)
+	common.Debug("===================Sign=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -468,10 +468,10 @@ func (this *Service) GetSignNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{} {
-	common.Info("==================GetCurNodeReqAddrInfo====================","account",account)
+	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account)
 
 	s, tip, err := dcrm.GetCurNodeReqAddrInfo(account)
-	common.Info("==================GetCurNodeReqAddrInfo====================","account",account,"ret",s,"err",err)
+	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account,"ret",s,"err",err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -490,10 +490,10 @@ func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{
 }
 
 func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{} {
-	common.Info("==================GetCurNodeLockOutInfo====================","account",account)
+	common.Debug("==================GetCurNodeLockOutInfo====================","account",account)
 
 	s, tip, err := dcrm.GetCurNodeLockOutInfo(account)
-	common.Info("==================GetCurNodeLockOutInfo====================","account",account,"ret",s,"err",err)
+	common.Debug("==================GetCurNodeLockOutInfo====================","account",account,"ret",s,"err",err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -512,10 +512,10 @@ func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{
 }
 
 func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
-	common.Info("==================GetCurNodeSignInfo====================","account",account)
+	common.Debug("==================GetCurNodeSignInfo====================","account",account)
 
 	s, tip, err := dcrm.GetCurNodeSignInfo(account)
-	common.Info("==================GetCurNodeSignInfo====================","account",account,"ret",s,"err",err)
+	common.Debug("==================GetCurNodeSignInfo====================","account",account,"ret",s,"err",err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -534,11 +534,11 @@ func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
 }
 
 func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
-	common.Info("==================GetReqAddrStatus====================","key",key)
+	common.Debug("==================GetReqAddrStatus====================","key",key)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetReqAddrStatus(key)
-	common.Info("==================GetReqAddrStatus====================","key",key,"ret",ret,"err",err)
+	common.Debug("==================GetReqAddrStatus====================","key",key,"ret",ret,"err",err)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -581,10 +581,10 @@ func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
 }
 
 func (this *Service) GetSignStatus(key string) map[string]interface{} {
-	common.Info("==================GetSignStatus====================","key",key)
+	common.Debug("==================GetSignStatus====================","key",key)
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetSignStatus(key)
-	common.Info("==================GetSignStatus====================","key",key,"ret",ret,"err",err)
+	common.Debug("==================GetSignStatus====================","key",key,"ret",ret,"err",err)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{

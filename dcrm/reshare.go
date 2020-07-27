@@ -89,7 +89,7 @@ func reshare(wsid string, initator string, groupid string,pubkey string,account 
 			return
 		}
 
-		common.Info("================reshare,the terminal res is success=================","key",wsid)
+		common.Debug("================reshare,the terminal res is success=================","key",wsid)
 		res := RpcDcrmRes{Ret: ret, Tip: tip, Err: err}
 		ch <- res
 		return
@@ -168,7 +168,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	///sku1
 	da := GetSkU1FromLocalDb(string(dcrmpks[:]))
 	if da == nil {
-	    common.Info("=====================ReShare_ec2,da is nil =====================","key",msgprex)
+	    common.Debug("=====================ReShare_ec2,da is nil =====================","key",msgprex)
 	    take_reshare = false
 	    skU1 = nil
 	    w1 = nil
@@ -187,7 +187,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	if !take_reshare || skU1 == nil || w1 == nil {
 	    ////////test reshare///////////////////////
 	    ids = GetIds("ALL", groupid)
-	    common.Info("=============ReShare_ec2,cur node not take part in reshare==============","gid",groupid,"ids",ids,"key",msgprex)
+	    common.Debug("=============ReShare_ec2,cur node not take part in reshare==============","gid",groupid,"ids",ids,"key",msgprex)
 	    
 	    _, tip, cherr := GetChannelValue(120, w.bc11)
 	    suss := false
@@ -463,7 +463,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    ys := secp256k1.S256().Marshal(pkx, pky)
 	    pubkeyhex := hex.EncodeToString(ys)
 	    if !strings.EqualFold(pubkey,pubkeyhex) {
-		common.Info("=====================ReShare_ec2, reshare fail,new pubkey != old pubkey====================","old pubkey",pubkey,"new pubkey",pubkeyhex,"key",msgprex)
+		common.Debug("=====================ReShare_ec2, reshare fail,new pubkey != old pubkey====================","old pubkey",pubkey,"new pubkey",pubkeyhex,"key",msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("reshare fail,new pubkey != old pubkey")}
 		ch <- res
 		return 
@@ -879,7 +879,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    }
 	    //AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
 	    /////////////////////
-	    common.Info("=====================ReShare_ec2====================","gen newsku1",newskU1,"key",msgprex)
+	    common.Debug("=====================ReShare_ec2====================","gen newsku1",newskU1,"key",msgprex)
 
 	    res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	    ch <- res
@@ -1263,7 +1263,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	ys := secp256k1.S256().Marshal(pkx, pky)
 	pubkeyhex := hex.EncodeToString(ys)
 	if !strings.EqualFold(pubkey,pubkeyhex) {
-	    common.Info("=====================ReShare_ec2, reshare fail,new pubkey != old pubkey====================","old pubkey",pubkey,"new pubkey",pubkeyhex,"key",msgprex)
+	    common.Debug("=====================ReShare_ec2, reshare fail,new pubkey != old pubkey====================","old pubkey",pubkey,"new pubkey",pubkeyhex,"key",msgprex)
 	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("reshare fail,new pubkey != old pubkey")}
 	    ch <- res
 	    return 
@@ -1679,7 +1679,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	}
 	//AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
 	/////////////////////
-	common.Info("=====================ReShare_ec2===================","gen newsku1",newskU1,"key",msgprex)
+	common.Debug("=====================ReShare_ec2===================","gen newsku1",newskU1,"key",msgprex)
 
 	res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	ch <- res

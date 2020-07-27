@@ -95,7 +95,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	}
 
 	raw := s 
-	common.Info("=================GetRawReply call CheckRaw =====================")
+	common.Debug("=================GetRawReply call CheckRaw =====================")
 	_,from,_,txdata,err := CheckRaw(raw)
 	if err != nil {
 	    continue
@@ -139,7 +139,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
-	    common.Info("=================GetRawReply,it is TxDataSign=================","sig",sig)
+	    common.Debug("=================GetRawReply,it is TxDataSign=================","sig",sig)
 	    reply := &RawReply{From:from,Accept:"true",TimeStamp:sig.TimeStamp}
 	    tmp,ok := ret[from]
 	    if !ok {
@@ -216,7 +216,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Info("=================GetRawReply,it is TxDataAcceptSign================","acceptsig",acceptsig)
+	    common.Debug("=================GetRawReply,it is TxDataAcceptSign================","acceptsig",acceptsig)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -343,14 +343,14 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	mms := strings.Split(ac.Sigs, common.Sep)
 	count := (len(mms) - 1)/2
 	if count <= 0 {
-	    common.Info("===================== CheckReply,reqaddr================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret",ret)
+	    common.Debug("===================== CheckReply,reqaddr================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret",ret)
 	    return false
 	}
 
 	for j:=0;j<count;j++ {
 	    found := false
 	    for _,v := range ret {
-		    common.Info("===================== CheckReply,reqaddr================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret.v",v,"v.From",v.From,"mms[2j+2]",mms[2*j+2])
+		    common.Debug("===================== CheckReply,reqaddr================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret.v",v,"v.From",v.From,"mms[2j+2]",mms[2*j+2])
 		if strings.EqualFold(v.From,mms[2*j+2]) { //allow user login diffrent node
 		    found = true
 		    break
@@ -358,7 +358,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	    }
 
 	    if !found {
-		common.Info("===================== CheckReply,reqaddr, return false.====================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key)
+		common.Debug("===================== CheckReply,reqaddr, return false.====================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key)
 		return false
 	    }
 	}
@@ -388,7 +388,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    foundeid = true
 		    found := false
 		    for _,vv := range ret {
-			    common.Info("===================== CheckReply,lockout===============","ac.Sigs",ac.Sigs,"k",k,"key",key,"vv.From",vv.From,"mms[k+1]",mms[k+1])
+			    common.Debug("===================== CheckReply,lockout===============","ac.Sigs",ac.Sigs,"k",k,"key",key,"vv.From",vv.From,"mms[k+1]",mms[k+1])
 			if strings.EqualFold(vv.From,mms[k+1]) { //allow user login diffrent node
 			    found = true
 			    break
@@ -396,7 +396,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    }
 
 		    if !found {
-			common.Info("===================== CheckReply,lockout,return false==================","ac.Sigs",ac.Sigs,"k",k,"key",key)
+			common.Debug("===================== CheckReply,lockout,return false==================","ac.Sigs",ac.Sigs,"k",k,"key",key)
 			return false
 		    }
 
@@ -434,7 +434,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    foundeid = true
 		    found := false
 		    for _,vv := range ret {
-			    common.Info("===================== CheckReply,sign===============","ac.Sigs",ac.Sigs,"k",k,"key",key,"vv.From",vv.From,"mms[k+1]",mms[k+1])
+			    common.Debug("===================== CheckReply,sign===============","ac.Sigs",ac.Sigs,"k",k,"key",key,"vv.From",vv.From,"mms[k+1]",mms[k+1])
 			if strings.EqualFold(vv.From,mms[k+1]) { //allow user login diffrent node
 			    found = true
 			    break
@@ -442,7 +442,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    }
 
 		    if !found {
-			common.Info("===================== CheckReply,sign,return false==================","ac.Sigs",ac.Sigs,"k",k,"key",key)
+			common.Debug("===================== CheckReply,sign,return false==================","ac.Sigs",ac.Sigs,"k",k,"key",key)
 			return false
 		    }
 
@@ -464,7 +464,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 //=========================================
 
 func Call(msg interface{}, enode string) {
-	common.Info("====================Call===================","get msg",msg,"sender node",enode)
+	common.Debug("====================Call===================","get msg",msg,"sender node",enode)
 	s := msg.(string)
 	if s == "" {
 	    return
@@ -543,7 +543,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if err2 == nil {
 	    sd,ok := m.(*SignData)
 	    if ok {
-		common.Info("===============RecvMsg.Run===================","sign data",sd,"msgprex",sd.MsgPrex,"key",sd.Key)
+		common.Debug("===============RecvMsg.Run===================","sign data",sd,"msgprex",sd.MsgPrex,"key",sd.Key)
 
 		w := workers[workid]
 		w.sid = sd.Key
@@ -554,7 +554,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		var ch1 = make(chan interface{}, 1)
 		for i:=0;i < recalc_times;i++ {
-		    common.Info("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
+		    common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
 		    if len(ch1) != 0 {
 			<-ch1
 		    }
@@ -571,7 +571,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 			}
 
-			common.Info("===============RecvMsg.Run,finish sign===================","get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+			common.Debug("===============RecvMsg.Run,finish sign===================","get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 
 			ww.rsv.PushBack(ret)
 			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
@@ -579,7 +579,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return true 
 		    }
 		    
-		    common.Info("===============RecvMsg.Run===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+		    common.Debug("===============RecvMsg.Run===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}	
 		
@@ -594,7 +594,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if errtmp == nil {
 	    return true
 	}
-	common.Info("================RecvMsg.Run, init accept data=================","res",res,"err",errtmp)
+	common.Debug("================RecvMsg.Run, init accept data=================","res",res,"err",errtmp)
 
 	return false 
 }
@@ -751,7 +751,7 @@ func DisMsg(msg string) {
 	if err != nil || w == nil {
 	    mmtmp := mm[0:2]
 	    ss := strings.Join(mmtmp, common.Sep)
-	    common.Info("===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
+	    common.Debug("===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
 	    C1Data.WriteMap(strings.ToLower(ss),msg)
 
 	    return
@@ -818,9 +818,9 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_c1.PushBack(msg)
-		common.Info("======================DisMsg, after pushback================","w.msg_c1 len",w.msg_c1.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
+		common.Debug("======================DisMsg, after pushback================","w.msg_c1 len",w.msg_c1.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 		if w.msg_c1.Len() == w.NodeCnt {
-			common.Info("======================DisMsg, Get All C1==================","w.msg_c1 len",w.msg_c1.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
+			common.Debug("======================DisMsg, Get All C1==================","w.msg_c1 len",w.msg_c1.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 			w.bc1 <- true
 		}
 	case "D1":
@@ -892,7 +892,7 @@ func DisMsg(msg string) {
 
 		w.msg_mtazk1proof.PushBack(msg)
 		if w.msg_mtazk1proof.Len() == (w.ThresHold-1) {
-			common.Info("=====================Get All MTAZK1PROOF====================","key",prexs[0])
+			common.Debug("=====================Get All MTAZK1PROOF====================","key",prexs[0])
 			w.bmtazk1proof <- true
 		}
 		//sign
@@ -906,10 +906,10 @@ func DisMsg(msg string) {
 			return
 		}
 
-		common.Info("=====================Get C11====================","msg",msg,"key",prexs[0])
+		common.Debug("=====================Get C11====================","msg",msg,"key",prexs[0])
 		w.msg_c11.PushBack(msg)
 		if w.msg_c11.Len() == w.ThresHold {
-			common.Info("=====================Get All C11====================","key",prexs[0])
+			common.Debug("=====================Get All C11====================","key",prexs[0])
 			w.bc11 <- true
 		}
 	case "KC":
@@ -924,7 +924,7 @@ func DisMsg(msg string) {
 
 		w.msg_kc.PushBack(msg)
 		if w.msg_kc.Len() == w.ThresHold {
-			common.Info("=====================Get All KC====================","key",prexs[0])
+			common.Debug("=====================Get All KC====================","key",prexs[0])
 			w.bkc <- true
 		}
 	case "MKG":
@@ -939,7 +939,7 @@ func DisMsg(msg string) {
 
 		w.msg_mkg.PushBack(msg)
 		if w.msg_mkg.Len() == (w.ThresHold-1) {
-			common.Info("=====================Get All MKG====================","key",prexs[0])
+			common.Debug("=====================Get All MKG====================","key",prexs[0])
 			w.bmkg <- true
 		}
 	case "MKW":
@@ -954,7 +954,7 @@ func DisMsg(msg string) {
 
 		w.msg_mkw.PushBack(msg)
 		if w.msg_mkw.Len() == (w.ThresHold-1) {
-			common.Info("=====================Get All MKW====================","key",prexs[0])
+			common.Debug("=====================Get All MKW====================","key",prexs[0])
 			w.bmkw <- true
 		}
 	case "DELTA1":
@@ -969,7 +969,7 @@ func DisMsg(msg string) {
 
 		w.msg_delta1.PushBack(msg)
 		if w.msg_delta1.Len() == w.ThresHold {
-			common.Info("=====================Get All DELTA1====================","key",prexs[0])
+			common.Debug("=====================Get All DELTA1====================","key",prexs[0])
 			w.bdelta1 <- true
 		}
 	case "D11":
@@ -984,7 +984,7 @@ func DisMsg(msg string) {
 
 		w.msg_d11_1.PushBack(msg)
 		if w.msg_d11_1.Len() == w.ThresHold {
-			common.Info("=====================Get All D11====================","key",prexs[0])
+			common.Debug("=====================Get All D11====================","key",prexs[0])
 			w.bd11_1 <- true
 		}
 	case "CommitBigVAB":
@@ -999,7 +999,7 @@ func DisMsg(msg string) {
 
 		w.msg_commitbigvab.PushBack(msg)
 		if w.msg_commitbigvab.Len() == w.ThresHold {
-			common.Info("=====================Get All CommitBigVAB====================","key",prexs[0])
+			common.Debug("=====================Get All CommitBigVAB====================","key",prexs[0])
 			w.bcommitbigvab <- true
 		}
 	case "ZKABPROOF":
@@ -1014,7 +1014,7 @@ func DisMsg(msg string) {
 
 		w.msg_zkabproof.PushBack(msg)
 		if w.msg_zkabproof.Len() == w.ThresHold {
-			common.Info("=====================Get All ZKABPROOF====================","key",prexs[0])
+			common.Debug("=====================Get All ZKABPROOF====================","key",prexs[0])
 			w.bzkabproof <- true
 		}
 	case "CommitBigUT":
@@ -1029,7 +1029,7 @@ func DisMsg(msg string) {
 
 		w.msg_commitbigut.PushBack(msg)
 		if w.msg_commitbigut.Len() == w.ThresHold {
-			common.Info("=====================Get All CommitBigUT====================","key",prexs[0])
+			common.Debug("=====================Get All CommitBigUT====================","key",prexs[0])
 			w.bcommitbigut <- true
 		}
 	case "CommitBigUTD11":
@@ -1044,7 +1044,7 @@ func DisMsg(msg string) {
 
 		w.msg_commitbigutd11.PushBack(msg)
 		if w.msg_commitbigutd11.Len() == w.ThresHold {
-			common.Info("=====================Get All CommitBigUTD11====================","key",prexs[0])
+			common.Debug("=====================Get All CommitBigUTD11====================","key",prexs[0])
 			w.bcommitbigutd11 <- true
 		}
 	case "S1":
@@ -1059,7 +1059,7 @@ func DisMsg(msg string) {
 
 		w.msg_s1.PushBack(msg)
 		if w.msg_s1.Len() == w.ThresHold {
-			common.Info("=====================Get All S1====================","key",prexs[0])
+			common.Debug("=====================Get All S1====================","key",prexs[0])
 			w.bs1 <- true
 		}
 	case "SS1":
@@ -1074,7 +1074,7 @@ func DisMsg(msg string) {
 
 		w.msg_ss1.PushBack(msg)
 		if w.msg_ss1.Len() == w.ThresHold {
-			common.Info("=====================Get All SS1====================","key",prexs[0])
+			common.Debug("=====================Get All SS1====================","key",prexs[0])
 			w.bss1 <- true
 		}
 	case "PaillierKey":
@@ -1090,7 +1090,7 @@ func DisMsg(msg string) {
 		w.msg_paillierkey.PushBack(msg)
 		//if w.msg_paillierkey.Len() == w.ThresHold {
 		if w.msg_paillierkey.Len() == w.NodeCnt {
-			common.Info("=====================Get All PaillierKey====================","key",prexs[0])
+			common.Debug("=====================Get All PaillierKey====================","key",prexs[0])
 			w.bpaillierkey <- true
 		}
 

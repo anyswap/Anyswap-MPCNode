@@ -89,7 +89,7 @@ func GetSafeRandomPrimeInt(length int) *big.Int {
 		rndInt = new(big.Int).Mul(rndInt, two)
 		rndInt = new(big.Int).Add(rndInt, one)
 		if rndInt.ProbablyPrime(512) {
-			common.Info("======================Success Generate Safe Random Prime.====================")
+			common.Debug("======================Success Generate Safe Random Prime.====================")
 			break
 		}
 
@@ -106,7 +106,7 @@ func GetSafeRandomPrimeInt2(length int, rndInt *big.Int) *big.Int {
 	rndInt = new(big.Int).Mul(rndInt, two)
 	rndInt = new(big.Int).Add(rndInt, one)
 	if rndInt.ProbablyPrime(512) {
-		common.Info("======================Success Generate Safe Random Prime.====================")
+		common.Debug("======================Success Generate Safe Random Prime.====================")
 		return rndInt
 	}
 

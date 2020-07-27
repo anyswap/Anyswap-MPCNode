@@ -699,7 +699,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-	common.Info("================CheckRaw, it is reqaddr tx=================","raw ",raw,"key ",key,"req ",&req)
+	common.Debug("================CheckRaw, it is reqaddr tx=================","raw ",raw,"key ",key,"req ",&req)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
     }
     
@@ -788,7 +788,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
 	    }
 
-	    common.Info("================CheckRaw=============","cur_enode ",cur_enode,"from ",from.Hex(),"ac.Sigs ",ac.Sigs)
+	    common.Debug("================CheckRaw=============","cur_enode ",cur_enode,"from ",from.Hex(),"ac.Sigs ",ac.Sigs)
 	    if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
 		return "","","",nil,fmt.Errorf("invalid lockout account")
 	    }
@@ -806,7 +806,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
 
-	common.Info("=================CheckRaw, it is lockout tx================","raw ",raw,"key ",key,"lo ",&lo)
+	common.Debug("=================CheckRaw, it is lockout tx================","raw ",raw,"key ",key,"lo ",&lo)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&lo,nil
     }
 
@@ -844,7 +844,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	nc,_ := GetGroup(groupid)
 	if nc < limit || nc > nodecnt {
-	    common.Info("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
+	    common.Debug("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 
@@ -878,7 +878,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + get_sign_hash(hash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
-	common.Info("=================CheckRaw, it is sign tx==================","raw ",raw,"key ",key,"sig ",&sig)
+	common.Debug("=================CheckRaw, it is sign tx==================","raw ",raw,"key ",key,"sig ",&sig)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
@@ -947,7 +947,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
 
-	common.Info("=================CheckRaw, it is acceptreqaddr tx====================","raw ",raw,"key ",acceptreq.Key,"acceptreq ",&acceptreq)
+	common.Debug("=================CheckRaw, it is acceptreqaddr tx====================","raw ",raw,"key ",acceptreq.Key,"acceptreq ",&acceptreq)
 	return "",from.Hex(),"",&acceptreq,nil
     }
 
@@ -977,7 +977,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
 
-	common.Info("=================CheckRaw, it is acceptlockout tx================","raw ",raw,"key ",acceptlo.Key,"acceptlo ",&acceptlo)
+	common.Debug("=================CheckRaw, it is acceptlockout tx================","raw ",raw,"key ",acceptlo.Key,"acceptlo ",&acceptlo)
 	return "",from.Hex(),"",&acceptlo,nil
     }
 
@@ -1020,7 +1020,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accepter")
 	}
 	
-	common.Info("=================CheckRaw, it is acceptsign tx====================","raw ",raw,"key ",acceptsig.Key,"acceptsig ",&acceptsig)
+	common.Debug("=================CheckRaw, it is acceptsign tx====================","raw ",raw,"key ",acceptsig.Key,"acceptsig ",&acceptsig)
 	return "",from.Hex(),"",&acceptsig,nil
     }
 
@@ -1049,7 +1049,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
 	}
 
-	common.Info("=================CheckRaw, it is acceptreshare tx=====================","raw ",raw,"key ",acceptrh.Key,"acceptrh ",&acceptrh)
+	common.Debug("=================CheckRaw, it is acceptreshare tx=====================","raw ",raw,"key ",acceptrh.Key,"acceptrh ",&acceptrh)
 	return "",from.Hex(),"",&acceptrh,nil
     }
 
@@ -1063,10 +1063,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	return fmt.Errorf("init accept data fail")
     }
 
-    common.Info("=====================InitAcceptData call CheckRaw ================")
+    common.Debug("=====================InitAcceptData call CheckRaw ================")
     key,from,nonce,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("===============InitAcceptData,check raw===================","err ",err)
+	common.Debug("===============InitAcceptData,check raw===================","err ",err)
 	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 	ch <- res
 	return err
@@ -1074,19 +1074,19 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     
     req,ok := txdata.(*TxDataReqAddr)
     if ok {
-	common.Info("===============InitAcceptData, check reqaddr raw success==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",req)
+	common.Debug("===============InitAcceptData, check reqaddr raw success==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",req)
 	exsit,_ := GetValueFromPubKeyData(key)
 	if !exsit {
 	    cur_nonce, _, _ := GetReqAddrNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
-	    common.Info("===============InitAcceptData============","reqaddr cur_nonce_num ",cur_nonce_num,"reqaddr new_nonce_num ",new_nonce_num,"key ",key)
+	    common.Debug("===============InitAcceptData============","reqaddr cur_nonce_num ",cur_nonce_num,"reqaddr new_nonce_num ",new_nonce_num,"key ",key)
 	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		_, err := SetReqAddrNonce(from,nonce)
 		if err == nil {
 		    ars := GetAllReplyFromGroup(workid,req.GroupId,Rpc_REQADDR,sender)
 		    sigs,err := GetGroupSigsDataByRaw(raw) 
-		    common.Info("=================InitAcceptData================","get group sigs ",sigs,"err ",err,"key ",key)
+		    common.Debug("=================InitAcceptData================","get group sigs ",sigs,"err ",err,"key ",key)
 		    if err != nil {
 			res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 			ch <- res
@@ -1095,7 +1095,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 		    ac := &AcceptReqAddrData{Initiator:sender,Account: from, Cointype: "ALL", GroupId: req.GroupId, Nonce: nonce, LimitNum: req.ThresHold, Mode: req.Mode, TimeStamp: req.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", PubKey: "", Tip: "", Error: "", AllReply: ars, WorkId: workid,Sigs:sigs}
 		    err = SaveAcceptReqAddrData(ac)
-		    common.Info("===================call SaveAcceptReqAddrData finish====================","account ",from,"err ",err,"key ",key)
+		    common.Debug("===================call SaveAcceptReqAddrData finish====================","account ",from,"err ",err,"key ",key)
 		   if err == nil {
 			rch := make(chan interface{}, 1)
 			w := workers[workid]
@@ -1151,7 +1151,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						case account := <-wtmp2.acceptReqAddrChan:
 							common.Debug("(self *RecvMsg) Run(),", "account= ", account, "key = ", key)
 							ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
-							common.Info("================== InitAcceptData,get all AcceptReqAddrRes====================","raw ",raw,"result ",ars,"key ",key)
+							common.Debug("================== InitAcceptData,get all AcceptReqAddrRes====================","raw ",raw,"result ",ars,"key ",key)
 							
 							//bug
 							reply = true
@@ -1185,7 +1185,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 							timeout <- true
 							return
 						case <-agreeWaitTimeOut.C:
-							common.Info("================== InitAcceptData, agree wait timeout==================","raw ",raw,"key ",key)
+							common.Debug("================== InitAcceptData, agree wait timeout==================","raw ",raw,"key ",key)
 							ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 							//bug: if self not accept and timeout
 							_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "false", "Timeout", "", "get other node accept req addr result timeout", "get other node accept req addr result timeout", ars, wid,"")
@@ -1215,7 +1215,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 				<-timeout
 
-				common.Info("================== InitAcceptData======================","raw ",raw,"the terminal accept req addr result ",reply,"key ",key)
+				common.Debug("================== InitAcceptData======================","raw ",raw,"the terminal accept req addr result ",reply,"key ",key)
 
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 				if !reply {
@@ -1249,10 +1249,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 			}
 
-			common.Info("================== InitAcceptData, start call dcrm_genPubKey====================","w.id ",w.id,"w.groupid ",w.groupid,"key ",key)
+			common.Debug("================== InitAcceptData, start call dcrm_genPubKey====================","w.id ",w.id,"w.groupid ",w.groupid,"key ",key)
 			dcrm_genPubKey(w.sid, from, "ALL", rch, req.Mode, nonce)
 			chret, tip, cherr := GetChannelValue(waitall, rch)
-			common.Info("================== InitAcceptData , finish dcrm_genPubKey ===================","get return value ",chret,"err ",cherr,"key ",key)
+			common.Debug("================== InitAcceptData , finish dcrm_genPubKey ===================","get return value ",chret,"err ",cherr,"key ",key)
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 				_,err = AcceptReqAddr(sender,from, "ALL", req.GroupId, nonce, req.ThresHold, req.Mode, "false", "", "Failure", "", tip, cherr.Error(), ars, workid,"")
@@ -1279,13 +1279,13 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     lo,ok := txdata.(*TxDataLockOut)
     if ok {
-	common.Info("===============InitAcceptData, check lockout raw success=================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",lo)
+	common.Debug("===============InitAcceptData, check lockout raw success=================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",lo)
 	exsit,_ := GetValueFromPubKeyData(key)
 	if !exsit {
 	    cur_nonce, _, _ := GetLockOutNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
-	    common.Info("===============InitAcceptData================","lockout cur_nonce_num ",cur_nonce_num,"lockout new_nonce_num ",new_nonce_num,"key ",key)
+	    common.Debug("===============InitAcceptData================","lockout cur_nonce_num ",cur_nonce_num,"lockout new_nonce_num ",new_nonce_num,"key ",key)
 	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		_, err := SetLockOutNonce(from,nonce)
 		if err == nil {
@@ -1316,7 +1316,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			w.limitnum = lo.ThresHold
 			gcnt, _ := GetGroup(w.groupid)
 			w.NodeCnt = gcnt
-			common.Info("===================InitAcceptData====================","w.NodeCnt ",w.NodeCnt,"w.groupid ",w.groupid,"wid ",workid,"key ",key)
+			common.Debug("===================InitAcceptData====================","w.NodeCnt ",w.NodeCnt,"w.groupid ",w.groupid,"wid ",workid,"key ",key)
 			w.ThresHold = w.NodeCnt
 
 			nums := strings.Split(w.limitnum, "/")
@@ -1349,7 +1349,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						case account := <-wtmp2.acceptLockOutChan:
 							common.Debug("InitAcceptData", "account= ", account, "key = ", key)
 							ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-							common.Info("================== InitAcceptData, get all AcceptLockOutRes=================","raw ",raw,"result ",ars,"key ",key)
+							common.Debug("================== InitAcceptData, get all AcceptLockOutRes=================","raw ",raw,"result ",ars,"key ",key)
 							
 							//bug
 							reply = true
@@ -1377,7 +1377,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 							timeout <- true
 							return
 						case <-agreeWaitTimeOut.C:
-							common.Info("================== InitAcceptData , agree wait timeout==============","raw ",raw,"key ",key)
+							common.Debug("================== InitAcceptData , agree wait timeout==============","raw ",raw,"key ",key)
 							ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
 							_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
 							reply = false
@@ -1416,7 +1416,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 				<-timeout
 
-				common.Info("================== InitAcceptData==================","raw ",raw,"the terminal accept lockout result ",reply,"key ",key)
+				common.Debug("================== InitAcceptData==================","raw ",raw,"the terminal accept lockout result ",reply,"key ",key)
 
 				if !reply {
 					if tip == "get other node accept lockout result timeout" {
@@ -1501,10 +1501,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			}
 
 			rch := make(chan interface{}, 1)
-			common.Info("================== InitAcceptData , start call validate_lockout================","key ",key)
+			common.Debug("================== InitAcceptData , start call validate_lockout================","key ",key)
 			validate_lockout(w.sid,from,lo.DcrmAddr,lo.Cointype, lo.Value, lo.DcrmTo,nonce, lo.Memo,rch)
 			chret, tip, cherr := GetChannelValue(waitall, rch)
-			common.Info("================== InitAcceptData, finish and get validate_lockout=================","return value ",chret,"err ",cherr,"key ",key)
+			common.Debug("================== InitAcceptData, finish and get validate_lockout=================","return value ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
 				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_lockout" + common.Sep + chret, Tip: "", Err: nil}
 				ch <- res
@@ -1591,13 +1591,13 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     sig,ok := txdata.(*TxDataSign)
     if ok {
-	common.Info("===============InitAcceptData, check sign raw success==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",sig)
+	common.Debug("===============InitAcceptData, check sign raw success==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",sig)
 	exsit,_ := GetValueFromPubKeyData(key)
 	if !exsit {
 	    cur_nonce, _, _ := GetSignNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
-	    common.Info("===============InitAcceptData===============","sign cur_nonce_num ",cur_nonce_num,"sign new_nonce_num ",new_nonce_num,"key ",key)
+	    common.Debug("===============InitAcceptData===============","sign cur_nonce_num ",cur_nonce_num,"sign new_nonce_num ",new_nonce_num,"key ",key)
 	    //if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		//_, err := SetSignNonce(from,nonce)
 		_, err := SetSignNonce(from,cur_nonce) //bug
@@ -1606,7 +1606,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 		    ac := &AcceptSignData{Initiator:sender,Account: from, GroupId: sig.GroupId, Nonce: nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext: sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
 		    err = SaveAcceptSignData(ac)
 		    if err == nil {
-			common.Info("===============InitAcceptData,save sign accept data finish===================","ars ",ars,"key ",key)
+			common.Debug("===============InitAcceptData,save sign accept data finish===================","ars ",ars,"key ",key)
 			w := workers[workid]
 			w.sid = key 
 			w.groupid = sig.GroupId 
@@ -1644,7 +1644,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 						case account := <-wtmp2.acceptSignChan:
 							common.Debug("InitAcceptData,", "account= ", account, "key = ", key)
 							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-							common.Info("================== InitAcceptData , get all AcceptSignRes===============","raw ",raw,"result ",ars,"key ",key)
+							common.Debug("================== InitAcceptData , get all AcceptSignRes===============","raw ",raw,"result ",ars,"key ",key)
 							
 							//bug
 							reply = true
@@ -1660,7 +1660,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 								tip = "don't accept sign"
 								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
 							} else {
-							    	common.Info("=======================InitAcceptData,11111111111111,set sign pending=============================")
+							    	common.Debug("=======================InitAcceptData,11111111111111,set sign pending=============================")
 								tip = ""
 								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "", "", ars,wid)
 							}
@@ -1673,7 +1673,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 							timeout <- true
 							return
 						case <-agreeWaitTimeOut.C:
-							common.Info("================== InitAcceptData , agree wait timeout=============","raw ",raw,"key ",key)
+							common.Debug("================== InitAcceptData , agree wait timeout=============","raw ",raw,"key ",key)
 							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
 							reply = false
@@ -1694,7 +1694,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 
 				DisAcceptMsg(raw,workid)
-				common.Info("===============InitAcceptData, call DisAcceptMsg finish===================","key ",key)
+				common.Debug("===============InitAcceptData, call DisAcceptMsg finish===================","key ",key)
 				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_SIGN)
 				exsit,da := GetValueFromPubKeyData(reqaddrkey)
 				if !exsit {
@@ -1709,7 +1709,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				    return fmt.Errorf("get reqaddr sigs data fail") 
 				}
 
-				common.Info("===============InitAcceptData, call HandleC1Data===================","reqaddrkey ",reqaddrkey,"key ",key)
+				common.Debug("===============InitAcceptData, call HandleC1Data===================","reqaddrkey ",reqaddrkey,"key ",key)
 
 				HandleC1Data(acceptreqdata,key,workid)
 
@@ -1788,7 +1788,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 
 				ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-				common.Info("=======================InitAcceptData,2222222222222222222,set sign pending=============================")
+				common.Debug("=======================InitAcceptData,2222222222222222222,set sign pending=============================")
 				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,workid)
 				if err != nil {
 				    res := RpcDcrmRes{Ret:"", Tip: err.Error(), Err:err}
@@ -1797,11 +1797,11 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				}
 			}
 
-			common.Info("===============InitAcceptData,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
+			common.Debug("===============InitAcceptData,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
 			rch := make(chan interface{}, 1)
 			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,rch)
 			chret, tip, cherr := GetChannelValue(waitall, rch)
-			common.Info("================== InitAcceptData,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
+			common.Debug("================== InitAcceptData,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
 				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
 				ch <- res
@@ -1887,7 +1887,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     if ok {
 	ars := GetAllReplyFromGroup(workid,rh.GroupId,Rpc_RESHARE,sender)
 	sigs,err := GetGroupSigsDataByRaw(raw) 
-	common.Info("=================InitAcceptData,reshare=================","get group sigs ",sigs,"err ",err,"key ",key)
+	common.Debug("=================InitAcceptData,reshare=================","get group sigs ",sigs,"err ",err,"key ",key)
 	if err != nil {
 	    res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 	    ch <- res
@@ -1896,7 +1896,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 	ac := &AcceptReShareData{Initiator:sender,Account: from, GroupId: rh.GroupId, TSGroupId:rh.TSGroupId, PubKey: rh.PubKey, LimitNum: rh.ThresHold, PubAccount:rh.Account, Mode:rh.Mode, Sigs:sigs, TimeStamp: rh.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", NewSk: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
 	err = SaveAcceptReShareData(ac)
-	common.Info("===================finish call SaveAcceptReShareData======================","err ",err,"workid ",workid,"account ",from,"group id ",rh.GroupId,"pubkey ",rh.PubKey,"threshold ",rh.ThresHold,"key ",key)
+	common.Debug("===================finish call SaveAcceptReShareData======================","err ",err,"workid ",workid,"account ",from,"group id ",rh.GroupId,"pubkey ",rh.PubKey,"threshold ",rh.ThresHold,"key ",key)
 	if err == nil {
 	    w := workers[workid]
 	    w.sid = key 
@@ -1933,7 +1933,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			    case account := <-wtmp2.acceptReShareChan:
 				    common.Debug("InitAcceptData", "account= ", account, "key = ", key)
 				    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
-				    common.Info("================== InitAcceptData, get all AcceptReShareRes================","raw ",raw,"result ",ars,"key ",key)
+				    common.Debug("================== InitAcceptData, get all AcceptReShareRes================","raw ",raw,"result ",ars,"key ",key)
 				    
 				    //bug
 				    reply = true
@@ -1961,7 +1961,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				    timeout <- true
 				    return
 			    case <-agreeWaitTimeOut.C:
-				    common.Info("================== InitAcceptData, agree wait timeout===================","raw ",raw,"key ",key)
+				    common.Debug("================== InitAcceptData, agree wait timeout===================","raw ",raw,"key ",key)
 				    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
 				    _,err = AcceptReShare(sender,from, rh.GroupId, rh.TSGroupId,rh.PubKey, rh.ThresHold,rh.Mode,"false", "false", "Timeout", "", "get other node accept reshare result timeout", "get other node accept reshare result timeout", ars, wid)
 				    reply = false
@@ -2135,7 +2135,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
     if ok {
-	common.Info("===============InitAcceptData, check accept reqaddr raw success======================","raw ",raw,"key ",acceptreq.Key,"from ",from,"txdata ",acceptreq)
+	common.Debug("===============InitAcceptData, check accept reqaddr raw success======================","raw ",raw,"key ",acceptreq.Key,"from ",from,"txdata ",acceptreq)
 	w, err := FindWorker(acceptreq.Key)
 	if err != nil || w == nil {
 	    c1data := acceptreq.Key + "-" + from
@@ -2186,7 +2186,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptlo,ok := txdata.(*TxDataAcceptLockOut)
     if ok {
-	common.Info("===============InitAcceptData, check accept lockout raw success=================","raw ",raw,"key ",acceptlo.Key,"from ",from,"txdata ",acceptlo)
+	common.Debug("===============InitAcceptData, check accept lockout raw success=================","raw ",raw,"key ",acceptlo.Key,"from ",from,"txdata ",acceptlo)
 	w, err := FindWorker(acceptlo.Key)
 	if err != nil || w == nil {
 	    c1data := acceptlo.Key + "-" + from
@@ -2258,7 +2258,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if ok {
-	common.Info("===============InitAcceptData, check accept sign raw success=====================","raw ",raw,"key ",acceptsig.Key,"from ",from,"txdata ",acceptsig)
+	common.Debug("===============InitAcceptData, check accept sign raw success=====================","raw ",raw,"key ",acceptsig.Key,"from ",from,"txdata ",acceptsig)
 	w, err := FindWorker(acceptsig.Key)
 	if err != nil || w == nil {
 	    c1data := acceptsig.Key + "-" + from
@@ -2315,7 +2315,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	HandleC1Data(acceptreqdata,acceptsig.Key,id)
 
 	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_SIGN,ac.Initiator)
-	common.Info("=======================InitAcceptData,333333333333333333333333,set sign status =============================","status",status,"ac.Deal",ac.Deal,"ac.Status",ac.Status)
+	common.Debug("=======================InitAcceptData,333333333333333333333333,set sign status =============================","status",status,"ac.Deal",ac.Deal,"ac.Status",ac.Status)
 	if ac.Deal == "true" || ac.Status == "Success" || ac.Status == "Failure" || ac.Status == "Timeout" {
 	    res := RpcDcrmRes{Ret:"", Tip: "sign has handled before", Err: fmt.Errorf("sign has handled before")}
 	    ch <- res
@@ -2336,7 +2336,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptrh,ok := txdata.(*TxDataAcceptReShare)
     if ok {
-	common.Info("===============InitAcceptData, check accept reshare raw success=====================","raw ",raw,"key ",acceptrh.Key,"from ",from,"txdata ",acceptrh)
+	common.Debug("===============InitAcceptData, check accept reshare raw success=====================","raw ",raw,"key ",acceptrh.Key,"from ",from,"txdata ",acceptrh)
 	w, err := FindWorker(acceptrh.Key)
 	if err != nil || w == nil {
 	    c1data := acceptrh.Key + "-" + from
@@ -2453,10 +2453,10 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 
 func ReqDcrmAddr(raw string) (string, string, error) {
 
-    common.Info("=====================ReqDcrmAddr call CheckRaw ================","raw ",raw)
+    common.Debug("=====================ReqDcrmAddr call CheckRaw ================","raw ",raw)
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("============ReqDcrmAddr==============","err ",err)
+	common.Debug("============ReqDcrmAddr==============","err ",err)
 	return "",err.Error(),err
     }
 
@@ -2465,7 +2465,7 @@ func ReqDcrmAddr(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataReqAddr",fmt.Errorf("check raw fail,it is not *TxDataReqAddr")
     }
 
-    common.Info("============ReqDcrmAddr,SendMsgToDcrmGroup===============","raw ",raw,"gid ",req.GroupId,"key ",key)
+    common.Debug("============ReqDcrmAddr,SendMsgToDcrmGroup===============","raw ",raw,"gid ",req.GroupId,"key ",key)
     SendMsgToDcrmGroup(raw, req.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
@@ -2481,9 +2481,9 @@ func DisAcceptMsg(raw string,workid int) {
 	return
     }
 
-    common.Info("=====================DisAcceptMsg call CheckRaw================","raw ",raw)
+    common.Debug("=====================DisAcceptMsg call CheckRaw================","raw ",raw)
     key,_,_,txdata,err := CheckRaw(raw)
-    common.Info("=====================DisAcceptMsg=================","key",key,"err",err)
+    common.Debug("=====================DisAcceptMsg=================","key",key,"err",err)
     if err != nil {
 	return
     }
@@ -2551,11 +2551,11 @@ func DisAcceptMsg(raw string,workid int) {
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,key) {
-		common.Info("=====================DisAcceptMsg,check reply fail===================","key",key)
+		common.Debug("=====================DisAcceptMsg,check reply fail===================","key",key)
 		return
 	    }
 
-	    common.Info("=====================DisAcceptMsg,check reply success===================","key",key)
+	    common.Debug("=====================DisAcceptMsg,check reply success===================","key",key)
 	    w.bacceptsignres <- true
 	    exsit,da := GetValueFromPubKeyData(key)
 	    if !exsit {
@@ -2708,10 +2708,10 @@ func DisAcceptMsg(raw string,workid int) {
 }
 
 func RpcAcceptReqAddr(raw string) (string, string, error) {
-    common.Info("=====================RpcAcceptReqAddr call CheckRaw ================","raw",raw)
+    common.Debug("=====================RpcAcceptReqAddr call CheckRaw ================","raw",raw)
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================RpcAcceptReqAddr,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================RpcAcceptReqAddr,CheckRaw ================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
@@ -2724,7 +2724,7 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptReqAddrData)
 	if ok && ac != nil {
-	    common.Info("=====================RpcAcceptReqAddr, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptreq.Key)
+	    common.Debug("=====================RpcAcceptReqAddr, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptreq.Key)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -2735,10 +2735,10 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 }
 
 func RpcAcceptLockOut(raw string) (string, string, error) {
-    common.Info("=====================RpcAcceptLockOut call CheckRaw ================","raw",raw)
+    common.Debug("=====================RpcAcceptLockOut call CheckRaw ================","raw",raw)
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================RpcAcceptLockOut,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================RpcAcceptLockOut,CheckRaw ================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
@@ -2751,7 +2751,7 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptLockOutData)
 	if ok && ac != nil {
-	    common.Info("=====================RpcAcceptLockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptlo.Key)
+	    common.Debug("=====================RpcAcceptLockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptlo.Key)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -2762,10 +2762,10 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 }
 
 func RpcAcceptSign(raw string) (string, string, error) {
-    common.Info("=====================RpcAcceptSign call CheckRaw ================","raw",raw)
+    common.Debug("=====================RpcAcceptSign call CheckRaw ================","raw",raw)
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================RpcAcceptSign,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================RpcAcceptSign,CheckRaw ================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
@@ -2778,7 +2778,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
-	    common.Info("=====================RpcAcceptSign, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptsig.Key)
+	    common.Debug("=====================RpcAcceptSign, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptsig.Key)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -2789,10 +2789,10 @@ func RpcAcceptSign(raw string) (string, string, error) {
 }
 
 func LockOut(raw string) (string, string, error) {
-    common.Info("=====================LockOut call CheckRaw ================","raw",raw)
+    common.Debug("=====================LockOut call CheckRaw ================","raw",raw)
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================LockOut,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================LockOut,CheckRaw ================","raw",raw,"err",err)
 	return "",err.Error(),err
     }
 
@@ -2801,17 +2801,17 @@ func LockOut(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataLockOut",fmt.Errorf("check raw fail,it is not *TxDataLockOut")
     }
 
-    common.Info("=====================LockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",lo.GroupId,"key",key)
+    common.Debug("=====================LockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",lo.GroupId,"key",key)
     SendMsgToDcrmGroup(raw, lo.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }
 
 func ReShare(raw string) (string, string, error) {
-    common.Info("=====================ReShare call CheckRaw ================","raw",raw)
+    common.Debug("=====================ReShare call CheckRaw ================","raw",raw)
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================ReShare,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================ReShare,CheckRaw ================","raw",raw,"err",err)
 	return "",err.Error(),err
     }
 
@@ -2820,17 +2820,17 @@ func ReShare(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataReShare",fmt.Errorf("check raw fail,it is not *TxDataReShare")
     }
 
-    common.Info("=====================ReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",rh.GroupId,"key",key)
+    common.Debug("=====================ReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",rh.GroupId,"key",key)
     SendMsgToDcrmGroup(raw, rh.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }
 
 func RpcAcceptReShare(raw string) (string, string, error) {
-    common.Info("=====================RpcAcceptReShare call CheckRaw ================","raw",raw)
+    common.Debug("=====================RpcAcceptReShare call CheckRaw ================","raw",raw)
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================RpcAcceptReShare,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================RpcAcceptReShare,CheckRaw ================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
@@ -2843,7 +2843,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptReShareData)
 	if ok && ac != nil {
-	    common.Info("=====================RpcAcceptReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptrh.Key)
+	    common.Debug("=====================RpcAcceptReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptrh.Key)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -2854,10 +2854,10 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 }
 
 func Sign(raw string) (string, string, error) {
-    common.Info("=====================Sign call CheckRaw ================","raw",raw)
+    common.Debug("=====================Sign call CheckRaw ================","raw",raw)
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================Sign,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================Sign,CheckRaw ================","raw",raw,"err",err)
 	return "",err.Error(),err
     }
 
@@ -2866,7 +2866,7 @@ func Sign(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataSign",fmt.Errorf("check raw fail,it is not *TxDataSign")
     }
 
-    common.Info("=====================Sign, SendMsgToDcrmGroup ================","raw",raw,"gid",sig.GroupId,"key",key)
+    common.Debug("=====================Sign, SendMsgToDcrmGroup ================","raw",raw,"gid",sig.GroupId,"key",key)
     SendMsgToDcrmGroup(raw, sig.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
@@ -3036,7 +3036,7 @@ func receiveGroupInfo(msg interface{}) {
 }
 
 func Init(groupId string) {
-	common.Info("======================Init==========================","get group id",groupId,"init_times",strconv.Itoa(init_times))
+	common.Debug("======================Init==========================","get group id",groupId,"init_times",strconv.Itoa(init_times))
 
 	if !PutGroup(groupId) {
 		out := "=============Init================" + " get group id = " + groupId + ", put group id fail "
@@ -3076,7 +3076,7 @@ func GetReqAddrStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit || da == nil {
-		common.Info("=====================GetReqAddrStatus,no exist key======================","key",key)
+		common.Debug("=====================GetReqAddrStatus,no exist key======================","key",key)
 		return "", "dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus")
 	}
 
@@ -3229,7 +3229,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		    return
 		}
 
-		common.Info("================GetCurNodeReqAddrInfo, it is *AcceptReqAddrData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Mode",vv.Mode,"vv.Status",vv.Status,"key",key)
+		common.Debug("================GetCurNodeReqAddrInfo, it is *AcceptReqAddrData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Mode",vv.Mode,"vv.Status",vv.Status,"key",key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -3248,7 +3248,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		common.Info("================GetCurNodeReqAddrInfo success return================","key",key)
+		common.Debug("================GetCurNodeReqAddrInfo success return================","key",key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
@@ -3303,7 +3303,7 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		    return
 		}
 
-		common.Info("================GetCurNodeLockOutInfo, it is *AcceptLockOutData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
+		common.Debug("================GetCurNodeLockOutInfo, it is *AcceptLockOutData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -3323,7 +3323,7 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		
 		los := &LockOutCurNodeInfo{Key: key, Account: vv.Account, GroupId: vv.GroupId, Nonce: vv.Nonce, DcrmFrom: dcrmaddr, DcrmTo: vv.DcrmTo, Value: vv.Value, Cointype: vv.Cointype, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		common.Info("================GetCurNodeLockOutInfo success return===================","key",key)
+		common.Debug("================GetCurNodeLockOutInfo success return===================","key",key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
@@ -3359,7 +3359,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		    return
 		}
 
-		common.Info("================GetCurNodeSignInfo======================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
+		common.Debug("================GetCurNodeSignInfo======================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -3374,7 +3374,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		common.Info("================GetCurNodeSignInfo success return=======================","key",key)
+		common.Debug("================GetCurNodeSignInfo success return=======================","key",key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
@@ -3407,7 +3407,7 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 		return
 	    }
 
-	    common.Info("================GetCurNodeReShareInfo====================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
+	    common.Debug("================GetCurNodeReShareInfo====================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
 	    if vv.Deal == "true" || vv.Status == "Success" {
 		return
 	    }
@@ -3418,7 +3418,7 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 
 	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
 	    ret = append(ret, los)
-	    common.Info("================GetCurNodeReShareInfo success return============================","key",key)
+	    common.Debug("================GetCurNodeReShareInfo success return============================","key",key)
 	}(k,v)
     }
     LdbPubKeyData.RUnlock()
@@ -3817,7 +3817,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptlockoutres.Front()
 		if iter != nil {
 		    mdss := iter.Value.(string)
-		    common.Info("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_LOCKOUT ================")
+		    common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_LOCKOUT ================")
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
 		    exsit,da := GetValueFromPubKeyData(key2)
@@ -3865,7 +3865,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptsignres.Front()
 		if iter != nil {
 		    mdss := iter.Value.(string)
-		    common.Info("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_SIGN ================")
+		    common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_SIGN ================")
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
 		    exsit,da := GetValueFromPubKeyData(key2)
@@ -3984,7 +3984,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 	    iter := w.msg_acceptreqaddrres.Front()
 	    if iter != nil {
 		mdss := iter.Value.(string)
-		common.Info("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_REQADDR ================")
+		common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_REQADDR ================")
 		key,_,_,_,_ := CheckRaw(mdss)
 		exsit,da := GetValueFromPubKeyData(key)
 		if exsit {

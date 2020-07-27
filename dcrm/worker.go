@@ -435,7 +435,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 
 func (w *RPCReqWorker) Clear() {
 
-	common.Info("======================RpcReqWorker.Clear======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
+	common.Debug("======================RpcReqWorker.Clear======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
 
 	w.sid = ""
 	w.groupid = ""
@@ -842,7 +842,7 @@ func (w *RPCReqWorker) Clear() {
 }
 
 func (w *RPCReqWorker) Clear2() {
-	common.Info("======================RpcReqWorker.Clear2======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
+	common.Debug("======================RpcReqWorker.Clear2======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
 	
 	var next *list.Element
 

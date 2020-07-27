@@ -50,7 +50,7 @@ func GetSkU1FromLocalDb(key string) []byte {
 	}*/
 	//
 	if dbsk == nil {
-	    common.Info("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
+	    common.Debug("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
 	    dir := GetSkU1Dir()
 	    ////////
 	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -128,7 +128,7 @@ func GetSkU1FromLocalDb(key string) []byte {
 func GetPubKeyDataValueFromDb(key string) []byte {
 	lock.Lock()
 	if db == nil {
-	    common.Info("===================GetPubKeyDataValueFromDb, db is nil ===================")
+	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil ===================")
 	    dir := GetDbDir()
 	    ////////
 	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -473,7 +473,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 
 	ss, err := UnCompress(string(da))
 	if err != nil {
-	    common.Info("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
+	    common.Debug("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
 	    return true,da
 	}
 
@@ -535,19 +535,19 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
     ss, err := UnCompress(string(da))
     if err != nil {
-	common.Info("========================GetPubKeyDataFromLocalDb, uncompress err=======================","err",err,"key",key)
+	common.Debug("========================GetPubKeyDataFromLocalDb, uncompress err=======================","err",err,"key",key)
 	return false,nil
     }
 
     pubs, err := Decode2(ss, "PubKeyData")
     if err != nil {
-	common.Info("========================GetPubKeyDataFromLocalDb, decode err=======================","err",err,"key",key)
+	common.Debug("========================GetPubKeyDataFromLocalDb, decode err=======================","err",err,"key",key)
 	return false,nil
     }
 
     pd,ok := pubs.(*PubKeyData)
     if !ok {
-	common.Info("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================")
+	common.Debug("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================")
 	return false,nil
     }
 

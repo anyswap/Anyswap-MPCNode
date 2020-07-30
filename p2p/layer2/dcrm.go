@@ -27,6 +27,7 @@ import (
 	"sync"
 
 	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
@@ -66,7 +67,7 @@ func DcrmProtocol_registerPriKeyCallback(recvPrivkeyFunc func(interface{})) {
 }
 
 func Sdk_callEvent(msg string, fromID string) {
-	fmt.Printf("Sdk_callEvent\n")
+	common.Debug("Sdk_callEvent", "", "")
 	Sdk_callback(msg, fromID)
 }
 
@@ -208,7 +209,7 @@ func RegisterSendCallback(callbackfunc func(interface{})) {
 func ParseNodeID(enode string) string {
 	node, err := discover.ParseNode(enode)
 	if err != nil {
-		fmt.Printf("==== ParseNodeID() ====, enode: %v, error: %v\n", enode, err.Error())
+		common.Info("==== ParseNodeID() ====", "enode", enode, "error", err.Error())
 		return ""
 	}
 	return node.ID.String()
@@ -222,7 +223,7 @@ func HexID(gID string) (discover.NodeID, error) {
 func SdkProtocol_sendToGroupOneNode(gID, msg string) (string, error) {
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
-		fmt.Printf("sendToGroupOneNode, group gid: %v not exist\n", gid)
+		common.Debug("sendToGroupOneNode", "not exist group gid", gid)
 		return "", errors.New("sendToGroupOneNode, gid not exist")
 	}
 	g := getSDKGroupNodes(gid)
@@ -246,7 +247,7 @@ func SdkProtocol_SendToGroupAllNodes(gID, msg string) (string, error) {
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		e := fmt.Sprintf("SendGroupAllNodes, group gid: %v not exist", gid)
-		fmt.Println(e)
+		common.Debug("SendGroupAllNodes", "not exist group gid", gid)
 		return "", errors.New(e)
 	}
 	g := getSDKGroupNodes(gid)
@@ -257,7 +258,7 @@ func SdkProtocol_broadcastInGroupOthers(gID, msg string) (string, error) { // wi
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		e := fmt.Sprintf("broadcastInGroupOthers, group gid: %v not exist", gid)
-		fmt.Println(e)
+		common.Debug("broadcastInGroupOthers", "not exist group gid", gid)
 		return "", errors.New(e)
 	}
 	return BroadcastToGroup(gid, msg, Sdkprotocol_type, false)
@@ -267,7 +268,7 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 	gid, _ := discover.HexID(gID)
 	if checkExistGroup(gid) == false {
 		e := fmt.Sprintf("broadcastInGroupAll, group gid: %v not exist", gid)
-		fmt.Println(e)
+		common.Debug("broadcastInGroupAll", "not exist group gid", gid)
 		return "", errors.New(e)
 	}
 	return BroadcastToGroup(gid, msg, Sdkprotocol_type, true)
@@ -276,7 +277,7 @@ func SdkProtocol_broadcastInGroupAll(gID, msg string) (string, error) { // withi
 func SdkProtocol_getGroup(gID string) (int, string) {
 	gid, err := discover.HexID(gID)
 	if err != nil || checkExistGroup(gid) == false {
-		fmt.Printf("broadcastInGroupAll, group gID: %v, hexid-gid: %v not exist\n", gID, gid)
+		common.Debug("broadcastInGroupAll", "not exist group gID", gID, "hexid-gid", gid)
 		return 0, ""
 	}
 	return getGroup(gid, Sdkprotocol_type)
@@ -323,7 +324,7 @@ func CreateSDKGroup(threshold string, enodes []string, subGroup bool) (string, i
 	for i, e := range enodes {
 		node, err := discover.ParseNode(e)
 		if err != nil {
-			fmt.Printf("CreateSDKGroup, parse err: %v\n", e)
+			common.Info("CreateSDKGroup", "parse err", e)
 			return "", 0, "enode wrong format"
 		}
 		enode = append(enode, node)
@@ -337,20 +338,20 @@ func CreateSDKGroup(threshold string, enodes []string, subGroup bool) (string, i
 	sort.Sort(sort.StringSlice(tmpEnodes))
 	id := []byte("")
 	for i, un := range tmpEnodes {
-		fmt.Printf("for enode: %v\n", un)
+		common.Debug("CreateSDKGroup", "for enode", un)
 		node, err := discover.ParseNode(un)
 		if err != nil {
-			fmt.Printf("CreateSDKGroup, parse err: %v\n", un)
+			common.Debug("CreateSDKGroup", "parse err", un)
 			return "", 0, "enode wrong format"
 		}
-		fmt.Printf("for selfid: %v, node.ID: %v\n", selfid, node.ID)
+		common.Debug("CreateSDKGroup", "for selfid", selfid, "node.ID", node.ID)
 		if subGroup {
 			if i >= nodeNum0 {
 				continue// for check enode parse
 			}
 		}
 		n := fmt.Sprintf("%v", node.ID)
-		fmt.Printf("CreateSDKGroup, n: %v\n", n)
+		common.Debug("CreateSDKGroup", "n", n)
 		if len(id) == 0 {
 			id = crypto.Keccak512([]byte(node.ID.String()))
 		} else {
@@ -358,7 +359,7 @@ func CreateSDKGroup(threshold string, enodes []string, subGroup bool) (string, i
 		}
 	}
 	gid, err := discover.BytesID(id)
-	fmt.Printf("CreateSDKGroup, gid <- id: %v, err: %v\n", gid, err)
+	common.Debug("CreateSDKGroup", "gid <- id", gid, "err", err)
 	discover.GroupSDK.Lock()
 	exist := false
 	for i := range SdkGroup {
@@ -444,7 +445,7 @@ func InitIPPort(port int) {
 func getLocalIP() string {
 	netInterfaces, err := net.Interfaces()
 	if err != nil {
-		fmt.Println("net.Interfaces failed, err:", err.Error())
+		common.Debug("getLocalIP", "net.Interfaces failed, err", err.Error())
 		return ""
 	}
 
@@ -474,13 +475,13 @@ func getLocalIP() string {
 								internetIP = ip.String()
 							}
 						}
-						 fmt.Printf("==== getLocalIP() ====, %v: iface: %v, ip: %v\n", i, iface, ip)
+						common.Debug("==== getLocalIP() ====", "i", i, "iface", iface, "ip", ip)
 					}
 				}
 			}
 		}
 	}
-	fmt.Printf("==== getLocalIP() ====, internetIP: %v, wlanIP: %v, loopIP: %v\n", internetIP, wlanIP, loopIP)
+	common.Debug("==== getLocalIP() ====", "internetIP", internetIP, "wlanIP", "wlanIP, (loopIP)", loopIP)
 	if internetIP != "" {
 		//fmt.Printf("\nip: %v\n", internetIP)
 		return internetIP
@@ -491,7 +492,7 @@ func getLocalIP() string {
 		//fmt.Printf("\nip: %v\n", loopIP)
 		return loopIP
 	}
-	fmt.Printf("ip is nil\n")
+	common.Debug("getLocalIP()", "ip", "is nil")
 	return ""
 }
 

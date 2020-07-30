@@ -158,7 +158,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	} else {
 	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,rch)
 	    ret, tip, cherr := GetChannelValue(waitall,rch)
-	    common.Debug("=================sign==============","return result",ret,"err",cherr,"key",wsid)
+	    common.Debug("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		    ch <- res
@@ -3203,7 +3203,7 @@ func DecryptMsg(cm string) (string, error) {
 
 ///
 func SendMsgToPeer(enodes string, msg string) {
-	common.Debug("=========SendMsgToPeer===========","msg",msg,"send to peer",enodes)
+//	common.Debug("=========SendMsgToPeer===========","msg",msg,"send to peer",enodes)
 	en := strings.Split(string(enodes[8:]), "@")
 	cm, err := EncryptMsg(msg, en[0])
 	if err != nil {
@@ -3213,7 +3213,7 @@ func SendMsgToPeer(enodes string, msg string) {
 
 	err = SendToPeer(enodes, cm)
 	if err != nil {
-	    common.Debug("=========SendMsgToPeer,send to peer fail===========","msg",msg,"send to peer",enodes,"err",err)
+//	    common.Debug("=========SendMsgToPeer,send to peer fail===========","msg",msg,"send to peer",enodes,"err",err)
 	    return
 	}
 }

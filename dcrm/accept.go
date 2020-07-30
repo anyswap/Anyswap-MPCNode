@@ -296,7 +296,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	    PubKeyDataChan <- kdtmp
 	}()
 
-	common.Debug("=====================AcceptSign,finish.========================","new deal",de,"new accept",acp,"new status",sts,"key",key)
+	common.Debug("=====================AcceptSign,finish.========================","key",key)
 	return "", nil
 }
 

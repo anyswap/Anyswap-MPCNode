@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"time"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	//"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 //commitment question 2
@@ -89,7 +89,7 @@ func GetSafeRandomPrimeInt(length int) *big.Int {
 		rndInt = new(big.Int).Mul(rndInt, two)
 		rndInt = new(big.Int).Add(rndInt, one)
 		if rndInt.ProbablyPrime(512) {
-			common.Debug("======================Success Generate Safe Random Prime.====================")
+			fmt.Printf("======================Success Generate Safe Random Prime.====================\n")
 			break
 		}
 
@@ -106,7 +106,7 @@ func GetSafeRandomPrimeInt2(length int, rndInt *big.Int) *big.Int {
 	rndInt = new(big.Int).Mul(rndInt, two)
 	rndInt = new(big.Int).Add(rndInt, one)
 	if rndInt.ProbablyPrime(512) {
-		common.Debug("======================Success Generate Safe Random Prime.====================")
+		fmt.Printf("======================Success Generate Safe Random Prime.====================\n")
 		return rndInt
 	}
 

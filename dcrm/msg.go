@@ -543,7 +543,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if err2 == nil {
 	    sd,ok := m.(*SignData)
 	    if ok {
-		common.Debug("===============RecvMsg.Run===================","sign data",sd,"msgprex",sd.MsgPrex,"key",sd.Key)
+		common.Debug("===============RecvMsg.Run,it is sign data===================","msgprex",sd.MsgPrex,"key",sd.Key)
 
 		w := workers[workid]
 		w.sid = sd.Key
@@ -571,7 +571,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 			}
 
-			common.Debug("===============RecvMsg.Run,finish sign===================","get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+			common.Debug("===============RecvMsg.Run, sign success ===================","i",i,"get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 
 			ww.rsv.PushBack(ret)
 			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
@@ -579,7 +579,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return true 
 		    }
 		    
-		    common.Debug("===============RecvMsg.Run===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+		    common.Debug("===============RecvMsg.Run,sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}	
 		

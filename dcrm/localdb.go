@@ -26,8 +26,8 @@ import (
 
 var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
-	PubKeyDataChan = make(chan KeyData, 10000)
-	SkU1Chan = make(chan KeyData, 10000)
+	PubKeyDataChan = make(chan KeyData, 20000)
+	SkU1Chan = make(chan KeyData, 20000)
 	cache = 0 
 	handles = 0
 )
@@ -251,14 +251,17 @@ func SavePubKeyDataToDb() {
 	for {
 		kd := <-PubKeyDataChan
 		if db != nil {
+			//common.Debug("=================SavePubKeyDataToDb, db is not nil ===============","key",kd.Key)
 		    if kd.Data == "CLEAN" {
 			err := db.Delete(kd.Key)
 			if err != nil {
+				common.Debug("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
 			    //PubKeyDataChan <- kd
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
 			if err != nil {
+				common.Debug("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
 			    dir := GetDbDir()
 			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -273,11 +276,13 @@ func SavePubKeyDataToDb() {
 				    }
 			    }
 			    if err != nil {
+				common.Debug("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
 				//dbsk = nil
 			    } else {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
+					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
 				    //PubKeyDataChan <- kd
 				}
 			    }
@@ -286,6 +291,7 @@ func SavePubKeyDataToDb() {
 			//db.Close()
 		    }
 		} else {
+			common.Debug("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
 			//PubKeyDataChan <- kd
 		}
 
@@ -461,13 +467,16 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 
 func GetValueFromPubKeyData(key string) (bool,interface{}) {
     if key == "" {
+	    common.Debug("========================GetValueFromPubKeyData, param err=======================","key",key)
 	return false,nil
     }
 
     datmp, exsit := LdbPubKeyData.ReadMap(key)
     if !exsit {
+	    common.Debug("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
+	    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
 	    return false,nil
 	}
 

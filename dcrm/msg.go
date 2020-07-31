@@ -383,20 +383,20 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	for _, node := range nodes {
 	    node2 := ParseNode(node)
 	    foundeid := false
-	    for k,v := range mms {
+	    for kk,v := range mms {
 		if strings.EqualFold(v,node2) {
 		    foundeid = true
 		    found := false
 		    for _,vv := range ret {
-			    common.Debug("===================== CheckReply,lockout===============","ac.Sigs",ac.Sigs,"k",k,"key",key,"vv.From",vv.From,"mms[k+1]",mms[k+1])
-			if strings.EqualFold(vv.From,mms[k+1]) { //allow user login diffrent node
+			    common.Debug("===================== CheckReply,lockout===============","ac.Sigs",ac.Sigs,"kk",kk,"key",key,"vv.From",vv.From,"mms[kk+1]",mms[kk+1])
+			if strings.EqualFold(vv.From,mms[kk+1]) { //allow user login diffrent node
 			    found = true
 			    break
 			}
 		    }
 
 		    if !found {
-			common.Debug("===================== CheckReply,lockout,return false==================","ac.Sigs",ac.Sigs,"k",k,"key",key)
+			common.Debug("===================== CheckReply,lockout,return false==================","ac.Sigs",ac.Sigs,"kk",kk,"key",key)
 			return false
 		    }
 
@@ -429,20 +429,20 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	for _, node := range nodes {
 	    node2 := ParseNode(node)
 	    foundeid := false
-	    for k,v := range mms {
+	    for kk,v := range mms {
 		if strings.EqualFold(v,node2) {
 		    foundeid = true
 		    found := false
 		    for _,vv := range ret {
-			    common.Debug("===================== CheckReply,sign===============","ac.Sigs",ac.Sigs,"k",k,"key",key,"vv.From",vv.From,"mms[k+1]",mms[k+1])
-			if strings.EqualFold(vv.From,mms[k+1]) { //allow user login diffrent node
+			    common.Debug("===================== CheckReply,sign===============","ac.Sigs",ac.Sigs,"kk",kk,"key",key,"vv.From",vv.From,"mms[kk+1]",mms[kk+1])
+			if strings.EqualFold(vv.From,mms[kk+1]) { //allow user login diffrent node
 			    found = true
 			    break
 			}
 		    }
 
 		    if !found {
-			common.Debug("===================== CheckReply,sign,return false==================","ac.Sigs",ac.Sigs,"k",k,"key",key)
+			common.Debug("===================== CheckReply,sign,return false==================","ac.Sigs",ac.Sigs,"kk",kk,"key",key)
 			return false
 		    }
 

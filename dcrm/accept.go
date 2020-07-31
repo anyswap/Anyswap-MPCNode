@@ -290,6 +290,18 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
+	//////bug///////
+	exsit,da = GetValueFromPubKeyData(key)
+	if exsit {
+		ac,ok = da.(*AcceptSignData)
+		if ok {
+			if ac.Status != "Pending" || ac.Rsv != "" {
+				return "",nil
+			}
+		}
+	}
+	////////////////
+
 	LdbPubKeyData.WriteMap(key, ac2)
 	go func() {
 	    kdtmp := KeyData{Key: []byte(key), Data: es}

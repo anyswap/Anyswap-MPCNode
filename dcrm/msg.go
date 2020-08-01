@@ -96,7 +96,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 
 	raw := s 
 	common.Debug("=================GetRawReply call CheckRaw =====================")
-	_,from,_,txdata,err := CheckRaw(raw)
+	keytmp,from,_,txdata,err := CheckRaw(raw)
 	if err != nil {
 	    continue
 	}
@@ -139,7 +139,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
-	    common.Debug("=================GetRawReply,it is TxDataSign=================","sig",sig)
+	    common.Debug("=================GetRawReply,the list item is TxDataSign=================","key",keytmp,"from",from,"sig",sig)
 	    reply := &RawReply{From:from,Accept:"true",TimeStamp:sig.TimeStamp}
 	    tmp,ok := ret[from]
 	    if !ok {
@@ -216,7 +216,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Debug("=================GetRawReply,it is TxDataAcceptSign================","acceptsig",acceptsig)
+	    common.Debug("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"acceptsig",acceptsig)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -434,7 +434,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    foundeid = true
 		    found := false
 		    for _,vv := range ret {
-			    common.Debug("===================== CheckReply,sign===============","ac.Sigs",ac.Sigs,"kk",kk,"key",key,"vv.From",vv.From,"mms[kk+1]",mms[kk+1])
+			    common.Debug("===================== CheckReply, mms[kk+1] must in ret map===============","key",key,"ret[...]",vv.From,"mms[kk+1]",mms[kk+1],"ac.Sigs",ac.Sigs)
 			if strings.EqualFold(vv.From,mms[kk+1]) { //allow user login diffrent node
 			    found = true
 			    break
@@ -442,7 +442,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    }
 
 		    if !found {
-			common.Debug("===================== CheckReply,sign,return false==================","ac.Sigs",ac.Sigs,"kk",kk,"key",key)
+			common.Debug("===================== CheckReply,mms[kk+1] no find in ret map and return fail==================","key",key,"mms[kk+1]",mms[kk+1])
 			return false
 		    }
 

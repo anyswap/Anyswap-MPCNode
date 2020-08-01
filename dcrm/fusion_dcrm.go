@@ -699,7 +699,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-	common.Debug("================CheckRaw, it is reqaddr tx=================","raw ",raw,"key ",key,"req ",&req)
+//	common.Debug("================CheckRaw, it is reqaddr tx=================","raw ",raw,"key ",key,"req ",&req)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
     }
     
@@ -788,7 +788,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
 	    }
 
-	    common.Debug("================CheckRaw=============","cur_enode ",cur_enode,"from ",from.Hex(),"ac.Sigs ",ac.Sigs)
+//	    common.Debug("================CheckRaw=============","cur_enode ",cur_enode,"from ",from.Hex(),"ac.Sigs ",ac.Sigs)
 	    if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
 		return "","","",nil,fmt.Errorf("invalid lockout account")
 	    }
@@ -806,7 +806,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
 
-	common.Debug("=================CheckRaw, it is lockout tx================","raw ",raw,"key ",key,"lo ",&lo)
+//	common.Debug("=================CheckRaw, it is lockout tx================","raw ",raw,"key ",key,"lo ",&lo)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&lo,nil
     }
 
@@ -844,7 +844,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	nc,_ := GetGroup(groupid)
 	if nc < limit || nc > nodecnt {
-	    common.Debug("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
+//	    common.Debug("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 
@@ -878,7 +878,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + get_sign_hash(hash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
-	common.Debug("=================CheckRaw, it is sign tx==================","raw ",raw,"key ",key,"sig ",&sig)
+//	common.Debug("=================CheckRaw, it is sign tx==================","raw ",raw,"key ",key,"sig ",&sig)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
@@ -947,7 +947,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
 
-	common.Debug("=================CheckRaw, it is acceptreqaddr tx====================","raw ",raw,"key ",acceptreq.Key,"acceptreq ",&acceptreq)
+//	common.Debug("=================CheckRaw, it is acceptreqaddr tx====================","raw ",raw,"key ",acceptreq.Key,"acceptreq ",&acceptreq)
 	return "",from.Hex(),"",&acceptreq,nil
     }
 
@@ -977,7 +977,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
 
-	common.Debug("=================CheckRaw, it is acceptlockout tx================","raw ",raw,"key ",acceptlo.Key,"acceptlo ",&acceptlo)
+//	common.Debug("=================CheckRaw, it is acceptlockout tx================","raw ",raw,"key ",acceptlo.Key,"acceptlo ",&acceptlo)
 	return "",from.Hex(),"",&acceptlo,nil
     }
 
@@ -1020,7 +1020,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accepter")
 	}
 	
-	common.Debug("=================CheckRaw, it is acceptsign tx====================","raw ",raw,"key ",acceptsig.Key,"acceptsig ",&acceptsig)
+//	common.Debug("=================CheckRaw, it is acceptsign tx====================","raw ",raw,"key ",acceptsig.Key,"acceptsig ",&acceptsig)
 	return "",from.Hex(),"",&acceptsig,nil
     }
 
@@ -1049,7 +1049,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
 	}
 
-	common.Debug("=================CheckRaw, it is acceptreshare tx=====================","raw ",raw,"key ",acceptrh.Key,"acceptrh ",&acceptrh)
+//	common.Debug("=================CheckRaw, it is acceptreshare tx=====================","raw ",raw,"key ",acceptrh.Key,"acceptrh ",&acceptrh)
 	return "",from.Hex(),"",&acceptrh,nil
     }
 
@@ -1063,8 +1063,8 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	return fmt.Errorf("init accept data fail")
     }
 
-    common.Debug("=====================InitAcceptData call CheckRaw ================")
     key,from,nonce,txdata,err := CheckRaw(raw)
+    common.Debug("=====================InitAcceptData,get result from call CheckRaw ================","key",key,"from",from,"err",err)
     if err != nil {
 	common.Debug("===============InitAcceptData,check raw===================","err ",err)
 	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
@@ -2499,7 +2499,7 @@ func DisAcceptMsg(raw string,workid int) {
     }
 
     common.Debug("=====================DisAcceptMsg call CheckRaw================","raw ",raw)
-    key,_,_,txdata,err := CheckRaw(raw)
+    key,from,_,txdata,err := CheckRaw(raw)
     common.Debug("=====================DisAcceptMsg=================","key",key,"err",err)
     if err != nil {
 	return
@@ -2559,20 +2559,23 @@ func DisAcceptMsg(raw string,workid int) {
 	}
     }
     
-    _,ok = txdata.(*TxDataSign)
+    sig2,ok := txdata.(*TxDataSign)
     if ok {
+	    common.Debug("======================DisAcceptMsg, get the msg and it is sign tx===========================","key",key,"from",from,"raw",raw)
 	if Find(w.msg_acceptsignres, raw) {
+	    common.Debug("======================DisAcceptMsg,the msg is sign tx,and already in list.===========================","key",key,"from",from)
 	    return
 	}
 
+	    common.Debug("======================DisAcceptMsg,the msg is sign tx,and put it into list.===========================","key",key,"from",from,"sig",sig2)
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,key) {
-		common.Debug("=====================DisAcceptMsg,check reply fail===================","key",key)
+		common.Debug("=====================DisAcceptMsg,check reply fail===================","key",key,"from",from)
 		return
 	    }
 
-	    common.Debug("=====================DisAcceptMsg,check reply success===================","key",key)
+	    common.Debug("=====================DisAcceptMsg,check reply success and will set timeout channel===================","key",key,"from",from)
 	    w.bacceptsignres <- true
 	    exsit,da := GetValueFromPubKeyData(key)
 	    if !exsit {
@@ -2671,16 +2674,21 @@ func DisAcceptMsg(raw string,workid int) {
     
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if ok {
+	    common.Debug("======================DisAcceptMsg, get the msg and it is accept sign tx===========================","key",key,"from",from,"raw",raw)
 	if Find(w.msg_acceptsignres, raw) {
+	    common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and already in list.===========================","sig key",key,"from",from)
 	    return
 	}
 
+	    common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and put it into list.===========================","sig key",key,"from",from,"accept sig",acceptsig)
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,acceptsig.Key) {
+		    common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and check reply fail.===========================","sig key",key,"from",from)
 		return
 	    }
 
+	    common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and check reply success and will set timeout channel.===========================","sig key",key,"from",from)
 	    w.bacceptsignres <- true
 	    exsit,da := GetValueFromPubKeyData(acceptsig.Key)
 	    if !exsit {
@@ -2780,7 +2788,7 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 
 func RpcAcceptSign(raw string) (string, string, error) {
     common.Debug("=====================RpcAcceptSign call CheckRaw ================","raw",raw)
-    _,_,_,txdata,err := CheckRaw(raw)
+    _,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	common.Debug("=====================RpcAcceptSign,CheckRaw ================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
@@ -2795,7 +2803,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
-	    common.Debug("=====================RpcAcceptSign, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptsig.Key)
+	    common.Debug("=====================RpcAcceptSign, SendMsgToDcrmGroup ================","key",acceptsig.Key,"from",from,"raw",raw)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -2872,7 +2880,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 
 func Sign(raw string) (string, string, error) {
     common.Debug("=====================Sign call CheckRaw ================","raw",raw)
-    key,_,_,txdata,err := CheckRaw(raw)
+    key,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	common.Debug("=====================Sign,CheckRaw ================","raw",raw,"err",err)
 	return "",err.Error(),err
@@ -2883,7 +2891,7 @@ func Sign(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataSign",fmt.Errorf("check raw fail,it is not *TxDataSign")
     }
 
-    common.Debug("=====================Sign, SendMsgToDcrmGroup ================","raw",raw,"gid",sig.GroupId,"key",key)
+    common.Debug("=====================Sign, SendMsgToDcrmGroup ================","key",key,"from",from,"raw",raw)
     SendMsgToDcrmGroup(raw, sig.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil

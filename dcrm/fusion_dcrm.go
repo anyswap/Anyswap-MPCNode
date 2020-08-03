@@ -2804,7 +2804,14 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
 	    common.Debug("=====================RpcAcceptSign, SendMsgToDcrmGroup ================","key",acceptsig.Key,"from",from,"raw",raw)
-	    SendMsgToDcrmGroup(raw, ac.GroupId)
+	    ///////bug/////////
+	    msg,err := Compress([]byte(raw))
+	    if err != nil {
+		    common.Debug("================RpcAcceptSign,compress error =======================","err",err,"key",acceptsig.Key)
+			return "Failure",err.Error(),err
+	    }
+	    ///////////////////
+	    SendMsgToDcrmGroup(msg, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
 	}
@@ -2892,7 +2899,14 @@ func Sign(raw string) (string, string, error) {
     }
 
     common.Debug("=====================Sign, SendMsgToDcrmGroup ================","key",key,"from",from,"raw",raw)
-    SendMsgToDcrmGroup(raw, sig.GroupId)
+    ///////bug/////////
+    msg,err := Compress([]byte(raw))
+    if err != nil {
+	    common.Debug("================sign,compress error =======================","err",err,"key",key)
+		return "",err.Error(),err
+    }
+    ///////////////////
+    SendMsgToDcrmGroup(msg, sig.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }

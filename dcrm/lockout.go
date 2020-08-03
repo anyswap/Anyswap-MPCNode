@@ -3144,7 +3144,7 @@ func SendMsgToDcrmGroup(msg string, groupid string) {
     if err2 == nil {
 	_,err2 = BroadcastInGroupOthers(groupid, msg2)
 	if err2 != nil {
-	    common.Debug("=========SendMsgToDcrmGroup,send msg to dcrm group=============","msg",msg,"groupid",groupid,"err",err)
+	    common.Debug("=========SendMsgToDcrmGroup,send msg to dcrm group=============","msg",msg,"groupid",groupid,"err",err2)
 	}
     }
 	return

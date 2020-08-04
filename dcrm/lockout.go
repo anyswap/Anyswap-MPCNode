@@ -3139,16 +3139,6 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 
 func SendMsgToDcrmGroup(msg string, groupid string) {
 	common.Debug("=========SendMsgToDcrmGroup=============","msg",msg,"groupid",groupid)
-    ///////bug/////////
-    msg2,err2 := Compress([]byte(msg))
-    if err2 == nil {
-	_,err2 = BroadcastInGroupOthers(groupid, msg2)
-	if err2 != nil {
-	    common.Debug("=========SendMsgToDcrmGroup,send msg to dcrm group=============","msg",msg,"groupid",groupid,"err",err2)
-	}
-    }
-	return
-    ///////////////////
 	_,err := BroadcastInGroupOthers(groupid, msg)
 	if err != nil {
 	    common.Debug("=========SendMsgToDcrmGroup,send msg to dcrm group=============","msg",msg,"groupid",groupid,"err",err)

@@ -1634,7 +1634,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				timeout := make(chan bool, 1)
 				go func(wid int) {
 					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := 2 * time.Minute
+					agreeWaitTime := 1 * time.Minute
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 
 					wtmp2 := workers[wid]

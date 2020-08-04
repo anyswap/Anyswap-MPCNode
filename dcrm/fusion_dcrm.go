@@ -1634,7 +1634,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				timeout := make(chan bool, 1)
 				go func(wid int) {
 					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := 1 * time.Minute
+					agreeWaitTime := 2 * time.Minute
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 
 					wtmp2 := workers[wid]
@@ -2804,7 +2804,13 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
 	    common.Debug("=====================RpcAcceptSign, SendMsgToDcrmGroup ================","key",acceptsig.Key,"from",from,"raw",raw)
-	    SendMsgToDcrmGroup(raw, ac.GroupId)
+	    ///////bug/////////
+	    msg,err := Compress([]byte(raw))
+	    if err != nil {
+		return "Failure",err.Error(),err
+	    }
+	    ///////////////////
+	    SendMsgToDcrmGroup(msg, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
 	}
@@ -2892,7 +2898,13 @@ func Sign(raw string) (string, string, error) {
     }
 
     common.Debug("=====================Sign, SendMsgToDcrmGroup ================","key",key,"from",from,"raw",raw)
-    SendMsgToDcrmGroup(raw, sig.GroupId)
+    ///////bug/////////
+    msg,err := Compress([]byte(raw))
+    if err != nil {
+	return "",err.Error(),err
+    }
+    ///////////////////
+    SendMsgToDcrmGroup(msg, sig.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }

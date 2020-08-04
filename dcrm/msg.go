@@ -470,6 +470,12 @@ func Call(msg interface{}, enode string) {
 	    return
 	}
 
+	////////
+	raw,err := UnCompress(s)
+	if err == nil {
+		s = raw
+	}
+	////////
 	SetUpMsgList(s, enode)
 }
 

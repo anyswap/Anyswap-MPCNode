@@ -19,16 +19,27 @@ package dcrm
 
 import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"strings"
 	"math/big"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"time"
+	"fmt"
 )
 
 var (
 	PrePubKeyDataChan = make(chan KeyData, 2000)
-	PrePubKeyDataQueueChan = make(chan *PrePubData, 1000)
+	//PrePubKeyDataQueueChan = make(chan *PrePubData, 1000)
+	PreSignData  = common.NewSafeMap(10) //make(map[string][]byte)
 	predb *ethdb.LDBDatabase
+	PrePubDataCount = 1000
+	SignChan = make(chan *RpcSignData, 10000)
 )
+
+type RpcSignData struct {
+	Raw string
+	PubKey string
+	MsgHash []string
+}
 
 type PreSign struct {
 	Pub string
@@ -38,12 +49,185 @@ type PreSign struct {
 }
 
 type PrePubData struct {
+	Key string
 	K1 *big.Int
 	R *big.Int
 	Ry *big.Int
 	Sigma1 *big.Int
 	Gid string
 	Index int
+	Used bool
+}
+
+type PickHashKey struct {
+	Hash string
+	PickKey string
+}
+
+func GetTotalCount(pub string) int {
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		return len(datas)
+	}
+
+	return 0
+}
+
+func NeedPreSign(pub string) bool {
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		if len(datas) >= PrePubDataCount {
+			return false
+		}
+	}
+
+	return true 
+}
+
+func GetPrePubData(pub string,key string) *PrePubData {
+	if pub == "" || key == "" {
+		return nil
+	}
+
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		for _,v := range datas {
+			if strings.EqualFold(v.Key,key) {
+				return v
+			}
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func PutPreSign(pub string,val *PrePubData) {
+	if val == nil {
+		return
+	}
+
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		datas = append(datas,val)
+		PreSignData.WriteMap(strings.ToLower(pub),datas)
+		return
+	}
+
+	datas := make([]*PrePubData,0)
+	datas = append(datas,val)
+	PreSignData.WriteMap(strings.ToLower(pub),datas)
+}
+
+func DeletePrePubData(pub string,key string) {
+	if pub == "" || key == "" {
+		return
+	}
+	
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
+	if !exsit {
+		return
+	}
+
+	index := -1
+	datas := data.([]*PrePubData)
+	for k,v := range datas {
+		if strings.EqualFold(v.Key,key) {
+			index = k
+			break
+		}
+	}
+
+	if index == 0 && len(datas) == 1 {
+		datas = make([]*PrePubData,0)
+		PreSignData.WriteMap(strings.ToLower(pub),datas)
+	} else if index == 0 {
+		arr := datas[1:]
+		PreSignData.WriteMap(strings.ToLower(pub),arr)
+	} else if index == (len(datas)-1) {
+		arr := datas[:(len(datas)-1)]
+		PreSignData.WriteMap(strings.ToLower(pub),arr)
+	} else {
+		arr1 := datas[:index]
+		arr2 := datas[index+1:]
+		arr := append(arr1, arr2...)
+		PreSignData.WriteMap(strings.ToLower(pub),arr)
+	}
+}
+
+func PickPrePubData(pub string) string {
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		for _,v := range datas {
+			if !v.Used {
+				return v.Key
+			}
+		}
+	}
+
+	return ""
+}
+
+func SetPrePubDataUseStatus(pub string,key string,used bool ) {
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
+	if !exsit {
+		return
+	}
+
+	datas := data.([]*PrePubData)
+	for _,v := range datas {
+		if strings.EqualFold(v.Key,key) {
+			v.Used = used
+			return
+		}
+	}
+}
+
+type SignBrocastData struct {
+	Raw string
+	PickHash []*PickHashKey
+}
+
+func CompressSignBrocastData(raw string,pickhash []*PickHashKey) (string,error) {
+	if raw == "" || pickhash == nil {
+		return "",fmt.Errorf("sign brocast data error")
+	}
+
+	s := &SignBrocastData{Raw:raw,PickHash:pickhash}
+	send,err := Encode2(s)
+	if err != nil {
+		return "",err
+	}
+
+	ret,err := Compress([]byte(send))
+	if err != nil {
+		return "",err
+	}
+
+	return ret,nil
+}
+
+func UnCompressSignBrocastData(data string) (*SignBrocastData,error) {
+	if data == "" {
+		return nil,fmt.Errorf("Sign Brocast Data error")
+	}
+
+	s,err := UnCompress(data)
+	if err != nil {
+		return nil,err
+	}
+
+	ret,err := Decode2(s,"SignBrocastData")
+	if err != nil {
+		return nil,err
+	}
+
+	return ret.(*SignBrocastData),nil
 }
 
 func GetPreDbDir() string {
@@ -52,7 +236,7 @@ func GetPreDbDir() string {
 	return dir
 }
 
-func GetAllPrePubkeyDataFromDb() {
+/*func GetAllPrePubkeyDataFromDb() {
 	if predb != nil {
 	    iter := predb.NewIterator()
 	    for iter.Next() {
@@ -76,6 +260,7 @@ func GetAllPrePubkeyDataFromDb() {
 	    iter.Release()
 	}
 }
+*/
 
 func SavePrePubKeyDataToDb() {
 	for {

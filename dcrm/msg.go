@@ -614,7 +614,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    if ok {
 		common.Debug("===============RecvMsg.Run,it is sign data===================","msgprex",sd.MsgPrex,"key",sd.Key)
 
-		pre := <-PrePubKeyDataQueueChan
+		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
+		pubkeyhex := hex.EncodeToString(ys)
+		pre := GetPrePubData(pubkeyhex,sd.PickKey)
 		if pre == nil {
 			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
 			    ch <- res2
@@ -622,6 +624,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		}
 
 		common.Debug("========================RecvMsg.Run,xxxxx=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1,"msgprex",sd.MsgPrex,"key",sd.Key)
+
 		w := workers[workid]
 		w.sid = sd.Key
 		//w.groupid = sd.GroupId
@@ -631,8 +634,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		w.DcrmFrom = sd.DcrmFrom
 
 		///////
-		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
-		pubkeyhex := hex.EncodeToString(ys)
 		dcrmpks, _ := hex.DecodeString(pubkeyhex)
 		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 		if exsit {
@@ -687,6 +688,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false 
 	    }
 	}
+	
 	m, err2 = Decode2(res, "PreSign")
 	if err2 == nil {
 	    ps,ok := m.(*PreSign)
@@ -758,9 +760,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				return false
 			}
 
-			if len(PrePubKeyDataQueueChan) < 1000 {
+			if NeedPreSign(ps.Pub) {
 				common.Debug("========================PreSignxxx,=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1)
-				PrePubKeyDataQueueChan <- pre
+				pre.Key = w.sid
+				pre.Gid = w.groupid
+				pre.Index = ps.Index
+				pre.Used = false
+				PutPreSign(ps.Pub,pre)
 			}
 			
 			res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
@@ -768,6 +774,17 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return true
 	    }
 	}
+
+	signbrocast,err := UnCompressSignBrocastData(res)
+	if err == nil {
+		errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
+		if errtmp == nil {
+			return true
+		}
+
+		return false
+	}
+
 	////////////////////////////
 
 	errtmp := InitAcceptData(res,workid,self.sender,ch)

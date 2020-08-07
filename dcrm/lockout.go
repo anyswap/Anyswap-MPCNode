@@ -96,7 +96,7 @@ func SetLockOutNonce(account string,nonce string) (string, error) {
 	return "", nil
 }
 
-func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,ch chan interface{}) {
+func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickhash []*PickHashKey ,ch chan interface{}) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 	if !exsit {
@@ -159,7 +159,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	    result = ret
 	    cherrtmp = cherr
 	} else {
-	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,rch)
+	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickhash,rch)
 	    ret, tip, cherr := GetChannelValue(waitall,rch)
 	    common.Debug("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
@@ -186,7 +186,6 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 		    ch <- res
 		    return
 	    }
-
 	}
 
 	if result != "" {
@@ -249,9 +248,10 @@ type SignData struct {
     Cointype string
     Pkx *big.Int
     Pky *big.Int
+    PickKey string
 }
 
-func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, ch chan interface{}) string {
+func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, pickhash []*PickHashKey,ch chan interface{}) string {
 
     	tmp := make([]string,0)
 	for _,v := range txhash {
@@ -279,8 +279,21 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 	    go func(vv string) {
 		defer wg.Done()
 
+		//get pickkey
+		pickkey := ""
+		for _,val := range pickhash {
+			if strings.EqualFold(val.Hash,("0x" + vv)) || strings.EqualFold(val.Hash,vv) {
+				pickkey = val.PickKey
+				break
+			}
+		}
+		if pickkey == "" {
+			return
+		}
+		//
+
 		key := Keccak256Hash([]byte(strings.ToLower(msgprex + "-" + vv))).Hex()
-		sd := &SignData{MsgPrex:msgprex,Key:key,Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky}
+		sd := &SignData{MsgPrex:msgprex,Key:key,Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky,PickKey:pickkey}
 		common.Debug("======================sign_ec=================","vv",vv,"msgprex",msgprex,"key",key)
 
 		val,err := Encode2(sd)
@@ -2968,7 +2981,7 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 		return nil
 	}
 	common.Debug("=====================PreSign_ec3, calc r finish=================","key",msgprex)
-	ret := &PrePubData{K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Index:index}
+	ret := &PrePubData{Key:msgprex,K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Index:index,Used:false}
 	return ret
 }
 

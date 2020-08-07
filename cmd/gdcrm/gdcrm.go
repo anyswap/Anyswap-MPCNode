@@ -67,7 +67,7 @@ func StartDcrm(c *cli.Context) {
 	startP2pNode()
 	time.Sleep(time.Duration(5) * time.Second)
 	rpcdcrm.RpcInit(rpcport)
-	dcrm.Start(waitmsg,trytimes)
+	dcrm.Start(waitmsg,trytimes,presignnum)
 	select {} // note for server, or for client
 }
 
@@ -97,6 +97,7 @@ var (
 	color   bool
 	waitmsg   uint64
 	trytimes   uint64
+	presignnum   uint64
 
 	app       = cli.NewApp()
 	statDir   = "stat"
@@ -142,6 +143,7 @@ func init() {
 		cli.BoolFlag{Name: "color", Usage: "output log in color text format", Destination: &color},
 		cli.Uint64Flag{Name: "waitmsg", Value: 100, Usage: "the time to wait p2p msg", Destination: &waitmsg},
 		cli.Uint64Flag{Name: "trytimes", Value: 1, Usage: "the times to try key-gen/sign", Destination: &trytimes},
+		cli.Uint64Flag{Name: "presignnum", Value: 1000, Usage: "the total of pre-sign data", Destination: &presignnum},
 	}
 }
 

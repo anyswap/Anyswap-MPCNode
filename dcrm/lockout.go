@@ -49,7 +49,7 @@ import (
 )
 
 func GetSignNonce(account string) (string, string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
+/*	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
@@ -59,14 +59,17 @@ func GetSignNonce(account string) (string, string, error) {
 	nonce, _ := new(big.Int).SetString(string(da.([]byte)), 10)
 	one, _ := new(big.Int).SetString("1", 10)
 	nonce = new(big.Int).Add(nonce, one)
-	return fmt.Sprintf("%v", nonce), "", nil
+	return fmt.Sprintf("%v", nonce), "", nil*/
+	one, _ := new(big.Int).SetString("1", 10)
+	SignNonce = new(big.Int).Add(SignNonce, one)
+	return fmt.Sprintf("%v", SignNonce), "", nil
 }
 
 func SetSignNonce(account string,nonce string) (string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
+	/*key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key, []byte(nonce))
+	LdbPubKeyData.WriteMap(key, []byte(nonce))*/
 	return "", nil
 }
 
@@ -2833,6 +2836,303 @@ func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
     }
 
     return -1
+}
+
+//msgprex = hash
+//return value is the backup for the dcrm sig
+func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch chan interface{}, id int,index int)  *PrePubData {
+	if id < 0 || id >= len(workers) {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
+		ch <- res
+		return nil
+	}
+	w := workers[id]
+	if w.groupid == "" {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+		ch <- res
+		return nil
+	}
+
+	mm := strings.Split(save, common.SepSave)
+	if len(mm) == 0 {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save data fail")}
+		ch <- res
+		return nil
+	}
+
+	// [Notes]
+	// 1. assume the nodes who take part in the signature generation as follows
+	ids := GetIds2("ECDSA", w.groupid)
+	idSign := ids[index:index+3]
+
+	common.Debug("===================PreSign_ec3=================","index",index,"w.groupid",w.groupid,"key",msgprex)
+	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
+
+	skU1, w1 := MapPrivKeyShare(cointype, w, idSign, string(sku1.Bytes()))
+	if skU1 == nil || w1 == nil {
+	    return nil
+	}
+
+	u1K, u1Gamma, commitU1GammaG := DECDSASignRoundOne(msgprex, w, idSign, ch)
+	if u1K == nil || u1Gamma == nil || commitU1GammaG == nil {
+		return nil 
+	}
+	common.Debug("===================,PreSign_ec3,round one finish=================","key",msgprex)
+
+	ukc, ukc2, ukc3 := DECDSASignPaillierEncrypt(cointype, save, w, idSign, u1K, ch)
+	if ukc == nil || ukc2 == nil || ukc3 == nil {
+		return nil
+	}
+	common.Debug("===================PreSign_ec3,paillier encrypt finish=================","key",msgprex)
+
+	zk1proof, zkfactproof := DECDSASignRoundTwo(msgprex, cointype, save, w, idSign, ch, u1K, ukc2, ukc3)
+	if zk1proof == nil || zkfactproof == nil {
+		return nil
+	}
+	common.Debug("===================PreSign_ec3,round two finish================","key",msgprex)
+
+	if !DECDSASignRoundThree(msgprex, cointype, save, w, idSign, ch, ukc) {
+		return nil
+	}
+	common.Debug("===================PreSign_ec3,round three finish================","key",msgprex)
+
+	if !DECDSASignVerifyZKNtilde(msgprex, cointype, save, w, idSign, ch, ukc, ukc3, zk1proof, zkfactproof) {
+		return nil
+	}
+	common.Debug("===================PreSign_ec3,verify zk ntilde finish==================","key",msgprex)
+
+	betaU1Star, betaU1, vU1Star, vU1 := signing.GetRandomBetaV(PaillierKeyLength, w.ThresHold)
+	common.Debug("===================PreSign_ec3,get random betaU1Star/vU1Star finish================","key",msgprex)
+
+	mkg, mkg_mtazk2, mkw, mkw_mtazk2, status := DECDSASignRoundFour(msgprex, cointype, save, w, idSign, ukc, ukc3, zkfactproof, u1Gamma, w1, betaU1Star, vU1Star,ch)
+	if !status {
+		return nil
+	}
+	common.Debug("===================PreSign_ec3,round four finish================","key",msgprex)
+
+	if !DECDSASignVerifyZKGammaW(msgprex,cointype, save, w, idSign, ukc, ukc3, zkfactproof, mkg, mkg_mtazk2, mkw, mkw_mtazk2, ch) {
+		return nil
+	} 
+	common.Debug("===================PreSign_ec3,verify zk gamma/w finish===================","key",msgprex)
+
+	u1PaillierSk := GetSelfPrivKey(cointype, idSign, w, save, ch)
+	if u1PaillierSk == nil {
+		return nil
+	}
+	common.Debug("===================PreSign_ec3,get self privkey finish====================","key",msgprex)
+
+	alpha1 := DecryptCkGamma(cointype, idSign, w, u1PaillierSk, mkg, ch)
+	if alpha1 == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3,decrypt paillier(k)XGamma finish=================","key",msgprex)
+
+	uu1 := DecryptCkW(cointype, idSign, w, u1PaillierSk, mkw, ch)
+	if uu1 == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3, decrypt paillier(k)Xw1 finish=================","key",msgprex)
+
+	delta1 := CalcDelta(alpha1, betaU1, ch, w.ThresHold)
+	if delta1 == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3, calc delta finish=================","key",msgprex)
+
+	sigma1 := CalcSigma(uu1, vU1, ch, w.ThresHold)
+	if sigma1 == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3, calc sigma finish=================","key",msgprex)
+
+	deltaSum := DECDSASignRoundFive(msgprex, cointype, delta1, idSign, w, ch)
+	if deltaSum == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3, round five finish=================","key",msgprex)
+
+	u1GammaZKProof := DECDSASignRoundSix(msgprex, u1Gamma, commitU1GammaG, w, ch)
+	if u1GammaZKProof == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3, round six finish=================","key",msgprex)
+
+	ug := DECDSASignVerifyCommitment(cointype, w, idSign, commitU1GammaG, u1GammaZKProof, ch)
+	if ug == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3, verify commitment finish=================","key",msgprex)
+
+	r, deltaGammaGy := Calc_r(cointype, w, idSign, ug, deltaSum, ch)
+	if r == nil || deltaGammaGy == nil {
+		return nil
+	}
+	common.Debug("=====================PreSign_ec3, calc r finish=================","key",msgprex)
+	ret := &PrePubData{K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Index:index}
+	return ret
+}
+
+//msgprex = hash
+//return value is the backup for the dcrm sig
+func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky *big.Int, ch chan interface{}, id int,pre *PrePubData) string {
+	if id < 0 || id >= len(workers) {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
+		ch <- res
+		return ""
+	}
+	w := workers[id]
+	if w.groupid == "" {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+		ch <- res
+		return ""
+	}
+
+	hashBytes, err2 := hex.DecodeString(message)
+	if err2 != nil {
+		res := RpcDcrmRes{Ret: "", Err: err2}
+		ch <- res
+		return ""
+	}
+
+	// [Notes]
+	// 1. assume the nodes who take part in the signature generation as follows
+	ids := GetIds2("ECDSA", pre.Gid)
+	idSign := ids[pre.Index:pre.Index+3]
+	
+	mMtA, _ := new(big.Int).SetString(message, 16)
+	common.Debug("=============Sign_ec3=============","w.ThresHold",w.ThresHold,"w.groupid",w.groupid,"index",pre.Index,"key",msgprex)
+
+	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
+
+	// 5. calculate s
+	us1 := signing.CalcUs(mMtA, pre.K1, pre.R, pre.Sigma1)
+
+	/*commitBigVAB1, commitbigvabs, rho1, l1 := DECDSASignRoundSeven(msgprex, pre.R, pre.Ry, us1, w, ch)
+	if commitBigVAB1 == nil || commitbigvabs == nil || rho1 == nil || l1 == nil {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3, round seven finish=================","key",msgprex)
+
+	u1zkABProof, zkabproofs := DECDSASignRoundEight(msgprex, pre.R, pre.Ry, us1, l1, rho1, w, ch, commitBigVAB1)
+	if u1zkABProof == nil || zkabproofs == nil {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3, round eight finish=================","key",msgprex)
+
+	commitbigcom, BigVx, BigVy := DECDSASignVerifyBigVAB(cointype, w, commitbigvabs, zkabproofs, commitBigVAB1, u1zkABProof, idSign, pre.R, pre.Ry, ch)
+	if commitbigcom == nil || BigVx == nil || BigVy == nil {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3, verify BigVAB finish=================","key",msgprex)
+
+	commitbiguts, commitBigUT1 := DECDSASignRoundNine(msgprex, cointype, w, idSign, mMtA, pre.R, pkx, pky, BigVx, BigVy, rho1, commitbigcom, l1, ch)
+	if commitbiguts == nil || commitBigUT1 == nil {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3, round nine finish=================","key",msgprex)
+
+	commitbigutd11s := DECDSASignRoundTen(msgprex, commitBigUT1, w, ch)
+	if commitbigutd11s == nil {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3, round ten finish=================","key",msgprex)
+
+	if !DECDSASignVerifyBigUTCommitment(msgprex,cointype, commitbiguts, commitbigutd11s, commitBigUT1, w, idSign, ch, commitbigcom) {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3, verify BigUT commitment finish=================","key",msgprex)
+*/
+	ss1s := DECDSASignRoundEleven(msgprex, cointype, w, idSign, ch, us1)
+	if ss1s == nil {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3,round eleven finish=================","key",msgprex)
+
+	s := Calc_s(msgprex,cointype, w, idSign, ss1s, ch)
+	if s == nil {
+		return ""
+	}
+	common.Debug("=====================Sign_ec3,calc s finish=================","key",msgprex)
+
+	// 3. justify the s
+	bb := false
+	halfN := new(big.Int).Div(secp256k1.S256().N, big.NewInt(2))
+	if s.Cmp(halfN) > 0 {
+		bb = true
+		s = new(big.Int).Sub(secp256k1.S256().N, s)
+	}
+
+	zero, _ := new(big.Int).SetString("0", 10)
+	if s.Cmp(zero) == 0 {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("s == 0.")}
+		ch <- res
+		return ""
+	}
+	common.Debug("=====================Sign_ec3,justify s finish=================","key",msgprex)
+
+	// **[End-Test]  verify signature with MtA
+	signature := new(ECDSASignature)
+	signature.New()
+	signature.SetR(pre.R)
+	signature.SetS(s)
+
+	invert := false
+	if cointype == "ETH" && bb {
+		//recid ^=1
+		invert = true
+	}
+	if cointype == "BTC" && bb {
+		//recid ^= 1
+		invert = true
+	}
+
+	recid := signing.DECDSA_Sign_Calc_v(pre.R, pre.Ry, pkx, pky, signature.GetR(), signature.GetS(), hashBytes, invert)
+	////check v
+	ys := secp256k1.S256().Marshal(pkx,pky)
+	pubkeyhex := hex.EncodeToString(ys)
+	pbhs := []rune(pubkeyhex)
+	if string(pbhs[0:2]) == "0x" {
+	    pubkeyhex = string(pbhs[2:])
+	}
+
+	rsvBytes1 := append(signature.GetR().Bytes(), signature.GetS().Bytes()...)
+	for j := 0; j < 4; j++ {
+	    rsvBytes2 := append(rsvBytes1, byte(j))
+	    pkr, e := secp256k1.RecoverPubkey(hashBytes,rsvBytes2)
+	    pkr2 := hex.EncodeToString(pkr)
+	    pbhs2 := []rune(pkr2)
+	    if string(pbhs2[0:2]) == "0x" {
+		pkr2 = string(pbhs2[2:])
+	    }
+	    if e == nil && strings.EqualFold(pkr2,pubkeyhex) {
+		recid = j
+		break
+	    }
+	}
+	/////
+	signature.SetRecoveryParam(int32(recid))
+
+	if !DECDSA_Sign_Verify_RSV(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), message, pkx, pky) {
+		common.Debug("=================Sign_ec3,verify is false==============","key",msgprex)
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("sign verify fail.")}
+		ch <- res
+		return ""
+	}
+	common.Debug("=================Sign_ec3,verify (r,s) pass==============","key",msgprex)
+
+	signature2 := GetSignString(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), int(signature.GetRecoveryParam()))
+	rstring := "========================== r = " + fmt.Sprintf("%v", signature.GetR()) + " ========================="
+	sstring := "========================== s = " + fmt.Sprintf("%v", signature.GetS()) + " =========================="
+	fmt.Println(rstring)
+	fmt.Println(sstring)
+	common.Debug("=================Sign_ec3==============","rsv str",signature2,"key",msgprex)
+	res := RpcDcrmRes{Ret: signature2, Err: nil}
+	ch <- res
+
+	common.Debug("=================Sign_ec3, rsv pass==============","key",msgprex)
+	//*******************!!!Distributed ECDSA Sign End!!!**********************************
+
+	return ""
 }
 
 //msgprex = hash

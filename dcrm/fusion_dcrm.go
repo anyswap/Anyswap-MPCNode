@@ -56,6 +56,8 @@ var (
 	reqdata_trytimes = 5
 	reqdata_timeout = 60
 	KeyFile    string
+	PreSignNonce,_ = new(big.Int).SetString("0",0)
+	SignNonce,_ = new(big.Int).SetString("0",0)
 	
 	lock                     sync.Mutex
 
@@ -103,8 +105,29 @@ func Start(waitmsg uint64,trytimes uint64) {
 	} else {
 	    dbsk = dbsktmp
 	}
+	//
+	predbtmp, err := ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
+	//bug
+	if err != nil {
+		for i := 0; i < 100; i++ {
+			predbtmp, err = ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
+			if err == nil && predbtmp != nil {
+				break
+			}
+
+			time.Sleep(time.Duration(1000000))
+		}
+	}
+	if err != nil {
+	    predb = nil
+	} else {
+	    predb = predbtmp
+	}
 	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
+	//GetAllPrePubkeyDataFromDb()
+
+	//go PreGenPubkeyData()
 
 	ch_t = int(waitmsg)
 	recalc_times = int(trytimes)
@@ -817,6 +840,16 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	hash := sig.MsgHash
 	keytype := sig.Keytype
 	groupid := sig.GroupId
+	/////////
+	dcrmpkstmp, _ := hex.DecodeString(pubkey)
+	exsit,datmp := GetPubKeyDataFromLocalDb(string(dcrmpkstmp[:]))
+	if exsit {
+		pub,ok := datmp.(*PubKeyData)
+		if ok {
+			groupid = pub.GroupId
+		}
+	}
+	/////////
 	threshold := sig.ThresHold
 	mode := sig.Mode
 	timestamp := sig.TimeStamp
@@ -844,7 +877,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	nc,_ := GetGroup(groupid)
 	if nc < limit || nc > nodecnt {
-//	    common.Debug("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
+	    common.Debug("==============CheckRawxxxx, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 
@@ -1267,6 +1300,60 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				return cherr 
 			}
 
+			////////ec3////
+		       if strings.EqualFold(sender,cur_enode) {
+				go func() {
+					for {
+						if len(PrePubKeyDataQueueChan) < 1000 {
+							one,_ := new(big.Int).SetString("1",0)
+							    PreSignNonce = new(big.Int).Add(PreSignNonce,one)
+							index := 0
+							ids := GetIds2("ECDSA", req.GroupId)
+							for kk, id := range ids {
+								enodes := GetEnodesByUid(id, "ECDSA", req.GroupId)
+								if IsCurNode(enodes, cur_enode) {
+									if kk >= 2 {
+										index = kk - 2
+									} else {
+										index = kk
+									}
+									break
+								}
+
+							}
+							tmp := ids[index:index+3]
+							ps := &PreSign{Pub:chret,Gid:req.GroupId,Nonce:fmt.Sprintf("%v", PreSignNonce),Index:index}
+
+							val,err := Encode2(ps)
+							if err != nil {
+								common.Debug("=====================PreSign========================","err",err)
+								time.Sleep(time.Duration(10000000))
+							    continue 
+							}
+							
+							for _, id := range tmp {
+								enodes := GetEnodesByUid(id, "ECDSA", req.GroupId)
+								common.Debug("===============PreSign,get enodes===============","enodes",enodes,"index",index)
+								if IsCurNode(enodes, cur_enode) {
+									common.Debug("===============PreSign,get cur enodes===============","enodes",enodes)
+									continue
+								}
+								SendMsgToPeer(enodes, val)
+							}
+
+							rch := make(chan interface{}, 1)
+							SetUpMsgList3(val,cur_enode,rch)
+							_, _,cherr := GetChannelValue(waitall*2,rch)
+							if cherr != nil {
+								common.Debug("=====================PreSign 2222222========================","cherr",cherr)
+							}
+						}
+						time.Sleep(time.Duration(1000000))
+					}
+				}()
+		       }
+			////////////
+
 			res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_req_dcrmaddr" + common.Sep + chret, Tip: "", Err: nil}
 			ch <- res
 			return nil
@@ -1602,6 +1689,16 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 		//_, err := SetSignNonce(from,nonce)
 		_, err := SetSignNonce(from,cur_nonce) //bug
 		if err == nil {
+			/////////
+			dcrmpkstmp, _ := hex.DecodeString(sig.PubKey)
+			exsit,datmp := GetPubKeyDataFromLocalDb(string(dcrmpkstmp[:]))
+			if exsit {
+				pub,ok := datmp.(*PubKeyData)
+				if ok {
+					sig.GroupId = pub.GroupId
+				}
+			}
+			/////////
 		    ars := GetAllReplyFromGroup(workid,sig.GroupId,Rpc_SIGN,sender)
 		    ac := &AcceptSignData{Initiator:sender,Account: from, GroupId: sig.GroupId, Nonce: nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext: sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
 		    err = SaveAcceptSignData(ac)
@@ -1625,6 +1722,11 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			    w.ThresHold = gcnt
 			}
 
+			///////TODO/////////
+			w.NodeCnt = 5
+			w.ThresHold = 3
+			///////TODO////////
+			
 			w.DcrmFrom = sig.PubKey  // pubkey replace dcrmfrom in sign
 			
 			if sig.Mode == "0" { // self-group
@@ -1634,7 +1736,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				timeout := make(chan bool, 1)
 				go func(wid int) {
 					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := 1 * time.Minute
+					agreeWaitTime := 2 * time.Minute
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 
 					wtmp2 := workers[wid]
@@ -1647,13 +1749,26 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 							common.Debug("================== InitAcceptData , get all AcceptSignRes===============","result ",ars,"key ",key)
 							
 							//bug
-							reply = true
+							/*reply = true
 							for _,nr := range ars {
 							    if !strings.EqualFold(nr.Status,"Agree") {
 								reply = false
 								break
 							    }
+							}*/
+
+							//TODO//
+							reply = true
+							recount := 0
+							for _,nr := range ars {
+							    if strings.EqualFold(nr.Status,"Agree") {
+								    recount++
+							    }
 							}
+							if recount < w.ThresHold {
+								reply = false
+							}
+							////////
 							//
 
 							if !reply {
@@ -1696,6 +1811,12 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				DisAcceptMsg(raw,workid)
 				common.Debug("===============InitAcceptData, call DisAcceptMsg finish===================","key ",key)
 				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_SIGN)
+				if reqaddrkey == "" {
+				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get req addr key fail", Err: fmt.Errorf("get reqaddr key fail")}
+				    ch <- res
+				    return fmt.Errorf("get reqaddr key fail") 
+				}
+
 				exsit,da := GetValueFromPubKeyData(reqaddrkey)
 				if !exsit {
 					common.Debug("===============InitAcceptData, get req addr key by other key fail ===================","key ",key)
@@ -2466,6 +2587,49 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 	    go C1Data.DeleteMap(strings.ToLower(c1data))
 	}
     }
+
+    /////////bug
+	_, enodes := GetGroup(ac.GroupId)
+	nodes := strings.Split(enodes, common.Sep2)
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+		c1data := key + "-" + node2 + common.Sep + "SS1"
+		common.Debug("===============HandleC1Data====================","c1data",c1data)
+		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+		if exist {
+		common.Debug("===============HandleC1Data,exsit c1data====================","c1data",c1data)
+		    DisMsg(c1.(string))
+		    go C1Data.DeleteMap(strings.ToLower(c1data))
+		}
+    }
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+		c1data := key + "-" + node2 + common.Sep + "C11" 
+		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+		if exist {
+		    DisMsg(c1.(string))
+		    go C1Data.DeleteMap(strings.ToLower(c1data))
+		}
+    }
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+		c1data := key + "-" + node2 + common.Sep + "CommitBigVAB" 
+		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+		if exist {
+		    DisMsg(c1.(string))
+		    go C1Data.DeleteMap(strings.ToLower(c1data))
+		}
+    }
+	for _, node := range nodes {
+	    node2 := ParseNode(node)
+		c1data := key + "-" + node2 + common.Sep + "C1" 
+		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+		if exist {
+		    DisMsg(c1.(string))
+		    go C1Data.DeleteMap(strings.ToLower(c1data))
+		}
+    }
+    ////////////
 }
 
 func ReqDcrmAddr(raw string) (string, string, error) {
@@ -2790,7 +2954,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
     common.Debug("=====================RpcAcceptSign call CheckRaw ================","raw",raw)
     _,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("=====================RpcAcceptSign,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================RpcAcceptSign,call CheckRaw finish================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
@@ -2804,7 +2968,48 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
 	    common.Debug("=====================RpcAcceptSign, SendMsgToDcrmGroup ================","key",acceptsig.Key,"from",from,"raw",raw)
-	    SendMsgToDcrmGroup(raw, ac.GroupId)
+	    ////////////////////////////
+	    //SendMsgToDcrmGroup(raw, ac.GroupId)	
+	    dcrmpks, _ := hex.DecodeString(ac.PubKey)
+	    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	    if exsit {
+		pub,ok := da.(*PubKeyData)
+		if ok {
+		    SendMsgToDcrmGroup(raw, pub.GroupId)	
+		}
+	}
+		
+
+		/*
+		dcrmpks, _ := hex.DecodeString(ac.PubKey)
+		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		if exsit {
+			pub,ok := da.(*PubKeyData)
+			if ok {
+				index := 0
+				ids := GetIds2("ECDSA", pub.GroupId)
+				for kk, id := range ids {
+					enodes := GetEnodesByUid(id, "ECDSA", pub.GroupId)
+					if IsCurNode(enodes, cur_enode) {
+						if kk >= 2 {
+							index = kk - 2
+						} else {
+							index = kk
+						}
+						break
+					}
+				}
+				tmp := ids[index:index+3]
+				for _, id := range tmp {
+					enodes := GetEnodesByUid(id, "ECDSA", pub.GroupId)
+					if IsCurNode(enodes, cur_enode) {
+						continue
+					}
+					SendMsgToPeer(enodes, raw)
+				}
+			}
+		}*/
+	    ///////////////////////////////
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
 	}
@@ -2882,7 +3087,7 @@ func Sign(raw string) (string, string, error) {
     common.Debug("=====================Sign call CheckRaw ================","raw",raw)
     key,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("=====================Sign,CheckRaw ================","raw",raw,"err",err)
+	common.Debug("=====================Sign,call CheckRaw finish================","raw",raw,"err",err)
 	return "",err.Error(),err
     }
 
@@ -2892,7 +3097,47 @@ func Sign(raw string) (string, string, error) {
     }
 
     common.Debug("=====================Sign, SendMsgToDcrmGroup ================","key",key,"from",from,"raw",raw)
-    SendMsgToDcrmGroup(raw, sig.GroupId)
+    ////////////////////////////
+    //SendMsgToDcrmGroup(raw, sig.GroupId)
+
+	dcrmpks, _ := hex.DecodeString(sig.PubKey)
+	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	if exsit {
+		pub,ok := da.(*PubKeyData)
+		if ok {
+			index := 0
+			ids := GetIds2("ECDSA", pub.GroupId)
+			for kk, id := range ids {
+				enodes := GetEnodesByUid(id, "ECDSA", pub.GroupId)
+				if IsCurNode(enodes, cur_enode) {
+					if kk >= 2 {
+						index = kk - 2
+					} else {
+						index = kk
+					}
+					break
+				}
+			}
+			tmp := ids[index:index+3]
+			for _, id := range tmp {
+				enodes := GetEnodesByUid(id, "ECDSA", pub.GroupId)
+				common.Debug("========================Sign,xxxxxxxxxx,get enodes=======================","enodes",enodes,"gid",pub.GroupId,"index",index)
+				if IsCurNode(enodes, cur_enode) {
+					common.Debug("========================Sign,xxxxxxxxxx,get cur enodes=======================","enodes",enodes,"gid",pub.GroupId,"index",index)
+					continue
+				}
+				SendMsgToPeer(enodes,raw) 
+				///////
+				//msg,err := Compress([]byte(raw))
+				//common.Debug("========================Sign,xxxxxxxxxx,compress the raw=======================","err",err)
+				//if err == nil {
+				//	SendMsgToPeer(enodes,msg) 
+				//}
+				///////
+			}
+		}
+	}
+    ///////////////////////////////
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }
@@ -3527,6 +3772,16 @@ func Encode2(obj interface{}) (string, error) {
 			return "", err1
 		}
 		return buff.String(), nil
+	case *PrePubData:
+
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+
+		err1 := enc.Encode(ch)
+		if err1 != nil {
+			return "", err1
+		}
+		return buff.String(), nil
 	case *AcceptLockOutData:
 
 		var buff bytes.Buffer
@@ -3583,6 +3838,16 @@ func Encode2(obj interface{}) (string, error) {
 			return "", err1
 		}
 		return buff.String(), nil
+	case *PreSign:
+
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+
+		err1 := enc.Encode(ch)
+		if err1 != nil {
+			return "", err1
+		}
+		return buff.String(), nil
 	default:
 		return "", fmt.Errorf("encode obj fail.")
 	}
@@ -3620,6 +3885,21 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		dec := gob.NewDecoder(&data)
 
 		var res PubKeyData
+		err := dec.Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
+	}
+
+	if datatype == "PrePubKeyData" {
+		var data bytes.Buffer
+		data.Write([]byte(s))
+
+		dec := gob.NewDecoder(&data)
+
+		var res PrePubData
 		err := dec.Decode(&res)
 		if err != nil {
 			return nil, err
@@ -3702,6 +3982,21 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		dec := gob.NewDecoder(&data)
 
 		var res SignData
+		err := dec.Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
+	}
+
+	if datatype == "PreSign" {
+		var data bytes.Buffer
+		data.Write([]byte(s))
+
+		dec := gob.NewDecoder(&data)
+
+		var res PreSign
 		err := dec.Decode(&res)
 		if err != nil {
 			return nil, err

@@ -296,6 +296,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 		ac,ok = da.(*AcceptSignData)
 		if ok {
 			if ac.Status != "Pending" || ac.Rsv != "" {
+				common.Debug("=====================AcceptSign,already in ldb=======================","key",key)
 				return "",nil
 			}
 		}
@@ -440,6 +441,11 @@ type AcceptSignData struct {
 	WorkId   int
 }
 
+type SignBak struct {
+	Key string
+	Ac *AcceptSignData
+}
+
 func SaveAcceptSignData(ac *AcceptSignData) error {
 	if ac == nil {
 	    return fmt.Errorf("no accept data.")
@@ -461,10 +467,14 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 	}
 
 	LdbPubKeyData.WriteMap(key, ac)
+	sb := &SignBak{Key:key,Ac:ac}
+	LdbPubBak.PushBack(sb)
 	go func() {
 	    kdtmp := KeyData{Key: []byte(key), Data: ss}
 	    PubKeyDataChan <- kdtmp
 	}()
+	    xxx, exist := LdbPubKeyData.ReadMap(key)
+	common.Debug("=====================AcceptSign,finish.========================","ac.Pubkey",ac.PubKey,"key",key,"xxx",xxx,"exist",exist)
 	return nil
 }
 

@@ -130,6 +130,7 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64) {
 	//go PreGenPubkeyData()
 
 	go HandleRpcSign()
+	//go HandleDelSign()
 
 	ch_t = int(waitmsg)
 	recalc_times = int(trytimes)
@@ -1111,6 +1112,17 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
     
     sig,ok := txdata.(*TxDataSign)
     if ok {
+	       if !strings.EqualFold(sender,cur_enode) {
+		       DelPreSign.Lock()
+		    /////check pre-sign data
+		    for _,vv := range sbd.PickHash {
+			common.Debug("===============InitAcceptData2,check pickkey===================","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
+		       PickPrePubDataByKey(sig.PubKey,vv.PickKey)
+		    }
+		    ///////
+		    DelPreSign.Unlock()
+	       }
+
 	common.Debug("===============InitAcceptData2, it is sign txdata and check sign raw success==================","key ",key,"from ",from,"nonce ",nonce)
 	exsit,_ := GetValueFromPubKeyData(key)
 	if !exsit {
@@ -1380,9 +1392,16 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 			chret, tip, cherr := GetChannelValue(waitall, rch)
 			common.Debug("================== InitAcceptData2,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
+				//common.Debug("===================InitAcceptData2,DeletePrePubData,11111===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				for _,vv := range sbd.PickHash {
-					DeletePrePubData(sig.PubKey,vv.PickKey)
+					//d := &DelSignData{PubKey:sig.PubKey,PickKey:vv.PickKey,Pbd:nil}
+					//DelSignChan <- d
+					common.Debug("===================InitAcceptData2,succss and DeletePrePubData===============","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
+					DelPreSign.Lock()
+					DeletePrePubDataBak(sig.PubKey,vv.PickKey)
+					DelPreSign.Unlock()
 				}
+				//common.Debug("===================InitAcceptData2,DeletePrePubData,22222===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				
 				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
 				ch <- res
@@ -1439,6 +1458,18 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 						if err != nil {
 						    tip = tip + " and accept sign data fail"
 						}
+					
+						/////bug
+						for _,vv := range sbd.PickHash {
+							common.Debug("===================InitAcceptData2,succss and DeletePrePubData===============","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
+							DelPreSign.Lock()
+							DeletePrePubDataBak(sig.PubKey,vv.PickKey)
+							DelPreSign.Unlock()
+						}
+						res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
+						ch <- res
+						return nil
+						////bug
 
 					} else {
 						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", lohash, lohash, ars, workid)
@@ -1700,8 +1731,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				go func() {
 					for {
 						if NeedPreSign(chret) {
-							one,_ := new(big.Int).SetString("1",0)
-							    PreSignNonce = new(big.Int).Add(PreSignNonce,one)
+							//one,_ := new(big.Int).SetString("1",0)
+							//PreSignNonce = new(big.Int).Add(PreSignNonce,one)
+							tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+							nonce := Keccak256Hash([]byte(strings.ToLower(chret + req.GroupId + tt))).Hex()
 							index := 0
 							ids := GetIds2("ECDSA", req.GroupId)
 							for kk, id := range ids {
@@ -1717,7 +1750,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 							}
 							tmp := ids[index:index+3]
-							ps := &PreSign{Pub:chret,Gid:req.GroupId,Nonce:fmt.Sprintf("%v", PreSignNonce),Index:index}
+							ps := &PreSign{Pub:chret,Gid:req.GroupId,Nonce:nonce,Index:index}
 
 							val,err := Encode2(ps)
 							if err != nil {
@@ -1738,13 +1771,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 							rch := make(chan interface{}, 1)
 							SetUpMsgList3(val,cur_enode,rch)
-							_, _,cherr := GetChannelValue(waitall*2,rch)
+							_, _,cherr := GetChannelValue(waitall,rch)
 							if cherr != nil {
 								common.Debug("=====================PreSign 2222222========================","cherr",cherr)
 							}
 
 							common.Debug("===================generate pre-sign data===============","current total number of the data ",GetTotalCount(chret),"pubkey",chret)
-						}
+						} 
+
 						time.Sleep(time.Duration(1000000))
 					}
 				}()
@@ -2960,22 +2994,6 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 	return
     }
    
-    mms := strings.Split(ac.Sigs, common.Sep)
-    if len(mms) < 3 { //1:eid1:acc1
-	return
-    }
-
-    count := (len(mms)-1)/2
-    for j := 0;j<count;j++ {
-	from := mms[2*j+2]
-	c1data := key + "-" + from
-	c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-	if exist {
-	    DisAcceptMsg(c1.(string),workid)
-	    go C1Data.DeleteMap(strings.ToLower(c1data))
-	}
-    }
-
     /////////bug
 	_, enodes := GetGroup(ac.GroupId)
 	nodes := strings.Split(enodes, common.Sep2)
@@ -3018,6 +3036,22 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 		}
     }
     ////////////
+    
+    mms := strings.Split(ac.Sigs, common.Sep)
+    if len(mms) < 3 { //1:eid1:acc1
+	return
+    }
+
+    count := (len(mms)-1)/2
+    for j := 0;j<count;j++ {
+	from := mms[2*j+2]
+	c1data := key + "-" + from
+	c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	if exist {
+	    DisAcceptMsg(c1.(string),workid)
+	    go C1Data.DeleteMap(strings.ToLower(c1data))
+	}
+    }
 }
 
 func ReqDcrmAddr(raw string) (string, string, error) {
@@ -3488,7 +3522,17 @@ func Sign(raw string) (string, string, error) {
     ////////////////////////////
     //SendMsgToDcrmGroup(raw, sig.GroupId)
 
-    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,MsgHash:sig.MsgHash}
+	//for test 
+	/*data,exsit2 := PreSignData.ReadMap(strings.ToLower(sig.PubKey)) 
+	common.Debug("=========================Sign,aaaaaaaaaaa======================","Pubkey",sig.PubKey,"key",key,"exsit2",exsit2)
+	if exsit2 {
+		datas := data.([]*PrePubData)
+		for _,v := range datas {
+			common.Debug("=========================Sign,aaaaaaaaaaa======================","Pubkey",sig.PubKey,"key",key,"exsit2",exsit2,"data len",len(datas),"v.Used",v.Used)
+		}
+	}*/
+	//
+    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,MsgHash:sig.MsgHash,Key:key}
     SignChan <- rsd
 
     ///////////////////////////////
@@ -3498,11 +3542,13 @@ func Sign(raw string) (string, string, error) {
 func HandleRpcSign() {
 	for {
 		rsd := <-SignChan
-		
+	
 		dcrmpks, _ := hex.DecodeString(rsd.PubKey)
 		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		common.Debug("=========================Sign,xxxxxxxxxx======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit)
 		if exsit {
 			pub,ok := da.(*PubKeyData)
+			common.Debug("=========================Sign,xxxxxxxxxx======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok)
 			if ok {
 				index := 0
 				ids := GetIds2("ECDSA", pub.GroupId)
@@ -3528,7 +3574,8 @@ func HandleRpcSign() {
 						break
 					}
 
-					SetPrePubDataUseStatus(rsd.PubKey,pickkey,true)
+					common.Debug("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
+					//SetPrePubDataUseStatus(rsd.PubKey,pickkey,true)
 					ph := &PickHashKey{Hash:vv,PickKey:pickkey}
 					pickhash = append(pickhash,ph)
 				}
@@ -3539,6 +3586,7 @@ func HandleRpcSign() {
 
 				send,err := CompressSignBrocastData(rsd.Raw,pickhash)
 				if err != nil {
+					common.Debug("=========================Sign,xxxxxxxxxx======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
 					for _,vv := range pickhash {
 						SetPrePubDataUseStatus(rsd.PubKey,vv.PickKey,false)
 					}

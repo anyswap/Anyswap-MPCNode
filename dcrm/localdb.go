@@ -19,8 +19,8 @@ package dcrm
 import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
-	"strings"
-	"container/list"
+	//"strings"
+	//"container/list"
     "time"
     //"fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -29,7 +29,7 @@ import (
 var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 2000)
-	LdbPubBak = list.New()
+	//LdbPubBak = list.New()
 	SkU1Chan = make(chan KeyData, 2000)
 	cache = 0 
 	handles = 0
@@ -480,7 +480,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
 		    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
-		iter := LdbPubBak.Front()
+		/*iter := LdbPubBak.Front()
 		for iter != nil {
 		    mdss := iter.Value.(*SignBak)
 		    if mdss == nil {
@@ -493,7 +493,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 				return true,mdss.Ac
 			}
 		    iter = iter.Next()
-		}
+		}*/
 	    return false,nil
 	}
 

@@ -24,21 +24,26 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"time"
 	"fmt"
+	"sync"
 )
 
 var (
 	PrePubKeyDataChan = make(chan KeyData, 2000)
 	//PrePubKeyDataQueueChan = make(chan *PrePubData, 1000)
 	PreSignData  = common.NewSafeMap(10) //make(map[string][]byte)
+	PreSignDataBak  = common.NewSafeMap(10) //make(map[string][]byte)
 	predb *ethdb.LDBDatabase
 	PrePubDataCount = 1000
 	SignChan = make(chan *RpcSignData, 10000)
+	//DelSignChan = make(chan *DelSignData, 10000)
+	DelPreSign                     sync.Mutex
 )
 
 type RpcSignData struct {
 	Raw string
 	PubKey string
 	MsgHash []string
+	Key string
 }
 
 type PreSign struct {
@@ -59,6 +64,14 @@ type PrePubData struct {
 	Used bool
 }
 
+/*type DelSignData struct {
+	PubKey string
+	PickKey string
+
+	Pbd *PrePubData //for PutPreSign
+}
+*/
+
 type PickHashKey struct {
 	Hash string
 	PickKey string
@@ -72,6 +85,46 @@ func GetTotalCount(pub string) int {
 	}
 
 	return 0
+}
+
+func GetTotalCount2(pub string) int {
+	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		return len(datas)
+	}
+
+	return 0
+}
+
+func NeedPreSignBak(pub string) bool {
+	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		if len(datas) >= PrePubDataCount {
+			return false
+		}
+	}
+
+	return true 
+}
+
+func PutPreSignBak(pub string,val *PrePubData) {
+	if val == nil {
+		return
+	}
+
+	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		datas = append(datas,val)
+		PreSignDataBak.WriteMap(strings.ToLower(pub),datas)
+		return
+	}
+
+	datas := make([]*PrePubData,0)
+	datas = append(datas,val)
+	PreSignDataBak.WriteMap(strings.ToLower(pub),datas)
 }
 
 func NeedPreSign(pub string) bool {
@@ -95,7 +148,26 @@ func GetPrePubData(pub string,key string) *PrePubData {
 	if exsit {
 		datas := data.([]*PrePubData)
 		for _,v := range datas {
-			if strings.EqualFold(v.Key,key) {
+			if v != nil && strings.EqualFold(v.Key,key) {
+				return v
+			}
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func GetPrePubDataBak(pub string,key string) *PrePubData {
+	if pub == "" || key == "" {
+		return nil
+	}
+
+	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		for _,v := range datas {
+			if v != nil && strings.EqualFold(v.Key,key) {
 				return v
 			}
 		}
@@ -113,6 +185,15 @@ func PutPreSign(pub string,val *PrePubData) {
 	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
 	if exsit {
 		datas := data.([]*PrePubData)
+		////check same 
+		for _,v := range datas {
+			if v != nil && strings.EqualFold(v.Key,val.Key) {
+				common.Debug("========================PutPreSign,already have this key==================","key",v.Key)
+				return
+			}
+		}
+		///
+
 		datas = append(datas,val)
 		PreSignData.WriteMap(strings.ToLower(pub),datas)
 		return
@@ -123,67 +204,152 @@ func PutPreSign(pub string,val *PrePubData) {
 	PreSignData.WriteMap(strings.ToLower(pub),datas)
 }
 
+func DeletePrePubDataBak(pub string,key string) {
+	if pub == "" || key == "" {
+		return
+	}
+
+	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub))
+	if !exsit {
+		return
+	}
+
+	tmp := make([]*PrePubData,0)
+	datas := data.([]*PrePubData)
+	for _,v := range datas {
+		if strings.EqualFold(v.Key,key) {
+			continue
+		}
+
+		tmp = append(tmp,v)
+	}
+
+	PreSignDataBak.WriteMap(strings.ToLower(pub),tmp)
+}
+
 func DeletePrePubData(pub string,key string) {
 	if pub == "" || key == "" {
 		return
 	}
-	
+
 	data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
 	if !exsit {
 		return
 	}
 
-	index := -1
+	tmp := make([]*PrePubData,0)
 	datas := data.([]*PrePubData)
-	for k,v := range datas {
+	for _,v := range datas {
 		if strings.EqualFold(v.Key,key) {
-			index = k
-			break
+			continue
 		}
+
+		tmp = append(tmp,v)
 	}
 
-	if index == 0 && len(datas) == 1 {
-		datas = make([]*PrePubData,0)
-		PreSignData.WriteMap(strings.ToLower(pub),datas)
-	} else if index == 0 {
-		arr := datas[1:]
-		PreSignData.WriteMap(strings.ToLower(pub),arr)
-	} else if index == (len(datas)-1) {
-		arr := datas[:(len(datas)-1)]
-		PreSignData.WriteMap(strings.ToLower(pub),arr)
-	} else {
-		arr1 := datas[:index]
-		arr2 := datas[index+1:]
-		arr := append(arr1, arr2...)
-		PreSignData.WriteMap(strings.ToLower(pub),arr)
-	}
+	PreSignData.WriteMap(strings.ToLower(pub),tmp)
 }
 
-func PickPrePubData(pub string) string {
+/*func PickPrePubData(pub string) string {
 	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
 	if exsit {
 		datas := data.([]*PrePubData)
 		for _,v := range datas {
-			if !v.Used {
+			if v != nil && !v.Used {
+				v.Used = true //bug
 				return v.Key
 			}
 		}
 	}
 
 	return ""
+}*/
+
+func PickPrePubData(pub string) string {
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		key := ""
+		var val *PrePubData
+		datas := data.([]*PrePubData)
+		for _,v := range datas {
+			if v != nil {
+				key = v.Key
+				val = v
+				break
+			}
+		}
+
+		if key != "" {
+			tmp := make([]*PrePubData,0)
+			for _,v := range datas {
+				if strings.EqualFold(v.Key,key) {
+					continue
+				}
+
+				tmp = append(tmp,v)
+			}
+
+			PreSignData.WriteMap(strings.ToLower(pub),tmp)
+			PutPreSignBak(pub,val)
+			return key
+		}
+	}
+
+	return ""
+}
+
+func PickPrePubDataByKey(pub string,key string) {
+	if pub == "" || key == "" {
+		return
+	}
+	
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if !exsit {
+		return
+	}
+
+	var val *PrePubData
+	tmp := make([]*PrePubData,0)
+	datas := data.([]*PrePubData)
+	for _,v := range datas {
+		if v != nil && strings.EqualFold(v.Key,key) {
+			val = v
+			break
+		}
+	}
+
+	for _,v := range datas {
+		if strings.EqualFold(v.Key,key) {
+			continue
+		}
+
+		tmp = append(tmp,v)
+	}
+
+	PreSignData.WriteMap(strings.ToLower(pub),tmp)
+	PutPreSignBak(pub,val)
 }
 
 func SetPrePubDataUseStatus(pub string,key string,used bool ) {
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
+	/*data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
 	if !exsit {
 		return
 	}
 
 	datas := data.([]*PrePubData)
 	for _,v := range datas {
-		if strings.EqualFold(v.Key,key) {
+		if v != nil && strings.EqualFold(v.Key,key) {
 			v.Used = used
+			//PreSignData.WriteMap(strings.ToLower(pub),datas)
 			return
+		}
+	}*/
+
+	if !used {
+		val := GetPrePubDataBak(pub,key)
+		if val != nil {
+			PutPreSign(pub,val)
+			DeletePrePubDataBak(pub,key)
 		}
 	}
 }

@@ -616,7 +616,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
 		pubkeyhex := hex.EncodeToString(ys)
-		pre := GetPrePubData(pubkeyhex,sd.PickKey)
+		pre := GetPrePubDataBak(pubkeyhex,sd.PickKey)
 		if pre == nil {
 			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
 			    ch <- res2
@@ -698,7 +698,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    w.DcrmFrom = ps.Pub
 		    w.NodeCnt = 5
 		    w.ThresHold = 3
-		    w.sid = Keccak256Hash([]byte(strings.ToLower(ps.Pub + ps.Gid + ps.Nonce))).Hex()
+		    w.sid = ps.Nonce 
 			dcrmpks, _ := hex.DecodeString(ps.Pub)
 			exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 			if !exsit {
@@ -760,15 +760,17 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				return false
 			}
 
-			if NeedPreSign(ps.Pub) {
+			//if NeedPreSign(ps.Pub) {
 				common.Debug("========================PreSignxxx,=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1)
 				pre.Key = w.sid
 				pre.Gid = w.groupid
 				pre.Index = ps.Index
 				pre.Used = false
+				DelPreSign.Lock()
 				PutPreSign(ps.Pub,pre)
-			}
-			
+				DelPreSign.Unlock()
+			//}
+
 			res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 			ch <- res
 			return true

@@ -292,6 +292,7 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		}
 		//
 
+		//tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 		key := Keccak256Hash([]byte(strings.ToLower(msgprex + "-" + vv))).Hex()
 		sd := &SignData{MsgPrex:msgprex,Key:key,Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky,PickKey:pickkey}
 		common.Debug("======================sign_ec=================","vv",vv,"msgprex",msgprex,"key",key)

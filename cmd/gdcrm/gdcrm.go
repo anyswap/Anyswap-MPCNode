@@ -143,7 +143,7 @@ func init() {
 		cli.BoolFlag{Name: "color", Usage: "output log in color text format", Destination: &color},
 		cli.Uint64Flag{Name: "waitmsg", Value: 100, Usage: "the time to wait p2p msg", Destination: &waitmsg},
 		cli.Uint64Flag{Name: "trytimes", Value: 1, Usage: "the times to try key-gen/sign", Destination: &trytimes},
-		cli.Uint64Flag{Name: "presignnum", Value: 1000, Usage: "the total of pre-sign data", Destination: &presignnum},
+		cli.Uint64Flag{Name: "presignnum", Value: 2000, Usage: "the total of pre-sign data", Destination: &presignnum},
 	}
 }
 

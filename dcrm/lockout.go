@@ -2611,7 +2611,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idS
 	// 1. Receive Broadcast
 	// s: s1, s2, s3
 	common.Debug("===================send SS1 finish, ", "prex = ", msgprex, "", "====================")
-	_, tip, cherr := GetChannelValue(ch_t, w.bss1)
+	_, tip, cherr := GetChannelValue(WaitMsgTimeGG20, w.bss1)
 	common.Debug("===================finish get SS1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	/////////////////////////request data from dcrm group
 	suss := false

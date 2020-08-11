@@ -51,8 +51,10 @@ var (
 	cur_enode  string
 	init_times = 0
 	ch_t                     = 300 
+	WaitMsgTimeGG20                     = 100
 	recalc_times = 1 
 	waitall                     = ch_t * recalc_times
+	waitallgg20                     = WaitMsgTimeGG20 * recalc_times
 	reqdata_trytimes = 5
 	reqdata_timeout = 60
 	KeyFile    string
@@ -132,11 +134,11 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64) {
 	go HandleRpcSign()
 	//go HandleDelSign()
 
-	ch_t = int(waitmsg)
+	WaitMsgTimeGG20 = int(waitmsg)
 	recalc_times = int(trytimes)
-	waitall = ch_t * recalc_times
+	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	PrePubDataCount = int(presignnum)
-	common.Debug("================================dcrm.Start========================","waitmsg",ch_t,"trytimes",recalc_times,"presignnum",PrePubDataCount)
+	common.Debug("================================dcrm.Start========================","waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
 }
 
 func PutGroup(groupId string) bool {
@@ -1389,7 +1391,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 			common.Debug("===============InitAcceptData2,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
 			rch := make(chan interface{}, 1)
 			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,sbd.PickHash,rch)
-			chret, tip, cherr := GetChannelValue(waitall, rch)
+			chret, tip, cherr := GetChannelValue(waitallgg20+20, rch)
 			common.Debug("================== InitAcceptData2,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
 				//common.Debug("===================InitAcceptData2,DeletePrePubData,11111===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
@@ -1771,7 +1773,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 							rch := make(chan interface{}, 1)
 							SetUpMsgList3(val,cur_enode,rch)
-							_, _,cherr := GetChannelValue(waitall,rch)
+							_, _,cherr := GetChannelValue(waitall+10,rch)
 							if cherr != nil {
 								common.Debug("=====================PreSign 2222222========================","cherr",cherr)
 							}

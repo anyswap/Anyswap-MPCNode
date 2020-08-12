@@ -19,6 +19,7 @@ import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "strings"
     "fmt"
+    "container/list"
 )
 
 type TxDataAcceptReqAddr struct {
@@ -467,14 +468,40 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 	}
 
 	LdbPubKeyData.WriteMap(key, ac)
-	//sb := &SignBak{Key:key,Ac:ac}
-	//LdbPubBak.PushBack(sb)
 	go func() {
 	    kdtmp := KeyData{Key: []byte(key), Data: ss}
 	    PubKeyDataChan <- kdtmp
 	}()
-	    //xxx, exist := LdbPubKeyData.ReadMap(key)
-	//common.Debug("=====================AcceptSign,finish.========================","ac.Pubkey",ac.PubKey,"key",key,"xxx",xxx,"exist",exist)
+
+	go func() {
+		delsign.Lock()
+		if signtodel != nil {
+			signtodel.PushBack(key)
+			if signtodel.Len() >= count_to_del_sign {
+				var next *list.Element
+				for e := signtodel.Front(); e != nil; e = next {
+					next = e.Next()
+					if e.Value == nil {
+						continue
+					}
+
+					val := e.Value.(string)
+					if val != "" {
+						tmp, exist := LdbPubKeyData.ReadMap(val)
+						if exist {
+							tmp2,ok := tmp.(*AcceptSignData)
+							if ok && tmp2 != nil && tmp2.Status != "Pending" {
+								signtodel.Remove(e)
+								LdbPubKeyData.DeleteMap(val)
+							}
+						}
+					}
+				}
+			}
+		}
+		delsign.Unlock()
+	}()
+		
 	return nil
 }
 

@@ -45,6 +45,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"io"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
+	"container/list"
 )
 
 var (
@@ -65,6 +66,10 @@ var (
 
 	db *ethdb.LDBDatabase
 	dbsk *ethdb.LDBDatabase
+	
+	signtodel = list.New()
+	delsign    sync.Mutex
+	count_to_del_sign = 5000
 )
 
 func Start(waitmsg uint64,trytimes uint64,presignnum uint64) {
@@ -3403,7 +3408,6 @@ func RpcAcceptSign(raw string) (string, string, error) {
 		}
 	}
 		
-
 		/*
 		dcrmpks, _ := hex.DecodeString(ac.PubKey)
 		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
@@ -3540,6 +3544,22 @@ func Sign(raw string) (string, string, error) {
     ///////////////////////////////
     return key, "", nil
 }
+
+/*func HandleDelSign() {
+	for {
+		if signtodel != nil && signtodel.Len() >= count_to_del_sign {
+			delsign.Lock()
+			var next *list.Element
+			for e := signtodel.Front(); e != nil; e = next {
+				next = e.Next()
+				signtodel.Remove(e)
+				.DeleteMap(strings.ToLower(c1data))
+			}
+			delsign.Unlock()
+		}
+	}
+}
+*/
 
 func HandleRpcSign() {
 	for {

@@ -33,7 +33,7 @@ var (
 	PreSignData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PreSignDataBak  = common.NewSafeMap(10) //make(map[string][]byte)
 	predb *ethdb.LDBDatabase
-	PrePubDataCount = 1000
+	PrePubDataCount = 2000
 	SignChan = make(chan *RpcSignData, 10000)
 	//DelSignChan = make(chan *DelSignData, 10000)
 	DelPreSign                     sync.Mutex

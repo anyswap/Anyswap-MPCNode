@@ -19,6 +19,8 @@ import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "strings"
     "fmt"
+    "math/big"
+    "time"
     "container/list"
 )
 
@@ -491,8 +493,17 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 						if exist {
 							tmp2,ok := tmp.(*AcceptSignData)
 							if ok && tmp2 != nil && tmp2.Status != "Pending" {
-								signtodel.Remove(e)
-								LdbPubKeyData.DeleteMap(val)
+								t1,_ := new(big.Int).SetString(tmp2.TimeStamp,10)
+								durmi,_ := time.ParseDuration("-10m")
+								t := time.Now()
+								ta := t.Add(durmi)
+								tatmp := fmt.Sprintf("%v",ta)
+								t2,_ := new(big.Int).SetString(tatmp,10)
+								if t2.Cmp(t1) >= 0 {
+									common.Debug("========================SaveAcceptSignData, delete sign data from ldb======================","key",val)
+									signtodel.Remove(e)
+									LdbPubKeyData.DeleteMap(val)
+								}
 							}
 						}
 					}

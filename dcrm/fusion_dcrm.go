@@ -1736,8 +1736,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			////////ec3////
 		       if strings.EqualFold(sender,cur_enode) {
 				go func() {
+					PutPreSigal(chret,true)
+
 					for {
-						if NeedPreSign(chret) {
+						if NeedPreSign(chret) && GetPreSigal(chret) {
 							//one,_ := new(big.Int).SetString("1",0)
 							//PreSignNonce = new(big.Int).Add(PreSignNonce,one)
 							tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
@@ -3600,6 +3602,14 @@ func HandleRpcSign() {
 					//SetPrePubDataUseStatus(rsd.PubKey,pickkey,true)
 					ph := &PickHashKey{Hash:vv,PickKey:pickkey}
 					pickhash = append(pickhash,ph)
+
+					//check pre sigal
+					if GetTotalCount(rsd.PubKey) >= (PrePubDataCount*3/4) && GetTotalCount(rsd.PubKey) <= PrePubDataCount {
+						PutPreSigal(rsd.PubKey,false)
+					} else {
+						PutPreSigal(rsd.PubKey,true)
+					}
+					//
 				}
 
 				if bret {

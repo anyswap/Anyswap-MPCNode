@@ -37,6 +37,7 @@ var (
 	SignChan = make(chan *RpcSignData, 10000)
 	//DelSignChan = make(chan *DelSignData, 10000)
 	DelPreSign                     sync.Mutex
+	PreSigal  = common.NewSafeMap(10) //make(map[string][]byte)
 )
 
 type RpcSignData struct {
@@ -75,6 +76,27 @@ type PrePubData struct {
 type PickHashKey struct {
 	Hash string
 	PickKey string
+}
+
+func GetPreSigal(pub string) bool {
+	data,exsit := PreSigal.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		sigal := data.(string)
+		if sigal == "false" {
+			return false
+		}
+	}
+
+	return true
+}
+
+func PutPreSigal(pub string,val bool) {
+	if val {
+		PreSigal.WriteMap(strings.ToLower(pub),"true")
+		return
+	}
+
+	PreSigal.WriteMap(strings.ToLower(pub),"false")
 }
 
 func GetTotalCount(pub string) int {

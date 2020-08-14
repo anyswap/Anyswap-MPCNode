@@ -19,10 +19,10 @@ package dcrm
 import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
-	//"strings"
+	"strings"
 	//"container/list"
     "time"
-    //"fmt"
+    "fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
@@ -131,7 +131,6 @@ func GetSkU1FromLocalDb(key string) []byte {
 func GetPubKeyDataValueFromDb(key string) []byte {
 	lock.Lock()
 	if db == nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil ===================")
 	    dir := GetDbDir()
 	    ////////
 	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -147,12 +146,14 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 		    }
 	    }
 	    if err != nil {
+	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get, ===================","err",err,"dir",dir,"key",key)
 		lock.Unlock()
 		return nil
 	    } else {
 		db = dbtmp
 		da, err := db.Get([]byte(key))
 		if err != nil {
+	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get success,but get data fail ===================","err",err,"dir",dir,"key",key)
 		    lock.Unlock()
 		    return nil
 		}
@@ -398,6 +399,7 @@ func SaveSkU1ToDb() {
 func GetAllPubKeyDataFromDb() *common.SafeMap {
 	kd := common.NewSafeMap(10)
 	if db != nil {
+	    common.Debug("========================GetAllPubKeyDataFromDb,db is not nil =================================")
 	    iter := db.NewIterator()
 	    for iter.Next() {
 		key := string(iter.Key())
@@ -420,12 +422,75 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			pd,ok := pubs.(*AcceptReqAddrData)
 			if ok {
 			    kd.WriteMap(key, pd)
+
+				////////ec3////
+				common.Debug("==================GetAllPubKeyDataFromDb at ec3==============","key",key,"pubkey",pd.PubKey,"initiator",pd.Initiator,"pd.Status",pd.Status)
+			       if strings.EqualFold(pd.Initiator,cur_enode) && pd.Status == "Success" {
+					go func() {
+						PutPreSigal(pd.PubKey,true)
+
+						for {
+							if NeedPreSign(pd.PubKey) && GetPreSigal(pd.PubKey) {
+								//one,_ := new(big.Int).SetString("1",0)
+								//PreSignNonce = new(big.Int).Add(PreSignNonce,one)
+								tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+								nonce := Keccak256Hash([]byte(strings.ToLower(pd.PubKey + pd.GroupId + tt))).Hex()
+								index := 0
+								ids := GetIds2("ECDSA", pd.GroupId)
+								for kk, id := range ids {
+									enodes := GetEnodesByUid(id, "ECDSA", pd.GroupId)
+									if IsCurNode(enodes, cur_enode) {
+										if kk >= 2 {
+											index = kk - 2
+										} else {
+											index = kk
+										}
+										break
+									}
+
+								}
+								tmp := ids[index:index+3]
+								ps := &PreSign{Pub:pd.PubKey,Gid:pd.GroupId,Nonce:nonce,Index:index}
+
+								val,err := Encode2(ps)
+								if err != nil {
+									common.Debug("=====================PreSign at start========================","err",err)
+									time.Sleep(time.Duration(10000000))
+								    continue 
+								}
+								
+								for _, id := range tmp {
+									enodes := GetEnodesByUid(id, "ECDSA", pd.GroupId)
+									common.Debug("===============PreSign at start ,get enodes===============","enodes",enodes,"index",index)
+									if IsCurNode(enodes, cur_enode) {
+										common.Debug("===============PreSign at start ,get cur enodes===============","enodes",enodes)
+										continue
+									}
+									SendMsgToPeer(enodes, val)
+								}
+
+								rch := make(chan interface{}, 1)
+								SetUpMsgList3(val,cur_enode,rch)
+								_, _,cherr := GetChannelValue(waitall+10,rch)
+								if cherr != nil {
+									common.Debug("=====================PreSign at start 2222222========================","cherr",cherr)
+								}
+
+								common.Debug("===================generate pre-sign data at start===============","current total number of the data ",GetTotalCount(pd.PubKey),"pubkey",pd.PubKey)
+							} 
+
+							time.Sleep(time.Duration(1000000))
+						}
+					}()
+			       }
+				////////////
+
 			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 			    continue
 			}
 		    }
 		    
-		    pubs2, err := Decode2(ss, "AcceptLockOutData")
+		    /*pubs2, err := Decode2(ss, "AcceptLockOutData")
 		    if err == nil {
 			pd,ok := pubs2.(*AcceptLockOutData)
 			if ok {
@@ -453,7 +518,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 			    continue
 			}
-		    }
+		    }*/
 		    
 		    continue
 		}
@@ -556,6 +621,7 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
     da := GetPubKeyDataValueFromDb(key)
     if da == nil {
+	common.Debug("========================GetPubKeyDataFromLocalDb, get pubkey data from db fail =======================","key",key)
 	return false,nil
     }
 

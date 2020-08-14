@@ -65,7 +65,7 @@ func StartDcrm(c *cli.Context) {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	startP2pNode()
-	time.Sleep(time.Duration(5) * time.Second)
+	time.Sleep(time.Duration(600) * time.Second) //wait 10 ms for ec3
 	rpcdcrm.RpcInit(rpcport)
 	dcrm.Start(waitmsg,trytimes,presignnum)
 	select {} // note for server, or for client

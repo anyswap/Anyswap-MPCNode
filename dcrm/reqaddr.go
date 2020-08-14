@@ -263,7 +263,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	    }
 	    
 	    wk.Clear2()
-	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
+	    //time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 
 	if !ok {

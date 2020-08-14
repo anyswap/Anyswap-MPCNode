@@ -77,19 +77,26 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64) {
 	coins.Init()
 	InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
-	dbtmp, err := ethdb.NewLDBDatabase(GetDbDir(), cache, handles)
+	dir := GetDbDir()
+	common.Debug("======================dcrm.Start======================","cur_enode",cur_enode,"dir",dir)
+
+	dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	//bug
 	if err != nil {
-		for i := 0; i < 100; i++ {
-			dbtmp, err = ethdb.NewLDBDatabase(GetDbDir(), cache, handles)
-			if err == nil && dbtmp != nil {
+		for {
+			dbtmp2, err2 := ethdb.NewLDBDatabase(dir, cache, handles)
+			if err2 == nil && dbtmp2 != nil {
+			    common.Debug("======================dcrm.Start,open db success======================","cur_enode",cur_enode,"dir",dir)
+				dbtmp = dbtmp2
+				err = err2
 				break
 			}
 
-			time.Sleep(time.Duration(1000000))
+			time.Sleep(time.Duration(10000000))
 		}
 	}
 	if err != nil {
+	    common.Debug("======================dcrm.Start,open db fail======================","err",err)
 	    db = nil
 	} else {
 	    db = dbtmp

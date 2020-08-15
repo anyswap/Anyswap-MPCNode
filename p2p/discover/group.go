@@ -1131,7 +1131,7 @@ func (t *udp) sendMsgToPeer(toid NodeID, toaddr *net.UDPAddr, msg string) error 
 func (req *message) name() string { return "MESSAGE/v4" }
 
 func (req *message) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-	common.Debug("====  (req *message) handle()  ====", "", "")
+	common.Debug("====  (req *message) handle()  ====", "from", from, "fromID", fromID)
 	if expired(req.Expiration) {
 		return errExpired
 	}

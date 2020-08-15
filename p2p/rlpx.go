@@ -96,9 +96,6 @@ func (t *rlpx) ReadMsg() (Msg, error) {
 }
 
 func (t *rlpx) WriteMsg(msg Msg) error {
-	if uint32(msg.Size) > uint32(1) {
-		fmt.Printf("==== (t *rlpx) WriteMsg() ====\n")
-	}
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
 	t.fd.SetWriteDeadline(time.Now().Add(frameWriteTimeout))

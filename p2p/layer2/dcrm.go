@@ -335,30 +335,7 @@ func CreateSDKGroup(threshold string, enodes []string, subGroup bool) (string, i
 		}
 		tmpEnodes = append(tmpEnodes, e)
 	}
-	sort.Sort(sort.StringSlice(tmpEnodes))
-	id := []byte("")
-	for i, un := range tmpEnodes {
-		common.Debug("CreateSDKGroup", "for enode", un)
-		node, err := discover.ParseNode(un)
-		if err != nil {
-			common.Debug("CreateSDKGroup", "parse err", un)
-			return "", 0, "enode wrong format"
-		}
-		common.Debug("CreateSDKGroup", "for selfid", selfid, "node.ID", node.ID)
-		if subGroup {
-			if i >= nodeNum0 {
-				continue// for check enode parse
-			}
-		}
-		n := fmt.Sprintf("%v", node.ID)
-		common.Debug("CreateSDKGroup", "n", n)
-		if len(id) == 0 {
-			id = crypto.Keccak512([]byte(node.ID.String()))
-		} else {
-			id = crypto.Keccak512(id, []byte(node.ID.String()))
-		}
-	}
-	gid, err := discover.BytesID(id)
+	gid, err := getGIDFromEnodes(tmpEnodes)
 	common.Debug("CreateSDKGroup", "gid <- id", gid, "err", err)
 	discover.GroupSDK.Lock()
 	exist := false
@@ -371,6 +348,36 @@ func CreateSDKGroup(threshold string, enodes []string, subGroup bool) (string, i
 	discover.GroupSDK.Unlock()
 	retErr := discover.StartCreateSDKGroup(gid, threshold, enode, "1+1+1", exist, subGroup)
 	return gid.String(), count, retErr
+}
+
+func GetGIDFromEnodes(enodes []string) (string, error) {
+	gid, err := getGIDFromEnodes(enodes)
+	if err != nil {
+		return "", err
+	}
+	return gid.String(), err
+}
+
+func getGIDFromEnodes(enodes []string) (discover.NodeID, error) {
+	sort.Sort(sort.StringSlice(enodes))
+	id := []byte("")
+	for _, un := range enodes {
+		common.Debug("CreateSDKGroup", "for enode", un)
+		node, err := discover.ParseNode(un)
+		if err != nil {
+			common.Debug("CreateSDKGroup", "parse err", un)
+			return discover.NodeID{}, err
+		}
+		common.Debug("CreateSDKGroup", "for selfid", selfid, "node.ID", node.ID)
+		n := fmt.Sprintf("%v", node.ID)
+		common.Debug("CreateSDKGroup", "n", n)
+		if len(id) == 0 {
+			id = crypto.Keccak512([]byte(node.ID.String()))
+		} else {
+			id = crypto.Keccak512(id, []byte(node.ID.String()))
+		}
+	}
+	return discover.BytesID(id)
 }
 
 func GetEnodeStatus(enode string) (string, error) {

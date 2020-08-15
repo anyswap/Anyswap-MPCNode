@@ -221,9 +221,9 @@ func HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 			common.Debug("==== handle() ====", "peerID", peer.ID(), "w.ReadMsg err", err)
 			rw = emitter.peers[peer.ID()].ws
 			time.Sleep(time.Duration(1) * time.Second)
-			continue
+			//continue
 			//emitter.removePeer(peer)
-			//return err
+			return err
 		}
 		switch msg.Code {
 		case peerMsgCode:

@@ -1131,7 +1131,7 @@ func (t *udp) sendMsgToPeer(toid NodeID, toaddr *net.UDPAddr, msg string) error 
 func (req *message) name() string { return "MESSAGE/v4" }
 
 func (req *message) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) error {
-	common.Debug("====  (req *message) handle()  ====", "", "")
+	common.Debug("====  (req *message) handle()  ====", "from", from, "fromID", fromID)
 	if expired(req.Expiration) {
 		return errExpired
 	}
@@ -1317,6 +1317,7 @@ func updateRemoteIP(ip net.IP, port uint16) {
 
 func updateIPPort(ip net.IP, port uint16) {
 	fmt.Printf("updateRemoteIP, IP:port = %v:%v\n\n", ip, port)
+	common.Info("updateRemoteIP() ====", "IP", ip, "port", port)
 	RemoteIP = ip
 	RemotePort = port
 	SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
@@ -1771,6 +1772,7 @@ func InitIP(ip string, port uint16) {
 	RemotePort = port
 	SelfEnode = fmt.Sprintf("enode://%v@%v:%v", GetLocalID(), RemoteIP, RemotePort)
 	fmt.Printf("==== InitIP() ====, IP: %v\n", RemoteIP)
+	common.Info("==== InitIP() ====", "IP", RemoteIP)
 	go func(enode string) {
 		n, _ := ParseNode(enode)
 		<-SDK_groupListChan

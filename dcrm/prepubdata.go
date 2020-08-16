@@ -458,13 +458,13 @@ func SavePrePubKeyDataToDb() {
 		    if kd.Data == "CLEAN" {
 			err := predb.Delete(kd.Key)
 			if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
+				common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
 			    //PubKeyDataChan <- kd
 			}
 		    } else {
 			err := predb.Put(kd.Key, []byte(kd.Data))
 			if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
+				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
 			    dir := GetPreDbDir()
 			    predbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -479,13 +479,13 @@ func SavePrePubKeyDataToDb() {
 				    }
 			    }
 			    if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
+				common.Info("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
 				//dbsk = nil
 			    } else {
 				predb = predbtmp
 				err = predb.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
+					common.Info("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
 				    //PubKeyDataChan <- kd
 				}
 			    }
@@ -494,7 +494,7 @@ func SavePrePubKeyDataToDb() {
 			//db.Close()
 		    }
 		} else {
-			common.Debug("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+			common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
 			//PubKeyDataChan <- kd
 		}
 

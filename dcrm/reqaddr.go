@@ -1268,7 +1268,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 
 		    if !found {
 			c1data := msgprex + "-" + node2 + common.Sep + "C1"
-			common.Debug("=================== DECDSAGenKeyRoundOne,get C1 timeout================","No Reciv The C1 Data",c1data,"from Node",node,"key",msgprex)
+			common.Info("=================== DECDSAGenKeyRoundOne,get C1 timeout================","No Reciv The C1 Data",c1data,"from Node",node,"key",msgprex)
 		    }
 	    }
 	    

@@ -49,7 +49,7 @@ import (
 )
 
 func GetSignNonce(account string) (string, string, error) {
-/*	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
@@ -59,17 +59,14 @@ func GetSignNonce(account string) (string, string, error) {
 	nonce, _ := new(big.Int).SetString(string(da.([]byte)), 10)
 	one, _ := new(big.Int).SetString("1", 10)
 	nonce = new(big.Int).Add(nonce, one)
-	return fmt.Sprintf("%v", nonce), "", nil*/
-	one, _ := new(big.Int).SetString("1", 10)
-	SignNonce = new(big.Int).Add(SignNonce, one)
-	return fmt.Sprintf("%v", SignNonce), "", nil
+	return fmt.Sprintf("%v", nonce), "", nil
 }
 
 func SetSignNonce(account string,nonce string) (string, error) {
-	/*key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key, []byte(nonce))*/
+	LdbPubKeyData.WriteMap(key, []byte(nonce))
 	return "", nil
 }
 
@@ -161,7 +158,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	} else {
 	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickhash,rch)
 	    ret, tip, cherr := GetChannelValue(waitall,rch)
-	    common.Debug("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
+	    common.Info("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		    ch <- res
@@ -217,14 +214,14 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 			return
 		}
 
-		common.Debug("================sign,the terminal sign res is success==============","key",wsid)
+		common.Info("================sign,the terminal sign res is success==============","key",wsid)
 		res := RpcDcrmRes{Ret: result, Tip: tip, Err: err}
 		ch <- res
 		return
 	}
 
 	if cherrtmp != nil {
-		common.Debug("================sign,the terminal sign res is failure================","err",cherrtmp,"key",wsid)
+		common.Info("================sign,the terminal sign res is failure================","err",cherrtmp,"key",wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:sign fail", Err: cherrtmp}
 		ch <- res
 		return
@@ -311,17 +308,17 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		_, _,cherr := GetChannelValue(waitall,rch)
 		if cherr != nil {
 
-		    common.Debug("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
+		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
 		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
 		    //ch <- res
 		    return 
 		}
-		common.Debug("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key)
+		common.Info("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key)
 	    }(v)
 	}
 	wg.Wait()
 
-	common.Debug("======================sign_ec, all sign finish===================","msgprex",msgprex,"w.rsv",w.rsv)
+	common.Info("======================sign_ec, all sign finish===================","msgprex",msgprex,"w.rsv",w.rsv)
 
 	var ret string
 	iter := w.rsv.Front()
@@ -2610,9 +2607,9 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idS
 
 	// 1. Receive Broadcast
 	// s: s1, s2, s3
-	common.Debug("===================send SS1 finish, ", "prex = ", msgprex, "", "====================")
+	common.Info("===================send SS1 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(WaitMsgTimeGG20, w.bss1)
-	common.Debug("===================finish get SS1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
+	common.Info("===================finish get SS1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
@@ -2879,7 +2876,7 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 	ids := GetIds2("ECDSA", w.groupid)
 	idSign := ids[index:index+3]
 
-	common.Debug("===================PreSign_ec3=================","index",index,"w.groupid",w.groupid,"key",msgprex)
+	common.Info("===================PreSign_ec3 start=================","index",index,"w.groupid",w.groupid,"key",msgprex)
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
 	skU1, w1 := MapPrivKeyShare(cointype, w, idSign, string(sku1.Bytes()))
@@ -2981,7 +2978,7 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 	if r == nil || deltaGammaGy == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3, calc r finish=================","key",msgprex)
+	common.Info("=====================PreSign_ec3, calc r finish=================","key",msgprex)
 	ret := &PrePubData{Key:msgprex,K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Index:index,Used:false}
 	return ret
 }
@@ -3014,7 +3011,7 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	idSign := ids[pre.Index:pre.Index+3]
 	
 	mMtA, _ := new(big.Int).SetString(message, 16)
-	common.Debug("=============Sign_ec3=============","w.ThresHold",w.ThresHold,"w.groupid",w.groupid,"index",pre.Index,"key",msgprex)
+	common.Info("=============Sign_ec3 start=============","w.ThresHold",w.ThresHold,"w.groupid",w.groupid,"index",pre.Index,"key",msgprex)
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
@@ -3066,7 +3063,7 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	if s == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec3,calc s finish=================","key",msgprex)
+	common.Info("=====================Sign_ec3,calc s finish=================","key",msgprex)
 
 	// 3. justify the s
 	bb := false
@@ -3127,23 +3124,23 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	signature.SetRecoveryParam(int32(recid))
 
 	if !DECDSA_Sign_Verify_RSV(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), message, pkx, pky) {
-		common.Debug("=================Sign_ec3,verify is false==============","key",msgprex)
+		common.Info("=================Sign_ec3,verify is false==============","key",msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("sign verify fail.")}
 		ch <- res
 		return ""
 	}
-	common.Debug("=================Sign_ec3,verify (r,s) pass==============","key",msgprex)
+	common.Info("=================Sign_ec3,verify (r,s) pass==============","key",msgprex)
 
 	signature2 := GetSignString(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), int(signature.GetRecoveryParam()))
 	rstring := "========================== r = " + fmt.Sprintf("%v", signature.GetR()) + " ========================="
 	sstring := "========================== s = " + fmt.Sprintf("%v", signature.GetS()) + " =========================="
 	fmt.Println(rstring)
 	fmt.Println(sstring)
-	common.Debug("=================Sign_ec3==============","rsv str",signature2,"key",msgprex)
+	common.Info("=================Sign_ec3==============","rsv str",signature2,"key",msgprex)
 	res := RpcDcrmRes{Ret: signature2, Err: nil}
 	ch <- res
 
-	common.Debug("=================Sign_ec3, rsv pass==============","key",msgprex)
+	common.Info("=================Sign_ec3, rsv pass==============","key",msgprex)
 	//*******************!!!Distributed ECDSA Sign End!!!**********************************
 
 	return ""
@@ -3457,16 +3454,6 @@ func SendMsgToDcrmGroup(msg string, groupid string) {
 	if err != nil {
 	    common.Debug("=========SendMsgToDcrmGroup,send msg to dcrm group=============","msg",msg,"groupid",groupid,"err",err)
 	}
-
-	/*_, nodes := GetGroup(groupid)
-	others := strings.Split(nodes, common.Sep2)
-	for _, v := range others {
-	    if IsCurNode(v, cur_enode) {
-		continue
-	    }
-
-	    SendMsgToPeer(v,msg)
-	}*/
 }
 
 ///

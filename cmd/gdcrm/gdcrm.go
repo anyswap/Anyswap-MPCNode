@@ -65,7 +65,7 @@ func StartDcrm(c *cli.Context) {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
 	startP2pNode()
-	time.Sleep(time.Duration(600) * time.Second) //wait 10 ms for ec3
+	time.Sleep(time.Duration(180) * time.Second) //wait 3 ms for ec3
 	rpcdcrm.RpcInit(rpcport)
 	dcrm.Start(waitmsg,trytimes,presignnum)
 	select {} // note for server, or for client
@@ -141,7 +141,7 @@ func init() {
 		cli.Uint64Flag{Name: "verbosity", Value: 4, Usage: "log verbosity (0:panic, 1:fatal, 2:error, 3:warn, 4:info, 5:debug, 6:trace)", Destination: &verbosity},
 		cli.BoolFlag{Name: "json", Usage: "output log in json format",Destination: &json},
 		cli.BoolFlag{Name: "color", Usage: "output log in color text format", Destination: &color},
-		cli.Uint64Flag{Name: "waitmsg", Value: 100, Usage: "the time to wait p2p msg", Destination: &waitmsg},
+		cli.Uint64Flag{Name: "waitmsg", Value: 120, Usage: "the time to wait p2p msg", Destination: &waitmsg},
 		cli.Uint64Flag{Name: "trytimes", Value: 1, Usage: "the times to try key-gen/sign", Destination: &trytimes},
 		cli.Uint64Flag{Name: "presignnum", Value: 2000, Usage: "the total of pre-sign data", Destination: &presignnum},
 	}

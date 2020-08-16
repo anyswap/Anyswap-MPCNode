@@ -435,7 +435,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 
 func (w *RPCReqWorker) Clear() {
 
-	common.Debug("======================RpcReqWorker.Clear======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
+	common.Info("======================RpcReqWorker.Clear======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
 
 	w.sid = ""
 	w.groupid = ""

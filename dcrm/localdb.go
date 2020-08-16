@@ -37,23 +37,8 @@ var (
 
 func GetSkU1FromLocalDb(key string) []byte {
 	lock.Lock()
-	/*dir := GetSkU1Dir()
-	////////
-	db, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			if err == nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}*/
-	//
 	if dbsk == nil {
-	    common.Debug("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
+	    common.Info("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
 	    dir := GetSkU1Dir()
 	    ////////
 	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -146,14 +131,14 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 		    }
 	    }
 	    if err != nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get, ===================","err",err,"dir",dir,"key",key)
+	    common.Info("===================GetPubKeyDataValueFromDb, db is nil and re-get, ===================","err",err,"dir",dir,"key",key)
 		lock.Unlock()
 		return nil
 	    } else {
 		db = dbtmp
 		da, err := db.Get([]byte(key))
 		if err != nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get success,but get data fail ===================","err",err,"dir",dir,"key",key)
+	    common.Info("===================GetPubKeyDataValueFromDb, db is nil and re-get success,but get data fail ===================","err",err,"dir",dir,"key",key)
 		    lock.Unlock()
 		    return nil
 		}
@@ -204,54 +189,6 @@ type KeyData struct {
 }
 
 func SavePubKeyDataToDb() {
-	/*for {
-		select {
-		case kd := <-PubKeyDataChan:
-			if db != nil {
-			    if kd.Data == "CLEAN" {
-				err := db.Delete(kd.Key)
-				if err != nil {
-				    PubKeyDataChan <- kd
-				    return
-				}
-			    } else {
-				err := db.Put(kd.Key, []byte(kd.Data))
-				if err != nil {
-				    dir := GetDbDir()
-				    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-				    //bug
-				    if err != nil {
-					    for i := 0; i < 100; i++ {
-						    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-						    if err == nil {
-							    break
-						    }
-
-						    time.Sleep(time.Duration(1000000))
-					    }
-				    }
-				    if err != nil {
-					//dbsk = nil
-				    } else {
-					db = dbtmp
-					err = db.Put(kd.Key, []byte(kd.Data))
-					if err != nil {
-					    PubKeyDataChan <- kd
-					    return
-					}
-				    }
-
-				}
-				//db.Close()
-			    }
-			} else {
-				PubKeyDataChan <- kd
-			}
-
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		}
-	}
-	*/
 	for {
 		kd := <-PubKeyDataChan
 		if db != nil {
@@ -259,13 +196,13 @@ func SavePubKeyDataToDb() {
 		    if kd.Data == "CLEAN" {
 			err := db.Delete(kd.Key)
 			if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
+				common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
 			    //PubKeyDataChan <- kd
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
 			if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
+				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
 			    dir := GetDbDir()
 			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -280,13 +217,13 @@ func SavePubKeyDataToDb() {
 				    }
 			    }
 			    if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
+				common.Info("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
 				//dbsk = nil
 			    } else {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
+					common.Info("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
 				    //PubKeyDataChan <- kd
 				}
 			    }
@@ -295,7 +232,7 @@ func SavePubKeyDataToDb() {
 			//db.Close()
 		    }
 		} else {
-			common.Debug("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+			common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
 			//PubKeyDataChan <- kd
 		}
 
@@ -304,53 +241,6 @@ func SavePubKeyDataToDb() {
 }
 
 func SaveSkU1ToDb() {
-	/*
-	for {
-		select {
-		case kd := <-SkU1Chan:
-			if dbsk != nil {
-			    cm,err := EncryptMsg(kd.Data,cur_enode)
-			    if err != nil {
-				SkU1Chan <- kd
-				break
-			    }
-
-			    err = dbsk.Put(kd.Key, []byte(cm))
-			    if err != nil {
-				dir := GetSkU1Dir()
-				dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-				//bug
-				if err != nil {
-					for i := 0; i < 100; i++ {
-						dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-						if err == nil {
-							break
-						}
-
-						time.Sleep(time.Duration(1000000))
-					}
-				}
-				if err != nil {
-				    //dbsk = nil
-				} else {
-				    dbsk = dbsktmp
-				    err = dbsk.Put(kd.Key, []byte(cm))
-				    if err != nil {
-					SkU1Chan <- kd
-					return
-				    }
-				}
-
-			    }
-			//	db.Close()
-			} else {
-				SkU1Chan <- kd
-			}
-
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		}
-	}
-	*/
 	for {
 		kd := <-SkU1Chan
 		if dbsk != nil {
@@ -454,16 +344,16 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 
 								val,err := Encode2(ps)
 								if err != nil {
-									common.Debug("=====================PreSign at start========================","err",err)
+									common.Debug("=====================GetAllPubKeyDataFromDb at ec3, at start========================","err",err)
 									time.Sleep(time.Duration(10000000))
 								    continue 
 								}
 								
 								for _, id := range tmp {
 									enodes := GetEnodesByUid(id, "ECDSA", pd.GroupId)
-									common.Debug("===============PreSign at start ,get enodes===============","enodes",enodes,"index",index)
+									common.Debug("===============GetAllPubKeyDataFromDb at ec3, at start ,get enodes===============","enodes",enodes,"index",index)
 									if IsCurNode(enodes, cur_enode) {
-										common.Debug("===============PreSign at start ,get cur enodes===============","enodes",enodes)
+										common.Debug("===============GetAllPubKeyDataFromDb at ec3, at start ,get cur enodes===============","enodes",enodes)
 										continue
 									}
 									SendMsgToPeer(enodes, val)
@@ -473,10 +363,10 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 								SetUpMsgList3(val,cur_enode,rch)
 								_, _,cherr := GetChannelValue(waitall+10,rch)
 								if cherr != nil {
-									common.Debug("=====================PreSign at start 2222222========================","cherr",cherr)
+									common.Info("=====================GetAllPubKeyDataFromDb at ec3, at start ========================","cherr",cherr)
 								}
 
-								common.Debug("===================generate pre-sign data at start===============","current total number of the data ",GetTotalCount(pd.PubKey),"pubkey",pd.PubKey)
+								common.Info("===================generate pre-sign data at start===============","current total number of the data ",GetTotalCount(pd.PubKey),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pd.PubKey)),"pubkey",pd.PubKey)
 							} 
 
 							time.Sleep(time.Duration(1000000))
@@ -544,7 +434,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 	    common.Debug("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
-		    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
+		    common.Info("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
 		/*iter := LdbPubBak.Front()
 		for iter != nil {
 		    mdss := iter.Value.(*SignBak)

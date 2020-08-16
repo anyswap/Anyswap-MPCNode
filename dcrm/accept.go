@@ -36,7 +36,7 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
-		common.Debug("=====================AcceptReqAddr,no exist key=======================","key",key)
+		common.Info("=====================AcceptReqAddr,no exist key=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -223,14 +223,14 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
-		common.Debug("=====================AcceptSign,no exist key=======================","key",key)
+		common.Info("=====================AcceptSign,no exist key=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptSignData)
 
 	if !ok {
-		common.Debug("=====================AcceptLockOut, accept data error=======================","key",key)
+		common.Info("=====================AcceptLockOut, accept data error=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -299,7 +299,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 		ac,ok = da.(*AcceptSignData)
 		if ok {
 			if ac.Status != "Pending" || ac.Rsv != "" {
-				common.Debug("=====================AcceptSign,already in ldb=======================","key",key)
+				common.Info("=====================AcceptSign,already in ldb=======================","key",key)
 				return "",nil
 			}
 		}
@@ -500,7 +500,7 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 								tatmp := fmt.Sprintf("%v",ta)
 								t2,_ := new(big.Int).SetString(tatmp,10)
 								if t2.Cmp(t1) >= 0 {
-									common.Debug("========================SaveAcceptSignData, delete sign data from ldb======================","key",val)
+									common.Info("========================SaveAcceptSignData, delete sign data from ldb======================","key",val)
 									signtodel.Remove(e)
 									LdbPubKeyData.DeleteMap(val)
 								}

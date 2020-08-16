@@ -522,7 +522,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 //=========================================
 
 func Call(msg interface{}, enode string) {
-	common.Debug("====================Call===================","get msg",msg,"sender node",enode)
+	common.Info("====================Call===================","get msg",msg,"sender node",enode)
 	s := msg.(string)
 	if s == "" {
 	    return
@@ -612,7 +612,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if err2 == nil {
 	    sd,ok := m.(*SignData)
 	    if ok {
-		common.Debug("===============RecvMsg.Run,it is sign data===================","msgprex",sd.MsgPrex,"key",sd.Key)
+		common.Debug("===============RecvMsg.Run,it is signdata===================","msgprex",sd.MsgPrex,"key",sd.Key)
 
 		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
 		pubkeyhex := hex.EncodeToString(ys)
@@ -623,7 +623,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 		}
 
-		common.Debug("========================RecvMsg.Run,xxxxx=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1,"msgprex",sd.MsgPrex,"key",sd.Key)
+		common.Info("========================RecvMsg.Run,get pick pre-sign data success.=================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey)
 
 		w := workers[workid]
 		w.sid = sd.Key
@@ -671,7 +671,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 			}
 
-			common.Debug("===============RecvMsg.Run, sign success ===================","i",i,"get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+			common.Info("===============RecvMsg.Run, ec3 sign success ===================","i",i,"get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 
 			ww.rsv.PushBack(ret)
 			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
@@ -679,7 +679,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return true 
 		    }
 		    
-		    common.Debug("===============RecvMsg.Run,sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+		    common.Info("===============RecvMsg.Run,ec3 sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 		    //time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}	
 		
@@ -707,7 +707,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 			///////
 			if !exsit {
-			    common.Debug("============================PreSign,not exist presign data===========================","pubkey",ps.Pub)
+			    common.Debug("============================PreSign at RecvMsg.Run,not exist presign data===========================","pubkey",ps.Pub)
 			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
 			    ch <- res
 			    return false
@@ -715,7 +715,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			pd,ok := da.(*PubKeyData)
 			if !ok {
-			    common.Debug("============================PreSign,presign data error==========================","pubkey",ps.Pub)
+			    common.Debug("============================PreSign at RecvMsg.Run,presign data error==========================","pubkey",ps.Pub)
 			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
 			    ch <- res
 			    return false
@@ -761,7 +761,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 
 			//if NeedPreSign(ps.Pub) {
-				common.Debug("========================PreSignxxx,=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1)
+				common.Debug("========================PreSign at RecvMsg.Run finish=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1)
 				pre.Key = w.sid
 				pre.Gid = w.groupid
 				pre.Index = ps.Index
@@ -793,7 +793,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if errtmp == nil {
 	    return true
 	}
-	common.Debug("================RecvMsg.Run, init accept data=================","res",res,"err",errtmp)
+	common.Debug("================RecvMsg.Run, init accept data fail=================","res",res,"err",errtmp)
 
 	return false 
 }
@@ -950,7 +950,7 @@ func DisMsg(msg string) {
 	if err != nil || w == nil {
 	    mmtmp := mm[0:2]
 	    ss := strings.Join(mmtmp, common.Sep)
-	    common.Debug("===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
+	    common.Info("===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
 	    C1Data.WriteMap(strings.ToLower(ss),msg)
 
 	    return
@@ -1273,7 +1273,7 @@ func DisMsg(msg string) {
 
 		w.msg_ss1.PushBack(msg)
 		if w.msg_ss1.Len() == w.ThresHold {
-			common.Debug("=====================Get All SS1====================","key",prexs[0])
+			common.Info("=====================Get All SS1====================","key",prexs[0])
 			w.bss1 <- true
 		}
 	case "PaillierKey":

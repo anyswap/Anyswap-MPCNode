@@ -2876,7 +2876,7 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 	ids := GetIds2("ECDSA", w.groupid)
 	idSign := ids[index:index+3]
 
-	common.Info("===================PreSign_ec3 start=================","index",index,"w.groupid",w.groupid,"key",msgprex)
+	//common.Info("===================PreSign_ec3 start=================","index",index,"w.groupid",w.groupid,"key",msgprex)
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
 	skU1, w1 := MapPrivKeyShare(cointype, w, idSign, string(sku1.Bytes()))
@@ -2978,7 +2978,7 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 	if r == nil || deltaGammaGy == nil {
 		return nil
 	}
-	common.Info("=====================PreSign_ec3, calc r finish=================","key",msgprex)
+	//common.Info("=====================PreSign_ec3, calc r finish=================","key",msgprex)
 	ret := &PrePubData{Key:msgprex,K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Index:index,Used:false}
 	return ret
 }
@@ -3063,7 +3063,7 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	if s == nil {
 		return ""
 	}
-	common.Info("=====================Sign_ec3,calc s finish=================","key",msgprex)
+	common.Debug("=====================Sign_ec3,calc s finish=================","key",msgprex)
 
 	// 3. justify the s
 	bb := false
@@ -3124,23 +3124,23 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	signature.SetRecoveryParam(int32(recid))
 
 	if !DECDSA_Sign_Verify_RSV(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), message, pkx, pky) {
-		common.Info("=================Sign_ec3,verify is false==============","key",msgprex)
+		common.Debug("=================Sign_ec3,verify is false==============","key",msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("sign verify fail.")}
 		ch <- res
 		return ""
 	}
-	common.Info("=================Sign_ec3,verify (r,s) pass==============","key",msgprex)
+	common.Debug("=================Sign_ec3,verify (r,s) pass==============","key",msgprex)
 
 	signature2 := GetSignString(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), int(signature.GetRecoveryParam()))
 	rstring := "========================== r = " + fmt.Sprintf("%v", signature.GetR()) + " ========================="
 	sstring := "========================== s = " + fmt.Sprintf("%v", signature.GetS()) + " =========================="
 	fmt.Println(rstring)
 	fmt.Println(sstring)
-	common.Info("=================Sign_ec3==============","rsv str",signature2,"key",msgprex)
+	common.Debug("=================Sign_ec3==============","rsv str",signature2,"key",msgprex)
 	res := RpcDcrmRes{Ret: signature2, Err: nil}
 	ch <- res
 
-	common.Info("=================Sign_ec3, rsv pass==============","key",msgprex)
+	common.Debug("=================Sign_ec3, rsv pass==============","key",msgprex)
 	//*******************!!!Distributed ECDSA Sign End!!!**********************************
 
 	return ""

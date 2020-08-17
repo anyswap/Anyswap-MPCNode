@@ -38,7 +38,7 @@ var (
 func GetSkU1FromLocalDb(key string) []byte {
 	lock.Lock()
 	if dbsk == nil {
-	    common.Info("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
+	    common.Debug("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
 	    dir := GetSkU1Dir()
 	    ////////
 	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -131,14 +131,14 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 		    }
 	    }
 	    if err != nil {
-	    common.Info("===================GetPubKeyDataValueFromDb, db is nil and re-get, ===================","err",err,"dir",dir,"key",key)
+	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get, ===================","err",err,"dir",dir,"key",key)
 		lock.Unlock()
 		return nil
 	    } else {
 		db = dbtmp
 		da, err := db.Get([]byte(key))
 		if err != nil {
-	    common.Info("===================GetPubKeyDataValueFromDb, db is nil and re-get success,but get data fail ===================","err",err,"dir",dir,"key",key)
+	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get success,but get data fail ===================","err",err,"dir",dir,"key",key)
 		    lock.Unlock()
 		    return nil
 		}
@@ -217,13 +217,13 @@ func SavePubKeyDataToDb() {
 				    }
 			    }
 			    if err != nil {
-				common.Info("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
+				common.Debug("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
 				//dbsk = nil
 			    } else {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-					common.Info("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
+					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
 				    //PubKeyDataChan <- kd
 				}
 			    }
@@ -232,7 +232,7 @@ func SavePubKeyDataToDb() {
 			//db.Close()
 		    }
 		} else {
-			common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+			common.Debug("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
 			//PubKeyDataChan <- kd
 		}
 
@@ -363,10 +363,10 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 								SetUpMsgList3(val,cur_enode,rch)
 								_, _,cherr := GetChannelValue(waitall+10,rch)
 								if cherr != nil {
-									common.Info("=====================GetAllPubKeyDataFromDb at ec3, at start ========================","cherr",cherr)
+									common.Debug("=====================GetAllPubKeyDataFromDb at ec3, at start ========================","cherr",cherr)
 								}
 
-								common.Info("===================generate pre-sign data at start===============","current total number of the data ",GetTotalCount(pd.PubKey),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pd.PubKey)),"pubkey",pd.PubKey)
+								common.Debug("===================generate pre-sign data at start===============","current total number of the data ",GetTotalCount(pd.PubKey),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pd.PubKey)),"pubkey",pd.PubKey)
 							} 
 
 							time.Sleep(time.Duration(1000000))
@@ -434,7 +434,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 	    common.Debug("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
-		    common.Info("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
+		    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
 		/*iter := LdbPubBak.Front()
 		for iter != nil {
 		    mdss := iter.Value.(*SignBak)

@@ -1145,7 +1145,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 						case account := <-wtmp2.acceptSignChan:
 							common.Debug("InitAcceptData,", "account= ", account, "key = ", key)
 							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-							common.Info("================== InitAcceptData2 , get all AcceptSignRes===============","result ",ars,"key ",key)
+							common.Debug("================== InitAcceptData2 , get all AcceptSignRes===============","result ",ars,"key ",key)
 							
 							//bug
 							/*reply = true
@@ -1477,7 +1477,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     }
 
     key,from,nonce,txdata,err := CheckRaw(raw)
-    common.Info("=====================InitAcceptData,get result from call CheckRaw ================","key",key,"from",from,"err",err,"raw",raw)
+    common.Debug("=====================InitAcceptData,get result from call CheckRaw ================","key",key,"from",from,"err",err,"raw",raw)
     if err != nil {
 	common.Debug("===============InitAcceptData,check raw===================","err ",err)
 	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
@@ -3487,7 +3487,7 @@ func HandleRpcSign() {
 						break
 					}
 
-					common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
+					common.Debug("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
 					//SetPrePubDataUseStatus(rsd.PubKey,pickkey,true)
 					ph := &PickHashKey{Hash:vv,PickKey:pickkey}
 					pickhash = append(pickhash,ph)
@@ -3523,7 +3523,7 @@ func HandleRpcSign() {
 						continue
 					}
 					
-					common.Info("========================HandleRpcSign,send to peer=======================","enodes",enodes,"gid",pub.GroupId,"index",index)
+					common.Debug("========================HandleRpcSign,send to peer=======================","enodes",enodes,"gid",pub.GroupId,"index",index)
 					SendMsgToPeer(enodes,send) 
 				}
 				    

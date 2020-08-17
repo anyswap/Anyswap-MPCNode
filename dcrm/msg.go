@@ -522,7 +522,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 //=========================================
 
 func Call(msg interface{}, enode string) {
-	common.Info("====================Call===================","get msg",msg,"sender node",enode)
+	common.Debug("====================Call===================","get msg",msg,"sender node",enode)
 	s := msg.(string)
 	if s == "" {
 	    return
@@ -950,7 +950,7 @@ func DisMsg(msg string) {
 	if err != nil || w == nil {
 	    mmtmp := mm[0:2]
 	    ss := strings.Join(mmtmp, common.Sep)
-	    common.Info("===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
+	    common.Debug("===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
 	    C1Data.WriteMap(strings.ToLower(ss),msg)
 
 	    return

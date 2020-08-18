@@ -45,7 +45,7 @@ type Service struct{}
 // raw: tx raw data
 //return pubkey and coins addr
 func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数名首字母必须大写
-	common.Debug("===============ReqDcrmAddr================","raw",raw)
+	common.Info("===============ReqDcrmAddr================","raw",raw)
 
 	data := make(map[string]interface{})
 	if raw == "" {
@@ -59,7 +59,7 @@ func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数�
 	}
 
 	ret, tip, err := dcrm.ReqDcrmAddr(raw)
-	common.Debug("=================ReqDcrmAddr==================","ret",ret,"tip",tip,"err",err,"raw",raw)
+	common.Info("=================ReqDcrmAddr,get result.==================","ret",ret,"tip",tip,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -81,9 +81,11 @@ func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数�
 
 func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 	//fmt.Printf("%v ==========call rpc AcceptReqAddr from web,raw = %v==========\n", common.CurrentTime(), raw)
+	common.Info("========================AcceptReqAddr======================","raw",raw)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptReqAddr(raw)
+	//common.Info("========================AcceptReqAddr,get result======================","ret",ret,"tip",tip,"err",err,"raw",raw)
 	//fmt.Printf("%v ==========call rpc AcceptReqAddr from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
@@ -131,9 +133,11 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 
 func (this *Service) AcceptSign(raw string) map[string]interface{} {
 	//fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
+	//common.Info("=============================AcceptSign============================","raw",raw)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptSign(raw)
+	//common.Info("=============================AcceptSign,get result============================","ret",ret,"tip",tip,"err",err,"raw",raw)
 	//fmt.Printf("%v ==========call rpc AcceptSign from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
@@ -180,11 +184,11 @@ func (this *Service) LockOut(raw string) map[string]interface{} {
 }
 
 func (this *Service) Sign(raw string) map[string]interface{} {
-	common.Debug("===================Sign=====================","raw",raw)
+	common.Info("===================Sign=====================","raw",raw)
 
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.Sign(raw)
-	common.Debug("===================Sign=====================","key",key,"err",err,"raw",raw)
+	//common.Info("===================Sign,get result=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{

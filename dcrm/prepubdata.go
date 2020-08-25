@@ -36,13 +36,14 @@ var (
 	PrePubDataCount = 2000
 	SignChan = make(chan *RpcSignData, 10000)
 	//DelSignChan = make(chan *DelSignData, 10000)
-	DelPreSign                     sync.Mutex
+	DelPreSign sync.Mutex
 	PreSigal  = common.NewSafeMap(10) //make(map[string][]byte)
 )
 
 type RpcSignData struct {
 	Raw string
 	PubKey string
+	GroupId string
 	MsgHash []string
 	Key string
 }
@@ -51,7 +52,6 @@ type PreSign struct {
 	Pub string
 	Gid string
 	Nonce string
-	Index int
 }
 
 type PrePubData struct {
@@ -61,8 +61,7 @@ type PrePubData struct {
 	Ry *big.Int
 	Sigma1 *big.Int
 	Gid string
-	Index int
-	Used bool
+	Used bool //useless? TODO
 }
 
 /*type DelSignData struct {
@@ -77,6 +76,8 @@ type PickHashKey struct {
 	Hash string
 	PickKey string
 }
+
+//pub = hash256(pubkey + gid)
 
 func GetPreSigal(pub string) bool {
 	data,exsit := PreSigal.ReadMap(strings.ToLower(pub)) 
@@ -370,7 +371,7 @@ func SetPrePubDataUseStatus(pub string,key string,used bool ) {
 	if !used {
 		val := GetPrePubDataBak(pub,key)
 		if val != nil {
-			PutPreSign(pub,val)
+			//PutPreSign(pub,val) //don't put into queue again??
 			DeletePrePubDataBak(pub,key)
 		}
 	}

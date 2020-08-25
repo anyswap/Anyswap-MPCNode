@@ -217,7 +217,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Debug("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"acceptsig",acceptsig)
+	    common.Info("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -588,6 +588,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
+	common.Info("================RecvMsg.Run,get the data from node=================")
 	////
 	msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
 	if errdec == nil {
@@ -616,7 +617,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
 		pubkeyhex := hex.EncodeToString(ys)
-		pre := GetPrePubDataBak(pubkeyhex,sd.PickKey)
+		pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
+		pre := GetPrePubDataBak(pub,sd.PickKey)
 		if pre == nil {
 			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
 			    ch <- res2
@@ -627,10 +629,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		w := workers[workid]
 		w.sid = sd.Key
-		//w.groupid = sd.GroupId
-		w.groupid = pre.Gid
-		w.NodeCnt = 5//sd.NodeCnt
-		w.ThresHold = 3//sd.ThresHold
+		w.groupid = sd.GroupId
+		
+		w.NodeCnt = sd.NodeCnt
+		w.ThresHold = sd.ThresHold
+		
 		w.DcrmFrom = sd.DcrmFrom
 
 		///////
@@ -660,7 +663,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    //w.Clear2()
 		    //Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
-		    Sign_ec3(sd.Key, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid,pre)
+		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
 		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
 		    if ret != "" && cherr == nil {
 
@@ -694,55 +697,50 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    ps,ok := m.(*PreSign)
 	    if ok {
 		    w := workers[workid]
+		    w.sid = ps.Nonce 
 		    w.groupid = ps.Gid
 		    w.DcrmFrom = ps.Pub
-		    w.NodeCnt = 5
-		    w.ThresHold = 3
-		    w.sid = ps.Nonce 
-			dcrmpks, _ := hex.DecodeString(ps.Pub)
-			exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-			if !exsit {
-			    time.Sleep(time.Duration(5000000000))
-			    exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-			}
-			///////
-			if !exsit {
-			    common.Debug("============================PreSign at RecvMsg.Run,not exist presign data===========================","pubkey",ps.Pub)
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
+		    gcnt, _ := GetGroup(w.groupid)
+		    w.NodeCnt = gcnt //TODO
+		    w.ThresHold = gcnt
+
+		    dcrmpks, _ := hex.DecodeString(ps.Pub)
+		    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    if !exsit {
+			time.Sleep(time.Duration(5000000000))
+			exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    }
+		    ///////
+		    if !exsit {
+			common.Debug("============================PreSign at RecvMsg.Run,not exist presign data===========================","pubkey",ps.Pub)
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
+			ch <- res
+			return false
+		    }
+
+		    pd,ok := da.(*PubKeyData)
+		    if !ok {
+			common.Debug("============================PreSign at RecvMsg.Run,presign data error==========================","pubkey",ps.Pub)
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
+			ch <- res
+			return false
+		    }
+
+		    save := (da.(*PubKeyData)).Save
+		    ///sku1
+		    da2 := GetSkU1FromLocalDb(string(dcrmpks[:]))
+		    if da2 == nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "presign get sku1 fail", Err: fmt.Errorf("presign get sku1 fail")}
 			    ch <- res
 			    return false
-			}
-
-			pd,ok := da.(*PubKeyData)
-			if !ok {
-			    common.Debug("============================PreSign at RecvMsg.Run,presign data error==========================","pubkey",ps.Pub)
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
+		    }
+		    sku1 := new(big.Int).SetBytes(da2)
+		    if sku1 == nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "presign get sku1 fail", Err: fmt.Errorf("presign get sku1 fail")}
 			    ch <- res
 			    return false
-			}
-
-			save := (da.(*PubKeyData)).Save
-			//dcrmpub := (da.(*PubKeyData)).Pub
-
-			//var dcrmpkx *big.Int
-			//var dcrmpky *big.Int
-			//dcrmpks = []byte(dcrmpub)
-			//dcrmpkx, dcrmpky = secp256k1.S256().Unmarshal(dcrmpks[:])
-
-			///sku1
-			da2 := GetSkU1FromLocalDb(string(dcrmpks[:]))
-			if da2 == nil {
-				res := RpcDcrmRes{Ret: "", Tip: "presign get sku1 fail", Err: fmt.Errorf("presign get sku1 fail")}
-				ch <- res
-				return false
-			}
-			sku1 := new(big.Int).SetBytes(da2)
-			if sku1 == nil {
-				res := RpcDcrmRes{Ret: "", Tip: "presign get sku1 fail", Err: fmt.Errorf("presign get sku1 fail")}
-				ch <- res
-				return false
-			}
-			//
+		    }
+		    //
 
 			///////
 		    exsit,da3 := GetValueFromPubKeyData(pd.Key)
@@ -753,7 +751,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			///////
 
 			var ch1 = make(chan interface{}, 1)
-			pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid,ps.Index)
+			pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
 			if pre == nil {
 				res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 				ch <- res
@@ -764,10 +762,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				common.Debug("========================PreSign at RecvMsg.Run finish=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1)
 				pre.Key = w.sid
 				pre.Gid = w.groupid
-				pre.Index = ps.Index
 				pre.Used = false
 				DelPreSign.Lock()
-				PutPreSign(ps.Pub,pre)
+				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
+				PutPreSign(pub,pre)
 				DelPreSign.Unlock()
 			//}
 
@@ -777,6 +775,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    }
 	}
 
+	common.Info("================RecvMsg.Run,begin to uncompress sign brocast data=================")
 	signbrocast,err := UnCompressSignBrocastData(res)
 	if err == nil {
 		errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
@@ -789,6 +788,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	////////////////////////////
 
+	common.Info("================RecvMsg.Run,uncompress sign brocast data fail=================","err",err)
 	errtmp := InitAcceptData(res,workid,self.sender,ch)
 	if errtmp == nil {
 	    return true

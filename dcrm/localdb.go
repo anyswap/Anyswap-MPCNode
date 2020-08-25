@@ -19,10 +19,10 @@ package dcrm
 import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
-	"strings"
+	//"strings"
 	//"container/list"
     "time"
-    "fmt"
+    //"fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
@@ -314,7 +314,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			    kd.WriteMap(key, pd)
 
 				////////ec3////
-				common.Debug("==================GetAllPubKeyDataFromDb at ec3==============","key",key,"pubkey",pd.PubKey,"initiator",pd.Initiator,"pd.Status",pd.Status)
+				/*common.Debug("==================GetAllPubKeyDataFromDb at ec3==============","key",key,"pubkey",pd.PubKey,"initiator",pd.Initiator,"pd.Status",pd.Status)
 			       if strings.EqualFold(pd.Initiator,cur_enode) && pd.Status == "Success" {
 					go func() {
 						PutPreSigal(pd.PubKey,true)
@@ -372,7 +372,7 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 							time.Sleep(time.Duration(1000000))
 						}
 					}()
-			       }
+			       }*/
 				////////////
 
 			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)

@@ -67,6 +67,7 @@ var (
 	enodesSig  arrayFlags
 	nodes      arrayFlags
 	hashs      arrayFlags
+	subgids      arrayFlags
 	contexts      arrayFlags
 	keyWrapper *keystore.Key
 	signer     types.EIP155Signer
@@ -95,6 +96,9 @@ func main() {
 	case "SIGN":
 		// test sign
 		sign()
+	case "PRESIGNDATA":
+		// test pre sign data
+		preGenSignData()
 	case "ACCEPTSIGN":
 		// approve condominium account sign
 		acceptSign()
@@ -110,7 +114,7 @@ func main() {
 			fmt.Printf("createContract failed. %v\n", err)
 		}
 	default:
-		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT\n", *cmd)
+		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT\n", *cmd)
 	}
 }
 
@@ -118,7 +122,7 @@ func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
 	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT")
+	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
@@ -140,6 +144,7 @@ func init() {
 	flag.Var(&nodes, "node", "Node rpc url")
 	flag.Var(&hashs, "msghash", "unsigned tx hash array")
 	flag.Var(&contexts, "msgcontext", "unsigned tx context array")
+	flag.Var(&subgids, "subgid", "sub group id array")
 
 	// create contract flags
 	flag.StringVar(&nodeChainIDStr, "chainID", nodeChainIDStr, "chain ID of full node")
@@ -529,6 +534,28 @@ func sign() {
 
 	signMsgHash(hashs,contexts, -1)
 }
+func preGenSignData() {
+	if len(subgids) == 0 {
+	    panic(fmt.Errorf("error:sub group id array is empty"))
+	}
+
+	txdata := preSignData{
+		TxType:     "PRESIGNDATA",
+		PubKey:     *pubkey,
+		SubGid:    subgids,
+	}
+	playload, _ := json.Marshal(txdata)
+	// sign tx
+	rawTX, err := signTX(signer, keyWrapper.PrivateKey, 0, playload)
+	if err != nil {
+		panic(err)
+	}
+	// get rawTx
+	_, err = client.Call("dcrm_preGenSignData", rawTX)
+	if err != nil {
+		panic(err)
+	}
+}
 func signMsgHash(hashs []string, contexts []string,loopCount int) (rsv []string) {
 	// get sign nonce
 	signNonce, err := client.Call("dcrm_getSignNonce", keyWrapper.Address.String())
@@ -901,6 +928,11 @@ type signData struct {
 	ThresHold  string `json:"ThresHold"`
 	Mode       string `json:"Mode"`
 	TimeStamp  string `json:"TimeStamp"`
+}
+type preSignData struct {
+    TxType string `json:"TxType"`
+    PubKey string `json:"PubKey"`
+    SubGid []string `json:"SubGid"`
 }
 type reshareData struct {
 	TxType    string `json:"TxType"`

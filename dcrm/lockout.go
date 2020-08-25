@@ -2851,7 +2851,7 @@ func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
 
 //msgprex = hash
 //return value is the backup for the dcrm sig
-func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch chan interface{}, id int,index int)  *PrePubData {
+func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch chan interface{},id int)  *PrePubData {
 	if id < 0 || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res
@@ -2873,8 +2873,8 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 
 	// [Notes]
 	// 1. assume the nodes who take part in the signature generation as follows
-	ids := GetIds2("ECDSA", w.groupid)
-	idSign := ids[index:index+3]
+	ids := GetIds(cointype, w.groupid)
+	idSign := ids[:w.ThresHold]
 
 	//common.Info("===================PreSign_ec3 start=================","index",index,"w.groupid",w.groupid,"key",msgprex)
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
@@ -2979,7 +2979,7 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 		return nil
 	}
 	//common.Info("=====================PreSign_ec3, calc r finish=================","key",msgprex)
-	ret := &PrePubData{Key:msgprex,K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Index:index,Used:false}
+	ret := &PrePubData{Key:msgprex,K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Used:false}
 	return ret
 }
 
@@ -3007,11 +3007,11 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 
 	// [Notes]
 	// 1. assume the nodes who take part in the signature generation as follows
-	ids := GetIds2("ECDSA", pre.Gid)
-	idSign := ids[pre.Index:pre.Index+3]
+	ids := GetIds(cointype, w.groupid)
+	idSign := ids[:w.ThresHold]
 	
 	mMtA, _ := new(big.Int).SetString(message, 16)
-	common.Info("=============Sign_ec3 start=============","w.ThresHold",w.ThresHold,"w.groupid",w.groupid,"index",pre.Index,"key",msgprex)
+	common.Info("=============Sign_ec3 start=============","w.ThresHold",w.ThresHold,"w.groupid",w.groupid,"key",msgprex)
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 

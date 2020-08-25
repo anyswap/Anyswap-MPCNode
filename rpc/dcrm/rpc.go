@@ -208,6 +208,33 @@ func (this *Service) Sign(raw string) map[string]interface{} {
 	}
 }
 
+//raw tx: 
+//data = pubkey + subgids
+func (this *Service) PreGenSignData(raw string) map[string]interface{} {
+	common.Info("===================PreGenSignData=====================","raw",raw)
+
+	data := make(map[string]interface{})
+	tip, err := dcrm.PreGenSignData(raw)
+	//common.Info("===================Sign,get result=====================","key",key,"err",err,"raw",raw)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = "generating pre-sign data ..."
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) ReShare(raw string) map[string]interface{} {
 	common.Debug("===================ReShare=====================","raw",raw)
 

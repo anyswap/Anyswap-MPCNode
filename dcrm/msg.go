@@ -428,63 +428,10 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	}
 
 	mms := strings.Split(ac.Sigs, common.Sep)
-	/*_, enodes := GetGroup(sig.GroupId)
+	_, enodes := GetGroup(sig.GroupId)
 	nodes := strings.Split(enodes, common.Sep2)
 	for _, node := range nodes {
 	    node2 := ParseNode(node)
-	    foundeid := false
-	    for kk,v := range mms {
-		if strings.EqualFold(v,node2) {
-		    foundeid = true
-		    found := false
-		    for _,vv := range ret {
-			    common.Debug("===================== CheckReply, mms[kk+1] must in ret map===============","key",key,"ret[...]",vv.From,"mms[kk+1]",mms[kk+1],"ac.Sigs",ac.Sigs)
-			if strings.EqualFold(vv.From,mms[kk+1]) { //allow user login diffrent node
-			    found = true
-			    break
-			}
-		    }
-
-		    if !found {
-			common.Debug("===================== CheckReply,mms[kk+1] no find in ret map and return fail==================","key",key,"mms[kk+1]",mms[kk+1])
-			return false
-		    }
-
-		    break
-		}
-	    }
-
-	    if !foundeid {
-	    common.Debug("===================== CheckReply,get raw reply finish and find eid fail================","key",key)
-		return false
-	    }
-	}*/
-
-	sender := ""
-	    for kk,v := range mms {
-		if strings.EqualFold(v,ac.Account) {
-			sender = mms[kk-1]
-			break
-		}
-	}
-
-	index := 0
-	ids := GetIds2("ECDSA", ac.GroupId)
-	for kk, id := range ids {
-		enodes := GetEnodesByUid(id, "ECDSA", ac.GroupId)
-		if IsCurNode(enodes, sender) {
-			if kk >= 2 {
-				index = kk - 2
-			} else {
-				index = kk
-			}
-			break
-		}
-	}
-	tmp := ids[index:index+3]
-	for _, id := range tmp {
-		enodes := GetEnodesByUid(id, "ECDSA", ac.GroupId)
-	    node2 := ParseNode(enodes)
 	    foundeid := false
 	    for kk,v := range mms {
 		if strings.EqualFold(v,node2) {

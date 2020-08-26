@@ -393,12 +393,14 @@ func CompressSignBrocastData(raw string,pickhash []*PickHashKey) (string,error) 
 		return "",err
 	}
 
-	ret,err := Compress([]byte(send))
+	return send,nil
+
+	/*ret,err := Compress([]byte(send))
 	if err != nil {
 		return "",err
 	}
 
-	return ret,nil
+	return ret,nil*/
 }
 
 func UnCompressSignBrocastData(data string) (*SignBrocastData,error) {
@@ -406,10 +408,12 @@ func UnCompressSignBrocastData(data string) (*SignBrocastData,error) {
 		return nil,fmt.Errorf("Sign Brocast Data error")
 	}
 
-	s,err := UnCompress(data)
+	/*s,err := UnCompress(data)
 	if err != nil {
 		return nil,err
-	}
+	}*/
+
+	s := data
 
 	ret,err := Decode2(s,"SignBrocastData")
 	if err != nil {

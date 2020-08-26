@@ -3523,12 +3523,12 @@ func HandleRpcSign() {
 					continue
 				}
 
-				//SendMsgToDcrmGroup(send,rsd.GroupId)
-				_,enodes := GetGroup(rsd.GroupId)
+				SendMsgToDcrmGroup(send,rsd.GroupId)
+				/*_,enodes := GetGroup(rsd.GroupId)
 				nodes := strings.Split(enodes, common.Sep2)
 				for _,v := range nodes {
 				    SendMsgToPeer(v,send)
-				}
+				}*/
 
 				SetUpMsgList(send,cur_enode)
 			}

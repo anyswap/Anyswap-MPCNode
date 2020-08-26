@@ -588,7 +588,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
-	common.Info("================RecvMsg.Run,get the data from node=================")
+	//common.Info("====================RecvMsg.Run,get the data from node====================")
 	////
 	msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
 	if errdec == nil {
@@ -625,7 +625,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 		}
 
-		common.Info("========================RecvMsg.Run,get pick pre-sign data success.=================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey)
+		//common.Info("========================RecvMsg.Run,get pick pre-sign data success.=================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey)
 
 		w := workers[workid]
 		w.sid = sd.Key
@@ -775,7 +775,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    }
 	}
 
-	common.Info("================RecvMsg.Run,begin to uncompress sign brocast data=================")
+	//common.Info("==========================RecvMsg.Run,begin to uncompress sign brocast data=======================")
 	signbrocast,err := UnCompressSignBrocastData(res)
 	if err == nil {
 		errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
@@ -786,9 +786,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
+	//common.Info("=========================RecvMsg.Run,uncompress sign brocast data fail========================","err",err)
 	////////////////////////////
 
-	common.Info("================RecvMsg.Run,uncompress sign brocast data fail=================","err",err)
 	errtmp := InitAcceptData(res,workid,self.sender,ch)
 	if errtmp == nil {
 	    return true

@@ -70,9 +70,10 @@ var (
 	signtodel = list.New()
 	delsign    sync.Mutex
 	count_to_del_sign = 5000
+	AgreeWait = 2
 )
 
-func Start(waitmsg uint64,trytimes uint64,presignnum uint64) {
+func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	InitDev(KeyFile)
@@ -150,6 +151,7 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64) {
 	WaitMsgTimeGG20 = int(waitmsg)
 	recalc_times = int(trytimes)
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
+	AgreeWait = int(waitagree)
 	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 	//GetAllPrePubkeyDataFromDb()
@@ -1129,7 +1131,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				timeout := make(chan bool, 1)
 				go func(wid int) {
 					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := 2 * time.Minute
+					agreeWaitTime := time.Duration(AgreeWait) * time.Minute
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 
 					wtmp2 := workers[wid]

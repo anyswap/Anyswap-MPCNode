@@ -878,6 +878,16 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("param error from raw data.")
 	}
 
+	dcrmpks, _ := hex.DecodeString(pubkey)
+	exsit,_ := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	if !exsit {
+	    time.Sleep(time.Duration(5000000000))
+	    exsit,_ = GetPubKeyDataFromLocalDb(string(dcrmpks[:])) //try again
+	}
+	if !exsit {
+		return "","","",nil,fmt.Errorf("invalid pubkey")
+	}
+
 //	common.Debug("=================CheckRaw, it is presigndata tx==================","raw ",raw,"pre ",&pre)
 	return "",from.Hex(),fmt.Sprintf("%v", Nonce),&pre,nil
     }

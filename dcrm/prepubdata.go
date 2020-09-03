@@ -429,32 +429,6 @@ func GetPreDbDir() string {
 	return dir
 }
 
-/*func GetAllPrePubkeyDataFromDb() {
-	if predb != nil {
-	    iter := predb.NewIterator()
-	    for iter.Next() {
-		//key := string(iter.Key())
-		value := string(iter.Value())
-
-		ss, err := UnCompress(value)
-		if err == nil {
-		    pubs, err := Decode2(ss, "PrePubKeyData")
-		    if err == nil {
-			pd,ok := pubs.(*PrePubData)
-			if ok {
-				if len(PrePubKeyDataQueueChan) < 1000 {
-					PrePubKeyDataQueueChan <-pd
-				}
-			}
-		    }
-		}
-	    }
-	    
-	    iter.Release()
-	}
-}
-*/
-
 func SavePrePubKeyDataToDb() {
 	for {
 		kd := <-PrePubKeyDataChan

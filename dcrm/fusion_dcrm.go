@@ -59,8 +59,6 @@ var (
 	reqdata_trytimes = 5
 	reqdata_timeout = 60
 	KeyFile    string
-	PreSignNonce,_ = new(big.Int).SetString("0",0)
-	SignNonce,_ = new(big.Int).SetString("0",0)
 	
 	lock                     sync.Mutex
 
@@ -76,18 +74,17 @@ var (
 func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
+	
 	InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
+	
 	dir := GetDbDir()
-	//common.Info("======================dcrm.Start======================","cur_enode",cur_enode,"dir",dir)
-
 	dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	//bug
 	if err != nil {
 		for {
 			dbtmp2, err2 := ethdb.NewLDBDatabase(dir, cache, handles)
 			if err2 == nil && dbtmp2 != nil {
-			    //common.Debug("======================dcrm.Start,open db success======================","cur_enode",cur_enode,"dir",dir)
 				dbtmp = dbtmp2
 				err = err2
 				break
@@ -154,119 +151,23 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	AgreeWait = int(waitagree)
 	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
-	//GetAllPrePubkeyDataFromDb()
 
 	go HandleRpcSign()
-	//go HandleDelSign()
 
 	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
 }
 
-func PutGroup(groupId string) bool {
-	return true
-}
-
-func GetGroupIdByEnode(enode string) string {
-	if enode == "" {
-		return ""
-	}
-
-	lock.Lock()
-	dir := GetGroupDir()
-
-	db, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	//bug
-	if err != nil {
-		for i := 0; i < 100; i++ {
-			db, err = ethdb.NewLDBDatabase(dir,cache, handles)
-			if err == nil && db != nil {
-				break
-			}
-
-			time.Sleep(time.Duration(1000000))
-		}
-	}
-	//
-
-	if err != nil {
-		lock.Unlock()
-		return ""
-	}
-
-	var data string
-	var b bytes.Buffer
-	b.WriteString("")
-	b.WriteByte(0)
-	b.WriteString("")
-	iter := db.NewIterator()
-	for iter.Next() {
-		key := string(iter.Key())
-		value := string(iter.Value())
-		if strings.EqualFold(key, "GroupIds") {
-			data = value
-			break
-		}
-	}
-	iter.Release()
-	///////
-	if data == "" {
-		db.Close()
-		lock.Unlock()
-		return ""
-	}
-
-	m := strings.Split(data, ":")
-	for _, v := range m {
-		if IsInGroup(enode, v) {
-			db.Close()
-			lock.Unlock()
-			return v
-		}
-	}
-
-	db.Close()
-	lock.Unlock()
-	return ""
-}
-
-func IsInGroup(enode string, groupId string) bool {
-	if groupId == "" || enode == "" {
-		return false
-	}
-
-	cnt, enodes := GetGroup(groupId)
-	if cnt <= 0 || enodes == "" {
-		return false
-	}
-
-	nodes := strings.Split(enodes, common.Sep2)
-	for _, node := range nodes {
-		node2 := ParseNode(node)
-		if strings.EqualFold(node2, enode) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func InitDev(keyfile string) {
-	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
+	cur_enode = discover.GetLocalID().String()
 
 	go SavePubKeyDataToDb()
 	go SaveSkU1ToDb()
-	go CommitRpcReq()
 	go ec2.GenRandomInt(2048)
 	go ec2.GenRandomSafePrime(2048)
 }
 
 func InitGroupInfo(groupId string) {
-	//cur_enode = GetSelfEnode()
-	cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-}
-
-func GenRandomSafePrime(length int) {
-	ec2.GenRandomSafePrime(length)
+	cur_enode = discover.GetLocalID().String()
 }
 
 //=======================================================================
@@ -383,28 +284,6 @@ func GetDcrmAddr(pubkey string) (string, string, error) {
 	m = &DcrmPubkeyRes{Account: "", PubKey: pubkey, DcrmAddress: addrmp}
 	b,_ := json.Marshal(m)
 	return string(b), "", nil
-}
-
-func ExsitPubKey(account string, cointype string) (string, bool) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype))).Hex()
-	exsit,da := GetValueFromPubKeyData(key)
-	///////
-	if !exsit {
-		key = Keccak256Hash([]byte(strings.ToLower(account + ":" + "ALL"))).Hex()
-		exsit,da = GetValueFromPubKeyData(key)
-		///////
-		if !exsit {
-			return "", false
-		}
-	}
-
-	pubs,ok  := da.(*PubKeyData)
-	if !ok {
-	    return "",false
-	}
-
-	pubkey := hex.EncodeToString([]byte(pubs.Pub))
-	return pubkey, true
 }
 
 func CheckAccept(pubkey string,mode string,account string) bool {
@@ -3325,7 +3204,6 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
 	    common.Info("=====================RpcAcceptSign,call CheckRaw finish ================","key",acceptsig.Key,"from",from,"accept",acceptsig.Accept,"raw",raw)
-	    ////////////////////////////
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -3414,13 +3292,7 @@ func PreGenSignData(raw string) (string, error) {
     }
 
     common.Debug("=====================PreGenSignData================","from",from,"raw",raw)
-    //SendMsgToDcrmGroup(raw, sig.GroupId)
-
-    ////////////////////
     ExcutePreSignData(pre)
-    ////////////////////
-
-    ///////////////////////////////
     return "", nil
 }
 
@@ -3477,12 +3349,9 @@ func Sign(raw string) (string, string, error) {
     }
 
     common.Debug("=====================Sign================","key",key,"from",from,"raw",raw)
-    //SendMsgToDcrmGroup(raw, sig.GroupId)
 
     rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
     SignChan <- rsd
-
-    ///////////////////////////////
     return key, "", nil
 }
 
@@ -3536,12 +3405,6 @@ func HandleRpcSign() {
 				}
 
 				SendMsgToDcrmGroup(send,rsd.GroupId)
-				/*_,enodes := GetGroup(rsd.GroupId)
-				nodes := strings.Split(enodes, common.Sep2)
-				for _,v := range nodes {
-				    SendMsgToPeer(v,send)
-				}*/
-
 				SetUpMsgList(send,cur_enode)
 			}
 		}
@@ -3580,7 +3443,6 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 		balances := make([]SubAddressBalance, 0)
 		var wg sync.WaitGroup
 		ret  := common.NewSafeMap(10)
-		//var ret map[string]*SubAddressBalance = make(map[string]*SubAddressBalance, 0)
 		for cointype, subaddr := range dp.DcrmAddress {
 			wg.Add(1)
 			go func(cointype, subaddr string) {
@@ -3589,7 +3451,6 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 				if err != nil {
 					balance = "0"
 				}
-				//ret[cointype] = &SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance}
 				ret.WriteMap(strings.ToLower(cointype),&SubAddressBalance{Cointype: cointype, DcrmAddr: subaddr, Balance: balance})
 			}(cointype, subaddr)
 		}
@@ -3713,12 +3574,6 @@ func receiveGroupInfo(msg interface{}) {
 
 func Init(groupId string) {
 	common.Debug("======================Init==========================","get group id",groupId,"init_times",strconv.Itoa(init_times))
-
-	if !PutGroup(groupId) {
-		out := "=============Init================" + " get group id = " + groupId + ", put group id fail "
-		fmt.Println(out)
-		return
-	}
 
 	if init_times >= 1 {
 		return
@@ -3864,33 +3719,6 @@ type ReqAddrReply struct {
 	ThresHold  string
 	Mode      string
 	TimeStamp string
-}
-
-func SortCurNodeInfo(value []interface{}) []interface{} {
-	if len(value) == 0 {
-		return value
-	}
-
-	var ids sortableIDSSlice
-	for _, v := range value {
-		uid := DoubleHash(string(v.([]byte)), "ALL")
-		ids = append(ids, uid)
-	}
-
-	sort.Sort(ids)
-
-	var ret = make([]interface{}, 0)
-	for _, v := range ids {
-		for _, vv := range value {
-			uid := DoubleHash(string(vv.([]byte)), "ALL")
-			if v.Cmp(uid) == 0 {
-				ret = append(ret, vv)
-				break
-			}
-		}
-	}
-
-	return ret
 }
 
 func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
@@ -4463,7 +4291,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 
 ///////
 
-////compress
 func Compress(c []byte) (string, error) {
 	if c == nil {
 		return "", fmt.Errorf("compress fail.")
@@ -4486,7 +4313,6 @@ func Compress(c []byte) (string, error) {
 	return s, nil
 }
 
-////uncompress
 func UnCompress(s string) (string, error) {
 
 	if s == "" {

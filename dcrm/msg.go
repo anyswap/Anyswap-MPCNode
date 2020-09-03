@@ -527,7 +527,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
-	/////////
 	res := self.msg
 	if res == "" { //TODO
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get data fail in RecvMsg.Run", Err: fmt.Errorf("no find worker.")}
@@ -535,18 +534,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
-	//common.Info("====================RecvMsg.Run,get the data from node====================")
-	////
 	msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
 	if errdec == nil {
 		res = msgdata
-		//raw,errxxx := UnCompress(res)
-		//if errxxx == nil {
-		//	res = raw
-		//	common.Debug("=========================RecvMsg.Run,get sidn data===================","sign raw",res)
-		//}
 	}
-	////
 	mm := strings.Split(res, common.Sep)
 	if len(mm) >= 2 {
 		//msg:  key-enode:C1:X1:X2....:Xn
@@ -555,7 +546,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return true
 	}
 
-	////////////////////
 	m, err2 := Decode2(res, "SignData")
 	if err2 == nil {
 	    sd,ok := m.(*SignData)
@@ -572,8 +562,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 		}
 
-		//common.Info("========================RecvMsg.Run,get pick pre-sign data success.=================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey)
-
 		w := workers[workid]
 		w.sid = sd.Key
 		w.groupid = sd.GroupId
@@ -583,7 +571,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		
 		w.DcrmFrom = sd.DcrmFrom
 
-		///////
 		dcrmpks, _ := hex.DecodeString(pubkeyhex)
 		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 		if exsit {
@@ -599,7 +586,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			}
 		}
-		///////
 
 		var ch1 = make(chan interface{}, 1)
 		for i:=0;i < recalc_times;i++ {
@@ -722,7 +708,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    }
 	}
 
-	//common.Info("==========================RecvMsg.Run,begin to uncompress sign brocast data=======================")
 	signbrocast,err := UnCompressSignBrocastData(res)
 	if err == nil {
 		errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
@@ -733,7 +718,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
-	//common.Info("=========================RecvMsg.Run,uncompress sign brocast data fail========================","err",err)
 	////////////////////////////
 
 	errtmp := InitAcceptData(res,workid,self.sender,ch)
@@ -1403,46 +1387,6 @@ func DisMsg(msg string) {
 }
 
 //==========================================================================
-
-type RecivAcceptResTime struct {
-    RecivTime string
-    Reply string
-}
-
-type SendAcceptResTime struct {
-    SendTime string
-    Reply string
-}
-
-type RecivDcrmTime struct {
-    Round string
-    RecivTime string
-    Msg string
-}
-
-type SendDcrmTime struct {
-    Round string
-    SendTime string
-    Msg string
-}
-
-type NoRecivData struct {
-    Node string
-    Msg string
-}
-
-type DecdsaLog struct {
-    CurEnode string  //enodeid:ip:port
-    GroupEnodes []string
-    DcrmCallTime string
-    RecivAcceptRes []RecivAcceptResTime
-    SendAcceptRes []SendAcceptResTime
-    RecivDcrm []RecivDcrmTime
-    SendDcrm []SendDcrmTime
-    FailTime string
-    FailInfo string
-    No_Reciv []NoRecivData
-}
 
 func Find(l *list.List, msg string) bool {
 	if l == nil || msg == "" {

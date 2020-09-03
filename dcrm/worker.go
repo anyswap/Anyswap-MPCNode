@@ -20,7 +20,6 @@ import (
 	"container/list"
 	"fmt"
 	"strings"
-	"time"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
@@ -1264,13 +1263,5 @@ func (w *RPCReqWorker) Stop() {
 	go func() {
 		w.rpcquit <- true
 	}()
-}
-
-func CommitRpcReq() {
-	for {
-		req := <-RPCReqQueueCache
-		RPCReqQueue <- req
-		time.Sleep(time.Duration(1000000000)) //na, 1 s = 10e9 na /////////!!!!!fix bug:if large sign at same time,it will very slowly!!!!!
-	}
 }
 

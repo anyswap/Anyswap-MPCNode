@@ -19,17 +19,13 @@ package dcrm
 import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
-	//"strings"
-	//"container/list"
     "time"
-    //"fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
 var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 2000)
-	//LdbPubBak = list.New()
 	SkU1Chan = make(chan KeyData, 2000)
 	cache = 0 
 	handles = 0
@@ -192,12 +188,10 @@ func SavePubKeyDataToDb() {
 	for {
 		kd := <-PubKeyDataChan
 		if db != nil {
-			//common.Debug("=================SavePubKeyDataToDb, db is not nil ===============","key",kd.Key)
 		    if kd.Data == "CLEAN" {
 			err := db.Delete(kd.Key)
 			if err != nil {
 				common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
-			    //PubKeyDataChan <- kd
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
@@ -218,22 +212,18 @@ func SavePubKeyDataToDb() {
 			    }
 			    if err != nil {
 				common.Debug("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
-				//dbsk = nil
 			    } else {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
 					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
-				    //PubKeyDataChan <- kd
 				}
 			    }
 
 			}
-			//db.Close()
 		    }
 		} else {
 			common.Debug("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
-			//PubKeyDataChan <- kd
 		}
 
 		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
@@ -302,7 +292,6 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			pd,ok := pubs3.(*PubKeyData)
 			if ok {
 			    kd.WriteMap(key, pd)
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read PubKeyData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 			    continue
 			}
 		    }
@@ -434,21 +423,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 	    common.Debug("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
-		    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
-		/*iter := LdbPubBak.Front()
-		for iter != nil {
-		    mdss := iter.Value.(*SignBak)
-		    if mdss == nil {
-			    continue
-		    }
-
-		    common.Debug("========================GetValueFromPubKeyData, get mdss =======================","mdss.Key",mdss.Key,"key",key)
-			if mdss != nil && strings.EqualFold(mdss.Key, key) {
-			    common.Debug("========================GetValueFromPubKeyData,get value success =======================","mdss.Key",mdss.Key,"key",key)
-				return true,mdss.Ac
-			}
-		    iter = iter.Next()
-		}*/
+	    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
 	    return false,nil
 	}
 
@@ -538,7 +513,6 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
 func GetGroupDir() string { //TODO
 	dir := common.DefaultDataDir()
-	//dir += "/dcrmdata/dcrmdb" + GetSelfEnode() + "group"
 	dir += "/dcrmdata/dcrmdb" + discover.GetLocalID().String() + "group"
 	return dir
 }

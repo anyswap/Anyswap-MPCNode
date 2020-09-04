@@ -20,6 +20,7 @@ import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
     "time"
+    "sync"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
@@ -29,6 +30,10 @@ var (
 	SkU1Chan = make(chan KeyData, 2000)
 	cache = 0 
 	handles = 0
+	
+	lock                     sync.Mutex
+	db *ethdb.LDBDatabase
+	dbsk *ethdb.LDBDatabase
 )
 
 func GetSkU1FromLocalDb(key string) []byte {

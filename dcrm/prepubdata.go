@@ -481,3 +481,66 @@ func SavePrePubKeyDataToDb() {
 	    }
 }
 
+type TxDataPreSignData struct {
+    TxType string
+    PubKey string
+    SubGid []string
+}
+
+func PreGenSignData(raw string) (string, error) {
+    common.Debug("=====================PreGenSignData call CheckRaw ================","raw",raw)
+    _,from,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	common.Info("=====================PreGenSignData,call CheckRaw finish================","raw",raw,"err",err)
+	return err.Error(),err
+    }
+
+    pre,ok := txdata.(*TxDataPreSignData)
+    if !ok {
+	return "check raw fail,it is not *TxDataPreSignData",fmt.Errorf("check raw fail,it is not *TxDataPreSignData")
+    }
+
+    common.Debug("=====================PreGenSignData================","from",from,"raw",raw)
+    ExcutePreSignData(pre)
+    return "", nil
+}
+
+func ExcutePreSignData(pre *TxDataPreSignData) {
+    if pre == nil {
+	return
+    }
+    
+    for _,gid := range pre.SubGid {
+	go func(gg string) {
+	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
+	    PutPreSigal(pub,true)
+	    for {
+		    if NeedPreSign(pub) && GetPreSigal(pub) {
+			    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+			    nonce := Keccak256Hash([]byte(strings.ToLower(pub + tt))).Hex()
+			    ps := &PreSign{Pub:pre.PubKey,Gid:gg,Nonce:nonce}
+
+			    val,err := Encode2(ps)
+			    if err != nil {
+				    common.Debug("=====================ExcutePreSignData========================","err",err)
+				    time.Sleep(time.Duration(10000000))
+				continue 
+			    }
+			    SendMsgToDcrmGroup(val,gg)
+
+			    rch := make(chan interface{}, 1)
+			    SetUpMsgList3(val,cur_enode,rch)
+			    _, _,cherr := GetChannelValue(waitall+10,rch)
+			    if cherr != nil {
+				    common.Debug("=====================ExcutePreSignData in genkey fail========================","cherr",cherr)
+			    }
+
+			    common.Info("===================generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pubkey",pre.PubKey,"sub-groupid",gg)
+		    } 
+
+		    time.Sleep(time.Duration(1000000))
+	    }
+	}(gid)
+    }
+}
+

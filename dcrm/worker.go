@@ -65,85 +65,33 @@ type RPCReqWorker struct {
 	retres           *list.List
 	//
 	msg_acceptreqaddrres      *list.List
-	splitmsg_acceptreqaddrres map[string]*list.List
-
 	msg_acceptlockoutres      *list.List
-	splitmsg_acceptlockoutres map[string]*list.List
-
 	msg_acceptreshareres      *list.List
-	splitmsg_acceptreshareres map[string]*list.List
-
 	msg_acceptsignres      *list.List
-	splitmsg_acceptsignres map[string]*list.List
-
 	msg_sendlockoutres      *list.List
-	splitmsg_sendlockoutres map[string]*list.List
-
 	msg_sendreshareres      *list.List
-	splitmsg_sendreshareres map[string]*list.List
-
 	msg_sendsignres      *list.List
-	splitmsg_sendsignres map[string]*list.List
-
 	msg_c1      *list.List
-	splitmsg_c1 map[string]*list.List
-
 	msg_kc      *list.List
-	splitmsg_kc map[string]*list.List
-
 	msg_mkg      *list.List
-	splitmsg_mkg map[string]*list.List
-
 	msg_mkw      *list.List
-	splitmsg_mkw map[string]*list.List
-
 	msg_delta1      *list.List
-	splitmsg_delta1 map[string]*list.List
-
 	msg_d1_1      *list.List
-	splitmsg_d1_1 map[string]*list.List
-
 	msg_share1      *list.List
-	splitmsg_share1 map[string]*list.List
-
 	msg_zkfact      *list.List
-	splitmsg_zkfact map[string]*list.List
-
 	msg_zku      *list.List
-	splitmsg_zku map[string]*list.List
-
 	msg_mtazk1proof      *list.List
-	splitmsg_mtazk1proof map[string]*list.List
-
 	msg_c11      *list.List
-	splitmsg_c11 map[string]*list.List
-
 	msg_d11_1      *list.List
-	splitmsg_d11_1 map[string]*list.List
-
 	msg_commitbigvab      *list.List
-	splitmsg_commitbigvab map[string]*list.List
-
 	msg_zkabproof      *list.List
-	splitmsg_zkabproof map[string]*list.List
-
 	msg_commitbigut      *list.List
-	splitmsg_commitbigut map[string]*list.List
-
 	msg_commitbigutd11      *list.List
-	splitmsg_commitbigutd11 map[string]*list.List
-
 	msg_s1      *list.List
-	splitmsg_s1 map[string]*list.List
-
 	msg_ss1      *list.List
-	splitmsg_ss1 map[string]*list.List
-
 	msg_paillierkey      *list.List
-	splitmsg_paillierkey map[string]*list.List
 	
 	rsv      *list.List
-	
 	pkx  *list.List
 	pky  *list.List
 	save *list.List
@@ -302,57 +250,31 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		retres:                    list.New(),
 		ch:                        make(chan interface{}),
 		msg_share1:                list.New(),
-		splitmsg_share1:           make(map[string]*list.List),
 		msg_zkfact:                list.New(),
-		splitmsg_zkfact:           make(map[string]*list.List),
 		msg_zku:                   list.New(),
-		splitmsg_zku:              make(map[string]*list.List),
 		msg_mtazk1proof:           list.New(),
-		splitmsg_mtazk1proof:      make(map[string]*list.List),
 		msg_c1:                    list.New(),
-		splitmsg_c1:               make(map[string]*list.List),
 		msg_d1_1:                  list.New(),
-		splitmsg_d1_1:             make(map[string]*list.List),
 		msg_c11:                   list.New(),
-		splitmsg_c11:              make(map[string]*list.List),
 		msg_kc:                    list.New(),
-		splitmsg_kc:               make(map[string]*list.List),
 		msg_mkg:                   list.New(),
-		splitmsg_mkg:              make(map[string]*list.List),
 		msg_mkw:                   list.New(),
-		splitmsg_mkw:              make(map[string]*list.List),
 		msg_delta1:                list.New(),
-		splitmsg_delta1:           make(map[string]*list.List),
 		msg_d11_1:                 list.New(),
-		splitmsg_d11_1:            make(map[string]*list.List),
 		msg_commitbigvab:          list.New(),
-		splitmsg_commitbigvab:     make(map[string]*list.List),
 		msg_zkabproof:             list.New(),
-		splitmsg_zkabproof:        make(map[string]*list.List),
 		msg_commitbigut:           list.New(),
-		splitmsg_commitbigut:      make(map[string]*list.List),
 		msg_commitbigutd11:        list.New(),
-		splitmsg_commitbigutd11:   make(map[string]*list.List),
 		msg_s1:                    list.New(),
-		splitmsg_s1:               make(map[string]*list.List),
 		msg_ss1:                   list.New(),
-		splitmsg_ss1:              make(map[string]*list.List),
 		msg_paillierkey:                   list.New(),
-		splitmsg_paillierkey:              make(map[string]*list.List),
 		msg_acceptreqaddrres:      list.New(),
-		splitmsg_acceptreqaddrres: make(map[string]*list.List),
 		msg_acceptlockoutres:      list.New(),
-		splitmsg_acceptlockoutres: make(map[string]*list.List),
 		msg_acceptreshareres:      list.New(),
-		splitmsg_acceptreshareres: make(map[string]*list.List),
 		msg_acceptsignres:      list.New(),
-		splitmsg_acceptsignres: make(map[string]*list.List),
 		msg_sendlockoutres:        list.New(),
-		splitmsg_sendlockoutres:   make(map[string]*list.List),
 		msg_sendreshareres:        list.New(),
-		splitmsg_sendreshareres:   make(map[string]*list.List),
 		msg_sendsignres:        list.New(),
-		splitmsg_sendsignres:   make(map[string]*list.List),
 
 		rsv:  list.New(),
 		pkx:  list.New(),
@@ -789,34 +711,6 @@ func (w *RPCReqWorker) Clear() {
 		w.msg_eds.Remove(e)
 	}
 
-	//TODO
-	w.splitmsg_acceptlockoutres = make(map[string]*list.List)
-	w.splitmsg_acceptreshareres = make(map[string]*list.List)
-	w.splitmsg_acceptsignres = make(map[string]*list.List)
-	w.splitmsg_sendlockoutres = make(map[string]*list.List)
-	w.splitmsg_sendreshareres = make(map[string]*list.List)
-	w.splitmsg_sendsignres = make(map[string]*list.List)
-	w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
-	w.splitmsg_c1 = make(map[string]*list.List)
-	w.splitmsg_kc = make(map[string]*list.List)
-	w.splitmsg_mkg = make(map[string]*list.List)
-	w.splitmsg_mkw = make(map[string]*list.List)
-	w.splitmsg_delta1 = make(map[string]*list.List)
-	w.splitmsg_d1_1 = make(map[string]*list.List)
-	w.splitmsg_share1 = make(map[string]*list.List)
-	w.splitmsg_zkfact = make(map[string]*list.List)
-	w.splitmsg_zku = make(map[string]*list.List)
-	w.splitmsg_mtazk1proof = make(map[string]*list.List)
-	w.splitmsg_c11 = make(map[string]*list.List)
-	w.splitmsg_d11_1 = make(map[string]*list.List)
-	w.splitmsg_commitbigvab = make(map[string]*list.List)
-	w.splitmsg_zkabproof = make(map[string]*list.List)
-	w.splitmsg_commitbigut = make(map[string]*list.List)
-	w.splitmsg_commitbigutd11 = make(map[string]*list.List)
-	w.splitmsg_s1 = make(map[string]*list.List)
-	w.splitmsg_ss1 = make(map[string]*list.List)
-	w.splitmsg_paillierkey = make(map[string]*list.List)
-
 	if len(w.acceptWaitReqAddrChan) == 1 {
 		<-w.acceptWaitReqAddrChan
 	}
@@ -1188,34 +1082,6 @@ func (w *RPCReqWorker) Clear2() {
 		next = e.Next()
 		w.msg_eds.Remove(e)
 	}
-
-	//TODO
-	w.splitmsg_acceptlockoutres = make(map[string]*list.List)
-	w.splitmsg_acceptreshareres = make(map[string]*list.List)
-	w.splitmsg_acceptsignres = make(map[string]*list.List)
-	w.splitmsg_sendlockoutres = make(map[string]*list.List)
-	w.splitmsg_sendreshareres = make(map[string]*list.List)
-	w.splitmsg_sendsignres = make(map[string]*list.List)
-	w.splitmsg_acceptreqaddrres = make(map[string]*list.List)
-	w.splitmsg_c1 = make(map[string]*list.List)
-	w.splitmsg_kc = make(map[string]*list.List)
-	w.splitmsg_mkg = make(map[string]*list.List)
-	w.splitmsg_mkw = make(map[string]*list.List)
-	w.splitmsg_delta1 = make(map[string]*list.List)
-	w.splitmsg_d1_1 = make(map[string]*list.List)
-	w.splitmsg_share1 = make(map[string]*list.List)
-	w.splitmsg_zkfact = make(map[string]*list.List)
-	w.splitmsg_zku = make(map[string]*list.List)
-	w.splitmsg_mtazk1proof = make(map[string]*list.List)
-	w.splitmsg_c11 = make(map[string]*list.List)
-	w.splitmsg_d11_1 = make(map[string]*list.List)
-	w.splitmsg_commitbigvab = make(map[string]*list.List)
-	w.splitmsg_zkabproof = make(map[string]*list.List)
-	w.splitmsg_commitbigut = make(map[string]*list.List)
-	w.splitmsg_commitbigutd11 = make(map[string]*list.List)
-	w.splitmsg_s1 = make(map[string]*list.List)
-	w.splitmsg_ss1 = make(map[string]*list.List)
-	w.splitmsg_paillierkey = make(map[string]*list.List)
 
 	if len(w.acceptWaitReqAddrChan) == 1 {
 		<-w.acceptWaitReqAddrChan

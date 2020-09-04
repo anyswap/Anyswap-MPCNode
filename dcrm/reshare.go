@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"encoding/json"
+	"sync"
 
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
@@ -53,6 +55,163 @@ func SetReShareNonce(account string,nonce string) (string, error) {
 	LdbPubKeyData.WriteMap(key2, []byte(nonce))
 
 	return "", nil
+}
+
+func IsValidReShareAccept(from string,gid string) bool {
+    if from == "" || gid == "" {
+	return false
+    }
+
+    h := coins.NewCryptocoinHandler("FSN")
+    if h == nil {
+	return false
+    }
+    
+    _, enodes := GetGroup(gid)
+    nodes := strings.Split(enodes, common.Sep2)
+    for _, node := range nodes {
+	node2 := ParseNode(node)
+	pk := "04" + node2 
+	
+	fr, err := h.PublicKeyToAddress(pk)
+	if err != nil {
+	    return false
+	}
+
+	if strings.EqualFold(from, fr) {
+	    return true
+	}
+    }
+
+    return false
+}
+
+func ReShare(raw string) (string, string, error) {
+    common.Debug("=====================ReShare call CheckRaw ================","raw",raw)
+    key,_,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	common.Info("=====================ReShare,CheckRaw ================","raw",raw,"err",err)
+	return "",err.Error(),err
+    }
+
+    rh,ok := txdata.(*TxDataReShare)
+    if !ok {
+	return "","check raw fail,it is not *TxDataReShare",fmt.Errorf("check raw fail,it is not *TxDataReShare")
+    }
+
+    common.Debug("=====================ReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",rh.GroupId,"key",key)
+    SendMsgToDcrmGroup(raw, rh.GroupId)
+    SetUpMsgList(raw,cur_enode)
+    return key, "", nil
+}
+
+func RpcAcceptReShare(raw string) (string, string, error) {
+    common.Debug("=====================RpcAcceptReShare call CheckRaw ================","raw",raw)
+    _,_,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	common.Debug("=====================RpcAcceptReShare,CheckRaw ================","raw",raw,"err",err)
+	return "Failure",err.Error(),err
+    }
+
+    acceptrh,ok := txdata.(*TxDataAcceptReShare)
+    if !ok {
+	return "Failure","check raw fail,it is not *TxDataAcceptReShare",fmt.Errorf("check raw fail,it is not *TxDataAcceptReShare")
+    }
+
+    exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+    if exsit {
+	ac,ok := da.(*AcceptReShareData)
+	if ok && ac != nil {
+	    common.Debug("=====================RpcAcceptReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptrh.Key)
+	    SendMsgToDcrmGroup(raw, ac.GroupId)
+	    SetUpMsgList(raw,cur_enode)
+	    return "Success", "", nil
+	}
+    }
+
+    return "Failure","accept fail",fmt.Errorf("accept fail")
+}
+
+type ReShareStatus struct {
+	Status    string
+	Pubkey string
+	Tip       string
+	Error     string
+	AllReply  []NodeReply 
+	TimeStamp string
+}
+
+func GetReShareStatus(key string) (string, string, error) {
+	exsit,da := GetValueFromPubKeyData(key)
+	///////
+	if !exsit || da == nil  {
+		return "", "dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus")
+	}
+
+	ac,ok := da.(*AcceptReShareData)
+	if !ok {
+		return "", "dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus")
+	}
+
+	los := &ReShareStatus{Status: ac.Status, Pubkey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
+	ret,_ := json.Marshal(los)
+	return string(ret), "",nil 
+}
+
+type ReShareCurNodeInfo struct {
+	Key       string
+	PubKey   string
+	GroupId   string
+	TSGroupId   string
+	ThresHold  string
+	Account string
+	Mode string
+	TimeStamp string
+}
+
+func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
+    var ret []*ReShareCurNodeInfo
+    var wg sync.WaitGroup
+    LdbPubKeyData.RLock()
+    for k, v := range LdbPubKeyData.Map {
+	wg.Add(1)
+	go func(key string,value interface{}) {
+	    defer wg.Done()
+
+	    vv,ok := value.(*AcceptReShareData)
+	    if vv == nil || !ok {
+		return
+	    }
+
+	    common.Debug("================GetCurNodeReShareInfo====================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
+	    if vv.Deal == "true" || vv.Status == "Success" {
+		return
+	    }
+
+	    if vv.Status != "Pending" {
+		return
+	    }
+
+	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
+	    ret = append(ret, los)
+	    common.Debug("================GetCurNodeReShareInfo success return============================","key",key)
+	}(k,v)
+    }
+    LdbPubKeyData.RUnlock()
+    wg.Wait()
+    return ret, "", nil
+}
+
+type TxDataReShare struct {
+    TxType string
+    PubKey string
+    GroupId string
+    TSGroupId string
+    ThresHold string
+    Account string
+    Mode string
+    Sigs string
+    TimeStamp string
 }
 
 //param groupid is not subgroupid

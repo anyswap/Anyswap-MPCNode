@@ -27,8 +27,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	//"sync"
+	"encoding/json"
+	"sync"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
@@ -40,6 +40,8 @@ import (
 
 var (
 	PaillierKeyLength        = 2048
+	reqdata_trytimes = 5
+	reqdata_timeout = 60
 )
 
 type PubKeyData struct {
@@ -88,6 +90,175 @@ func SetReqAddrNonce(account string, nonce string) (string, error) {
 	PubKeyDataChan <- kd
 	LdbPubKeyData.WriteMap(key, []byte(nonce))
 	return "", nil
+}
+
+type TxDataReqAddr struct {
+    TxType string
+    GroupId string
+    ThresHold string
+    Mode string
+    TimeStamp string
+    Sigs string
+}
+
+func GetDcrmAddr(pubkey string) (string, string, error) {
+	var m interface{}
+	addrmp := make(map[string]string)
+	for _, ct := range coins.Cointypes {
+		if strings.EqualFold(ct, "ALL") {
+			continue
+		}
+
+		h := coins.NewCryptocoinHandler(ct)
+		if h == nil {
+			continue
+		}
+		ctaddr, err := h.PublicKeyToAddress(pubkey)
+		if err != nil {
+			continue
+		}
+
+		addrmp[ct] = ctaddr
+	}
+
+	m = &DcrmPubkeyRes{Account: "", PubKey: pubkey, DcrmAddress: addrmp}
+	b,_ := json.Marshal(m)
+	return string(b), "", nil
+}
+
+func ReqDcrmAddr(raw string) (string, string, error) {
+
+    common.Debug("=====================ReqDcrmAddr call CheckRaw ================","raw ",raw)
+    key,_,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	common.Debug("============ReqDcrmAddr==============","err ",err)
+	return "",err.Error(),err
+    }
+
+    req,ok := txdata.(*TxDataReqAddr)
+    if !ok {
+	return "","check raw fail,it is not *TxDataReqAddr",fmt.Errorf("check raw fail,it is not *TxDataReqAddr")
+    }
+
+    common.Info("============ReqDcrmAddr,SendMsgToDcrmGroup===============","raw ",raw,"gid ",req.GroupId,"key ",key)
+    SendMsgToDcrmGroup(raw, req.GroupId)
+    SetUpMsgList(raw,cur_enode)
+    return key, "", nil
+}
+
+func RpcAcceptReqAddr(raw string) (string, string, error) {
+    common.Debug("=====================RpcAcceptReqAddr call CheckRaw ================","raw",raw)
+    _,_,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	common.Info("=====================RpcAcceptReqAddr,CheckRaw ================","raw",raw,"err",err)
+	return "Failure",err.Error(),err
+    }
+
+    acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
+    if !ok {
+	return "Failure","check raw fail,it is not *TxDataAcceptReqAddr",fmt.Errorf("check raw fail,it is not *TxDataAcceptReqAddr")
+    }
+
+    exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+    if exsit {
+	ac,ok := da.(*AcceptReqAddrData)
+	if ok && ac != nil {
+	    common.Debug("=====================RpcAcceptReqAddr, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptreq.Key)
+	    SendMsgToDcrmGroup(raw, ac.GroupId)
+	    SetUpMsgList(raw,cur_enode)
+	    return "Success", "", nil
+	}
+    }
+
+    return "Failure","accept fail",fmt.Errorf("accept fail")
+}
+
+type ReqAddrStatus struct {
+	Status    string
+	PubKey    string
+	Tip       string
+	Error     string
+	AllReply  []NodeReply 
+	TimeStamp string
+}
+
+func GetReqAddrStatus(key string) (string, string, error) {
+	exsit,da := GetValueFromPubKeyData(key)
+	///////
+	if !exsit || da == nil {
+		common.Debug("=====================GetReqAddrStatus,no exist key======================","key",key)
+		return "", "dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus")
+	}
+
+	ac,ok := da.(*AcceptReqAddrData)
+	if !ok {
+		return "", "dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus")
+	}
+
+	los := &ReqAddrStatus{Status: ac.Status, PubKey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
+	ret, _ := json.Marshal(los)
+	return string(ret), "", nil
+}
+
+type EnAcc struct {
+	Enode    string
+	Accounts []string
+}
+
+type EnAccs struct {
+	EnodeAccounts []EnAcc
+}
+
+type ReqAddrReply struct {
+	Key       string
+	Account   string
+	Cointype  string
+	GroupId   string
+	Nonce     string
+	ThresHold  string
+	Mode      string
+	TimeStamp string
+}
+
+func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
+	var ret []*ReqAddrReply
+	var wg sync.WaitGroup
+	LdbPubKeyData.RLock()
+	for k, v := range LdbPubKeyData.Map {
+	    wg.Add(1)
+	    go func(key string,value interface{}) {
+		defer wg.Done()
+
+		vv,ok := value.(*AcceptReqAddrData)
+		if vv == nil || !ok {
+		    return
+		}
+
+		common.Debug("================GetCurNodeReqAddrInfo, it is *AcceptReqAddrData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Mode",vv.Mode,"vv.Status",vv.Status,"key",key)
+		if vv.Deal == "true" || vv.Status == "Success" {
+		    return
+		}
+
+		if vv.Status != "Pending" {
+		    return
+		}
+
+		if vv.Mode == "1" {
+		    return
+		}
+		
+		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
+		    return
+		}
+
+		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
+		ret = append(ret, los)
+		common.Debug("================GetCurNodeReqAddrInfo success return================","key",key)
+	    }(k,v)
+	}
+	LdbPubKeyData.RUnlock()
+	wg.Wait()
+	return ret, "", nil
 }
 
 //ec2

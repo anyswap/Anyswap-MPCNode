@@ -35,6 +35,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/onrik/ethrpc"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
+	"encoding/hex"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 const (
@@ -63,6 +67,7 @@ var (
 	msghash  *string
 	enode    *string
 	tsgid    *string
+	netcfg    *string
 
 	enodesSig  arrayFlags
 	nodes      arrayFlags
@@ -113,8 +118,13 @@ func main() {
 		if err != nil {
 			fmt.Printf("createContract failed. %v\n", err)
 		}
+	case "GETDCRMADDR":
+	    err := getDcrmAddr()
+	    if err != nil {
+			fmt.Printf("pubkey = %v, get dcrm addr failed. %v\n", pubkey,err)
+	    }
 	default:
-		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT\n", *cmd)
+		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR\n", *cmd)
 	}
 }
 
@@ -122,13 +132,14 @@ func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
 	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT")
+	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
 	toAddr = flag.String("to", "0x0520e8e5E08169c4dbc1580Dc9bF56638532773A", "To address")
 	value = flag.String("value", "10000000000000000", "lockout value")
 	coin = flag.String("coin", "FSN", "Coin type")
+	netcfg = flag.String("netcfg", "mainnet", "chain config") //mainnet or testnet
 	fromAddr = flag.String("from", "", "From address")
 	memo = flag.String("memo", "smpcwallet.com", "Memo")
 	accept = flag.String("accept", "AGREE", "AGREE|DISAGREE")
@@ -796,6 +807,94 @@ func acceptReshare() {
 		}
 		fmt.Printf("\ndcrm_acceptReShare result: key[%d]\t%s = %s\n\n", i+1, keyStr, acceptRet)
 	}
+}
+
+func getDcrmAddr() error {
+    if pubkey == nil {
+	return fmt.Errorf("pubkey error")
+    }
+
+    pub := (*pubkey)
+
+    if pub == "" || (*coin) == "" {
+	return fmt.Errorf("pubkey error.")
+    }
+
+    if (*coin) != "FSN" && (*coin) != "BTC" { //only btc/fsn tmp
+	return fmt.Errorf("coin type unsupported.")
+    }
+
+    if len(pub) != 132 && len(pub) != 130 {
+	    return fmt.Errorf("invalid public key length")
+    }
+    if pub[:2] == "0x" || pub[:2] == "0X" {
+	    pub = pub[2:]
+    }
+
+    if (*coin) == "FSN" {
+	pubKeyHex := strings.TrimPrefix(pub, "0x")
+	data := hexEncPubkey(pubKeyHex[2:])
+
+	pub2, err := decodePubkey(data)
+	if err != nil {
+	    return err
+	}
+
+	address := crypto.PubkeyToAddress(*pub2).Hex()
+	fmt.Printf("\ngetDcrmAddr result: %s\n\n", address)
+	return nil
+    }
+    
+    bb, err := hex.DecodeString(pub)
+    if err != nil {
+	    return err
+    }
+    pub2, err := btcec.ParsePubKey(bb, btcec.S256())
+    if err != nil {
+	    return err
+    }
+    
+    ChainConfig := chaincfg.MainNetParams
+    if (*netcfg) == "testnet" {
+	ChainConfig = chaincfg.TestNet3Params
+    }
+
+    b := pub2.SerializeCompressed()
+    pkHash := btcutil.Hash160(b)
+    addressPubKeyHash, err := btcutil.NewAddressPubKeyHash(pkHash, &ChainConfig)
+    if err != nil {
+	    return err
+    }
+    address := addressPubKeyHash.EncodeAddress()
+    fmt.Printf("\ngetDcrmAddr result: %s\n\n", address)
+    return nil
+}
+
+func hexEncPubkey(h string) (ret [64]byte) {
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		//panic(err)
+		fmt.Printf("=============== parse pubkey error = %v ==============\n", err)
+		return ret
+	}
+	if len(b) != len(ret) {
+		//panic("invalid length")
+		fmt.Printf("invalid length\n")
+		return ret
+	}
+	copy(ret[:], b)
+	return ret
+}
+
+func decodePubkey(e [64]byte) (*ecdsa.PublicKey, error) {
+	p := &ecdsa.PublicKey{Curve: crypto.S256(), X: new(big.Int), Y: new(big.Int)}
+	half := len(e) / 2
+	p.X.SetBytes(e[:half])
+	p.Y.SetBytes(e[half:])
+	if !p.Curve.IsOnCurve(p.X, p.Y) {
+		return nil, errors.New("invalid secp256k1 curve point")
+	}
+	return p, nil
 }
 
 // parse result from rpc return data

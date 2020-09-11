@@ -58,7 +58,7 @@ func StartDcrm(c *cli.Context) {
 	go func() {
 	    <-signalChan
 	    stopLock.Lock()
-	    common.Debug("=============================Cleaning before stop...======================================")
+	    common.Info("=============================Cleaning before stop...======================================")
 	    stopLock.Unlock()
 	    os.Exit(0)
 	}()

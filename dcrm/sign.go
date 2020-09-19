@@ -43,7 +43,7 @@ import (
 var (
 	signtodel = list.New()
 	delsign    sync.Mutex
-	count_to_del_sign = 5000
+	count_to_del_sign = 1000
 )
 
 func GetSignNonce(account string) (string, string, error) {

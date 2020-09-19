@@ -684,6 +684,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    //w.Clear2()
 		    //Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
 		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
+		    common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
 		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
 		    if ret != "" && cherr == nil {
 

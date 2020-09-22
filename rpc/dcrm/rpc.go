@@ -106,6 +106,115 @@ func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
 	}
 }
 
+func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
+	//fmt.Println("%v =========call rpc.GetReqAddrNonce from web,account = %v =================", common.CurrentTime(), account)
+
+	data := make(map[string]interface{})
+	if account == "" {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    "parameter error,but return 0",
+			"Error":  "parameter error",
+			"Data":   data,
+		}
+	}
+
+	ret, tip, err := dcrm.GetReqAddrNonce(account)
+	//fmt.Println("%v =========call rpc.GetReqAddrNonce finish,account = %v,ret = %v,tip = %v,err = %v =================", common.CurrentTime(), account, ret, tip, err)
+
+	if err != nil {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    tip + ",but return 0",
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
+func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{} {
+	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account)
+
+	s, tip, err := dcrm.GetCurNodeReqAddrInfo(account)
+	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account,"ret",s,"err",err)
+	if err != nil {
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   "",
+		}
+	}
+
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   s,
+	}
+}
+
+func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
+	common.Debug("==================GetReqAddrStatus====================","key",key)
+
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.GetReqAddrStatus(key)
+	common.Debug("==================GetReqAddrStatus====================","key",key,"ret",ret,"err",err)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
+//lockout
+func (this *Service) LockOut(raw string) map[string]interface{} {
+	//fmt.Printf("%v ==========call rpc LockOut from web,raw = %v ===========\n", common.CurrentTime(), raw)
+
+	data := make(map[string]interface{})
+	txhash, tip, err := dcrm.LockOut(raw)
+	//fmt.Printf("%v ==========finish call rpc LockOut from web,txhash = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), txhash, err, raw)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = txhash
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 	//fmt.Printf("%v ==========call rpc AcceptLockOut from web,raw = %v==========\n", common.CurrentTime(), raw)
 
@@ -131,6 +240,84 @@ func (this *Service) AcceptLockOut(raw string) map[string]interface{} {
 	}
 }
 
+func (this *Service) GetLockOutNonce(account string) map[string]interface{} {
+
+	data := make(map[string]interface{})
+	if account == "" {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    "parameter error,but return 0",
+			"Error":  "parameter error",
+			"Data":   data,
+		}
+	}
+
+	ret, tip, err := dcrm.GetLockOutNonce(account)
+	if err != nil {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    tip + ",but return 0",
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
+func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{} {
+	common.Debug("==================GetCurNodeLockOutInfo====================","account",account)
+
+	s, tip, err := dcrm.GetCurNodeLockOutInfo(account)
+	common.Debug("==================GetCurNodeLockOutInfo====================","account",account,"ret",s,"err",err)
+	if err != nil {
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   "",
+		}
+	}
+
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   s,
+	}
+}
+
+func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.GetLockOutStatus(key)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
+//sign
 func (this *Service) AcceptSign(raw string) map[string]interface{} {
 	//fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
 	//common.Info("=============================AcceptSign============================","raw",raw)
@@ -150,31 +337,6 @@ func (this *Service) AcceptSign(raw string) map[string]interface{} {
 	}
 
 	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) LockOut(raw string) map[string]interface{} {
-	//fmt.Printf("%v ==========call rpc LockOut from web,raw = %v ===========\n", common.CurrentTime(), raw)
-
-	data := make(map[string]interface{})
-	txhash, tip, err := dcrm.LockOut(raw)
-	//fmt.Printf("%v ==========finish call rpc LockOut from web,txhash = %v,err = %v,raw = %v ===========\n", common.CurrentTime(), txhash, err, raw)
-	if err != nil {
-		data["result"] = ""
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = txhash
 	return map[string]interface{}{
 		"Status": "Success",
 		"Tip":    "",
@@ -208,14 +370,65 @@ func (this *Service) Sign(raw string) map[string]interface{} {
 	}
 }
 
-//raw tx: 
-//data = pubkey + subgids
-func (this *Service) PreGenSignData(raw string) map[string]interface{} {
-	common.Info("===================PreGenSignData=====================","raw",raw)
-
+func (this *Service) GetSignNonce(account string) map[string]interface{} {
 	data := make(map[string]interface{})
-	tip, err := dcrm.PreGenSignData(raw)
-	//common.Info("===================Sign,get result=====================","key",key,"err",err,"raw",raw)
+	if account == "" {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    "parameter error,but return 0",
+			"Error":  "parameter error",
+			"Data":   data,
+		}
+	}
+
+	ret, tip, err := dcrm.GetSignNonce(account)
+	if err != nil {
+		data["result"] = "0"
+		return map[string]interface{}{
+			"Status": "Success",
+			"Tip":    tip + ",but return 0",
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
+func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
+	common.Debug("==================GetCurNodeSignInfo====================","account",account)
+
+	s, tip, err := dcrm.GetCurNodeSignInfo(account)
+	common.Debug("==================GetCurNodeSignInfo====================","account",account,"ret",s,"err",err)
+	if err != nil {
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   "",
+		}
+	}
+
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   s,
+	}
+}
+
+func (this *Service) GetSignStatus(key string) map[string]interface{} {
+	common.Debug("==================GetSignStatus====================","key",key)
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.GetSignStatus(key)
+	common.Debug("==================GetSignStatus====================","key",key,"ret",ret,"err",err)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -226,7 +439,7 @@ func (this *Service) PreGenSignData(raw string) map[string]interface{} {
 		}
 	}
 
-	data["result"] = "generating pre-sign data ..."
+	data["result"] = ret
 	return map[string]interface{}{
 		"Status": "Success",
 		"Tip":    "",
@@ -235,12 +448,13 @@ func (this *Service) PreGenSignData(raw string) map[string]interface{} {
 	}
 }
 
+//reshare
 func (this *Service) ReShare(raw string) map[string]interface{} {
 	common.Debug("===================ReShare=====================","raw",raw)
 
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.ReShare(raw)
-	common.Debug("===================Sign=====================","key",key,"err",err,"raw",raw)
+	common.Debug("===================reshare=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -361,6 +575,93 @@ func (this *Service) GetReShareStatus(key string) map[string]interface{} {
 	}
 }
 
+//raw tx: 
+//data = pubkey + subgids
+func (this *Service) PreGenSignData(raw string) map[string]interface{} {
+	common.Info("===================PreGenSignData=====================","raw",raw)
+
+	data := make(map[string]interface{})
+	tip, err := dcrm.PreGenSignData(raw)
+	//common.Info("===================Sign,get result=====================","key",key,"err",err,"raw",raw)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = "generating pre-sign data ..."
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
+//gid = "",get all pubkey of all gid
+//gid != "",get all pubkey by gid
+func (this *Service) GetAccounts(account, mode string) map[string]interface{} {
+	fmt.Printf("%v ==========call rpc GetAccounts from web, account = %v, mode = %v ================\n", common.CurrentTime(), account, mode)
+	data := make(map[string]interface{})
+	ret, tip, err := dcrm.GetAccounts(account, mode)
+	fmt.Printf("%v ==========finish call rpc GetAccounts ,ret = %v,err = %v,account = %v, mode = %v ================\n", common.CurrentTime(), ret, err, account, mode)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
+func (this *Service) GetAccountsBalance(pubkey string, account string) map[string]interface{} {
+	fmt.Printf("%v ==========call rpc GetAccountsBalance from web, account = %v, pubkey = %v,=============\n", common.CurrentTime(), account, pubkey)
+	data := make(map[string]interface{})
+	if pubkey == "" {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    "param is empty",
+			"Error":  "param is empty",
+			"Data":   data,
+		}
+	}
+
+	ret, tip, err := dcrm.GetAccountsBalance(pubkey, account)
+	fmt.Printf("%v ==========finish call rpc GetAccountsBalance from web, ret = %v,err = %v,account = %v, pubkey = %v,=============\n", common.CurrentTime(), ret, err, account, pubkey)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = ret
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 func (this *Service) GetBalance(account string, cointype string, dcrmaddr string) map[string]interface{} {
 	//fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
 
@@ -383,244 +684,6 @@ func (this *Service) GetBalance(account string, cointype string, dcrmaddr string
 		return map[string]interface{}{
 			"Status": "Success",
 			"Tip":    tip + ",but return 0",
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
-	//fmt.Println("%v =========call rpc.GetReqAddrNonce from web,account = %v =================", common.CurrentTime(), account)
-
-	data := make(map[string]interface{})
-	if account == "" {
-		data["result"] = "0"
-		return map[string]interface{}{
-			"Status": "Success",
-			"Tip":    "parameter error,but return 0",
-			"Error":  "parameter error",
-			"Data":   data,
-		}
-	}
-
-	ret, tip, err := dcrm.GetReqAddrNonce(account)
-	//fmt.Println("%v =========call rpc.GetReqAddrNonce finish,account = %v,ret = %v,tip = %v,err = %v =================", common.CurrentTime(), account, ret, tip, err)
-
-	if err != nil {
-		data["result"] = "0"
-		return map[string]interface{}{
-			"Status": "Success",
-			"Tip":    tip + ",but return 0",
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) GetLockOutNonce(account string) map[string]interface{} {
-
-	data := make(map[string]interface{})
-	if account == "" {
-		data["result"] = "0"
-		return map[string]interface{}{
-			"Status": "Success",
-			"Tip":    "parameter error,but return 0",
-			"Error":  "parameter error",
-			"Data":   data,
-		}
-	}
-
-	ret, tip, err := dcrm.GetLockOutNonce(account)
-	if err != nil {
-		data["result"] = "0"
-		return map[string]interface{}{
-			"Status": "Success",
-			"Tip":    tip + ",but return 0",
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) GetSignNonce(account string) map[string]interface{} {
-	data := make(map[string]interface{})
-	if account == "" {
-		data["result"] = "0"
-		return map[string]interface{}{
-			"Status": "Success",
-			"Tip":    "parameter error,but return 0",
-			"Error":  "parameter error",
-			"Data":   data,
-		}
-	}
-
-	ret, tip, err := dcrm.GetSignNonce(account)
-	if err != nil {
-		data["result"] = "0"
-		return map[string]interface{}{
-			"Status": "Success",
-			"Tip":    tip + ",but return 0",
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{} {
-	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account)
-
-	s, tip, err := dcrm.GetCurNodeReqAddrInfo(account)
-	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account,"ret",s,"err",err)
-	if err != nil {
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   "",
-		}
-	}
-
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   s,
-	}
-}
-
-func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{} {
-	common.Debug("==================GetCurNodeLockOutInfo====================","account",account)
-
-	s, tip, err := dcrm.GetCurNodeLockOutInfo(account)
-	common.Debug("==================GetCurNodeLockOutInfo====================","account",account,"ret",s,"err",err)
-	if err != nil {
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   "",
-		}
-	}
-
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   s,
-	}
-}
-
-func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
-	common.Debug("==================GetCurNodeSignInfo====================","account",account)
-
-	s, tip, err := dcrm.GetCurNodeSignInfo(account)
-	common.Debug("==================GetCurNodeSignInfo====================","account",account,"ret",s,"err",err)
-	if err != nil {
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   "",
-		}
-	}
-
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   s,
-	}
-}
-
-func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
-	common.Debug("==================GetReqAddrStatus====================","key",key)
-
-	data := make(map[string]interface{})
-	ret, tip, err := dcrm.GetReqAddrStatus(key)
-	common.Debug("==================GetReqAddrStatus====================","key",key,"ret",ret,"err",err)
-	if err != nil {
-		data["result"] = ""
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
-	data := make(map[string]interface{})
-	ret, tip, err := dcrm.GetLockOutStatus(key)
-	if err != nil {
-		data["result"] = ""
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) GetSignStatus(key string) map[string]interface{} {
-	common.Debug("==================GetSignStatus====================","key",key)
-	data := make(map[string]interface{})
-	ret, tip, err := dcrm.GetSignStatus(key)
-	common.Debug("==================GetSignStatus====================","key",key,"ret",ret,"err",err)
-	if err != nil {
-		data["result"] = ""
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
 			"Error":  err.Error(),
 			"Data":   data,
 		}
@@ -769,62 +832,3 @@ func startRpcServer() error {
 	return nil
 }
 
-//gid = "",get all pubkey of all gid
-//gid != "",get all pubkey by gid
-func (this *Service) GetAccounts(account, mode string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc GetAccounts from web, account = %v, mode = %v ================\n", common.CurrentTime(), account, mode)
-	data := make(map[string]interface{})
-	ret, tip, err := dcrm.GetAccounts(account, mode)
-	fmt.Printf("%v ==========finish call rpc GetAccounts ,ret = %v,err = %v,account = %v, mode = %v ================\n", common.CurrentTime(), ret, err, account, mode)
-	if err != nil {
-		data["result"] = ""
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}
-
-func (this *Service) GetAccountsBalance(pubkey string, account string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc GetAccountsBalance from web, account = %v, pubkey = %v,=============\n", common.CurrentTime(), account, pubkey)
-	data := make(map[string]interface{})
-	if pubkey == "" {
-		data["result"] = ""
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    "param is empty",
-			"Error":  "param is empty",
-			"Data":   data,
-		}
-	}
-
-	ret, tip, err := dcrm.GetAccountsBalance(pubkey, account)
-	fmt.Printf("%v ==========finish call rpc GetAccountsBalance from web, ret = %v,err = %v,account = %v, pubkey = %v,=============\n", common.CurrentTime(), ret, err, account, pubkey)
-	if err != nil {
-		data["result"] = ""
-		return map[string]interface{}{
-			"Status": "Error",
-			"Tip":    tip,
-			"Error":  err.Error(),
-			"Data":   data,
-		}
-	}
-
-	data["result"] = ret
-	return map[string]interface{}{
-		"Status": "Success",
-		"Tip":    "",
-		"Error":  "",
-		"Data":   data,
-	}
-}

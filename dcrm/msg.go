@@ -784,10 +784,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				pre.Key = w.sid
 				pre.Gid = w.groupid
 				pre.Used = false
-				DelPreSign.Lock()
+				DtPreSign.Lock()
 				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
 				PutPreSign(pub,pre)
-				DelPreSign.Unlock()
+				DtPreSign.Unlock()
 			//}
 
 			res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}

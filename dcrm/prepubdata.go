@@ -29,6 +29,7 @@ import (
 
 var (
 	PrePubKeyDataChan = make(chan KeyData, 2000)
+	PrePubKeyDataDelChan = make(chan KeyData, 2000)
 	//PrePubKeyDataQueueChan = make(chan *PrePubData, 1000)
 	PreSignData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PreSignDataBak  = common.NewSafeMap(10) //make(map[string][]byte)
@@ -36,7 +37,7 @@ var (
 	PrePubDataCount = 2000
 	SignChan = make(chan *RpcSignData, 10000)
 	//DelSignChan = make(chan *DelSignData, 10000)
-	DelPreSign sync.Mutex
+	DtPreSign sync.Mutex
 	PreSigal  = common.NewSafeMap(10) //make(map[string][]byte)
 )
 
@@ -430,55 +431,35 @@ func GetPreDbDir() string {
 }
 
 func SavePrePubKeyDataToDb() {
-	for {
-		kd := <-PrePubKeyDataChan
-		if predb != nil {
-			//common.Debug("=================SavePubKeyDataToDb, db is not nil ===============","key",kd.Key)
-		    if kd.Data == "CLEAN" {
-			err := predb.Delete(kd.Key)
-			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
-			    //PubKeyDataChan <- kd
-			}
-		    } else {
-			err := predb.Put(kd.Key, []byte(kd.Data))
-			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
-			    dir := GetPreDbDir()
-			    predbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-			    //bug
-			    if err != nil {
-				    for i := 0; i < 100; i++ {
-					    predbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-					    if err == nil {
-						    break
-					    }
-
-					    time.Sleep(time.Duration(1000000))
-				    }
-			    }
-			    if err != nil {
-				common.Info("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
-				//dbsk = nil
-			    } else {
-				predb = predbtmp
-				err = predb.Put(kd.Key, []byte(kd.Data))
-				if err != nil {
-					common.Info("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
-				    //PubKeyDataChan <- kd
-				}
-			    }
-
-			}
-			//db.Close()
-		    }
-		} else {
-			common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
-			//PubKeyDataChan <- kd
-		}
-
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+    for {
+	kd := <-PrePubKeyDataChan
+	if predb != nil {
+	    err := predb.Put(kd.Key, []byte(kd.Data))
+	    if err != nil {
+		common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key,"err",err)
 	    }
+	} else {
+	    common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+	}
+
+	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+    }
+}
+
+func DelPrePubKeyDataFromDb() {
+    for {
+	kd := <-PrePubKeyDataDelChan
+	if predb != nil {
+	    err := predb.Delete(kd.Key)
+	    if err != nil {
+		common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key,"err",err)
+	    }
+	} else {
+		common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+	}
+
+	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+    }
 }
 
 type TxDataPreSignData struct {

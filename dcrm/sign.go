@@ -88,14 +88,14 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
     if ok {
 	    pub := Keccak256Hash([]byte(strings.ToLower(sig.PubKey + ":" + sig.GroupId))).Hex()
 	   if !strings.EqualFold(sender,cur_enode) {
-		   DelPreSign.Lock()
+		   DtPreSign.Lock()
 		/////check pre-sign data
 		for _,vv := range sbd.PickHash {
 		    common.Debug("===============InitAcceptData2,check pickkey===================","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
 		   PickPrePubDataByKey(pub,vv.PickKey)
 		}
 		///////
-		DelPreSign.Unlock()
+		DtPreSign.Unlock()
 	   }
 
 	common.Debug("===============InitAcceptData2, it is sign txdata and check sign raw success==================","key ",key,"from ",from,"nonce ",nonce)
@@ -344,9 +344,9 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 					//d := &DelSignData{PubKey:sig.PubKey,PickKey:vv.PickKey,Pbd:nil}
 					//DelSignChan <- d
 					common.Info("===================InitAcceptData2,succss and DeletePrePubData===============","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
-					DelPreSign.Lock()
+					DtPreSign.Lock()
 					DeletePrePubDataBak(pub,vv.PickKey)
-					DelPreSign.Unlock()
+					DtPreSign.Unlock()
 				}
 				//common.Debug("===================InitAcceptData2,DeletePrePubData,22222===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				
@@ -410,9 +410,9 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 						/////bug
 						for _,vv := range sbd.PickHash {
 							common.Info("===================InitAcceptData2,succss and DeletePrePubData===============","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
-							DelPreSign.Lock()
+							DtPreSign.Lock()
 							DeletePrePubDataBak(pub,vv.PickKey)
-							DelPreSign.Unlock()
+							DtPreSign.Unlock()
 						}
 						res := RpcDcrmRes{Ret: lohash, Tip: "", Err: nil}
 						ch <- res

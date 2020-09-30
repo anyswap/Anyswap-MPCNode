@@ -644,6 +644,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
 		pre := GetPrePubDataBak(pub,sd.PickKey)
 		if pre == nil {
+			    common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
 			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
 			    ch <- res2
 			    return false
@@ -780,13 +781,21 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 
 			//if NeedPreSign(ps.Pub) {
-				common.Debug("========================PreSign at RecvMsg.Run finish=================","pre.R",pre.R,"pre.K1",pre.K1,"pre.Ry",pre.Ry,"pre.Sigma1",pre.Sigma1)
 				pre.Key = w.sid
 				pre.Gid = w.groupid
 				pre.Used = false
+				
 				DtPreSign.Lock()
 				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
 				PutPreSign(pub,pre)
+		
+				es,err := Encode2(pre)
+				common.Debug("========================PreSign at RecvMsg.Run finish,ecode pre-sign data.=================","err",err,"pick key",pre.Key)
+				if err == nil {
+				    kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: es}
+				    PrePubKeyDataChan <- kd
+				}
+				
 				DtPreSign.Unlock()
 			//}
 

@@ -28,8 +28,7 @@ import (
 )
 
 var (
-	PrePubKeyDataChan = make(chan KeyData, 2000)
-	PrePubKeyDataDelChan = make(chan KeyData, 2000)
+	PrePubKeyDataChan = make(chan UpdataPreSignData, 20000)
 	//PrePubKeyDataQueueChan = make(chan *PrePubData, 1000)
 	PreSignData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PreSignDataBak  = common.NewSafeMap(10) //make(map[string][]byte)
@@ -212,7 +211,7 @@ func PutPreSign(pub string,val *PrePubData) {
 		////check same 
 		for _,v := range datas {
 			if v != nil && strings.EqualFold(v.Key,val.Key) {
-				common.Debug("========================PutPreSign,already have this key==================","key",v.Key)
+				common.Debug("========================PutPreSign,already have this key==================","pub",pub,"key",v.Key)
 				return
 			}
 		}
@@ -430,32 +429,119 @@ func GetPreDbDir() string {
 	return dir
 }
 
-func SavePrePubKeyDataToDb() {
+func UpdatePrePubKeyDataForDb() {
     for {
 	kd := <-PrePubKeyDataChan
 	if predb != nil {
-	    err := predb.Put(kd.Key, []byte(kd.Data))
-	    if err != nil {
-		common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key,"err",err)
-	    }
-	} else {
-	    common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
-	}
+	    if !kd.Del {
+		val,err := Decode2(kd.Data,"PrePubData")
+		common.Info("=====================UpdatePrePubKeyDataForDb,decode and put pre-sign data========================","err",err,"pub",kd.Key)
+		if err != nil {
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		   continue 
+		}
 
-	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-    }
-}
+		da, err := predb.Get([]byte(kd.Key))
+		common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db========================","pick key",val.(*PrePubData).Key,"pub",kd.Key,"err",err)
+		if err != nil {
+		    datas := make([]*PrePubData,0)
+		    datas = append(datas,val.(*PrePubData))
+		    es,err := EncodePreSignDataValue(datas)
+		    common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db 2222222========================","pick key",val.(*PrePubData).Key,"pub",kd.Key,"err",err)
+		    if err != nil {
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
+		    err = predb.Put(kd.Key, []byte(es))
+		    common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db 33333333========================","pick key",val.(*PrePubData).Key,"pub",kd.Key,"err",err)
+		    if err != nil {
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
 
-func DelPrePubKeyDataFromDb() {
-    for {
-	kd := <-PrePubKeyDataDelChan
-	if predb != nil {
-	    err := predb.Delete(kd.Key)
-	    if err != nil {
-		common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key,"err",err)
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		    continue
+		}
+
+		ps,err := DecodePreSignDataValue(string(da))
+		common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db 4444444========================","pick key",val.(*PrePubData).Key,"pub",kd.Key,"err",err)
+		if err != nil {
+		    datas := make([]*PrePubData,0)
+		    datas = append(datas,val.(*PrePubData))
+		    es,err := EncodePreSignDataValue(datas)
+		    common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db 555555========================","pick key",val.(*PrePubData).Key,"pub",kd.Key,"err",err)
+		    if err != nil {
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
+		    err = predb.Put(kd.Key, []byte(es))
+		    common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db 666666========================","pick key",val.(*PrePubData).Key,"pub",kd.Key,"err",err)
+		    if err != nil {
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
+
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		    continue
+		}
+
+		ps.Data = append(ps.Data,val.(*PrePubData))
+		es,err := EncodePreSignDataValue(ps.Data)
+		if err != nil {
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		    continue
+		}
+		err = predb.Put(kd.Key, []byte(es))
+		if err != nil {
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		    continue
+		}
+		
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		continue
 	    }
+
+	    ////////////
+	    da, err := predb.Get([]byte(kd.Key))
+	    if err != nil {
+		common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db and get data from db fail ===============","key",kd.Key,"pick key",kd.Data,"err",err)
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		continue	
+	    }
+	    ps,err := DecodePreSignDataValue(string(da))
+	    if err != nil {
+		common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db and decode data from db fail ===============","key",kd.Key,"pick key",kd.Data,"err",err)
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		continue
+	    }
+
+	    tmp := make([]*PrePubData,0)
+	    for _,v := range ps.Data {
+		    if v != nil && strings.EqualFold(v.Key,kd.Data) {
+			   continue 
+		    }
+		    
+		    tmp = append(tmp,v)
+	    }
+	    
+	    es,err := EncodePreSignDataValue(tmp)
+	    if err != nil {
+		common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db and encode data fail ===============","key",kd.Key,"pick key",kd.Data,"err",err)
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		continue
+	    }
+	    err = predb.Put(kd.Key, []byte(es))
+	    if err != nil {
+		common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db fail ===============","key",kd.Key,"pick key",kd.Data,"err",err)
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		continue
+	    }
+
+	    common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db success ===============","key",kd.Key,"pick key",kd.Data)
+	    /////////////
+
 	} else {
-		common.Info("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+	    common.Info("=================UpdatePrePubKeyDataForDb, save to db fail ,db is nil ===============","key",kd.Key)
 	}
 
 	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
@@ -495,6 +581,7 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	go func(gg string) {
 	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
 	    PutPreSigal(pub,true)
+	    common.Info("===================before generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pub",pub,"pubkey",pre.PubKey,"sub-groupid",gg)
 	    for {
 		    if NeedPreSign(pub) && GetPreSigal(pub) {
 			    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
@@ -503,8 +590,8 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 
 			    val,err := Encode2(ps)
 			    if err != nil {
-				    common.Debug("=====================ExcutePreSignData========================","err",err)
-				    time.Sleep(time.Duration(10000000))
+				common.Info("=====================ExcutePreSignData========================","pub",pub,"err",err)
+				time.Sleep(time.Duration(10000000))
 				continue 
 			    }
 			    SendMsgToDcrmGroup(val,gg)
@@ -513,15 +600,91 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 			    SetUpMsgList3(val,cur_enode,rch)
 			    _, _,cherr := GetChannelValue(waitall+10,rch)
 			    if cherr != nil {
-				    common.Debug("=====================ExcutePreSignData in genkey fail========================","cherr",cherr)
+				common.Info("=====================ExcutePreSignData in genkey fail========================","pub",pub,"cherr",cherr)
 			    }
 
-			    common.Info("===================generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pubkey",pre.PubKey,"sub-groupid",gg)
+			    common.Info("===================generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pub",pub,"pubkey",pre.PubKey,"sub-groupid",gg)
 		    } 
 
 		    time.Sleep(time.Duration(1000000))
 	    }
 	}(gid)
     }
+}
+
+type UpdataPreSignData struct {
+    Key []byte
+    Del bool 
+    Data string //pickkey or pre-sign-data
+}
+
+type PreSignDataValue struct {
+    Data []*PrePubData
+}
+
+func EncodePreSignDataValue(data []*PrePubData) (string,error) {
+	if data == nil {
+		return "",fmt.Errorf("pre-sign data error")
+	}
+
+	s := &PreSignDataValue{Data:data}
+	cs,err := Encode2(s)
+	if err != nil {
+		return "",err
+	}
+
+	return cs,nil
+}
+
+func DecodePreSignDataValue(s string) (*PreSignDataValue,error) {
+	if s == "" {
+		return nil,fmt.Errorf("pre-sign data error")
+	}
+
+	ret,err := Decode2(s,"PreSignDataValue")
+	if err != nil {
+		return nil,err
+	}
+
+	return ret.(*PreSignDataValue),nil
+}
+
+func GetPreSign(pub string) []*PrePubData {
+	if pub == "" {
+	    return nil
+	}
+
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+	    return data.([]*PrePubData)
+	}
+
+	return nil
+}
+
+func GetAllPreSignFromDb() {
+    if predb == nil {
+	return
+    }
+
+    iter := predb.NewIterator()
+    for iter.Next() {
+	key := string(iter.Key())
+	value := string(iter.Value())
+
+	ps, err := DecodePreSignDataValue(value)
+	if err != nil {
+	    common.Info("=================GetAllPreSignFromDb=================\n","err",err) 
+	    continue
+	}
+
+	common.Info("=================GetAllPreSignFromDb=================\n","data count",len(ps.Data)) 
+	for _,v := range ps.Data {
+	    common.Info("=================GetAllPreSignFromDb=================\n","pub",key,"pick key",v.Key) 
+	    PutPreSign(key,v)
+	}
+    }
+    
+    iter.Release()
 }
 

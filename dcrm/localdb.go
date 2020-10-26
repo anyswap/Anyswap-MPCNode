@@ -18,6 +18,7 @@ package dcrm
 
 import (
     "github.com/fsn-dev/dcrm-walletService/internal/common"
+    "github.com/fsn-dev/dcrm-walletService/internal/common/fdlimit"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
     "time"
     "sync"
@@ -28,13 +29,32 @@ var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 2000)
 	SkU1Chan = make(chan KeyData, 2000)
-	cache = 0 
-	handles = 0
+	cache = (75*1024)/500 
+	handles = makeDatabaseHandles()
 	
 	lock                     sync.Mutex
 	db *ethdb.LDBDatabase
 	dbsk *ethdb.LDBDatabase
 )
+
+func makeDatabaseHandles() int {
+     limit, err := fdlimit.Current()
+     if err != nil {
+	     //Fatalf("Failed to retrieve file descriptor allowance: %v", err)
+	     common.Info("Failed to retrieve file descriptor allowance: " + err.Error())
+	     return 0
+     }
+     if limit < 2048 {
+	     if err := fdlimit.Raise(2048); err != nil {
+		     //Fatalf("Failed to raise file descriptor allowance: %v", err)
+		     common.Info("Failed to raise file descriptor allowance: " + err.Error())
+	     }
+     }
+     if limit > 2048 { // cap database file descriptors even if more is available
+	     limit = 2048
+     }
+     return limit / 2 // Leave half for networking and other stuff
+}
 
 func GetSkU1FromLocalDb(key string) []byte {
 	lock.Lock()
@@ -116,7 +136,7 @@ func GetSkU1FromLocalDb(key string) []byte {
 
 func GetPubKeyDataValueFromDb(key string) []byte {
 	lock.Lock()
-	if db == nil {
+	/*if db == nil {
 	    dir := GetDbDir()
 	    ////////
 	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -148,10 +168,18 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 		return da
 	    }
 	}
+	*/
+
+	if db == nil {
+	    lock.Unlock()
+	    return nil
+ 	}
 
 	da, err := db.Get([]byte(key))
 	if err != nil {
-	    dir := GetDbDir()
+	    common.Info("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
+
+	    /*dir := GetDbDir()
 	    ////////
 	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	    if err != nil {
@@ -177,7 +205,10 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 
 		lock.Unlock()
 		return da
-	    }
+	    }*/
+
+	    lock.Unlock()
+	    return nil
 	}
 
 	lock.Unlock()
@@ -425,16 +456,16 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 
     datmp, exsit := LdbPubKeyData.ReadMap(key)
     if !exsit {
-	    common.Debug("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
+	    common.Info("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
-	    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
+	    common.Info("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
 	    return false,nil
 	}
 
 	ss, err := UnCompress(string(da))
 	if err != nil {
-	    common.Debug("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
+	    common.Info("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
 	    return true,da
 	}
 

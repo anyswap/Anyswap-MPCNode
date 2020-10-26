@@ -493,12 +493,28 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 						if exist {
 							tmp2,ok := tmp.(*AcceptSignData)
 							if ok && tmp2 != nil && tmp2.Status != "Pending" {
-								t1,_ := new(big.Int).SetString(tmp2.TimeStamp,10)
-								durmi,_ := time.ParseDuration("-10m")
+							    if tmp2.TimeStamp == "" {
+								continue
+							    }
+
+								t1,ok := new(big.Int).SetString(tmp2.TimeStamp,10)
+								if !ok || t1 == nil {
+								    continue
+								}
+
+								durmi,err := time.ParseDuration("-10m")
+								if  err != nil {
+								    continue
+								}
+
 								t := time.Now()
 								ta := t.Add(durmi)
 								tatmp := fmt.Sprintf("%v",ta)
-								t2,_ := new(big.Int).SetString(tatmp,10)
+								t2,ok := new(big.Int).SetString(tatmp,10)
+								if !ok || t2 == nil {
+								    continue
+								}
+
 								if t2.Cmp(t1) >= 0 {
 									common.Info("========================SaveAcceptSignData, delete sign data from ldb======================","key",val)
 									signtodel.Remove(e)
@@ -512,7 +528,7 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 		}
 		delsign.Unlock()
 	}()
-		
+
 	return nil
 }
 

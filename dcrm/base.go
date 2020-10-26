@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 	"bytes"
+	"os"
 
 	"github.com/fsn-dev/cryptoCoins/coins"
 	cryptocoinsconfig "github.com/fsn-dev/cryptoCoins/coins/config"
@@ -68,41 +69,56 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
 	
+	common.Info("======================dcrm.Start======================","cache",cache,"handles",handles,"cur enode",cur_enode)
+	
 	dir := GetDbDir()
 	dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	//bug
 	if err != nil {
-		for {
+	    common.Info("======================dcrm.Start,open db fail======================","err",err,"dir",dir)
+		for i := 0; i < 80; i++ {
 			dbtmp2, err2 := ethdb.NewLDBDatabase(dir, cache, handles)
 			if err2 == nil && dbtmp2 != nil {
 				dbtmp = dbtmp2
 				err = err2
 				break
+			} else {
+			    common.Info("======================dcrm.Start,open db fail======================","i",i,"err",err2,"dir",dir)
 			}
 
-			time.Sleep(time.Duration(10000000))
+			//time.Sleep(time.Duration(1000000000))
+			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
 	if err != nil {
-	    common.Info("======================dcrm.Start,open db fail======================","err",err)
 	    db = nil
 	} else {
 	    db = dbtmp
 	}
-	
+
+	if db == nil {
+	    common.Info("======================dcrm.Start,open db fail and gdcrm panic======================")
+	    os.Exit(1)
+	    return
+	}
+
 	time.Sleep(time.Duration(10) * time.Second)
 	
 	//
 	dbsktmp, err := ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
 	//bug
 	if err != nil {
-		for i := 0; i < 100; i++ {
+	    common.Info("======================dcrm.Start,open dbsk fail======================","err",err,"dir",GetSkU1Dir())
+		for i := 0; i < 80; i++ {
 			dbsktmp, err = ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
 			if err == nil && dbsktmp != nil {
 				break
+			} else {
+			    common.Info("======================dcrm.Start,open dbsk fail======================","i",i,"err",err,"dir",GetSkU1Dir())
 			}
 
-			time.Sleep(time.Duration(1000000))
+			//time.Sleep(time.Duration(1000000))
+			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
 	if err != nil {
@@ -110,20 +126,30 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	} else {
 	    dbsk = dbsktmp
 	}
-	
+
+	if dbsk == nil {
+	    common.Info("======================dcrm.Start,open dbsk fail and gdcrm panic======================")
+	    os.Exit(1)
+	    return
+	}
+
 	time.Sleep(time.Duration(10) * time.Second)
 
 	//
 	predbtmp, err := ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
 	//bug
 	if err != nil {
-		for i := 0; i < 100; i++ {
+	    common.Info("======================dcrm.Start,open predb fail======================","err",err,"dir",GetPreDbDir())
+		for i := 0; i < 80; i++ {
 			predbtmp, err = ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
 			if err == nil && predbtmp != nil {
 				break
+			} else {
+			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreDbDir())
 			}
 
-			time.Sleep(time.Duration(1000000))
+			//time.Sleep(time.Duration(1000000))
+			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
 	if err != nil {
@@ -131,7 +157,13 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	} else {
 	    predb = predbtmp
 	}
-	    
+	   
+	if predb == nil {
+	    common.Info("======================dcrm.Start,open predb fail and gdcrm panic======================")
+	    os.Exit(1)
+	    return
+	}
+
 	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
 	
 	PrePubDataCount = int(presignnum)

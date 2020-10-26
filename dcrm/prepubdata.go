@@ -680,7 +680,7 @@ func GetAllPreSignFromDb() {
 
 	common.Info("=================GetAllPreSignFromDb=================\n","data count",len(ps.Data)) 
 	for _,v := range ps.Data {
-	    common.Info("=================GetAllPreSignFromDb=================\n","pub",key,"pick key",v.Key) 
+	    //common.Info("=================GetAllPreSignFromDb=================\n","pub",key,"pick key",v.Key) 
 	    PutPreSign(key,v)
 	}
     }

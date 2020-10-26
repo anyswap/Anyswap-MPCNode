@@ -29,7 +29,7 @@ var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 2000)
 	SkU1Chan = make(chan KeyData, 2000)
-	cache = (75*1024)/500 
+	cache = (75*1024)/1000 
 	handles = makeDatabaseHandles()
 	
 	lock                     sync.Mutex

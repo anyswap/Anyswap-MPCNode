@@ -3018,6 +3018,20 @@ func DisMsg(msg string) {
 		if w.msg_zku.Len() == w.NodeCnt {
 			w.bzku <- true
 		}
+	case "CHECKPUBKEYSTATUS":
+		///bug
+		if w.msg_checkpubkeystatus.Len() >= w.NodeCnt {
+			return
+		}
+		///
+		if Find(w.msg_checkpubkeystatus, msg) {
+			return
+		}
+
+		w.msg_checkpubkeystatus.PushBack(msg)
+		if w.msg_checkpubkeystatus.Len() == w.NodeCnt {
+			w.bcheckpubkeystatus <- true
+		}
 	case "MTAZK1PROOF":
 		///bug
 		if w.msg_mtazk1proof.Len() >= (w.ThresHold-1) {

@@ -1993,6 +1993,32 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 	return u1NtildeH1H2, true
 }
 
+func CheckAllNodesPubKeyStatus(msgprex string, ch chan interface{},w *RPCReqWorker) bool {
+    if msgprex == "" || w == nil {
+	res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+	ch <- res
+	return false
+    }
+    
+    mp := []string{msgprex, cur_enode}
+    enode := strings.Join(mp, "-")
+    s0 := "CHECKPUBKEYSTATUS"
+    s1 := "true" 
+    ss := enode + common.Sep + s0 + common.Sep + s1
+    SendMsgToDcrmGroup(ss, w.groupid)
+    DisMsg(ss)
+
+    _, tip, cherr := GetChannelValue(ch_t, w.bcheckpubkeystatus)
+
+    if cherr != nil {
+	res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("check pubkey status fail.")}
+	ch <- res
+	return false
+    }
+
+    return true
+}
+
 func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker, u1 *big.Int) bool {
 	if w == nil || msgprex == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
@@ -2356,6 +2382,12 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 		return false
 	}
 	common.Debug("================generate key,verify zk of u1 finish================","key",msgprex)
+
+	///////////check all nodes success genarate the pubkey
+	if !CheckAllNodesPubKeyStatus(msgprex,ch,w) {
+	    return false
+	}
+	///////////
 
 	if !DECDSAGenKeySaveData(cointype, ids, w, ch, skU1, u1PaillierPk, u1PaillierSk, cs, u1NtildeH1H2) {
 		return false

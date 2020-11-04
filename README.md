@@ -3,6 +3,23 @@ DCRM wallet service is a distributed key generation and distributed signature se
 
 *Note : dcrm-walletService is considered beta software. We make no warranties or guarantees of its security or stability.*
 
+# Install the Docker version
+## 1. Install Docker. This depends on your platform, on Ubuntu this works:
+```
+sudo apt update
+sudo apt install docker.io
+```
+## 2. Download the Docker image and create and run the container:
+- bootnode
+```
+docker run -d --name bootnode --network host --restart always -v /var/lib/docker/bootnode:/bootnode anyswap/bootnode --addr :12345
+```
+- gdcrm
+```
+docker run -d --name gdcrm --network host --restart always -v /var/lib/docker/gdcrm:/gdcrm anyswap/gdcrm --bootnodes "enode://ip@port" --port 12345 --rpcport 23456
+```
+
+# Install the Source version
 # Prerequisites
 1. VPS server with 1 CPU and 2G mem
 2. Static public IP

@@ -46,6 +46,8 @@ type Enode struct {
 
 type Version struct {
 	Version string
+	Commit string
+	Date string
 }
 
 type EnodeStatus struct {
@@ -64,9 +66,9 @@ func packageResult(status, tip, errors string, msg interface{}) map[string]inter
 
 func (this *Service) GetVersion() map[string]interface{} {
 	fmt.Printf("==== GetVersion() ====\n")
-	v := common.GetVersion()
-	fmt.Printf("==== GetVersion() ====, version: %v\n", v)
-	retv := &Version{Version: v}
+	v, c, d := common.GetVersion()
+	fmt.Printf("==== GetVersion() ====, version: %v, commit: %v, date: %v\n", v, c, d)
+	retv := &Version{Version: v, Commit: c, Date: d}
 	return packageResult(SUCCESS, "", "", retv)
 }
 

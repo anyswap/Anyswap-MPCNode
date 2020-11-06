@@ -18,13 +18,14 @@ package params
 
 import (
 	"fmt"
+	"github.com/fsn-dev/dcrm-walletService/internal/build"
 )
 
 const (
-	VersionMajor = 0          // Major version component of the current release
-	VersionMinor = 4          // Minor version component of the current release
-	VersionPatch = 1          // Patch version component of the current release
-	VersionMeta  = "unstable" // Version metadata to append to the version string
+	VersionMajor = 5          // Major version component of the current release
+	VersionMinor = 2          // Minor version component of the current release
+	VersionPatch = 2         // Patch version component of the current release
+	VersionMeta  = "stable" // Version metadata to append to the version string
 )
 
 // Version holds the textual version string.
@@ -55,10 +56,23 @@ func ArchiveVersion(gitCommit string) string {
 	return vsn
 }
 
-func VersionWithCommit(gitCommit string) string {
+func VersionWithCommit(gitCommit, gitDate string) string {
 	vsn := VersionWithMeta
 	if len(gitCommit) >= 8 {
 		vsn += "-" + gitCommit[:8]
 	}
+	if (VersionMeta != "stable") && (gitDate != "") {
+		vsn += "-" + gitDate
+	}
 	return vsn
 }
+
+func BuildFlags(gitVersion, gitCommit, gitData *string) {
+	env := build.Env()
+	*gitVersion = VersionWithMeta
+	if env.Commit != "" {
+		*gitCommit = env.Commit
+		*gitData = env.Date
+	}
+}
+

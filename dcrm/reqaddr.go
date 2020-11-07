@@ -1338,18 +1338,19 @@ func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeou
     return suss*/
 }
 
-func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
+//func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
+func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
 	if w == nil || msgprex == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res
-		return nil, nil, nil, nil, nil, nil, false
+		return nil, nil, nil, nil, nil,nil,nil,nil,nil, nil, false
 	}
 
-	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk := keygen.DECDSA_Key_RoundOne(w.ThresHold, PaillierKeyLength)
+	u1, u1Poly, u1PolyG, commitU1G, c1, c1Poly, c1PolyG, commitC1G, u1PaillierPk, u1PaillierSk := keygen.DECDSA_Key_RoundOne(w.ThresHold, PaillierKeyLength)
 	if u1PaillierPk == nil || u1PaillierSk == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen paillier key pair fail")}
 		ch <- res
-		return nil, nil, nil, nil, nil, nil, false
+		return nil, nil, nil, nil, nil,nil,nil,nil,nil, nil, false
 	}
 
 	///bug groupid == nil ???
@@ -1357,7 +1358,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	if err != nil || w.groupid == "" {
 	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
 	    ch <- res
-	    return nil, nil, nil, nil, nil, nil, false
+	    return nil, nil, nil, nil, nil,nil,nil,nil,nil, nil, false
 	}
 	//////
 	
@@ -1368,11 +1369,12 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	enode := strings.Join(mp, "-")
 	s0 := "C1"
 	s1 := string(commitU1G.C.Bytes())
-	s2 := u1PaillierPk.Length
-	s3 := string(u1PaillierPk.N.Bytes())
-	s4 := string(u1PaillierPk.G.Bytes())
-	s5 := string(u1PaillierPk.N2.Bytes())
-	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4 + common.Sep + s5
+	s2 := string(commitC1G.C.Bytes())
+	s3 := u1PaillierPk.Length
+	s4 := string(u1PaillierPk.N.Bytes())
+	s5 := string(u1PaillierPk.G.Bytes())
+	s6 := string(u1PaillierPk.N2.Bytes())
+	ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2 + common.Sep + s3 + common.Sep + s4 + common.Sep + s5 + common.Sep + s6
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
@@ -1411,7 +1413,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	    if err != nil || w.groupid == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
 		ch <- res
-		return nil, nil, nil, nil, nil, nil, false
+		return nil, nil, nil, nil, nil,nil,nil,nil,nil, nil, false
 	    }
 	    //////
 	    
@@ -1445,13 +1447,13 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	    
 	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC1Timeout)}
 	    ch <- res
-	    return nil, nil, nil, nil, nil, nil, false
+	    return nil, nil, nil, nil, nil,nil,nil,nil,nil, nil, false
 	}
 
-	return u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk, true
+	return u1, u1Poly, u1PolyG, commitU1G, c1, c1Poly, c1PolyG, commitC1G, u1PaillierPk, u1PaillierSk, true
 }
 
-func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1Poly *ec2.PolyStruct2, ids sortableIDSSlice) ([]*ec2.ShareStruct2, bool) {
+func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1Poly *ec2.PolyStruct2, c1 *big.Int,ids sortableIDSSlice) ([]*ec2.ShareStruct2, bool) {
 	if w == nil || cointype == "" || msgprex == "" || u1Poly == nil || len(ids) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1504,10 +1506,19 @@ func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, 
 		}
 	}
 
+	//bip32
+	mp := []string{msgprex, cur_enode}
+	enode := strings.Join(mp, "-")
+	s0 := "BIP32C1"
+	s1 := string(c1.Bytes())
+	ss := enode + common.Sep + s0 + common.Sep + s1
+	SendMsgToDcrmGroup(ss, w.groupid)
+	DisMsg(ss)
+
 	return u1Shares, true
 }
 
-func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1PolyG *ec2.PolyGStruct2, commitU1G *ec2.Commitment, ids sortableIDSSlice) bool {
+func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1PolyG *ec2.PolyGStruct2, commitU1G *ec2.Commitment, commitC1G *ec2.Commitment, ids sortableIDSSlice) bool {
 	if w == nil || cointype == "" || msgprex == "" || u1PolyG == nil || len(ids) == 0 || commitU1G == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1528,6 +1539,17 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 		ss += string(d.Bytes())
 		ss += common.Sep
 	}
+
+	//bip32
+	bip32dlen := len(commitC1G.D)
+	s2 := strconv.Itoa(bip32dlen)
+
+	ss = ss + s2 + common.Sep
+	for _, d := range commitC1G.D {
+		ss += string(d.Bytes())
+		ss += common.Sep
+	}
+	//
 
 	pglen := 2 * (len(u1PolyG.PolyG))
 	s4 := strconv.Itoa(pglen)
@@ -1698,27 +1720,28 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 			return nil, nil, false
 		}
 
-		pglen, _ := strconv.Atoi(mm[3+dlen])
+		bip32dlen,_ := strconv.Atoi(mm[3+dlen])
+		pglen, _ := strconv.Atoi(mm[3+dlen+1+bip32dlen])
 		pglen = (pglen / 2)
 		var pgss = make([][]*big.Int, 0)
 		l := 0
 		for j := 0; j < pglen; j++ {
 			l++
 			var gg = make([]*big.Int, 0)
-			if len(mm) < (4 + dlen + l) {
+			if len(mm) < (4 + dlen + bip32dlen + 1 + l) {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d1_1 data error")}
 				ch <- res
 				return nil, nil, false
 			}
 
-			gg = append(gg, new(big.Int).SetBytes([]byte(mm[3+dlen+l])))
+			gg = append(gg, new(big.Int).SetBytes([]byte(mm[3+dlen+1+bip32dlen+l])))
 			l++
-			if len(mm) < (4 + dlen + l) {
+			if len(mm) < (4 + dlen + bip32dlen + 1 + l) {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d1_1 data error")}
 				ch <- res
 				return nil, nil, false
 			}
-			gg = append(gg, new(big.Int).SetBytes([]byte(mm[3+dlen+l])))
+			gg = append(gg, new(big.Int).SetBytes([]byte(mm[3+dlen+1+bip32dlen+l])))
 			pgss = append(pgss, gg)
 		}
 
@@ -1748,6 +1771,204 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	}
 
 	return sstruct, ds, true
+}
+
+func DECDSAGenKeyCalcC(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, bip32udecom map[string]*ec2.Commitment, ids sortableIDSSlice) bool {
+	if w == nil || cointype == "" || msgprex == "" || len(bip32udecom) == 0 || len(ids) == 0 {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		ch <- res
+		return false
+	}
+
+	// for all nodes, de-commitment
+	var ug = make(map[string][]*big.Int)
+	for _, id := range ids {
+		enodes := GetEnodesByUid(id, cointype, w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		_, c1G := bip32udecom[en[0]].DeCommit()
+		ug[en[0]] = c1G
+	}
+
+	_, tip, cherr := GetChannelValue(ch_t, w.bbip32c1)
+	if cherr != nil {
+	    res := RpcDcrmRes{Ret: "", Tip:tip, Err: fmt.Errorf("get bip32 c1 data fail")}
+	    ch <- res
+	    return false
+	}
+
+	if w.msg_bip32c1.Len() != w.NodeCnt {
+		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+		ch <- res
+		return false
+	}
+
+	bip32cs := make([]string, w.NodeCnt)
+	itmp := 0
+	iter := w.msg_bip32c1.Front()
+	for iter != nil {
+		mdss := iter.Value.(string)
+		bip32cs[itmp] = mdss
+		iter = iter.Next()
+		itmp++
+	}
+
+	for _, id := range ids {
+		enodes := GetEnodesByUid(id, cointype, w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		
+		for _, v := range bip32cs {
+			mm := strings.Split(v, common.Sep)
+			if len(mm) < 3 {
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get bip32 c1 fail")}
+				ch <- res
+				return false
+			}
+
+			prex := mm[0]
+			prexs := strings.Split(prex, "-")
+			if strings.EqualFold(en[0],prexs[len(prexs)-1]) {
+			    c := new(big.Int).SetBytes([]byte(mm[2]))
+			    cGVerifyx, cGVerifyy := secp256k1.S256().ScalarBaseMult(c.Bytes())
+			    if (ug[en[0]])[0].Cmp(cGVerifyx) == 0 && (ug[en[0]])[1].Cmp(cGVerifyy) == 0 {
+			    //fmt.Println("success")
+	}else{
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify threshold bip32 fail")}
+				ch <- res
+				return false
+	}
+			    break
+			}
+		    }
+	}
+
+	var c *big.Int
+	for _, id := range ids {
+		enodes := GetEnodesByUid(id, cointype, w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		
+		for _, v := range bip32cs {
+			mm := strings.Split(v, common.Sep)
+			if len(mm) < 3 {
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get bip32 c1 fail")}
+				ch <- res
+				return false
+			}
+
+			prex := mm[0]
+			prexs := strings.Split(prex, "-")
+			if strings.EqualFold(en[0],prexs[len(prexs)-1]) {
+			    c = new(big.Int).SetBytes([]byte(mm[2]))
+			    break
+			}
+		    }
+
+		    break
+		}
+
+	for k, id := range ids {
+		if k == 0 {
+		    continue
+		}
+
+		enodes := GetEnodesByUid(id, cointype, w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		
+		for _, v := range bip32cs {
+			mm := strings.Split(v, common.Sep)
+			if len(mm) < 3 {
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get bip32 c1 fail")}
+				ch <- res
+				return false
+			}
+
+			prex := mm[0]
+			prexs := strings.Split(prex, "-")
+			if strings.EqualFold(en[0],prexs[len(prexs)-1]) {
+			    ci := new(big.Int).SetBytes([]byte(mm[2]))
+			    c = new(big.Int).Add(c, ci)
+			    break
+			}
+		    }
+		}
+
+		c = new(big.Int).Mod(c, secp256k1.S256().N)
+
+	w.bip32c.PushBack(string(c.Bytes()))
+
+	return true
+}
+
+func DECDSAGenKeyVerifyCommitment_Bip32(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, cs []string,ds []string, commitC1G *ec2.Commitment, ids sortableIDSSlice) (map[string]*ec2.Commitment, bool) {
+	if w == nil || cointype == "" || msgprex == "" || len(cs) == 0 || len(ds) == 0 || len(ids) == 0 || commitC1G == nil {
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		ch <- res
+		return nil, false
+	}
+
+	var bip32udecom = make(map[string]*ec2.Commitment)
+	for _, v := range cs {
+		mm := strings.Split(v, common.Sep)
+		if len(mm) < 4 {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+			ch <- res
+			return nil, false
+		}
+
+		prex := mm[0]
+		prexs := strings.Split(prex, "-")
+		for _, vv := range ds {
+			mmm := strings.Split(vv, common.Sep)
+			//bug
+			if len(mmm) < 4 {
+				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+				ch <- res
+				return nil, false
+			}
+
+			prex2 := mmm[0]
+			prexs2 := strings.Split(prex2, "-")
+			if prexs[len(prexs)-1] == prexs2[len(prexs2)-1] {
+			    dlen,_ := strconv.Atoi(mmm[2])
+				bip32dlen, _ := strconv.Atoi(mmm[3+dlen])
+				var gg = make([]*big.Int, 0)
+				l := 0
+				for j := 0; j < bip32dlen; j++ {
+					l++
+					//bug
+					if len(mmm) < (3 + dlen + 1 + l) {
+						res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+						ch <- res
+						return nil, false
+					}
+					gg = append(gg, new(big.Int).SetBytes([]byte(mmm[3+dlen+l])))
+				}
+				deCommit := &ec2.Commitment{C: new(big.Int).SetBytes([]byte(mm[3])), D: gg}
+				bip32udecom[prexs[len(prexs)-1]] = deCommit
+				break
+			}
+		}
+	}
+	deCommit_commitC1G := &ec2.Commitment{C: commitC1G.C, D: commitC1G.D}
+	bip32udecom[cur_enode] = deCommit_commitC1G
+
+	// for all nodes, verify the commitment
+	for _, id := range ids {
+		enodes := GetEnodesByUid(id, cointype, w.groupid)
+		en := strings.Split(string(enodes[8:]), "@")
+		if len(en) == 0 || en[0] == "" || bip32udecom[en[0]] == nil {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrKeyGenVerifyCommitFail)}
+			ch <- res
+			return nil, false
+		}
+
+		if !keygen.DECDSA_Key_Commitment_Verify(bip32udecom[en[0]]) {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrKeyGenVerifyCommitFail)}
+			ch <- res
+			return nil, false
+		}
+	}
+
+	return bip32udecom, true
 }
 
 func DECDSAGenKeyCalcPubKey(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, udecom map[string]*ec2.Commitment, ids sortableIDSSlice) (map[string][]*big.Int, bool) {
@@ -2172,10 +2393,10 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RPCReqWorker
 			prex := mm[0]
 			prexs := strings.Split(prex, "-")
 			if prexs[len(prexs)-1] == en[0] {
-				s1 = mm[3]
-				s2 = mm[4]
-				s3 = mm[5]
-				s4 := mm[6]
+				s1 = mm[4]
+				s2 = mm[5]
+				s3 = mm[6]
+				s4 := mm[7]
 				ss = ss + s1 + common.SepSave + s2 + common.SepSave + s3 + common.SepSave + s4 + common.SepSave
 				break
 			}
@@ -2326,19 +2547,19 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 
 	//*******************!!!Distributed ECDSA Start!!!**********************************
 
-	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk, status := DECDSAGenKeyRoundOne(msgprex, ch, w)
+	u1, u1Poly, u1PolyG, commitU1G, c1, _, _, commitC1G, u1PaillierPk, u1PaillierSk, status := DECDSAGenKeyRoundOne(msgprex, ch, w)
 	if !status {
 		return status
 	}
 	common.Debug("================generate key,round one finish================","key",msgprex)
 
-	u1Shares, status := DECDSAGenKeyRoundTwo(msgprex, cointype, ch, w, u1Poly, ids)
+	u1Shares, status := DECDSAGenKeyRoundTwo(msgprex, cointype, ch, w, u1Poly, c1,ids)
 	if !status {
 		return status
 	}
 	common.Debug("================generate key,round two finish================","key",msgprex)
 
-	if !DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, ids) {
+	if !DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, commitC1G, ids) {
 		return false
 	}
 	common.Debug("================generate key,round three finish================","key",msgprex)
@@ -2360,6 +2581,20 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 		return false
 	}
 	common.Debug("================generate key,calc pubkey finish================","key",msgprex)
+
+	//bip32
+	bip32udecom, status := DECDSAGenKeyVerifyCommitment_Bip32(msgprex, cointype, ch, w, cs,ds, commitC1G, ids)
+	if !status {
+		return false
+	}
+	common.Debug("================generate key,verify commitment for bip32 finish================","key",msgprex)
+	
+	status = DECDSAGenKeyCalcC(msgprex, cointype, ch, w, bip32udecom, ids)
+	if !status {
+		return false
+	}
+	common.Debug("================generate key,calc c for bip32 finish================","key",msgprex)
+	//
 
 	skU1, status := DECDSAGenKeyCalcPrivKey(msgprex, cointype, ch, w, sstruct, ids)
 	if !status {

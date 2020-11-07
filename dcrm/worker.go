@@ -81,6 +81,7 @@ type RPCReqWorker struct {
 	msg_zkfact      *list.List
 	msg_zku      *list.List
 	msg_checkpubkeystatus      *list.List
+	msg_bip32c1      *list.List
 	msg_mtazk1proof      *list.List
 	msg_c11      *list.List
 	msg_d11_1      *list.List
@@ -97,6 +98,7 @@ type RPCReqWorker struct {
 	pky  *list.List
 	save *list.List
 	sku1 *list.List
+	bip32c  *list.List
 
 	bacceptreqaddrres chan bool
 	bacceptlockoutres chan bool
@@ -115,6 +117,7 @@ type RPCReqWorker struct {
 	bzkfact           chan bool
 	bzku              chan bool
 	bcheckpubkeystatus              chan bool
+	bbip32c1              chan bool
 	bmtazk1proof      chan bool
 	bkc               chan bool
 	bcommitbigvab     chan bool
@@ -255,6 +258,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		msg_zkfact:                list.New(),
 		msg_zku:                   list.New(),
 		msg_checkpubkeystatus:                   list.New(),
+		msg_bip32c1:                   list.New(),
 		msg_mtazk1proof:           list.New(),
 		msg_c1:                    list.New(),
 		msg_d1_1:                  list.New(),
@@ -284,6 +288,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		pky:  list.New(),
 		save: list.New(),
 		sku1: list.New(),
+		bip32c:  list.New(),
 
 		bacceptreqaddrres: make(chan bool, 1),
 		bacceptlockoutres: make(chan bool, 1),
@@ -311,6 +316,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		bzkfact:           make(chan bool, 1),
 		bzku:              make(chan bool, 1),
 		bcheckpubkeystatus:              make(chan bool, 1),
+		bbip32c1:              make(chan bool, 1),
 		bmtazk1proof:      make(chan bool, 1),
 		bdelta1:           make(chan bool, 1),
 		bd11_1:            make(chan bool, 1),
@@ -456,6 +462,11 @@ func (w *RPCReqWorker) Clear() {
 		w.msg_checkpubkeystatus.Remove(e)
 	}
 
+	for e := w.msg_bip32c1.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_bip32c1.Remove(e)
+	}
+
 	for e := w.msg_mtazk1proof.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_mtazk1proof.Remove(e)
@@ -511,6 +522,11 @@ func (w *RPCReqWorker) Clear() {
 		w.pkx.Remove(e)
 	}
 
+	for e := w.bip32c.Front(); e != nil; e = next {
+		next = e.Next()
+		w.bip32c.Remove(e)
+	}
+
 	for e := w.pky.Front(); e != nil; e = next {
 		next = e.Next()
 		w.pky.Remove(e)
@@ -553,6 +569,9 @@ func (w *RPCReqWorker) Clear() {
 	}
 	if len(w.bcheckpubkeystatus) == 1 {
 		<-w.bcheckpubkeystatus
+	}
+	if len(w.bbip32c1) == 1 {
+		<-w.bbip32c1
 	}
 	if len(w.bmtazk1proof) == 1 {
 		<-w.bmtazk1proof
@@ -836,6 +855,11 @@ func (w *RPCReqWorker) Clear2() {
 		w.msg_checkpubkeystatus.Remove(e)
 	}
 
+	for e := w.msg_bip32c1.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_bip32c1.Remove(e)
+	}
+
 	for e := w.msg_mtazk1proof.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_mtazk1proof.Remove(e)
@@ -891,6 +915,11 @@ func (w *RPCReqWorker) Clear2() {
 		w.pkx.Remove(e)
 	}
 
+	for e := w.bip32c.Front(); e != nil; e = next {
+		next = e.Next()
+		w.bip32c.Remove(e)
+	}
+
 	for e := w.pky.Front(); e != nil; e = next {
 		next = e.Next()
 		w.pky.Remove(e)
@@ -933,6 +962,9 @@ func (w *RPCReqWorker) Clear2() {
 	}
 	if len(w.bcheckpubkeystatus) == 1 {
 		<-w.bcheckpubkeystatus
+	}
+	if len(w.bbip32c1) == 1 {
+		<-w.bbip32c1
 	}
 	if len(w.bmtazk1proof) == 1 {
 		<-w.bmtazk1proof

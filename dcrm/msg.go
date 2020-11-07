@@ -2961,6 +2961,20 @@ func DisMsg(msg string) {
 			common.Debug("======================DisMsg, Get All C1==================","w.msg_c1 len",w.msg_c1.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 			w.bc1 <- true
 		}
+	case "BIP32C1":
+		///bug
+		if w.msg_bip32c1.Len() >= w.NodeCnt {
+			return
+		}
+		///
+		if Find(w.msg_bip32c1, msg) {
+			return
+		}
+
+		w.msg_bip32c1.PushBack(msg)
+		if w.msg_bip32c1.Len() == w.NodeCnt {
+			w.bbip32c1 <- true
+		}
 	case "D1":
 		///bug
 		if w.msg_d1_1.Len() >= w.NodeCnt {

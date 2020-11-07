@@ -67,12 +67,18 @@ func GetRandomIntFromZn(n *big.Int) *big.Int {
 	return rndNumZn
 }
 
-func DECDSA_Key_RoundOne(ThresHold int, PaillierKeyLength int) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey) {
+func DECDSA_Key_RoundOne(ThresHold int, PaillierKeyLength int) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey) {
 	//1. generate their own "partial" private key secretly
 	u1 := GetRandomIntFromZn(secp256k1.S256().N)
+	
+	//bip32
+	c1 := GetRandomIntFromZn(secp256k1.S256().N)
 
 	//
 	u1Poly, u1PolyG, _ := ec2.Vss2Init(u1, ThresHold)
+	
+	//bip32
+	c1Poly, c1PolyG, _ := ec2.Vss2Init(c1, ThresHold)
 
 	// 2. calculate "partial" public key, make "pritial" public key commiment to get (C,D)
 	//also commit vss
@@ -86,10 +92,21 @@ func DECDSA_Key_RoundOne(ThresHold int, PaillierKeyLength int) (*big.Int, *ec2.P
 	}
 	commitU1G := new(ec2.Commitment).Commit(u1Secrets...)
 
+	//bip32
+	c1Gx, c1Gy := secp256k1.S256().ScalarBaseMult(c1.Bytes())
+	c1Secrets := make([]*big.Int, 0)
+	c1Secrets = append(c1Secrets, c1Gx)
+	c1Secrets = append(c1Secrets, c1Gy)
+	for i := 1; i < len(c1PolyG.PolyG); i++ {
+		c1Secrets = append(c1Secrets, c1PolyG.PolyG[i][0])
+		c1Secrets = append(c1Secrets, c1PolyG.PolyG[i][1])
+	}
+	commitC1G := new(ec2.Commitment).Commit(c1Secrets...)
+
 	// 3. generate their own paillier public key and private key
 	u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
 
-	return u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk
+	return u1, u1Poly, u1PolyG, commitU1G, c1, c1Poly, c1PolyG, commitC1G, u1PaillierPk, u1PaillierSk
 }
 
 func DECDSA_Key_Vss(u1Poly *ec2.PolyStruct2, ids []*big.Int) ([]*ec2.ShareStruct2, error) {

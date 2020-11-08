@@ -22,14 +22,20 @@ import (
 
 var (
 	Version string
+	Commit string
+	Date string
 )
 
-func SetVersion(version string) {
+func SetVersion(version, commit, date string) {
 	fmt.Printf("Version: %v\n", version)
+	fmt.Printf("Commit: %v\n", commit)
+	fmt.Printf("Date: %v\n", date)
 	Version = version
+	Commit = commit
+	Date = date
 }
 
-func GetVersion() string {
-	return Version
+func GetVersion() (string, string, string) {
+	return Version, Commit, Date
 }
 

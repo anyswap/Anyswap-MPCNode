@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -27,6 +28,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -37,6 +39,8 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/params"
+	"github.com/fsn-dev/dcrm-walletService/internal/flags"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
@@ -45,8 +49,20 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
-func main() {
+const (
+        clientIdentifier = "gdcrm" // Client identifier to advertise over the network
+)
 
+var (
+        // Git SHA1 commit hash of the release (set via linker flags)
+        gitCommit  = ""
+        gitDate    = ""
+	gitVersion = ""
+        // The app that holds all commands and flags.
+        app = flags.NewApp(gitCommit, gitDate, "the Dcrm Wallet Service command line interface")
+)
+
+func main() {
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -100,9 +116,7 @@ var (
 	presignnum   uint64
 	waitagree   uint64
 
-	app       = cli.NewApp()
 	statDir   = "stat"
-	Version   = ""
 
 	stopLock sync.Mutex
 	signalChan = make(chan os.Signal, 1)
@@ -122,11 +136,15 @@ type gdcrmConf struct {
 }
 
 func init() {
-	//app := cli.NewApp()
-	app.Usage = "Dcrm Wallet Service"
-	app.Version = "5.2.2"
-	Version = app.Version
+	//app.Version = "5.2.2"
 	app.Action = StartDcrm
+	app.HideVersion = true // we have a command to print the version
+	app.Copyright = "Copyright 2018-2019 The anyswap Authors"
+	app.Commands = []cli.Command{
+		versionCommand,
+		licenseCommand,
+	}
+	sort.Sort(cli.CommandsByName(app.Commands))
 	app.Flags = []cli.Flag{
 		cli.IntFlag{Name: "rpcport", Value: 0, Usage: "listen port", Destination: &rpcport},
 		cli.IntFlag{Name: "port", Value: 0, Usage: "listen port", Destination: &port},
@@ -147,6 +165,8 @@ func init() {
 		cli.Uint64Flag{Name: "presignnum", Value: 2000, Usage: "the total of pre-sign data", Destination: &presignnum},
 		cli.Uint64Flag{Name: "waitagree", Value: 2, Usage: "the time to wait for agree from all nodes", Destination: &waitagree},
 	}
+	flag.Parse()
+	params.BuildFlags(&gitVersion, &gitCommit, &gitDate)
 }
 
 func getConfig() error {
@@ -186,7 +206,7 @@ func getConfig() error {
 
 func startP2pNode() error {
 	common.InitDir(datadir)
-	common.SetVersion(Version)
+	common.SetVersion(gitVersion, gitCommit, gitDate)
 	layer2.InitP2pDir()
 	getConfig()
 	if port == 0 {

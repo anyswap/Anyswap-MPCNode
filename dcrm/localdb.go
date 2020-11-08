@@ -29,12 +29,14 @@ var (
 	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PubKeyDataChan = make(chan KeyData, 2000)
 	SkU1Chan = make(chan KeyData, 2000)
+	Bip32CChan = make(chan KeyData, 2000)
 	cache = (75*1024)/1000 
 	handles = makeDatabaseHandles()
 	
 	lock                     sync.Mutex
 	db *ethdb.LDBDatabase
 	dbsk *ethdb.LDBDatabase
+	dbbip32 *ethdb.LDBDatabase
 )
 
 func makeDatabaseHandles() int {
@@ -54,6 +56,134 @@ func makeDatabaseHandles() int {
 	     limit = 2048
      }
      return limit / 2 // Leave half for networking and other stuff
+}
+
+func GetBip32CFromLocalDb(key string) []byte {
+	lock.Lock()
+	/*if dbbip32 == nil {
+	    common.Debug("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
+	    dir := GetSkU1Dir()
+	    ////////
+	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	    //bug
+	    if err != nil {
+		    for i := 0; i < 100; i++ {
+			    dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			    if err == nil {
+				    break
+			    }
+
+			    time.Sleep(time.Duration(1000000))
+		    }
+	    }
+	    if err != nil {
+		dbsk = nil
+	    } else {
+		dbsk = dbsktmp
+	    }
+
+		lock.Unlock()
+		return nil
+	}*/
+
+	da, err := dbbip32.Get([]byte(key))
+	if err != nil {
+	    dir := GetBip32CDir()
+	    ////////
+	    dbbiptmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	    //bug
+	    if err != nil {
+		    for i := 0; i < 100; i++ {
+			    dbbiptmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+			    if err == nil {
+				    break
+			    }
+
+			    time.Sleep(time.Duration(1000000))
+		    }
+	    }
+	    if err != nil {
+	    } else {
+		dbbip32 = dbbiptmp
+	    }
+
+	    da, err = dbbip32.Get([]byte(key))
+	    if err != nil {
+		lock.Unlock()
+		return nil
+	    }
+	    
+	    bip32c,err := DecryptMsg(string(da))
+	    if err != nil {
+		lock.Unlock()
+		return da //TODO ,tmp code 
+		//return nil
+	    }
+
+	    lock.Unlock()
+	    return []byte(bip32c)
+	}
+
+	bip32c,err := DecryptMsg(string(da))
+	if err != nil {
+	    lock.Unlock()
+	    return da //TODO ,tmp code 
+	    //return nil
+	}
+
+	lock.Unlock()
+	return []byte(bip32c)
+}
+
+func SaveBip32CToDb() {
+	for {
+		kd := <-Bip32CChan
+		if dbbip32 != nil {
+		    cm,err := EncryptMsg(kd.Data,cur_enode)
+		    if err != nil {
+			Bip32CChan <- kd
+			continue	
+		    }
+
+		    err = dbbip32.Put(kd.Key, []byte(cm))
+		    if err != nil {
+			dir := GetBip32CDir()
+			dbbiptmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
+			//bug
+			if err != nil {
+				for i := 0; i < 100; i++ {
+					dbbiptmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
+					if err == nil {
+						break
+					}
+
+					time.Sleep(time.Duration(1000000))
+				}
+			}
+			if err != nil {
+			} else {
+			    dbbip32 = dbbiptmp
+			    err = dbbip32.Put(kd.Key, []byte(cm))
+			    if err != nil {
+				Bip32CChan <- kd
+				continue
+			    }
+			}
+
+		    }
+		//	db.Close()
+		} else {
+			Bip32CChan <- kd
+		}
+
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+	    }
+}
+
+func GetBip32CDir() string {
+	dir := common.DefaultDataDir()
+	dir += "/dcrmdata/bip32" + cur_enode
+	return dir
 }
 
 func GetSkU1FromLocalDb(key string) []byte {

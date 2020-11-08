@@ -479,6 +479,20 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	//save sku1
 	//
 
+	//bip32
+	iter = workers[id].bip32c.Front()
+	if iter == nil {
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get c for bip32 fail in req ec2 pubkey", Err: fmt.Errorf("get c for bip32 fail in req ec2 pubkey")}
+		ch <- res
+		return
+	}
+	bip32c := iter.Value.(string)
+	////////
+	bip := KeyData{Key: ys, Data: bip32c}
+	Bip32CChan <- bip
+	//save bip32c
+	//
+
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
 
@@ -540,6 +554,9 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		////
 		sk = KeyData{Key: []byte(key), Data: sku1}
 		SkU1Chan <- sk
+		
+		bip = KeyData{Key: []byte(key), Data: bip32c}
+		Bip32CChan <- bip
 	} else {
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
@@ -569,6 +586,9 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			////
 			sk = KeyData{Key: []byte(key), Data: sku1}
 			SkU1Chan <- sk
+			
+			bip = KeyData{Key: []byte(key), Data: bip32c}
+			Bip32CChan <- bip
 		}
 	}
 

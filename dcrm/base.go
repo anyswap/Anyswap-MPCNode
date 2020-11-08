@@ -46,6 +46,9 @@ import (
 	"io"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
+	//"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	//"crypto/hmac"
+	//"crypto/sha512"
 )
 
 var (
@@ -135,6 +138,38 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 
 	time.Sleep(time.Duration(10) * time.Second)
 
+	//bip32
+	dbbiptmp, err := ethdb.NewLDBDatabase(GetBip32CDir(), cache, handles)
+	//bug
+	if err != nil {
+	    common.Info("======================dcrm.Start,open dbbip32 fail======================","err",err,"dir",GetBip32CDir())
+		for i := 0; i < 80; i++ {
+			dbbiptmp, err = ethdb.NewLDBDatabase(GetBip32CDir(), cache, handles)
+			if err == nil && dbbiptmp != nil {
+				break
+			} else {
+			    common.Info("======================dcrm.Start,open dbbip32 fail======================","i",i,"err",err,"dir",GetBip32CDir())
+			}
+
+			//time.Sleep(time.Duration(1000000))
+			time.Sleep(time.Duration(2) * time.Second)
+		}
+	}
+	if err != nil {
+	    dbbip32 = nil
+	} else {
+	    dbbip32 = dbbiptmp
+	}
+
+	if dbbip32 == nil {
+	    common.Info("======================dcrm.Start,open dbbip32 fail and gdcrm panic======================")
+	    os.Exit(1)
+	    return
+	}
+
+	time.Sleep(time.Duration(10) * time.Second)
+	//
+
 	//
 	predbtmp, err := ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
 	//bug
@@ -186,6 +221,7 @@ func InitDev(keyfile string) {
 
 	go SavePubKeyDataToDb()
 	go SaveSkU1ToDb()
+	go SaveBip32CToDb()
 	go ec2.GenRandomInt(2048)
 	go ec2.GenRandomSafePrime(2048)
 }

@@ -547,6 +547,7 @@ func Sign(raw string) (string, string, error) {
     common.Debug("=====================Sign================","key",key,"from",from,"raw",raw)
 
     rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
+//    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,InputCode:sig.InputCode,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
     SignChan <- rsd
     return key, "", nil
 }
@@ -582,6 +583,19 @@ func HandleRpcSign() {
 					} else {
 						PutPreSigal(pub,true)
 					}
+					/*if rsd.InputCode != "" {
+					    if GetTotalCount(pub) >= (PreBip32DataCount/2) && GetTotalCount(pub) <= PreBip32DataCount {
+						    PutPreSigal(pub,false)
+					    } else {
+						    PutPreSigal(pub,true)
+					    }
+ 					} else {
+					    if GetTotalCount(pub) >= (PrePubDataCount*3/4) && GetTotalCount(pub) <= PrePubDataCount {
+						    PutPreSigal(pub,false)
+					    } else {
+						    PutPreSigal(pub,true)
+					    }
+ 					}*/
 					//
 				}
 

@@ -35,6 +35,8 @@ import (
 	"github.com/fsn-dev/cryptoCoins/coins/types"
 	"github.com/fsn-dev/cryptoCoins/tools/rlp"
 	"encoding/json"
+	"crypto/hmac"
+	"crypto/sha512"
 )
 
 var (
@@ -762,6 +764,44 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    ch <- res
 			    return false
 		    }
+		    
+		    childSKU1 := sku1
+		    if ps.InputCode != "" {
+			da4 := GetBip32CFromLocalDb(string(dcrmpks[:]))
+			if da4 == nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "presign get bip32 fail", Err: fmt.Errorf("presign get bip32 fail")}
+			    ch <- res
+			    return false
+			}
+			bip32c := new(big.Int).SetBytes(da4)
+			if bip32c == nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "presign get bip32 error", Err: fmt.Errorf("presign get bip32 error")}
+			ch <- res
+			return false
+			}
+			
+			dcrmpub := (da.(*PubKeyData)).Pub
+			dcrmpkx, dcrmpky := secp256k1.S256().Unmarshal(([]byte(dcrmpub))[:])
+			indexs := strings.Split(ps.InputCode, "/")
+			TRb := bip32c.Bytes()
+			childPKx := dcrmpkx
+			childPKy := dcrmpky 
+			for idxi := 1; idxi <len(indexs); idxi++ {
+				h := hmac.New(sha512.New, TRb)
+			    h.Write(childPKx.Bytes())
+			    h.Write(childPKy.Bytes())
+			    h.Write([]byte(indexs[idxi]))
+				T := h.Sum(nil)
+				TRb = T[32:]
+				TL := new(big.Int).SetBytes(T[:32])
+
+				childSKU1 = new(big.Int).Add(TL, childSKU1)
+				childSKU1 = new(big.Int).Mod(childSKU1, secp256k1.S256().N)
+
+				TLGx, TLGy := secp256k1.S256().ScalarBaseMult(TL.Bytes())
+				childPKx, childPKy = secp256k1.S256().Add(TLGx, TLGy, childPKx, childPKy)
+			}
+		    }
 		    //
 
 			///////
@@ -773,7 +813,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			///////
 
 			var ch1 = make(chan interface{}, 1)
-			pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
+			//pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
+			pre := PreSign_ec3(w.sid,save,childSKU1,"ECDSA",ch1,workid)
 			if pre == nil {
 				res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 				ch <- res
@@ -786,7 +827,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				pre.Used = false
 				
 				DtPreSign.Lock()
-				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
+				var pub string
+				if ps.InputCode != "" {
+				    pub = Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.InputCode + ":" + ps.Gid))).Hex()
+				} else {
+				    pub = Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
+				}
+
 				PutPreSign(pub,pre)
 		
 				es,err := Encode2(pre)

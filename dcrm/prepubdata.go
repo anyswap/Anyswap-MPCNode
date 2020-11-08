@@ -38,11 +38,15 @@ var (
 	//DelSignChan = make(chan *DelSignData, 10000)
 	DtPreSign sync.Mutex
 	PreSigal  = common.NewSafeMap(10) //make(map[string][]byte)
+	PrePubGids  = common.NewSafeMap(10) //make(map[string][]byte)
+	PrePubGidsChan = make(chan []string, 20000)
+	PreBip32DataCount = 4
 )
 
 type RpcSignData struct {
 	Raw string
 	PubKey string
+	InputCode string
 	GroupId string
 	MsgHash []string
 	Key string
@@ -50,6 +54,7 @@ type RpcSignData struct {
 
 type PreSign struct {
 	Pub string
+	InputCode string
 	Gid string
 	Nonce string
 }
@@ -78,6 +83,37 @@ type PickHashKey struct {
 }
 
 //pub = hash256(pubkey + gid)
+
+func NeedToStartPreBip32(pub string) bool {
+    _,exsit := PreSigal.ReadMap(strings.ToLower(pub))
+    return !exsit
+}
+
+func GetPrePubGids(pub string) []string {
+	data,exsit := PrePubGids.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		gids := data.([]string)
+		return gids
+	}
+
+	return nil
+}
+
+func NeedPreSignForBip32(pub string) bool {
+	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		datas := data.([]*PrePubData)
+		if len(datas) >= PreBip32DataCount {
+			return false
+		}
+	}
+
+	return true 
+}
+
+func PutPrePubGids(pub string,gids []string) {
+	PrePubGids.WriteMap(strings.ToLower(pub),gids)
+}
 
 func GetPreSigal(pub string) bool {
 	data,exsit := PreSigal.ReadMap(strings.ToLower(pub)) 
@@ -577,6 +613,9 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	return
     }
     
+    pubtmp := Keccak256Hash([]byte(strings.ToLower(pre.PubKey))).Hex()
+    PutPrePubGids(pubtmp,pre.SubGid)
+
     for _,gid := range pre.SubGid {
 	go func(gg string) {
 	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()

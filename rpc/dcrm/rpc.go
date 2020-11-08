@@ -602,6 +602,29 @@ func (this *Service) PreGenSignData(raw string) map[string]interface{} {
 	}
 }
 
+//inputcode = "m/x1/x2/..../xn"
+func (this *Service) GetBip32ChildKey(rootpubkey string,inputcode string) map[string]interface{} {
+	data := make(map[string]interface{})
+	pub, tip, err := dcrm.GetBip32ChildKey(rootpubkey,inputcode)
+	if err != nil {
+		data["result"] = ""
+		return map[string]interface{}{
+			"Status": "Error",
+			"Tip":    tip,
+			"Error":  err.Error(),
+			"Data":   data,
+		}
+	}
+
+	data["result"] = pub
+	return map[string]interface{}{
+		"Status": "Success",
+		"Tip":    "",
+		"Error":  "",
+		"Data":   data,
+	}
+}
+
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
 func (this *Service) GetAccounts(account, mode string) map[string]interface{} {

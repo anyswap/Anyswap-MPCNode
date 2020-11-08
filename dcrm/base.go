@@ -46,9 +46,9 @@ import (
 	"io"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
-	//"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	//"crypto/hmac"
-	//"crypto/sha512"
+	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"crypto/hmac"
+	"crypto/sha512"
 )
 
 var (
@@ -619,6 +619,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	if from.Hex() == "" || pubkey == "" || subgids == nil {
 		return "","","",nil,fmt.Errorf("param error from raw data.")
 	}
+	//
 
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,_ := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
@@ -1979,5 +1980,129 @@ func DoubleHash2(id string, keytype string) *big.Int {
 	// convert the hash ([]byte) to big.Int
 	digestBigInt := new(big.Int).SetBytes(digest)
 	return digestBigInt
+}
+
+func GetBip32ChildKey(rootpubkey string,inputcode string) (string,string,error) {
+    if rootpubkey == "" || inputcode == "" {
+	return "","param error",fmt.Errorf("param error")
+    }
+
+    indexs := strings.Split(inputcode, "/")
+    if len([]rune(rootpubkey)) != 130 || len(indexs) < 2 || indexs[0] != "m" {
+	return "","param error",fmt.Errorf("param error")
+    }
+
+    dcrmpks, _ := hex.DecodeString(rootpubkey)
+    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+    if !exsit {
+	time.Sleep(time.Duration(5000000000))
+	exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+    }
+    ///////
+    if !exsit {
+	common.Debug("============================get bip32 child key,not exist pubkey data===========================","pubkey",rootpubkey)
+	return "","get bip32 child key,not exist pubkey data",fmt.Errorf("get bip32 child key,not exist pubkey data")
+    }
+
+    _,ok := da.(*PubKeyData)
+    if !ok {
+	common.Debug("============================get bip32 child key,pubkey data error==========================","pubkey",rootpubkey)
+	return "","get bip32 child key,pubkey data error",fmt.Errorf("get bip32 child key,pubkey data error")
+    }
+
+    dcrmpub := (da.(*PubKeyData)).Pub
+    dcrmpkx, dcrmpky := secp256k1.S256().Unmarshal(([]byte(dcrmpub))[:])
+
+    ///sku1
+    da2 := GetSkU1FromLocalDb(string(dcrmpks[:]))
+    if da2 == nil {
+	return "","get sku1 fail",fmt.Errorf("get sku1 fail")
+    }
+    sku1 := new(big.Int).SetBytes(da2)
+    if sku1 == nil {
+	return "","get sku1 error",fmt.Errorf("get sku1 error")
+    }
+    //bip32c
+    da3 := GetBip32CFromLocalDb(string(dcrmpks[:]))
+    if da3 == nil {
+	return "","get bip32c fail",fmt.Errorf("get bip32c fail")
+    }
+    bip32c := new(big.Int).SetBytes(da3)
+    if bip32c == nil {
+	return "","get bip32c error",fmt.Errorf("get bip32c error")
+    }
+
+    TRb := bip32c.Bytes()
+    childPKx := dcrmpkx
+    childPKy := dcrmpky 
+    childSKU1 := sku1
+    for idxi := 1; idxi <len(indexs); idxi++ {
+	    h := hmac.New(sha512.New, TRb)
+	h.Write(childPKx.Bytes())
+	h.Write(childPKy.Bytes())
+	h.Write([]byte(indexs[idxi]))
+	    T := h.Sum(nil)
+	    TRb = T[32:]
+	    TL := new(big.Int).SetBytes(T[:32])
+
+	    childSKU1 = new(big.Int).Add(TL, childSKU1)
+	    childSKU1 = new(big.Int).Mod(childSKU1, secp256k1.S256().N)
+
+	    TLGx, TLGy := secp256k1.S256().ScalarBaseMult(TL.Bytes())
+	    childPKx, childPKy = secp256k1.S256().Add(TLGx, TLGy, childPKx, childPKy)
+    }
+	
+    ys := secp256k1.S256().Marshal(childPKx,childPKy)
+    pubkeyhex := hex.EncodeToString(ys)
+
+    ///
+    pubtmp := Keccak256Hash([]byte(strings.ToLower(rootpubkey))).Hex()
+    gids := GetPrePubGids(pubtmp)
+    for _,gid := range gids {
+	pub := Keccak256Hash([]byte(strings.ToLower(rootpubkey + ":" + inputcode + ":" + gid))).Hex()
+	if NeedToStartPreBip32(pub) {
+	    //for _,gid := range pre.SubGid {
+		go func(gg string) {
+		    PutPreSigal(pub,true)
+		    common.Info("===================before generate pre-sign data for bip32===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PreBip32DataCount-GetTotalCount(pub)),"pub",pub,"pubkey",rootpubkey,"input code",inputcode,"sub-groupid",gg)
+		    for {
+			    if NeedPreSignForBip32(pub) && GetPreSigal(pub) {
+				    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+				    nonce := Keccak256Hash([]byte(strings.ToLower(pub + tt))).Hex()
+				    ps := &PreSign{Pub:rootpubkey,InputCode:inputcode,Gid:gg,Nonce:nonce}
+
+				    val,err := Encode2(ps)
+				    if err != nil {
+					common.Info("=====================GetBip32ChildKey========================","pub",pub,"pubkey",rootpubkey,"input code",inputcode,"err",err)
+					time.Sleep(time.Duration(10000000))
+					continue 
+				    }
+				    SendMsgToDcrmGroup(val,gg)
+
+				    rch := make(chan interface{}, 1)
+				    SetUpMsgList3(val,cur_enode,rch)
+				    _, _,cherr := GetChannelValue(waitall+10,rch)
+				    if cherr != nil {
+					common.Info("=====================GetBip32ChildKey in genkey fail========================","pub",pub,"pubkey",rootpubkey,"input code",inputcode,"err",cherr)
+				    }
+
+				    common.Info("===================generate pre-sign data for bip32===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PreBip32DataCount-GetTotalCount(pub)),"pub",pub,"pubkey",rootpubkey,"sub-groupid",gg)
+			    } 
+
+			    time.Sleep(time.Duration(1000000))
+		    }
+		}(gid)
+	    //}
+	}
+    }
+    //
+
+    addr,_,err := GetDcrmAddr(pubkeyhex)
+    if err != nil {
+	return "","get bip32 pubkey error",fmt.Errorf("get bip32 pubkey error")
+    }
+    fmt.Printf("===================GetBip32ChildKey, get bip32 pubkey success, rootpubkey = %v, inputcode = %v, child pubkey = %v, addr = %v ===================\n",rootpubkey,inputcode,pubkeyhex,addr)
+
+    return pubkeyhex,"",nil
 }
 

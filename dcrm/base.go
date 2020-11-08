@@ -540,6 +540,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     err = json.Unmarshal(tx.Data(), &sig)
     if err == nil && sig.TxType == "SIGN" {
 	pubkey := sig.PubKey
+	inputcode := sig.InputCode
 	hash := sig.MsgHash
 	keytype := sig.Keytype
 	groupid := sig.GroupId
@@ -551,6 +552,15 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	if from.Hex() == "" || pubkey == "" || hash == nil || keytype == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
 		return "","","",nil,fmt.Errorf("param error from raw data.")
 	}
+
+	//check input code
+	if inputcode != "" {
+	    indexs := strings.Split(inputcode, "/")
+	    if len(indexs) < 2 || indexs[0] != "m" {
+		return "","","",nil,fmt.Errorf("param error from raw data.")
+	    }
+	}
+	//
 
 	nums := strings.Split(threshold, "/")
 	if len(nums) != 2 {

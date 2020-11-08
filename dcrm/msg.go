@@ -643,7 +643,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
 		pubkeyhex := hex.EncodeToString(ys)
-		pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
+		var pub string
+		if sd.InputCodeT != "" {
+		    pub = Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.InputCodeT + ":" + sd.GroupId))).Hex()
+		} else {
+		    pub = Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
+		}
 		pre := GetPrePubDataBak(pub,sd.PickKey)
 		if pre == nil {
 			    common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
@@ -677,6 +682,52 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 		}
 
+		childPKx := sd.Pkx
+		childPKy := sd.Pky 
+		if sd.InputCodeT != "" {
+		    da3 := GetBip32CFromLocalDb(string(dcrmpks[:]))
+		    if da3 == nil {
+			res := RpcDcrmRes{Ret: "", Tip: "presign get bip32 fail", Err: fmt.Errorf("presign get bip32 fail")}
+			ch <- res
+			return false
+		    }
+		    bip32c := new(big.Int).SetBytes(da3)
+		    if bip32c == nil {
+			res := RpcDcrmRes{Ret: "", Tip: "presign get bip32 error", Err: fmt.Errorf("presign get bip32 error")}
+			ch <- res
+			return false
+		    }
+		    
+		    indexs := strings.Split(sd.InputCodeT, "/")
+		    TRb := bip32c.Bytes()
+		    childSKU1 := sd.Sku1
+		    for idxi := 1; idxi <len(indexs); idxi++ {
+			    h := hmac.New(sha512.New, TRb)
+			h.Write(childPKx.Bytes())
+			h.Write(childPKy.Bytes())
+			h.Write([]byte(indexs[idxi]))
+			    T := h.Sum(nil)
+			    TRb = T[32:]
+			    TL := new(big.Int).SetBytes(T[:32])
+
+			    childSKU1 = new(big.Int).Add(TL, childSKU1)
+			    childSKU1 = new(big.Int).Mod(childSKU1, secp256k1.S256().N)
+
+			    TLGx, TLGy := secp256k1.S256().ScalarBaseMult(TL.Bytes())
+			    childPKx, childPKy = secp256k1.S256().Add(TLGx, TLGy, childPKx, childPKy)
+		    }
+		}
+		
+		childpub := secp256k1.S256().Marshal(childPKx,childPKy)
+		childpubkeyhex := hex.EncodeToString(childpub)
+		addr,_,err := GetDcrmAddr(childpubkeyhex)
+		if err != nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "get pubkey error", Err: fmt.Errorf("get pubkey error")}
+		    ch <- res
+		    return false
+		}
+		fmt.Printf("===================RecvMsg.Run, sign, pubkey = %v, inputcode = %v, addr = %v ===================\n",childpubkeyhex,sd.InputCodeT,addr)
+ 
 		var ch1 = make(chan interface{}, 1)
 		for i:=0;i < recalc_times;i++ {
 		    common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
@@ -686,7 +737,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    //w.Clear2()
 		    //Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
-		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
+		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,childPKx,childPKy,ch1,workid,pre)
 		    common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
 		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
 		    if ret != "" && cherr == nil {

@@ -64,6 +64,7 @@ var (
 	key      *string
 	keyType  *string
 	pubkey   *string
+	inputcode   *string
 	msghash  *string
 	enode    *string
 	tsgid    *string
@@ -146,6 +147,7 @@ func init() {
 	key = flag.String("key", "", "Accept key")
 	keyType = flag.String("keytype", "ECDSA", "ECDSA|ED25519")
 	pubkey = flag.String("pubkey", "", "Dcrm pubkey")
+	inputcode = flag.String("inputcode", "", "bip32 input code")
 	//msghash = flag.String("msghash", "", "msghash=Keccak256(unsignTX)")
 	pkey := flag.String("pkey", "", "Private key")
 	enode = flag.String("enode", "", "enode")
@@ -584,6 +586,7 @@ func signMsgHash(hashs []string, contexts []string,loopCount int) (rsv []string)
 	txdata := signData{
 		TxType:     "SIGN",
 		PubKey:     *pubkey,
+		InputCode:     *inputcode,
 		MsgContext: contexts,
 		MsgHash:    hashs,
 		Keytype:    *keyType,
@@ -1020,6 +1023,7 @@ type lockoutData struct {
 type signData struct {
 	TxType     string `json:"TxType"`
 	PubKey     string `json:"PubKey"`
+	InputCode     string `json:"InputCode"`
 	MsgContext []string `json:"MsgContext"`
 	MsgHash    []string `json:"MsgHash"`
 	Keytype    string `json:"Keytype"`

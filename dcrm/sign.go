@@ -86,8 +86,14 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
     
     sig,ok := txdata.(*TxDataSign)
     if ok {
-	    pub := Keccak256Hash([]byte(strings.ToLower(sig.PubKey + ":" + sig.GroupId))).Hex()
-	   if !strings.EqualFold(sender,cur_enode) {
+	    var pub string
+	    if sig.InputCode != "" {
+		pub = Keccak256Hash([]byte(strings.ToLower(sig.PubKey + ":" + sig.InputCode + ":" + sig.GroupId))).Hex()
+	    } else {
+		pub = Keccak256Hash([]byte(strings.ToLower(sig.PubKey + ":" + sig.GroupId))).Hex()
+	    }
+	   
+	    if !strings.EqualFold(sender,cur_enode) {
 		   DtPreSign.Lock()
 		/////check pre-sign data
 		for _,vv := range sbd.PickHash {
@@ -355,7 +361,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 
 			common.Info("===============InitAcceptData2,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
 			rch := make(chan interface{}, 1)
-			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,sbd.PickHash,rch)
+			sign(w.sid, from,sig.PubKey,sig.InputCode,sig.MsgHash,sig.Keytype,nonce,sig.Mode,sbd.PickHash,rch)
 			chret, tip, cherr := GetChannelValue(waitallgg20+20, rch)
 			common.Info("================== InitAcceptData2,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
@@ -522,6 +528,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
 type TxDataSign struct {
     TxType string
     PubKey string
+    InputCode string
     MsgHash []string
     MsgContext []string
     Keytype string
@@ -546,8 +553,7 @@ func Sign(raw string) (string, string, error) {
 
     common.Debug("=====================Sign================","key",key,"from",from,"raw",raw)
 
-    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
-//    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,InputCode:sig.InputCode,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
+    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,InputCode:sig.InputCode,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
     SignChan <- rsd
     return key, "", nil
 }
@@ -563,7 +569,12 @@ func HandleRpcSign() {
 			_,ok := da.(*PubKeyData)
 			common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok)
 			if ok {
-				pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
+			    var pub string
+			    if rsd.InputCode != "" {
+				pub = Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.InputCode + ":" + rsd.GroupId))).Hex()
+			    } else {
+				pub = Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
+			    }
 				bret := false
 				pickhash := make([]*PickHashKey,0)
 				for _,vv := range rsd.MsgHash {
@@ -578,12 +589,7 @@ func HandleRpcSign() {
 					pickhash = append(pickhash,ph)
 
 					//check pre sigal
-					if GetTotalCount(pub) >= (PrePubDataCount*3/4) && GetTotalCount(pub) <= PrePubDataCount {
-						PutPreSigal(pub,false)
-					} else {
-						PutPreSigal(pub,true)
-					}
-					/*if rsd.InputCode != "" {
+					if rsd.InputCode != "" {
 					    if GetTotalCount(pub) >= (PreBip32DataCount/2) && GetTotalCount(pub) <= PreBip32DataCount {
 						    PutPreSigal(pub,false)
 					    } else {
@@ -595,7 +601,7 @@ func HandleRpcSign() {
 					    } else {
 						    PutPreSigal(pub,true)
 					    }
- 					}*/
+ 					}
 					//
 				}
 
@@ -724,7 +730,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	return ret, "", nil
 }
 
-func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickhash []*PickHashKey ,ch chan interface{}) {
+func sign(wsid string,account string,pubkey string,inputcode string,unsignhash []string,keytype string,nonce string,mode string,pickhash []*PickHashKey ,ch chan interface{}) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 	if !exsit {
@@ -787,7 +793,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	    result = ret
 	    cherrtmp = cherr
 	} else {
-	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickhash,rch)
+	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,inputcode,keytype,pickhash,rch)
 	    ret, tip, cherr := GetChannelValue(waitall,rch)
 	    common.Info("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
@@ -865,6 +871,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 type SignData struct {
     MsgPrex string
     Key string
+    InputCodeT string
     Save string
     Sku1 *big.Int
     Txhash string
@@ -879,7 +886,7 @@ type SignData struct {
     PickKey string
 }
 
-func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, pickhash []*PickHashKey,ch chan interface{}) string {
+func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, inputcode string,keytype string, pickhash []*PickHashKey,ch chan interface{}) string {
 
     	tmp := make([]string,0)
 	for _,v := range txhash {
@@ -922,7 +929,7 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 
 		//tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 		key := Keccak256Hash([]byte(strings.ToLower(msgprex + "-" + vv))).Hex()
-		sd := &SignData{MsgPrex:msgprex,Key:key,Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky,PickKey:pickkey}
+		sd := &SignData{MsgPrex:msgprex,Key:key,InputCodeT:inputcode,Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky,PickKey:pickkey}
 		common.Info("======================sign_ec=================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pickkey)
 
 		val,err := Encode2(sd)

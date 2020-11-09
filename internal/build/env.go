@@ -159,3 +159,15 @@ func applyEnvFlags(env Environment) Environment {
 	}
 	return env
 }
+
+func BuildFlags(gitCommit, gitDate *string) {
+	head := readGitFile("HEAD")
+	if splits := strings.Split(head, " "); len(splits) == 2 {
+		head = splits[1]
+	} else {
+		return
+	}
+	*gitCommit = readGitFile(head)
+	*gitDate = getDate(*gitCommit)
+}
+

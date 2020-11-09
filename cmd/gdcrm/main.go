@@ -39,7 +39,8 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto"
 	"github.com/fsn-dev/dcrm-walletService/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	//"github.com/fsn-dev/dcrm-walletService/internal/params"
+	"github.com/fsn-dev/dcrm-walletService/internal/params"
+	"github.com/fsn-dev/dcrm-walletService/internal/build"
 	"github.com/fsn-dev/dcrm-walletService/internal/flags"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -165,8 +166,8 @@ func init() {
 		cli.Uint64Flag{Name: "presignnum", Value: 2000, Usage: "the total of pre-sign data", Destination: &presignnum},
 		cli.Uint64Flag{Name: "waitagree", Value: 2, Usage: "the time to wait for agree from all nodes", Destination: &waitagree},
 	}
-	//flag.Parse()
-	//params.BuildFlags(&gitVersion, &gitCommit, &gitDate)
+	build.BuildFlags(&gitCommit, &gitDate)
+	gitVersion = params.VersionWithMeta
 }
 
 func getConfig() error {

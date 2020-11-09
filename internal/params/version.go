@@ -18,7 +18,6 @@ package params
 
 import (
 	"fmt"
-	"github.com/fsn-dev/dcrm-walletService/internal/build"
 )
 
 const (
@@ -65,14 +64,5 @@ func VersionWithCommit(gitCommit, gitDate string) string {
 		vsn += "-" + gitDate
 	}
 	return vsn
-}
-
-func BuildFlags(gitVersion, gitCommit, gitData *string) {
-	env := build.Env()
-	*gitVersion = VersionWithMeta
-	if env.Commit != "" {
-		*gitCommit = env.Commit
-		*gitData = env.Date
-	}
 }
 

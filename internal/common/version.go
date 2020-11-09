@@ -17,7 +17,7 @@
 package common
 
 import (
-	"fmt"
+	//"fmt"
 )
 
 var (
@@ -27,9 +27,9 @@ var (
 )
 
 func SetVersion(version, commit, date string) {
-	fmt.Printf("Version: %v\n", version)
-	fmt.Printf("Commit: %v\n", commit)
-	fmt.Printf("Date: %v\n", date)
+	//fmt.Printf("Version: %v\n", version)
+	//fmt.Printf("Commit: %v\n", commit)
+	//fmt.Printf("Date: %v\n", date)
 	Version = version
 	Commit = commit
 	Date = date

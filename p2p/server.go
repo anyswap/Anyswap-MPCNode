@@ -453,10 +453,12 @@ func (srv *Server) Start() (err error) {
 	if !srv.NoDiscovery || srv.DiscoveryV5 {
 		addr, err := net.ResolveUDPAddr("udp", srv.ListenAddr)
 		if err != nil {
+			fmt.Printf("Server Start, ListenAddr: %v, err: %v\n", srv.ListenAddr, err)
 			return err
 		}
 		conn, err = net.ListenUDP("udp", addr)
 		if err != nil {
+			fmt.Printf("Server Start, ListenUDP: %v, err: %v\n", addr, err)
 			return err
 		}
 		realaddr = conn.LocalAddr().(*net.UDPAddr)
@@ -539,6 +541,7 @@ func (srv *Server) startListening() error {
 	// Launch the TCP listener.
 	listener, err := net.Listen("tcp", srv.ListenAddr)
 	if err != nil {
+		fmt.Printf("Server startListening ListenAddr: %v, err: %v\n", srv.ListenAddr, err)
 		return err
 	}
 	laddr := listener.Addr().(*net.TCPAddr)

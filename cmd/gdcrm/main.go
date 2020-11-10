@@ -313,6 +313,7 @@ func startP2pNode() error {
 
 	go func() error {
 		if err := nodeserv.Start(); err != nil {
+			fmt.Printf("==== startP2pNode() ====, nodeserv.Start err: %v\n", err)
 			return err
 		}
 

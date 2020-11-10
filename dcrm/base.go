@@ -65,7 +65,7 @@ type NodeReply struct {
     Initiator string // "1"/"0"
 }
 
-func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
+func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64,bip32pre uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	
@@ -206,6 +206,7 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	recalc_times = int(trytimes)
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
+	PreBip32DataCount = int(bip32pre)
 	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 	GetAllPreSignFromDb()
@@ -213,7 +214,7 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	go UpdatePrePubKeyDataForDb()
 	go HandleRpcSign()
 
-	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
+	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount,"bip32pre",PreBip32DataCount)
 }
 
 func InitDev(keyfile string) {

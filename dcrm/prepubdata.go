@@ -112,7 +112,16 @@ func NeedPreSignForBip32(pub string) bool {
 }
 
 func PutPrePubGids(pub string,gids []string) {
-	PrePubGids.WriteMap(strings.ToLower(pub),gids)
+    old := GetPrePubGids(pub)
+    if old == nil {
+	old = make([]string,0)
+	old = append(old,gids...)
+	PrePubGids.WriteMap(strings.ToLower(pub),old)
+	return
+    }
+
+    old = append(old,gids...)
+    PrePubGids.WriteMap(strings.ToLower(pub),gids)
 }
 
 func GetPreSigal(pub string) bool {
@@ -615,6 +624,7 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
     
     pubtmp := Keccak256Hash([]byte(strings.ToLower(pre.PubKey))).Hex()
     PutPrePubGids(pubtmp,pre.SubGid)
+    common.Debug("============================ExcutePreSignData==========================","put gids",pre.SubGid)
 
     for _,gid := range pre.SubGid {
 	go func(gg string) {

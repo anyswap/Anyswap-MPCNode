@@ -2069,6 +2069,7 @@ func GetBip32ChildKey(rootpubkey string,inputcode string) (string,string,error) 
     ///
     pubtmp := Keccak256Hash([]byte(strings.ToLower(rootpubkey))).Hex()
     gids := GetPrePubGids(pubtmp)
+    common.Debug("============================get bip32 child key==========================","get gids",gids,"pubkey",rootpubkey)
     for _,gid := range gids {
 	pub := Keccak256Hash([]byte(strings.ToLower(rootpubkey + ":" + inputcode + ":" + gid))).Hex()
 	if NeedToStartPreBip32(pub) {

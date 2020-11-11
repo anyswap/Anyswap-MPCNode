@@ -3349,6 +3349,8 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	}
 
 	recid := signing.DECDSA_Sign_Calc_v(pre.R, pre.Ry, pkx, pky, signature.GetR(), signature.GetS(), hashBytes, invert)
+	common.Info("=====================Sign_ec3,first get recid =================","recid",recid,"key",msgprex)
+	
 	////check v
 	ys := secp256k1.S256().Marshal(pkx,pky)
 	pubkeyhex := hex.EncodeToString(ys)
@@ -3368,11 +3370,13 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	    }
 	    if e == nil && strings.EqualFold(pkr2,pubkeyhex) {
 		recid = j
+		common.Info("=====================Sign_ec3,second get recid =================","recid",recid,"key",msgprex)
 		break
 	    }
 	}
 	/////
 	signature.SetRecoveryParam(int32(recid))
+	common.Info("=====================Sign_ec3,terminal get recid =================","recid",signature.GetRecoveryParam(),"key",msgprex)
 
 	if !DECDSA_Sign_Verify_RSV(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), message, pkx, pky) {
 		common.Debug("=================Sign_ec3,verify is false==============","key",msgprex)

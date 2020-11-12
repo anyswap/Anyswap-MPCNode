@@ -2252,6 +2252,7 @@ func CheckAllNodesPubKeyStatus(msgprex string, ch chan interface{},w *RPCReqWork
     _, tip, cherr := GetChannelValue(ch_t, w.bcheckpubkeystatus)
 
     if cherr != nil {
+	common.Debug("===================CheckAllNodesPubKeyStatus=====================","err",cherr)
 	res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("check pubkey status fail.")}
 	ch <- res
 	return false

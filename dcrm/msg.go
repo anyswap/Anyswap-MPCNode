@@ -3142,6 +3142,7 @@ func DisMsg(msg string) {
 
 		w.msg_checkpubkeystatus.PushBack(msg)
 		if w.msg_checkpubkeystatus.Len() == w.NodeCnt {
+			common.Debug("=====================Get All CHECKPUBKEYSTATUS====================","key",prexs[0])
 			w.bcheckpubkeystatus <- true
 		}
 	case "MTAZK1PROOF":

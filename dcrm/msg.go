@@ -625,16 +625,19 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
 	if errdec == nil {
+		common.Debug("================RecvMsg.Run, decrypt msg success=================","res",res,"msgdata",msgdata)
 		res = msgdata
 	}
 	mm := strings.Split(res, common.Sep)
 	if len(mm) >= 2 {
+		common.Debug("================RecvMsg.Run,begin to dis msg =================","res",res)
 		//msg:  key-enode:C1:X1:X2....:Xn
 		//msg:  key-enode1:NoReciv:enode2:C1
 		DisMsg(res)
 		return true
 	}
 
+	common.Debug("================RecvMsg.Run,begin to decode msg =================","res",res)
 	m, err2 := Decode2(res, "SignData")
 	if err2 == nil {
 	    sd,ok := m.(*SignData)
@@ -2966,19 +2969,16 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
 //msg: key-enode1:NoReciv:enode2:C1
 func DisMsg(msg string) {
 
-	if msg == "" {
-	    return
-	}
-
-	//orderbook matchres
 	mm := strings.Split(msg, common.Sep)
 	if len(mm) < 3 {
+		common.Debug("======================DisMsg, < 3 for CHECKPUBKEYSTATUS================","msg",msg,"common.Sep",common.Sep,"mm len",len(mm))
 		return
 	}
 
 	mms := mm[0]
 	prexs := strings.Split(mms, "-")
 	if len(prexs) < 2 {
+		common.Debug("======================DisMsg, < 2 for CHECKPUBKEYSTATUS================","msg",msg,"mms",mms,"prexs len",len(prexs))
 		return
 	}
 
@@ -3133,14 +3133,18 @@ func DisMsg(msg string) {
 	case "CHECKPUBKEYSTATUS":
 		///bug
 		if w.msg_checkpubkeystatus.Len() >= w.NodeCnt {
+			common.Debug("======================DisMsg, >= w.NodeCnt for CHECKPUBKEYSTATUS================","w.msg_checkpubkeystatus len",w.msg_checkpubkeystatus.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 			return
 		}
 		///
 		if Find(w.msg_checkpubkeystatus, msg) {
+			common.Debug("======================DisMsg, already exsit for CHECKPUBKEYSTATUS================","w.msg_checkpubkeystatus len",w.msg_checkpubkeystatus.Len(),"w.NodeCnt",w.NodeCnt,"msg",msg,"key",prexs[0])
 			return
 		}
 
+		common.Debug("======================DisMsg, before pushback for CHECKPUBKEYSTATUS================","w.msg_checkpubkeystatus len",w.msg_checkpubkeystatus.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 		w.msg_checkpubkeystatus.PushBack(msg)
+		common.Debug("======================DisMsg, after pushback for CHECKPUBKEYSTATUS================","w.msg_checkpubkeystatus len",w.msg_checkpubkeystatus.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 		if w.msg_checkpubkeystatus.Len() == w.NodeCnt {
 			common.Debug("=====================Get All CHECKPUBKEYSTATUS====================","key",prexs[0])
 			w.bcheckpubkeystatus <- true

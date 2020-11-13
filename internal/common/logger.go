@@ -1,9 +1,8 @@
-package common 
+package common
 
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
@@ -46,7 +45,6 @@ func SetLogFile(logFile string, logRotation, logMaxAge uint64) {
 		logRotationTime = time.Duration(logRotation) * time.Hour
 		logMaxAgeTime   = time.Duration(logMaxAge) * time.Hour
 	)
-	logFile, _ = filepath.Abs(logFile)
 	writer, err := rotatelogs.New(
 		fmt.Sprintf("%s.%s", logFile, logRotateSuffix),
 		rotatelogs.WithLinkName(logFile),

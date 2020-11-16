@@ -19,7 +19,7 @@ package dcrm
 import (
 	"fmt"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/internal/params"
 	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
 )
 
@@ -66,7 +66,7 @@ func packageResult(status, tip, errors string, msg interface{}) map[string]inter
 
 func (this *Service) GetVersion() map[string]interface{} {
 	fmt.Printf("==== GetVersion() ====\n")
-	v, c, d := common.GetVersion()
+	v, c, d := params.GetVersion()
 	fmt.Printf("==== GetVersion() ====, version: %v, commit: %v, date: %v\n", v, c, d)
 	retv := &Version{Version: v, Commit: c, Date: d}
 	return packageResult(SUCCESS, "", "", retv)

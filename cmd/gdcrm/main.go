@@ -40,7 +40,6 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/dcrm"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/dcrm-walletService/internal/params"
-	"github.com/fsn-dev/dcrm-walletService/internal/build"
 	"github.com/fsn-dev/dcrm-walletService/internal/flags"
 	"github.com/fsn-dev/dcrm-walletService/p2p"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -168,7 +167,6 @@ func init() {
 		cli.Uint64Flag{Name: "waitagree", Value: 2, Usage: "the time to wait for agree from all nodes", Destination: &waitagree},
 		cli.Uint64Flag{Name: "bip32pre", Value: 4, Usage: "the total counts of pre-sign data for bip32 child pubkey", Destination: &bip32pre},
 	}
-	build.BuildFlags(&gitCommit, &gitDate)
 	gitVersion = params.VersionWithMeta
 }
 
@@ -209,7 +207,7 @@ func getConfig() error {
 
 func startP2pNode() error {
 	common.InitDir(datadir)
-	common.SetVersion(gitVersion, gitCommit, gitDate)
+	params.SetVersion(gitVersion, gitCommit, gitDate)
 	layer2.InitP2pDir()
 	getConfig()
 	if port == 0 {

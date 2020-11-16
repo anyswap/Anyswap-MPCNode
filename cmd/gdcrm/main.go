@@ -99,6 +99,7 @@ var (
 	//args
 	rpcport   int
 	port      int
+	config string
 	bootnodes string
 	keyfile   string
 	keyfilehex string
@@ -149,6 +150,7 @@ func init() {
 	app.Flags = []cli.Flag{
 		cli.IntFlag{Name: "rpcport", Value: 0, Usage: "listen port", Destination: &rpcport},
 		cli.IntFlag{Name: "port", Value: 0, Usage: "listen port", Destination: &port},
+		cli.StringFlag{Name: "config", Value: "./conf.toml", Usage: "config file", Destination: &config},
 		cli.StringFlag{Name: "bootnodes", Value: "", Usage: "boot node", Destination: &bootnodes},
 		cli.StringFlag{Name: "nodekey", Value: "", Usage: "private key filename", Destination: &keyfile},
 		cli.StringFlag{Name: "nodekeyhex", Value: "", Usage: "private key as hex", Destination: &keyfilehex},
@@ -172,19 +174,19 @@ func init() {
 
 func getConfig() error {
 	var cf conf
-	var path string = "./conf.toml"
+	var path string = config
 	if keyfile != "" && keyfilehex != "" {
 		fmt.Printf("Options -nodekey and -nodekeyhex are mutually exclusive\n")
 		keyfilehex = ""
 	}
 	if common.FileExist(path) != true {
-		fmt.Printf("config file: %v not exist\n", path)
-		return errors.New("config file not exist")
+		return errors.New("no configuration file used")
 	} else {
 		if _, err := toml.DecodeFile(path, &cf); err != nil {
 			fmt.Printf("DecodeFile %v: %v\n", path, err)
 			return err
 		}
+		fmt.Printf("config file: %v\n", path)
 	}
 	nkey := cf.Gdcrm.Nodekey
 	bnodes := cf.Gdcrm.Bootnodes

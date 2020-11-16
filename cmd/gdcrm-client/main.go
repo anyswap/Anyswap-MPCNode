@@ -160,6 +160,7 @@ func init() {
 	// create contract flags
 	flag.StringVar(&nodeChainIDStr, "chainID", nodeChainIDStr, "chain ID of full node")
 	flag.StringVar(&gatewayURL, "gateway", gatewayURL, "gateway of full node RPC address")
+	flag.StringVar(&accNonceStr, "nonce", accNonceStr, "account nonce")
 	flag.Uint64Var(&gasLimit, "gas", gasLimit, "gas limit")
 	flag.StringVar(&gasPriceStr, "gasPrice", gasPriceStr, "gas price")
 	flag.StringVar(&bytecodeFile, "bytecode", bytecodeFile, "path of bytecode file")

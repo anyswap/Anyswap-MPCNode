@@ -21,12 +21,14 @@ var (
 	nodeChainID    *big.Int
 
 	gatewayURL   = "https://testnet.fsn.dev/api"
+	accNonceStr  = ""
 	gasLimit     = uint64(4000000)
 	gasPriceStr  = "1000000000"
 	bytecodeFile = "bytecode.txt"
 	dryrun       = false
 
 	gasPrice *big.Int
+	accNonce *big.Int
 )
 
 func checkArguments() error {
@@ -57,6 +59,13 @@ func checkArguments() error {
 		return fmt.Errorf("wrong chain Id %v", nodeChainIDStr)
 	}
 
+	if accNonceStr != "" {
+		accNonce, ok = new(big.Int).SetString(accNonceStr, 0)
+		if !ok {
+			return fmt.Errorf("wrong account nonce %v", accNonceStr)
+		}
+	}
+
 	fmt.Println("create contract check arguments:")
 	fmt.Println("full node chain ID is", nodeChainID)
 	fmt.Println("gateway RPC URL is", gatewayURL)
@@ -85,12 +94,17 @@ func createContract() error {
 
 	from := common.HexToAddress(*fromAddr)
 
-	nonce, err := ethClient.PendingNonceAt(ctx, from)
-	if err != nil {
-		fmt.Printf("get account nonce failed, from=%v, err=%v\n", from.String(), err)
-		return err
+	var nonce uint64
+	if accNonce != nil {
+		nonce = accNonce.Uint64()
+	} else {
+		nonce, err := ethClient.PendingNonceAt(ctx, from)
+		if err != nil {
+			fmt.Printf("get account nonce failed, from=%v, err=%v\n", from.String(), err)
+			return err
+		}
+		fmt.Printf("get account nonce success, from=%v, nonce=%v\n", from.String(), nonce)
 	}
-	fmt.Printf("get account nonce success, from=%v, nonce=%v\n", from.String(), nonce)
 
 	bytecodeContent, err := ioutil.ReadFile(bytecodeFile)
 	if err != nil {

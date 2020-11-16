@@ -2,7 +2,7 @@
 # 1st: cd dcrm6; make gdcrm; cp bin/cmd/gdcrm docker/gdcrm
 # 2nd: cd docker/gdcrm
 FROM ubuntu:18.04
-COPY gdcrm /usr/local/bin/
+COPY gdcrm gdcrm-client /usr/local/bin/
 COPY ./entrypoint-gdcrm.sh /
 RUN chmod +x /entrypoint-gdcrm.sh
 ENTRYPOINT ["/entrypoint-gdcrm.sh"]

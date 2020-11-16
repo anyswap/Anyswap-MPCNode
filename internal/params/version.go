@@ -66,3 +66,22 @@ func VersionWithCommit(gitCommit, gitDate string) string {
 	return vsn
 }
 
+var (
+	gitVersion string
+	gitCommit string
+	gitDate string
+)
+
+func SetVersion(version, commit, date string) {
+	fmt.Printf("gitVersion: %v\n", version)
+	fmt.Printf("gitCommit: %v\n", commit)
+	fmt.Printf("gitDate: %v\n", date)
+	gitVersion = version
+	gitCommit = commit
+	gitDate = date
+}
+
+func GetVersion() (string, string, string) {
+	return gitVersion, gitCommit, gitDate
+}
+

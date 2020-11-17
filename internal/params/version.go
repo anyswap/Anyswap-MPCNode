@@ -73,9 +73,9 @@ var (
 )
 
 func SetVersion(version, commit, date string) {
-	fmt.Printf("\ngitVersion: %v\n", version)
-	fmt.Printf("gitCommit   : %v\n", commit)
-	fmt.Printf("gitDate     : %v\n\n", date)
+	fmt.Printf("gitVersion: %v\n", version)
+	fmt.Printf("gitCommit : %v\n", commit)
+	fmt.Printf("gitDate   : %v\n\n", date)
 	gitVersion = version
 	gitCommit = commit
 	gitDate = date

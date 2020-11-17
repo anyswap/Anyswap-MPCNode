@@ -90,6 +90,7 @@ type transport interface {
 	sendToPeer(gid, toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) error
 	sendMsgToPeer(toid NodeID, toaddr *net.UDPAddr, msg string) error
 	sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) (string, error)
+	pingBootnodes(toid NodeID, toaddr *net.UDPAddr) error
 	close()
 }
 

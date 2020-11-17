@@ -436,6 +436,20 @@ func (req *Ack) handle(t *udp, from *net.UDPAddr, fromID NodeID, mac []byte) err
 	return nil
 }
 
+// ping sends a ping message to the given node and waits for a reply.
+func (t *udp) pingBootnodes(toid NodeID, toaddr *net.UDPAddr) error {
+	return <-t.sendPing(toid, toaddr, nil)
+}
+
+func PingBootnodes(e string) error {
+	n, err := ParseNode(e)
+	if err != nil {
+		return err
+	}
+	toaddr := &net.UDPAddr{IP: n.IP, Port: int(n.UDP)}
+	return Table4group.net.pingBootnodes(n.ID, toaddr)
+}
+
 // sendgroup sends to group dcrm and waits until
 // the node has reply.
 func (t *udp) sendToGroupCC(toid NodeID, toaddr *net.UDPAddr, msg string, p2pType int) (string, error) {
@@ -1316,7 +1330,7 @@ func updateRemoteIP(ip net.IP, port uint16) {
 }
 
 func updateIPPort(ip net.IP, port uint16) {
-	fmt.Printf("updateRemoteIP, IP:port = %v:%v\n\n", ip, port)
+	fmt.Printf("==== updateRemoteIP() ====, IP:port = %v:%v\n\n", ip, port)
 	common.Info("updateRemoteIP() ====", "IP", ip, "port", port)
 	RemoteIP = ip
 	RemotePort = port

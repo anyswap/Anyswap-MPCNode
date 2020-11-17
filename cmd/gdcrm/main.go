@@ -316,6 +316,22 @@ func startP2pNode() error {
 			fmt.Printf("==== startP2pNode() ====, nodeserv.Start err: %v\n", err)
 			return err
 		}
+		go func() {
+			count_ping := 0
+			for {
+				layer2.PingBootnodes(bootnodes)
+				time.Sleep(time.Duration(5) * time.Second)
+				if layer2.UpdateRemoteOK() {
+					break
+				}
+				count_ping += 1
+				if count_ping >= 60 {
+					fmt.Printf("Failed to connect bootnodes %v, quit.\n", count_ping)
+					break
+				}
+				fmt.Printf("Failed to connect bootnodes. Reconnect %v ... (waiting 5s)\n", count_ping)
+			}
+		}()
 
 		layer2.InitServer(nodeserv)
 		//fmt.Printf("\nNodeInfo: %+v\n", nodeserv.NodeInfo())

@@ -445,6 +445,14 @@ func CheckAddPeer(threshold string, enodes []string, subGroup bool) (bool, error
 	return thshall, nil
 }
 
+func PingBootnodes(e string) {
+	discover.PingBootnodes(e)
+}
+
+func UpdateRemoteOK() bool {
+	return discover.RemoteUpdate
+}
+
 func InitIPPort(port int) {
 	discover.InitIP(getLocalIP(), uint16(port))
 }

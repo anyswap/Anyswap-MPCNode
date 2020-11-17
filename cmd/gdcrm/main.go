@@ -206,8 +206,8 @@ func getConfig() error {
 }
 
 func startP2pNode() error {
-	common.InitDir(datadir)
 	params.SetVersion(gitVersion, gitCommit, gitDate)
+	common.InitDir(datadir)
 	layer2.InitP2pDir()
 	getConfig()
 	if port == 0 {

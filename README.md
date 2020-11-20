@@ -1,7 +1,7 @@
 # Introduction
-DCRM wallet service is a distributed key generation and distributed signature service that can serve as a distributed custodial solution.
+MPC wallet service is a distributed key generation and distributed signature service that can serve as a distributed custodial solution.
 
-*Note : dcrm-walletService is considered beta software. We make no warranties or guarantees of its security or stability.*
+*Note : mpc is considered beta software. We make no warranties or guarantees of its security or stability.*
 
 # Install the Docker version
 ## 1. Install Docker. This depends on your platform, on Ubuntu this works:
@@ -14,14 +14,14 @@ sudo apt install docker.io
 ```
 docker run -d --name bootnode --network host --restart always -v /var/lib/docker/bootnode:/bootnode anyswap/bootnode --addr :48447
 ```
-- gdcrm
+- mpcnode
 ```
-docker run -d --name gdcrm --network host --restart always -v /var/lib/docker/gdcrm:/gdcrm anyswap/gdcrm
+docker run -d --name mpcnode --network host --restart always -v /var/lib/docker/mpcnode:/mpcnode anyswap/anympcnode
 ```
 default: `rpcport 6669`, port 6661 bootnodes enode://cdefe85532587f6ee0bbc29790aca7d54bf633b9fc19c991fe9af1b67284460d586928003a6af69c210fba8a1cce9f009a37d695382e34034b10d05b3df3ac8f@47.88.26.170:48447
-- gdcrm-client
+- mpcnode-client
 ```
-docker exec gdcrm gdcrm-client --cmd ACCEPTREQADDR --url http://127.0.0.1:6669 --keystore keystore --passwd "123456" --key 0x...
+docker exec mpcnode mpcnode-client --cmd ACCEPTREQADDR --url http://127.0.0.1:6669 --keystore keystore --passwd "123456" --key 0x...
 ```
 
 # Install the Source version

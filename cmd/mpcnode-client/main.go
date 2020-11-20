@@ -121,7 +121,7 @@ func main() {
 	case "GETDCRMADDR":
 	    err := getDcrmAddr()
 	    if err != nil {
-			fmt.Printf("pubkey = %v, get dcrm addr failed. %v\n", pubkey,err)
+			fmt.Printf("pubkey = %v, get mpc addr failed. %v\n", pubkey,err)
 	    }
 	default:
 		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR\n", *cmd)

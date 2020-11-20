@@ -2,7 +2,7 @@
 
 set -e
 
-BASEDIR=/gdcrm
+BASEDIR=/mpcnode
 CONFDIR=$BASEDIR/conf
 DATADIR=$BASEDIR/data
 LOGDIR=$BASEDIR/log
@@ -10,7 +10,7 @@ LOGDIR=$BASEDIR/log
 mkdir -p -m 750 $CONFDIR $DATADIR $LOGDIR
 chmod -R o-rwx $CONFDIR $DATADIR $LOGDIR
 
-touch $LOGDIR/gdcrm.log
-chmod 640 $LOGDIR/gdcrm.log
+touch $LOGDIR/mpcnode.log
+chmod 640 $LOGDIR/mpcnode.log
 
-exec gdcrm --nodekey $CONFDIR/node.key --datadir $DATADIR --log $LOGDIR/gdcrm.log $@
+exec mpcnode --nodekey $CONFDIR/node.key --datadir $DATADIR --log $LOGDIR/mpcnode.log $@

@@ -50,7 +50,7 @@ import (
 )
 
 const (
-        clientIdentifier = "gdcrm" // Client identifier to advertise over the network
+        clientIdentifier = "mpcnode" // Client identifier to advertise over the network
 )
 
 var (
@@ -59,7 +59,7 @@ var (
         gitDate    = ""
 	gitVersion = ""
         // The app that holds all commands and flags.
-        app = flags.NewApp(gitCommit, gitDate, "the Dcrm Wallet Service command line interface")
+        app = flags.NewApp(gitCommit, gitDate, "the Mpc Wallet Service command line interface")
 )
 
 func main() {
@@ -69,7 +69,7 @@ func main() {
 	}
 }
 
-func StartDcrm(c *cli.Context) {
+func StartMpc(c *cli.Context) {
     	SetLogger()
 	go func() {
 	    <-signalChan
@@ -138,7 +138,7 @@ type gdcrmConf struct {
 
 func init() {
 	//app.Version = "5.2.2"
-	app.Action = StartDcrm
+	app.Action = StartMpc
 	app.HideVersion = true // we have a command to print the version
 	app.Copyright = "Copyright 2018-2019 The anyswap Authors"
 	app.Commands = []cli.Command{

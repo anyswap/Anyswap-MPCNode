@@ -211,10 +211,10 @@ func startP2pNode() error {
 	layer2.InitP2pDir()
 	getConfig()
 	if port == 0 {
-		port = 6661
+		port = 8441
 	}
 	if rpcport == 0 {
-		rpcport = 6669
+		rpcport = 8449
 	}
 	if !privateNet && bootnodes == "" {
 		bootnodes = "enode://cdefe85532587f6ee0bbc29790aca7d54bf633b9fc19c991fe9af1b67284460d586928003a6af69c210fba8a1cce9f009a37d695382e34034b10d05b3df3ac8f@47.88.26.170:48447"

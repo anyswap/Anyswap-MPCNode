@@ -12,15 +12,16 @@ sudo apt install docker.io
 ## 2. Download the Docker image and create and run the container:
 - bootnode
 ```
-docker run -d --name bootnode --network host --restart always -v /var/lib/docker/bootnode:/bootnode anyswap/bootnode --addr :12340
+docker run -d --name bootnode --network host --restart always -v /var/lib/docker/bootnode:/bootnode anyswap/bootnode --addr :48447
 ```
 - gdcrm
 ```
-docker run -d --name gdcrm --network host --restart always -v /var/lib/docker/gdcrm:/gdcrm anyswap/gdcrm --bootnodes "enode://ip@port" --port 12345 --rpcport 23456
+docker run -d --name gdcrm --network host --restart always -v /var/lib/docker/gdcrm:/gdcrm anyswap/gdcrm
 ```
+default: `rpcport 6669`, port 6661 bootnodes enode://cdefe85532587f6ee0bbc29790aca7d54bf633b9fc19c991fe9af1b67284460d586928003a6af69c210fba8a1cce9f009a37d695382e34034b10d05b3df3ac8f@47.88.26.170:48447
 - gdcrm-client
 ```
-docker exec gdcrm gdcrm-client --cmd ACCEPTREQADDR --url http://127.0.0.1:23456 --keystore keystore --passwd "123456" --key 0x...
+docker exec gdcrm gdcrm-client --cmd ACCEPTREQADDR --url http://127.0.0.1:6669 --keystore keystore --passwd "123456" --key 0x...
 ```
 
 # Install the Source version

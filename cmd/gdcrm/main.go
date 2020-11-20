@@ -211,13 +211,13 @@ func startP2pNode() error {
 	layer2.InitP2pDir()
 	getConfig()
 	if port == 0 {
-		port = 4441
+		port = 6661
 	}
 	if rpcport == 0 {
-		rpcport = 4449
+		rpcport = 6669
 	}
 	if !privateNet && bootnodes == "" {
-		bootnodes = "enode://4dbed736b0d918eb607382e4e50cd85683c4592e32f666cac03c822b2762f2209a51b3ed513adfa28c7fa2be4ca003135a5734cfc1e82161873debb0cff732c8@104.210.49.28:36231"
+		bootnodes = "enode://cdefe85532587f6ee0bbc29790aca7d54bf633b9fc19c991fe9af1b67284460d586928003a6af69c210fba8a1cce9f009a37d695382e34034b10d05b3df3ac8f@47.88.26.170:48447"
 	}
 	if genKey != "" {
 		nodeKey, err := crypto.GenerateKey()

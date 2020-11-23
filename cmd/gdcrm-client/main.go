@@ -810,6 +810,18 @@ func acceptReshare() {
 	}
 }
 
+var Cointypes []string = []string{"ALL", "FSN", "ETH", "BTC", "ANY", "USDT"}
+
+func IsSupportedCoinType(coin string) bool {
+    for _,v := range Cointypes {
+	if strings.EqualFold(coin, v) {
+	    return true 
+	}
+    }
+
+    return false
+}
+
 func getDcrmAddr() error {
     if pubkey == nil {
 	return fmt.Errorf("pubkey error")
@@ -821,8 +833,8 @@ func getDcrmAddr() error {
 	return fmt.Errorf("pubkey error.")
     }
 
-    if (*coin) != "FSN" && (*coin) != "BTC" { //only btc/fsn tmp
-	return fmt.Errorf("coin type unsupported.")
+    if !IsSupportedCoinType((*coin)) {
+	return fmt.Errorf("cointype is not supported.")
     }
 
     if len(pub) != 132 && len(pub) != 130 {
@@ -832,42 +844,90 @@ func getDcrmAddr() error {
 	    pub = pub[2:]
     }
 
-    if (*coin) == "FSN" {
+    if strings.EqualFold("ALL", (*coin)) {
+	//BTC
+	bb, err := hex.DecodeString(pub)
+	if err != nil {
+		return err
+	}
+	pub2, err := btcec.ParsePubKey(bb, btcec.S256())
+	if err != nil {
+		return err
+	}
+	
+	ChainConfig := chaincfg.MainNetParams
+	if (*netcfg) == "testnet" {
+	    ChainConfig = chaincfg.TestNet3Params
+	}
+
+	b := pub2.SerializeCompressed()
+	pkHash := btcutil.Hash160(b)
+	addressPubKeyHash, err := btcutil.NewAddressPubKeyHash(pkHash, &ChainConfig)
+	if err != nil {
+		return err
+	}
+	address := addressPubKeyHash.EncodeAddress()
+	fmt.Printf("getDcrmAddr cointype = BTC,result: %s\n", address)
+
+	//ETH/USDT/FSN/ANY
 	pubKeyHex := strings.TrimPrefix(pub, "0x")
 	data := hexEncPubkey(pubKeyHex[2:])
 
-	pub2, err := decodePubkey(data)
+	pub3, err := decodePubkey(data)
 	if err != nil {
 	    return err
 	}
 
-	address := crypto.PubkeyToAddress(*pub2).Hex()
-	fmt.Printf("\ngetDcrmAddr result: %s\n\n", address)
+	address = crypto.PubkeyToAddress(*pub3).Hex()
+	fmt.Printf("getDcrmAddr cointype = ETH,result: %s\n",address)
+	fmt.Printf("getDcrmAddr cointype = USDT,result: %s\n", address)
+	fmt.Printf("getDcrmAddr cointype = FSN,result: %s\n", address)
+	fmt.Printf("getDcrmAddr cointype = ANY,result: %s\n", address)
+	return nil
+    }
+
+    if strings.EqualFold("BTC", (*coin)) {
+	bb, err := hex.DecodeString(pub)
+	if err != nil {
+		return err
+	}
+	pub2, err := btcec.ParsePubKey(bb, btcec.S256())
+	if err != nil {
+		return err
+	}
+	
+	ChainConfig := chaincfg.MainNetParams
+	if (*netcfg) == "testnet" {
+	    ChainConfig = chaincfg.TestNet3Params
+	}
+
+	b := pub2.SerializeCompressed()
+	pkHash := btcutil.Hash160(b)
+	addressPubKeyHash, err := btcutil.NewAddressPubKeyHash(pkHash, &ChainConfig)
+	if err != nil {
+		return err
+	}
+	address := addressPubKeyHash.EncodeAddress()
+	fmt.Printf("getDcrmAddr cointype = %v,result: %s\n", (*coin),address)
 	return nil
     }
     
-    bb, err := hex.DecodeString(pub)
-    if err != nil {
-	    return err
-    }
-    pub2, err := btcec.ParsePubKey(bb, btcec.S256())
-    if err != nil {
-	    return err
-    }
-    
-    ChainConfig := chaincfg.MainNetParams
-    if (*netcfg) == "testnet" {
-	ChainConfig = chaincfg.TestNet3Params
+    for _,v := range Cointypes {
+	if strings.EqualFold((*coin), v) {
+	    pubKeyHex := strings.TrimPrefix(pub, "0x")
+	    data := hexEncPubkey(pubKeyHex[2:])
+
+	    pub2, err := decodePubkey(data)
+	    if err != nil {
+		return err
+	    }
+
+	    address := crypto.PubkeyToAddress(*pub2).Hex()
+	    fmt.Printf("getDcrmAddr cointype = %v,result: %s\n", v,address)
+	    return nil
+	}
     }
 
-    b := pub2.SerializeCompressed()
-    pkHash := btcutil.Hash160(b)
-    addressPubKeyHash, err := btcutil.NewAddressPubKeyHash(pkHash, &ChainConfig)
-    if err != nil {
-	    return err
-    }
-    address := addressPubKeyHash.EncodeAddress()
-    fmt.Printf("\ngetDcrmAddr result: %s\n\n", address)
     return nil
 }
 

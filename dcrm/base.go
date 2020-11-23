@@ -46,6 +46,12 @@ import (
 	"io"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcec"
+	"crypto/ecdsa"
+	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"errors"
 )
 
 var (
@@ -224,6 +230,174 @@ type DcrmPubkeyRes struct {
 	DcrmAddress map[string]string
 }
 
+func IsSupportedCoinType(coin string) bool {
+    for _,v := range coins.Cointypes {
+	if strings.EqualFold(coin, v) {
+	    return true 
+	}
+    }
+
+    return false
+}
+
+func IsSupportedCoinType2(coin string) bool {
+    for _,v := range Cointypes {
+	if strings.EqualFold(coin, v) {
+	    return true 
+	}
+    }
+
+    return false
+}
+
+var Cointypes []string = []string{"ATOM", "BCH", "BNB", "ERC20GUSD", "ERC20MKR", "ERC20HT", "ERC20BNB", "ERC20BNT", "ERC20RMBT", "TRX", "XRP"}
+
+func hexEncPubkey(h string) (ret [64]byte) {
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		//panic(err)
+		fmt.Printf("=============== parse pubkey error = %v ==============\n", err)
+		return ret
+	}
+	if len(b) != len(ret) {
+		//panic("invalid length")
+		fmt.Printf("invalid length\n")
+		return ret
+	}
+	copy(ret[:], b)
+	return ret
+}
+
+func decodePubkey(e [64]byte) (*ecdsa.PublicKey, error) {
+	p := &ecdsa.PublicKey{Curve: crypto.S256(), X: new(big.Int), Y: new(big.Int)}
+	half := len(e) / 2
+	p.X.SetBytes(e[:half])
+	p.Y.SetBytes(e[half:])
+	if !p.Curve.IsOnCurve(p.X, p.Y) {
+		return nil, errors.New("invalid secp256k1 curve point")
+	}
+	return p, nil
+}
+
+func getDcrmAddr(pubkey string,coin string) (string,error) {
+    if pubkey == "" || coin == "" {
+	return "",fmt.Errorf("pubkey error")
+    }
+
+    if strings.EqualFold("ALL", coin) {
+	return "",fmt.Errorf("cointype is not supported.")
+    }
+
+    if IsSupportedCoinType2(coin) {
+	return "",fmt.Errorf("cointype is not supported.")
+    }
+
+    if !IsSupportedCoinType(coin) {
+	return "",fmt.Errorf("cointype is not supported.")
+    }
+
+    if len(pubkey) != 132 && len(pubkey) != 130 {
+	    return "",fmt.Errorf("invalid public key length")
+    }
+    if pubkey[:2] == "0x" || pubkey[:2] == "0X" {
+	    pubkey = pubkey[2:]
+    }
+
+    if strings.EqualFold("BTC", coin) {
+	bb, err := hex.DecodeString(pubkey)
+	if err != nil {
+		return "",err
+	}
+	pub2, err := btcec.ParsePubKey(bb, btcec.S256())
+	if err != nil {
+		return "",err
+	}
+	
+	ChainConfig := chaincfg.MainNetParams
+	//if (*netcfg) == "testnet" {
+	//    ChainConfig = chaincfg.TestNet3Params
+	//}
+
+	b := pub2.SerializeCompressed()
+	pkHash := btcutil.Hash160(b)
+	addressPubKeyHash, err := btcutil.NewAddressPubKeyHash(pkHash, &ChainConfig)
+	if err != nil {
+		return "",err
+	}
+	address := addressPubKeyHash.EncodeAddress()
+	return address,nil
+    }
+    
+    for _,v := range coins.Cointypes {
+	if strings.EqualFold(coin, v) {
+	    pubKeyHex := strings.TrimPrefix(pubkey, "0x")
+	    data := hexEncPubkey(pubKeyHex[2:])
+
+	    pub2, err := decodePubkey(data)
+	    if err != nil {
+		return "",err
+	    }
+
+	    address := crypto.PubkeyToAddress(*pub2).Hex()
+	    return address,nil
+	}
+    }
+
+    return "",fmt.Errorf("get dcrm addr fail")
+}
+
+func GetPubKeyData(key string, account string, cointype string) (string, string, error) {
+	/*if key == "" || cointype == "" {
+		return "", "dcrm back-end internal error:parameter error in func GetPubKeyData", fmt.Errorf("get pubkey data param error.")
+	}
+
+	exsit,da := GetValueFromPubKeyData(key)
+	///////
+	if !exsit {
+		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
+	}
+
+	pubs,ok := da.(*PubKeyData)
+	if !ok {
+		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
+	}
+
+	pubkey := hex.EncodeToString([]byte(pubs.Pub))*///tmp
+	pubkey := "0462bab055389da2de46577c8db0eac9eab7d30d4718886ec529a8018d448444813c1968fa47f0f169a3a84b46947eea14e49b4177f677b29b24545b56650357ad"
+	///////////
+	var m interface{}
+	if !strings.EqualFold(cointype, "ALL") {
+
+		ctaddr, err := getDcrmAddr(pubkey,cointype)
+		if err != nil {
+		    return "", "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkey, fmt.Errorf("req addr fail.")
+		}
+
+		m = &DcrmAddrRes{Account: account, PubKey: pubkey, DcrmAddr: ctaddr, Cointype: cointype}
+		b, _ := json.Marshal(m)
+		return string(b), "", nil
+	}
+
+	addrmp := make(map[string]string)
+	for _, ct := range coins.Cointypes {
+		if strings.EqualFold(ct, "ALL") {
+			continue
+		}
+
+		ctaddr, err := getDcrmAddr(pubkey,ct)
+		if err != nil {
+			continue
+		}
+
+		addrmp[ct] = ctaddr
+	}
+
+	m = &DcrmPubkeyRes{Account: account, PubKey: pubkey, DcrmAddress: addrmp}
+	b, _ := json.Marshal(m)
+	return string(b), "", nil
+}
+
+/*
 func GetPubKeyData(key string, account string, cointype string) (string, string, error) {
 	if key == "" || cointype == "" {
 		return "", "dcrm back-end internal error:parameter error in func GetPubKeyData", fmt.Errorf("get pubkey data param error.")
@@ -282,6 +456,7 @@ func GetPubKeyData(key string, account string, cointype string) (string, string,
 	b, _ := json.Marshal(m)
 	return string(b), "", nil
 }
+*/
 
 func CheckAccept(pubkey string,mode string,account string) bool {
     if pubkey == "" || mode == "" || account == "" {
@@ -781,6 +956,7 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 	}
 
 	ret, tip, err := GetPubKeyData(string(keytmp), pubkey, "ALL")
+	fmt.Printf("GetAccountsBalance, dcrm addr = %v\n",ret)
 	var m interface{}
 	if err == nil {
 		dp := DcrmPubkeyRes{}

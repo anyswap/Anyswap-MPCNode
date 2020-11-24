@@ -347,7 +347,7 @@ func getDcrmAddr(pubkey string,coin string) (string,error) {
 }
 
 func GetPubKeyData(key string, account string, cointype string) (string, string, error) {
-	/*if key == "" || cointype == "" {
+	if key == "" || cointype == "" {
 		return "", "dcrm back-end internal error:parameter error in func GetPubKeyData", fmt.Errorf("get pubkey data param error.")
 	}
 
@@ -362,8 +362,7 @@ func GetPubKeyData(key string, account string, cointype string) (string, string,
 		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
 	}
 
-	pubkey := hex.EncodeToString([]byte(pubs.Pub))*///tmp
-	pubkey := "0462bab055389da2de46577c8db0eac9eab7d30d4718886ec529a8018d448444813c1968fa47f0f169a3a84b46947eea14e49b4177f677b29b24545b56650357ad"
+	pubkey := hex.EncodeToString([]byte(pubs.Pub))
 	///////////
 	var m interface{}
 	if !strings.EqualFold(cointype, "ALL") {

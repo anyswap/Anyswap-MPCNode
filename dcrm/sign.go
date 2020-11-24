@@ -568,13 +568,17 @@ func HandleRpcSign() {
 				for _,vv := range rsd.MsgHash {
 					pickkey := PickPrePubData(pub)
 					if pickkey == "" {
-						bret = true
-						break
-					}
+					//	bret = true
+					//	break
+					    common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
+					    ph := &PickHashKey{Hash:vv,PickKey:"NotReady"}
+					    pickhash = append(pickhash,ph)
+					} else {
+					    common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
+					    ph := &PickHashKey{Hash:vv,PickKey:pickkey}
+					    pickhash = append(pickhash,ph)
 
-					common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
-					ph := &PickHashKey{Hash:vv,PickKey:pickkey}
-					pickhash = append(pickhash,ph)
+					}
 
 					//check pre sigal
 					if GetTotalCount(pub) >= (PrePubDataCount*3/4) && GetTotalCount(pub) <= PrePubDataCount {
@@ -585,9 +589,9 @@ func HandleRpcSign() {
 					//
 				}
 
-				if bret {
-					continue
-				}
+				//if bret {
+				//	continue
+				//}
 
 				send,err := CompressSignBrocastData(rsd.Raw,pickhash)
 				if err != nil {

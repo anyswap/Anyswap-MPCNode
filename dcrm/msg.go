@@ -644,10 +644,10 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
 		pre := GetPrePubDataBak(pub,sd.PickKey)
 		if pre == nil {
-			    common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
+			    /*common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
 			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
 			    ch <- res2
-			    return false
+			    return false*////
 		}
 
 		w := workers[workid]
@@ -683,8 +683,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    }
 
 		    //w.Clear2()
-		    //Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
-		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
+		    if pre == nil {
+			Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
+		    } else {
+			Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
+		    }
 		    common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
 		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
 		    if ret != "" && cherr == nil {

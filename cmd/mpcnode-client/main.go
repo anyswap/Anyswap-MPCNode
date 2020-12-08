@@ -39,6 +39,8 @@ import (
 	"github.com/btcsuite/btcutil"
 	"encoding/hex"
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/wire"
+	//"github.com/ltcsuite/ltcd/chaincfg"
 )
 
 const (
@@ -810,7 +812,7 @@ func acceptReshare() {
 	}
 }
 
-var Cointypes []string = []string{"ALL", "FSN", "ETH", "BTC", "ANY", "USDT"}
+var Cointypes []string = []string{"ALL", "FSN", "ETH", "BTC", "ANY", "USDT", "LTC"}
 
 func IsSupportedCoinType(coin string) bool {
     for _,v := range Cointypes {
@@ -820,6 +822,80 @@ func IsSupportedCoinType(coin string) bool {
     }
 
     return false
+}
+
+func GetLtcAddr(pub string) error {
+    /*params := &chaincfg.Params{
+		Name: "mainnet",
+		Net:  wire.MainNet,
+		// Human-readable part for Bech32 encoded segwit addresses, as defined in
+		// BIP 173.
+		Bech32HRPSegwit: "block", // always block for mainnet
+
+		// Address encoding magics
+		PubKeyHashAddrID:        0x1a, // starts with B
+		ScriptHashAddrID:        0x1c, // starts with C
+		PrivateKeyID:            0x9a, // starts with 6 (uncompressed) or P (compressed)
+		WitnessPubKeyHashAddrID: 0x06, // starts with p2
+		WitnessScriptHashAddrID: 0x0A, // starts with 7Xh
+
+		// BIP32 hierarchical deterministic extended key magics
+		HDPrivateKeyID: [4]byte{0x04, 0x88, 0xAD, 0xE4}, // starts with xprv
+		HDPublicKeyID:  [4]byte{0x04, 0x88, 0xB2, 0x1E}, // starts with xpub
+
+		// BIP44 coin type used in the hierarchical deterministic path for
+		// address generation.
+		HDCoinType: 0,
+	}*/
+
+	var MainNetParams = &chaincfg.Params{
+	    Name:        "mainnet",
+	    Net:         wire.MainNet,
+
+	    // Human-readable part for Bech32 encoded segwit addresses, as defined in
+	    // BIP 173.
+	    Bech32HRPSegwit: "ltc", // always ltc for main net
+
+	    // Address encoding magics
+	    PubKeyHashAddrID:        0x30, // starts with L
+	    ScriptHashAddrID:        0x32, // starts with M
+	    PrivateKeyID:            0xB0, // starts with 6 (uncompressed) or T (compressed)
+	    WitnessPubKeyHashAddrID: 0x06, // starts with p2
+	    WitnessScriptHashAddrID: 0x0A, // starts with 7Xh
+
+	    // BIP32 hierarchical deterministic extended key magics
+	    HDPrivateKeyID: [4]byte{0x04, 0x88, 0xad, 0xe4}, // starts with xprv
+	    HDPublicKeyID:  [4]byte{0x04, 0x88, 0xb2, 0x1e}, // starts with xpub
+
+	    // BIP44 coin type used in the hierarchical deterministic path for
+	    // address generation.
+	    HDCoinType: 2,
+	}
+
+	pub2, err := hex.DecodeString(pub)
+	if err != nil {
+	    fmt.Printf("get ltc address fail, err = %v\n",err)
+		return err
+	}
+
+	// Compressed public key
+	pubKey, err := btcec.ParsePubKey(pub2, btcec.S256())
+	if err != nil {
+	    fmt.Printf("get ltc address fail, err = %v\n",err)
+		return err
+	}
+
+	pub2 = pubKey.SerializeCompressed()
+	//fmt.Println("public compressed: ", hex.EncodeToString(pub))
+
+	// P2PKH address
+	addr, err := btcutil.NewAddressPubKeyHash(btcutil.Hash160(pub2),MainNetParams)
+	if err != nil {
+	    fmt.Printf("get ltc address fail, err = %v\n",err)
+		return err
+	}
+	fmt.Printf("getDcrmAddr cointype = LTC,result: %v\n", addr)
+	return nil
 }
 
 func getDcrmAddr() error {
@@ -869,6 +945,9 @@ func getDcrmAddr() error {
 	address := addressPubKeyHash.EncodeAddress()
 	fmt.Printf("getDcrmAddr cointype = BTC,result: %s\n", address)
 
+	//LTC
+	GetLtcAddr(pub)
+
 	//ETH/USDT/FSN/ANY
 	pubKeyHex := strings.TrimPrefix(pub, "0x")
 	data := hexEncPubkey(pubKeyHex[2:])
@@ -912,6 +991,11 @@ func getDcrmAddr() error {
 	return nil
     }
     
+    if strings.EqualFold("LTC", (*coin)) {
+	//LTC
+	return GetLtcAddr(pub)
+    }
+
     for _,v := range Cointypes {
 	if strings.EqualFold((*coin), v) {
 	    pubKeyHex := strings.TrimPrefix(pub, "0x")

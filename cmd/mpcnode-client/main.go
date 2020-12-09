@@ -812,7 +812,7 @@ func acceptReshare() {
 	}
 }
 
-var Cointypes []string = []string{"ALL", "FSN", "ETH", "BTC", "ANY", "USDT", "LTC"}
+var Cointypes []string = []string{"ALL", "FSN", "ETH", "BTC", "ANY", "USDT", "LTC", "BLOCK"}
 
 func IsSupportedCoinType(coin string) bool {
     for _,v := range Cointypes {
@@ -824,8 +824,8 @@ func IsSupportedCoinType(coin string) bool {
     return false
 }
 
-func GetLtcAddr(pub string) error {
-    /*params := &chaincfg.Params{
+func GetBlockAddr(pub string) error {
+    MainNetParams := &chaincfg.Params{
 		Name: "mainnet",
 		Net:  wire.MainNet,
 		// Human-readable part for Bech32 encoded segwit addresses, as defined in
@@ -846,8 +846,34 @@ func GetLtcAddr(pub string) error {
 		// BIP44 coin type used in the hierarchical deterministic path for
 		// address generation.
 		HDCoinType: 0,
-	}*/
+	}
 
+	pub2, err := hex.DecodeString(pub)
+	if err != nil {
+	    fmt.Printf("get block address fail, err = %v\n",err)
+		return err
+	}
+
+	// Compressed public key
+	pubKey, err := btcec.ParsePubKey(pub2, btcec.S256())
+	if err != nil {
+	    fmt.Printf("get block address fail, err = %v\n",err)
+		return err
+	}
+
+	pub2 = pubKey.SerializeCompressed()
+
+	// P2PKH address
+	addr, err := btcutil.NewAddressPubKeyHash(btcutil.Hash160(pub2),MainNetParams)
+	if err != nil {
+	    fmt.Printf("get block address fail, err = %v\n",err)
+		return err
+	}
+	fmt.Printf("getDcrmAddr cointype = BLOCK,result: %v\n", addr)
+	return nil
+}
+
+func GetLtcAddr(pub string) error {
 	var MainNetParams = &chaincfg.Params{
 	    Name:        "mainnet",
 	    Net:         wire.MainNet,
@@ -948,6 +974,9 @@ func getDcrmAddr() error {
 	//LTC
 	GetLtcAddr(pub)
 
+	//BLOCK
+	GetBlockAddr(pub)
+
 	//ETH/USDT/FSN/ANY
 	pubKeyHex := strings.TrimPrefix(pub, "0x")
 	data := hexEncPubkey(pubKeyHex[2:])
@@ -994,6 +1023,11 @@ func getDcrmAddr() error {
     if strings.EqualFold("LTC", (*coin)) {
 	//LTC
 	return GetLtcAddr(pub)
+    }
+
+    if strings.EqualFold("BLOCK", (*coin)) {
+	//BLOCK
+	return GetBlockAddr(pub)
     }
 
     for _,v := range Cointypes {

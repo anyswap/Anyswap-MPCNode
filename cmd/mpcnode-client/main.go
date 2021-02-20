@@ -59,6 +59,7 @@ var (
 	mode     *string
 	toAddr   *string
 	value    *string
+	input    *string
 	coin     *string
 	fromAddr *string
 	memo     *string
@@ -120,13 +121,18 @@ func main() {
 		if err != nil {
 			fmt.Printf("createContract failed. %v\n", err)
 		}
+	case "SENDETHTX":
+		err := sendEthTx()
+		if err != nil {
+			fmt.Printf("sendEthTx failed. %v\n", err)
+		}
 	case "GETDCRMADDR":
 	    err := getDcrmAddr()
 	    if err != nil {
 			fmt.Printf("pubkey = %v, get mpc addr failed. %v\n", pubkey,err)
 	    }
 	default:
-		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR\n", *cmd)
+		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|SENDETHTX|GETDCRMADDR\n", *cmd)
 	}
 }
 
@@ -140,6 +146,7 @@ func init() {
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
 	toAddr = flag.String("to", "0x0520e8e5E08169c4dbc1580Dc9bF56638532773A", "To address")
 	value = flag.String("value", "10000000000000000", "lockout value")
+	input = flag.String("input", "", "input data")
 	coin = flag.String("coin", "FSN", "Coin type")
 	netcfg = flag.String("netcfg", "mainnet", "chain config") //mainnet or testnet
 	fromAddr = flag.String("from", "", "From address")

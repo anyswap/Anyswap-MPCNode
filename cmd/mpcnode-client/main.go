@@ -138,14 +138,14 @@ func main() {
 
 func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
-	passwd = flag.String("passwd", "111111", "Password")
-	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR")
+	passwd = flag.String("passwd", "", "Password")
+	url = flag.String("url", "", "Set node RPC URL")
+	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|SENDETHTX|GETDCRMADDR")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
-	toAddr = flag.String("to", "0x0520e8e5E08169c4dbc1580Dc9bF56638532773A", "To address")
-	value = flag.String("value", "10000000000000000", "lockout value")
+	toAddr = flag.String("to", "", "To address")
+	value = flag.String("value", "0", "lockout value")
 	input = flag.String("input", "", "input data")
 	coin = flag.String("coin", "FSN", "Coin type")
 	netcfg = flag.String("netcfg", "mainnet", "chain config") //mainnet or testnet

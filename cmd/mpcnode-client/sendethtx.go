@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"math/big"
 
@@ -17,6 +18,16 @@ var (
 	inputData []byte
 )
 
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
+}
+
 func checkSendEthTxArguments() (err error) {
 	if *keyfile == "" {
 		return fmt.Errorf("must specify '-keystore' argument")
@@ -27,7 +38,7 @@ func checkSendEthTxArguments() (err error) {
 	if *toAddr == "" {
 		return fmt.Errorf("must specify '-to' argument")
 	}
-	if *input == "" {
+	if !isFlagPassed("input") {
 		return fmt.Errorf("must specify '-input' argument")
 	}
 	if *gid == "" {
@@ -65,9 +76,11 @@ func checkSendEthTxArguments() (err error) {
 		}
 	}
 
-	inputData, err = hexutil.Decode(*input)
-	if err != nil {
-		return fmt.Errorf("wrong input data %v, err=%v", *input, err)
+	if *input != "" {
+		inputData, err = hexutil.Decode(*input)
+		if err != nil {
+			return fmt.Errorf("wrong input data %v, err=%v", *input, err)
+		}
 	}
 
 	fmt.Println("send eth tx check arguments:")

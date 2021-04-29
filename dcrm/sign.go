@@ -206,6 +206,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if reqaddrkey == "" {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
+						common.Info("===================InitAcceptData2,SetPrePubDataUseStatus,2222===============","key",key,"pick key",vv.PickKey)
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
@@ -221,6 +222,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if !exsit {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
+						common.Info("===================InitAcceptData2,SetPrePubDataUseStatus,33333===============","key",key,"pick key",vv.PickKey)
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
@@ -237,6 +239,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if !ok || acceptreqdata == nil {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
+						common.Info("===================InitAcceptData2,SetPrePubDataUseStatus,444444===============","key",key,"pick key",vv.PickKey)
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
@@ -321,6 +324,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
+						common.Info("===================InitAcceptData2,SetPrePubDataUseStatus,55555===============","key",key,"pick key",vv.PickKey)
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
@@ -341,6 +345,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if err != nil {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
+						common.Info("===================InitAcceptData2,SetPrePubDataUseStatus,6666===============","key",key,"pick key",vv.PickKey,"err",err)
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
@@ -359,15 +364,14 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 			chret, tip, cherr := GetChannelValue(waitallgg20+20, rch)
 			common.Info("================== InitAcceptData2,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
-				//common.Debug("===================InitAcceptData2,DeletePrePubData,11111===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				DtPreSign.Lock()
 				for _,vv := range sbd.PickHash {
+					common.Info("===================InitAcceptData2,DeletePrePubData,11111===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key,"pick key",vv.PickKey)
 					DeletePrePubDataBak(pub,vv.PickKey)
 					kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 					PrePubKeyDataChan <- kd
 				}
 				DtPreSign.Unlock()
-				//common.Debug("===================InitAcceptData2,DeletePrePubData,22222===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				
 				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
 				ch <- res
@@ -429,6 +433,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 						/////bug
 						DtPreSign.Lock()
 						for _,vv := range sbd.PickHash {
+							common.Info("===================InitAcceptData2,DeletePrePubData,22222===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key,"pick key",vv.PickKey)
 							DeletePrePubDataBak(pub,vv.PickKey)
 							kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 							PrePubKeyDataChan <- kd
@@ -452,6 +457,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 			if cherr != nil {
 				DtPreSign.Lock()
 				for _,vv := range sbd.PickHash {
+					common.Info("===================InitAcceptData2,SetPrePubDataUseStatus,11111===============","err ",cherr,"key",key,"pick key",vv.PickKey)
 					SetPrePubDataUseStatus(pub,vv.PickKey,false)
 					kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 					PrePubKeyDataChan <- kd
@@ -777,7 +783,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	    result = ret
 	    cherrtmp = cherr
 	} else {
-	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickhash,rch)
+	    go sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickhash,rch) ///go for return error directly while "get pre sign data fail"
 	    ret, tip, cherr := GetChannelValue(waitall,rch)
 	    common.Info("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
@@ -930,8 +936,8 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		if cherr != nil {
 
 		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
-		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
-		    //ch <- res
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
+		    ch <- res
 		    return 
 		}
 		common.Info("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key)
@@ -2874,6 +2880,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idS
 
 	uss1s := make([]string, w.ThresHold)
 	if w.msg_ss1.Len() != w.ThresHold {
+		fmt.Printf("===================DECDSASignRoundEleven, get ss1 fail, w.msg_ss1 = %v, w.ThresHold = %v, len w.msg_ss1 = %v, key = %v ================\n",w.msg_ss1,w.ThresHold,w.msg_ss1.Len(),msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get ss1 fail.")}
 		ch <- res
 		return nil
@@ -2905,6 +2912,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idS
 		for _, v := range uss1s {
 			mm := strings.Split(v, common.Sep)
 			if len(mm) < 3 {
+				fmt.Printf("=================== DECDSASignRoundEleven, get ss1 fail, ussls v = %v, w.msg_ss1 = %v, w.ThresHold = %v, len w.msg_ss1 = %v,key = %v =======================\n",v,w.msg_ss1,w.ThresHold,w.msg_ss1.Len(),msgprex)
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get ss1 fail.")}
 				ch <- res
 				return nil

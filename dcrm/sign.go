@@ -699,6 +699,14 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		if !CheckAccept(vv.PubKey,vv.Mode,geter_acc) {
 			return
 		}
+
+		/////bug:no find worker
+		w, err := FindWorker(key)
+		if w == nil || err != nil {
+			//LdbPubKeyData.DeleteMap(key)
+			return
+		}
+		////////
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)

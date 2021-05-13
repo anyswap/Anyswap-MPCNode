@@ -25,6 +25,7 @@ import (
 	"time"
 	"fmt"
 	"sync"
+	"encoding/json"
 )
 
 var (
@@ -33,12 +34,67 @@ var (
 	PreSignData  = common.NewSafeMap(10) //make(map[string][]byte)
 	PreSignDataBak  = common.NewSafeMap(10) //make(map[string][]byte)
 	predb *ethdb.LDBDatabase
+	presignhashpairdb *ethdb.LDBDatabase
 	PrePubDataCount = 2000
 	SignChan = make(chan *RpcSignData, 10000)
 	//DelSignChan = make(chan *DelSignData, 10000)
 	DtPreSign sync.Mutex
 	PreSigal  = common.NewSafeMap(10) //make(map[string][]byte)
+	PreSignHashPairMap  = common.NewSafeMap(10) //make(map[string][]byte)
+	PreSignHashPairChan = make(chan UpdataPreSignHashPair, 20000)
 )
+
+/////////
+type PreSignHashPair struct {
+	PubKey string
+	Gid string
+}
+
+func (PsHp *PreSignHashPair) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		PubKey string `json:"PubKey"`
+		Gid string `json:"Gid"`
+	}{
+		PubKey: PsHp.PubKey,
+		Gid: PsHp.Gid,
+	})
+}
+
+func (PsHp *PreSignHashPair) UnmarshalJSON(raw []byte) error {
+	var pshp struct {
+		PubKey string `json:"PubKey"`
+		Gid string `json:"Gid"`
+	}
+	if err := json.Unmarshal(raw, &pshp); err != nil {
+		return err
+	}
+
+	PsHp.PubKey = pshp.PubKey
+	PsHp.Gid = pshp.Gid
+	return nil
+}
+
+func GetPreSignHashPair(pub string) *PreSignHashPair {
+	data,exsit := PreSignHashPairMap.ReadMap(strings.ToLower(pub)) 
+	if exsit {
+		pshp := data.(*PreSignHashPair)
+		if pshp != nil {
+			return pshp
+		}
+	}
+
+	return nil
+}
+
+func PutPreSignHashPair(pub string,val *PreSignHashPair) {
+	if val == nil {
+		return
+	}
+
+	PreSignHashPairMap.WriteMap(strings.ToLower(pub),val)
+}
+
+////////
 
 type RpcSignData struct {
 	Raw string
@@ -104,6 +160,15 @@ func GetTotalCount(pub string) int {
 	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
 	if exsit {
 		datas := data.([]*PrePubData)
+
+		if len(datas) == 0 {
+			return 0
+		} else {
+			if datas[0].Used == true {
+				return 0
+			}
+		}
+
 		return len(datas)
 	}
 
@@ -114,6 +179,14 @@ func GetTotalCount2(pub string) int {
 	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
 	if exsit {
 		datas := data.([]*PrePubData)
+		if len(datas) == 0 {
+			return 0
+		} else {
+			if datas[0].Used == true {
+				return 0
+			}
+		}
+
 		return len(datas)
 	}
 
@@ -121,7 +194,13 @@ func GetTotalCount2(pub string) int {
 }
 
 func NeedPreSignBak(pub string) bool {
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
+	if GetTotalCount2(pub) >= PrePubDataCount {
+		return false
+	}
+
+	return true
+
+	/*data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
 	if exsit {
 		datas := data.([]*PrePubData)
 		if len(datas) >= PrePubDataCount {
@@ -130,6 +209,7 @@ func NeedPreSignBak(pub string) bool {
 	}
 
 	return true 
+	*/
 }
 
 func PutPreSignBak(pub string,val *PrePubData) {
@@ -151,7 +231,14 @@ func PutPreSignBak(pub string,val *PrePubData) {
 }
 
 func NeedPreSign(pub string) bool {
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
+	
+	if GetTotalCount(pub) >= PrePubDataCount {
+		return false
+	}
+
+	return true
+
+	/*data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
 	if exsit {
 		datas := data.([]*PrePubData)
 		if len(datas) >= PrePubDataCount {
@@ -160,6 +247,7 @@ func NeedPreSign(pub string) bool {
 	}
 
 	return true 
+	*/
 }
 
 func GetPrePubData(pub string,key string) *PrePubData {
@@ -295,7 +383,7 @@ func PickPrePubData(pub string) string {
 		var val *PrePubData
 		datas := data.([]*PrePubData)
 		for _,v := range datas {
-			if v != nil {
+			if v != nil && v.Used == false {
 				key = v.Key
 				val = v
 				break
@@ -568,11 +656,11 @@ func PreGenSignData(raw string) (string, error) {
     }
 
     common.Debug("=====================PreGenSignData================","from",from,"raw",raw)
-    ExcutePreSignData(pre)
+    ExcutePreSignData(pre,true)
     return "", nil
 }
 
-func ExcutePreSignData(pre *TxDataPreSignData) {
+func ExcutePreSignData(pre *TxDataPreSignData,over bool) {
     if pre == nil {
 	return
     }
@@ -580,7 +668,21 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
     for _,gid := range pre.SubGid {
 	go func(gg string) {
 	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
+
 	    PutPreSigal(pub,true)
+
+	    //////////
+	    if over {
+		    pshp := &PreSignHashPair{PubKey:pre.PubKey,Gid:gg}
+		    PutPreSignHashPair(pub,pshp)
+		    databyte,err := pshp.MarshalJSON()
+		    if err == nil {
+			    kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: string(databyte)}
+			    PrePubKeyDataChan <- kd
+		    }
+	    }
+	    //////////
+
 	    common.Info("===================before generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pub",pub,"pubkey",pre.PubKey,"sub-groupid",gg)
 	    for {
 		    if NeedPreSign(pub) && GetPreSigal(pub) {
@@ -683,8 +785,79 @@ func GetAllPreSignFromDb() {
 	    //common.Info("=================GetAllPreSignFromDb=================\n","pub",key,"pick key",v.Key) 
 	    PutPreSign(key,v)
 	}
+
+	subgid := make([]string,0)
+	pshp := GetPreSignHashPair(key)
+	if pshp != nil {
+		subgid = append(subgid,pshp.Gid)
+		pre := &TxDataPreSignData{TxType:"PRESIGNDATA",PubKey:pshp.PubKey,SubGid:subgid}
+		common.Info("================= GetAllPreSignFromDb, call ExcutePreSignData to generate pre-sign data =================\n")
+		ExcutePreSignData(pre,false)
+	}
     }
     
     iter.Release()
 }
+
+func GetPreSignHashPairDbDir() string {
+	dir := common.DefaultDataDir()
+	dir += "/dcrmdata/presignhashpair" + cur_enode
+	return dir
+}
+
+type UpdataPreSignHashPair struct {
+    Key []byte
+    Del bool 
+    Data string
+}
+
+func UpdatePreSignHashPairForDb() {
+    for {
+	kd := <-PreSignHashPairChan
+	if presignhashpairdb != nil {
+	    if !kd.Del {
+		    err := presignhashpairdb.Put(kd.Key, []byte(kd.Data))
+		    common.Info("=====================UpdatePreSignHashPairForDb,put pre-sign hash pair into db========================","pub",string(kd.Key),"err",err)
+
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		    continue
+	    }
+
+	    ////////////
+	    err := presignhashpairdb.Delete(kd.Key)
+	    if err != nil {
+		    common.Info("=====================UpdatePreSignHashPairForDb,delete pre-sign hash pair from db========================","pub",string(kd.Key),"err",err)
+	    }
+	    /////////////
+
+	} else {
+	    common.Info("=================UpdatePreSignHashPairForDb, save to db fail ,db is nil ===============","key",string(kd.Key))
+	}
+
+	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+    }
+}
+
+func GetAllPreSignHashPairFromDb() {
+    if presignhashpairdb == nil {
+	return
+    }
+
+    iter := presignhashpairdb.NewIterator()
+    for iter.Next() {
+	key := string(iter.Key())
+	value := string(iter.Value())
+
+	pshp := &PreSignHashPair{}
+	if err := pshp.UnmarshalJSON([]byte(value));err != nil {
+	    common.Info("=================GetAllPreSignHashPairFromDb=================\n","pub",key,"err",err) 
+	    continue 
+	}
+
+	PutPreSignHashPair(key,pshp)
+    }
+    
+    iter.Release()
+}
+
 

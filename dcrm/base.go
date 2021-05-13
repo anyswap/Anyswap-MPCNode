@@ -164,6 +164,36 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	    return
 	}
 
+	//////////////////
+	pairdbtmp, err := ethdb.NewLDBDatabase(GetPreSignHashPairDbDir(), cache, handles)
+	//bug
+	if err != nil {
+	    common.Info("======================dcrm.Start,open pairdb fail======================","err",err,"dir",GetPreSignHashPairDbDir())
+		for i := 0; i < 80; i++ {
+			pairdbtmp, err = ethdb.NewLDBDatabase(GetPreSignHashPairDbDir(), cache, handles)
+			if err == nil && pairdbtmp != nil {
+				break
+			} else {
+			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreSignHashPairDbDir())
+			}
+
+			time.Sleep(time.Duration(2) * time.Second)
+		}
+	}
+	if err != nil {
+	    presignhashpairdb = nil
+	} else {
+	    presignhashpairdb = pairdbtmp
+	}
+	   
+	if presignhashpairdb == nil {
+	    common.Info("======================dcrm.Start,open presignhashpairdb fail and gdcrm panic======================")
+	    os.Exit(1)
+	    return
+	}
+
+	//////////////////
+
 	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
 	
 	PrePubDataCount = int(presignnum)
@@ -171,6 +201,9 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	recalc_times = int(trytimes)
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
+	
+	GetAllPreSignHashPairFromDb()
+	go UpdatePreSignHashPairForDb()
 	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 	GetAllPreSignFromDb()

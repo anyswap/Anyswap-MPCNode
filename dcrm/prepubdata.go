@@ -677,8 +677,8 @@ func ExcutePreSignData(pre *TxDataPreSignData,over bool) {
 		    PutPreSignHashPair(pub,pshp)
 		    databyte,err := pshp.MarshalJSON()
 		    if err == nil {
-			    kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: string(databyte)}
-			    PrePubKeyDataChan <- kd
+			    kd := UpdataPreSignHashPair{Key: []byte(strings.ToLower(pub)), Del:false,Data: string(databyte)}
+			    PreSignHashPairChan <- kd
 		    }
 	    }
 	    //////////
@@ -854,6 +854,7 @@ func GetAllPreSignHashPairFromDb() {
 	    continue 
 	}
 
+	common.Info("=================GetAllPreSignHashPairFromDb=================\n","pub",key,"PubKey",pshp.PubKey,"Gid",pshp.Gid) 
 	PutPreSignHashPair(key,pshp)
     }
     

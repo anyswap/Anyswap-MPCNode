@@ -346,13 +346,14 @@ func (this *Service) AcceptSign(raw string) map[string]interface{} {
 }
 
 func (this *Service) Sign(raw string) map[string]interface{} {
-	common.Info("===================Sign=====================","raw",raw)
+	common.Info("===================Sign,get the sign cmd from rpc=====================","raw",raw)
 
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.Sign(raw)
 	//common.Info("===================Sign,get result=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
+		common.Info("===================Sign,return result to app=====================","key",key,"err",err,"raw",raw)
 		return map[string]interface{}{
 			"Status": "Error",
 			"Tip":    tip,
@@ -362,6 +363,7 @@ func (this *Service) Sign(raw string) map[string]interface{} {
 	}
 
 	data["result"] = key 
+	common.Info("===================Sign,return result to app=====================","key",key,"err",err,"raw",raw)
 	return map[string]interface{}{
 		"Status": "Success",
 		"Tip":    "",

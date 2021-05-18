@@ -113,12 +113,13 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 		    ac := &AcceptSignData{Initiator:sender,Account: from, GroupId: sig.GroupId, Nonce: nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext: sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
 		    err = SaveAcceptSignData(ac)
 		    if err == nil {
-			common.Info("===============InitAcceptDatai2,save sign accept data finish===================","ars ",ars,"key ",key,"tx data",sig)
+			common.Info("===============InitAcceptData2,save sign accept data finish===================","ars ",ars,"key ",key,"tx data",sig)
 			w := workers[workid]
 			w.sid = key 
 			w.groupid = sig.GroupId 
 			w.limitnum = sig.ThresHold
 			gcnt, _ := GetGroup(w.groupid)
+			common.Info("=============== InitAcceptData2, ===================","gcnt ",gcnt,"key ",key,"gid",w.groupid)
 			w.NodeCnt = gcnt
 			w.ThresHold = w.NodeCnt
 
@@ -130,12 +131,21 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 			    }
 
 			    w.ThresHold = gcnt
+			    common.Info("=============== InitAcceptData2 ===================","old w.ThresHold ",w.ThresHold,"key ",key,"gid",w.groupid)
+			    //bug
+			    if w.ThresHold == 0 {
+				th,_ := strconv.Atoi(nums[0])
+				w.ThresHold = th
+				common.Info("=============== InitAcceptData2 ===================","new w.ThresHold ",w.ThresHold,"key ",key,"gid",w.groupid)
+			    }
 			}
 
 			w.DcrmFrom = sig.PubKey  // pubkey replace dcrmfrom in sign
 			
 			if sig.Mode == "0" { // self-group
 				////
+				pending_err := false
+
 				var reply bool
 				var tip string
 				timeout := make(chan bool, 1)
@@ -155,11 +165,23 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 							
 							//bug
 							reply = true
+							pending := false
 							for _,nr := range ars {
-							    if !strings.EqualFold(nr.Status,"Agree") {
+							    if strings.EqualFold(nr.Status,"Pending") {
+								pending = true
+							    }
+
+							    if !strings.EqualFold(nr.Status,"Pending") && !strings.EqualFold(nr.Status,"Agree") {
 								reply = false
 								break
 							    }
+							}
+
+							//bug: if status is pending and no someone disagree,must wait for the reply from other nodes
+							if reply == true && pending == true {
+							    pending_err = true
+							    pending = false
+							    break
 							}
 							//
 
@@ -200,6 +222,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 					workers[workid].acceptWaitSignChan <- "go on"
 				}
 
+				//common.Info("===============InitAcceptData2, call DisAcceptMsg begin===================","key ",key)
 				DisAcceptMsg(sbd.Raw,workid)
 				common.Debug("===============InitAcceptData2, call DisAcceptMsg finish===================","key ",key)
 				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_SIGN)

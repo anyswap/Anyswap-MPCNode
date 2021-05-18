@@ -807,12 +807,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	signbrocast,err := UnCompressSignBrocastData(res)
 	if err == nil {
-		errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
-		if errtmp == nil {
-			return true
-		}
+	    errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
+	    if errtmp == nil {
+		    return true
+	    }
 
-		return false
+	    return false
 	}
 
 	////////////////////////////

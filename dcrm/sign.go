@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"errors"
 
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/signing"
@@ -97,6 +98,49 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 		///////
 		DtPreSign.Unlock()
 	   }
+
+	   ////////////////////////check pre-sign data
+	   /*tmp := make([]string,0)
+	    for _,v := range sig.MsgHash {
+		txhashs := []rune(v)
+		if string(txhashs[0:2]) == "0x" {
+			tmp = append(tmp,string(txhashs[2:]))
+		} else {
+		    tmp = append(tmp,string(txhashs))
+		}
+	    }
+
+	    for _,vv := range tmp {
+		pickkey := ""
+		for _,val := range sbd.PickHash {
+		    if strings.EqualFold(val.Hash,("0x" + vv)) || strings.EqualFold(val.Hash,vv) {
+			    pickkey = val.PickKey
+			    break
+		    }
+		}
+		if pickkey == "" {
+		    res := RpcDcrmRes{Ret: "", Tip: "check pick key fail", Err: errors.New("check pick key fail")}
+		    ch <- res
+		    return errors.New("check pick key fail")
+		}
+		
+		pre := GetPrePubDataBak(pub,pickkey)
+		if pre == nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "get pre-sign data fail", Err: errors.New("get pre-sign data fail")}
+		    ch <- res
+		    return errors.New("get pre-sign data fail")
+		}
+	    }*/
+
+	    for _,val := range sbd.PickHash {
+		pre := GetPrePubDataBak(pub,val.PickKey)
+		if pre == nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "get pre-sign data fail", Err: errors.New("get pre-sign data fail")}
+		    ch <- res
+		    return errors.New("get pre-sign data fail")
+		}
+	    }
+	   ////////////////////////
 
 	common.Debug("===============InitAcceptData2, it is sign txdata and check sign raw success==================","key ",key,"from ",from,"nonce ",nonce)
 	exsit,_ := GetValueFromPubKeyData(key)

@@ -1044,6 +1044,16 @@ func Encode2(obj interface{}) (string, error) {
 			return "", err1
 		}
 		return buff.String(), nil
+	case *PreSignDataStatus:
+
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+
+		err1 := enc.Encode(ch)
+		if err1 != nil {
+			return "", err1
+		}
+		return buff.String(), nil
 	case *AcceptLockOutData:
 
 		var buff bytes.Buffer
@@ -1199,6 +1209,21 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		dec := gob.NewDecoder(&data)
 
 		var res PrePubData
+		err := dec.Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
+	}
+
+	if datatype == "PreSignDataStatus" {
+		var data bytes.Buffer
+		data.Write([]byte(s))
+
+		dec := gob.NewDecoder(&data)
+
+		var res PreSignDataStatus
 		err := dec.Decode(&res)
 		if err != nil {
 			return nil, err

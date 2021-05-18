@@ -547,6 +547,25 @@ func UpdatePrePubKeyDataForDb() {
 			continue
 		    }
 
+		    ///////////check all sign nodes pre-sign data status
+		    psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:(val.(*PrePubData)).Gid,ThresHold:kd.ThresHold}
+		    psdstmp,err := Encode2(psds)
+		    if err != nil {
+			common.Info("=====================UpdatePrePubKeyDataForDb,encode pre-sign data status fail========================","key",string(kd.Key),"err",err)
+			predb.Delete(kd.Key)
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
+		    rch := make(chan interface{}, 1)
+		    SetUpMsgList3(psdstmp,cur_enode,rch)
+		    _, _,cherr := GetChannelValue(waitall,rch)
+		    if cherr != nil {
+			predb.Delete(kd.Key)
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
+		    ///////////
+		    
 		    PutPreSign(string(kd.Key),val.(*PrePubData))
 		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		    continue
@@ -570,6 +589,25 @@ func UpdatePrePubKeyDataForDb() {
 			continue
 		    }
 
+		    ///////////check all sign nodes pre-sign data status
+		    psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:(val.(*PrePubData)).Gid,ThresHold:kd.ThresHold}
+		    psdstmp,err := Encode2(psds)
+		    if err != nil {
+			common.Info("=====================UpdatePrePubKeyDataForDb,encode pre-sign data status fail========================","key",string(kd.Key),"err",err)
+			predb.Delete(kd.Key)
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
+		    rch := make(chan interface{}, 1)
+		    SetUpMsgList3(psdstmp,cur_enode,rch)
+		    _, _,cherr := GetChannelValue(waitall,rch)
+		    if cherr != nil {
+			predb.Delete(kd.Key)
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }
+		    ///////////
+		    
 		    PutPreSign(string(kd.Key),val.(*PrePubData))
 		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		    continue
@@ -587,6 +625,25 @@ func UpdatePrePubKeyDataForDb() {
 		    continue
 		}
 		
+		///////////check all sign nodes pre-sign data status
+		psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:(val.(*PrePubData)).Gid,ThresHold:kd.ThresHold}
+		psdstmp,err := Encode2(psds)
+		if err != nil {
+		    common.Info("=====================UpdatePrePubKeyDataForDb,encode pre-sign data status fail========================","key",string(kd.Key),"err",err)
+		    predb.Put(kd.Key, da)
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		    continue
+		}
+		rch := make(chan interface{}, 1)
+		SetUpMsgList3(psdstmp,cur_enode,rch)
+		_, _,cherr := GetChannelValue(waitall,rch)
+		if cherr != nil {
+		    predb.Put(kd.Key, da)
+		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		    continue
+		}
+		///////////
+		    
 		PutPreSign(string(kd.Key),val.(*PrePubData))
 		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		continue
@@ -628,6 +685,25 @@ func UpdatePrePubKeyDataForDb() {
 		continue
 	    }
 
+	    ///////////check all sign nodes pre-sign data status
+	    psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:((ps.Data)[0]).Gid,ThresHold:kd.ThresHold}
+	    psdstmp,err := Encode2(psds)
+	    if err != nil {
+		common.Info("=====================UpdatePrePubKeyDataForDb,encode pre-sign data status fail========================","key",string(kd.Key),"err",err)
+		predb.Put(kd.Key, da)
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		continue
+	    }
+	    rch := make(chan interface{}, 1)
+	    SetUpMsgList3(psdstmp,cur_enode,rch)
+	    _, _,cherr := GetChannelValue(waitall,rch)
+	    if cherr != nil {
+		predb.Put(kd.Key, da)
+		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+		continue
+	    }
+	    ///////////
+		
 	    SetPrePubDataUseStatus(string(kd.Key),kd.Data,false)
 	    //PutPreSign(string(kd.Key),val.(*PrePubData)) ////////delete val
 	    common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db success ===============","key",string(kd.Key),"pick key",kd.Data)
@@ -639,6 +715,41 @@ func UpdatePrePubKeyDataForDb() {
 
 	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
     }
+}
+
+type PreSignDataStatus struct {
+    MsgPrex string
+    Status string
+    Gid string
+    ThresHold int 
+}
+
+func CheckAllSignNodesPreSignDataStatus(msgprex string, ch chan interface{},w *RPCReqWorker) bool {
+    if msgprex == "" || w == nil {
+	res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+	ch <- res
+	return false
+    }
+
+    mp := []string{msgprex, cur_enode}
+    enode := strings.Join(mp, "-")
+    s0 := "CHECKPRESIGNDATASTATUS"
+    s1 := "true" 
+    ss := enode + common.Sep + s0 + common.Sep + s1
+    SendMsgToDcrmGroup(ss, w.groupid)
+    DisMsg(ss)
+
+    _, tip, cherr := GetChannelValue(ch_t, w.bcheckpresigndatastatus)
+
+    if cherr != nil {
+	res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("check pre-sign data status fail.")}
+	ch <- res
+	return false
+    }
+
+    res := RpcDcrmRes{Ret: "", Tip: "", Err: nil}
+    ch <- res
+    return true
 }
 
 type TxDataPreSignData struct {
@@ -723,6 +834,7 @@ type UpdataPreSignData struct {
     Key []byte
     Del bool 
     Data string //pickkey or pre-sign-data
+    ThresHold int 
 }
 
 type PreSignDataValue struct {

@@ -792,7 +792,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				if err == nil {
 				    pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
 				    //PutPreSign(pub,pre)
-				    kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: es}
+				    kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: es,ThresHold:w.ThresHold}
 				    PrePubKeyDataChan <- kd
 				}
 				
@@ -805,6 +805,26 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    }
 	}
 
+	m, err2 = Decode2(res, "PreSignDataStatus")
+	if err2 == nil {
+	    sd,ok := m.(*PreSignDataStatus)
+	    if ok {
+		common.Debug("===============RecvMsg.Run,it is PreSignDataStatus===================","msgprex",sd.MsgPrex,"gid",sd.Gid)
+
+		w := workers[workid]
+		w.sid = sd.MsgPrex
+		w.groupid = sd.Gid
+		
+		w.ThresHold = sd.ThresHold
+
+		if CheckAllSignNodesPreSignDataStatus(sd.MsgPrex,ch,w) == false {
+		    return false
+		}
+
+		return true
+	    }
+	}
+	
 	signbrocast,err := UnCompressSignBrocastData(res)
 	if err == nil {
 	    errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
@@ -3017,6 +3037,20 @@ func DisMsg(msg string) {
 		w.msg_zku.PushBack(msg)
 		if w.msg_zku.Len() == w.NodeCnt {
 			w.bzku <- true
+		}
+	case "CHECKPRESIGNDATASTATUS":
+		///bug
+		if w.msg_checkpresigndatastatus.Len() >= w.ThresHold {
+			return
+		}
+		///
+		if Find(w.msg_checkpresigndatastatus, msg) {
+			return
+		}
+
+		w.msg_checkpresigndatastatus.PushBack(msg)
+		if w.msg_checkpresigndatastatus.Len() == w.ThresHold {
+			w.bcheckpresigndatastatus <- true
 		}
 	case "MTAZK1PROOF":
 		///bug

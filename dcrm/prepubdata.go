@@ -547,6 +547,7 @@ func UpdatePrePubKeyDataForDb() {
 			continue
 		    }
 
+		    PutPreSign(string(kd.Key),val.(*PrePubData))
 		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		    continue
 		}
@@ -569,6 +570,7 @@ func UpdatePrePubKeyDataForDb() {
 			continue
 		    }
 
+		    PutPreSign(string(kd.Key),val.(*PrePubData))
 		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		    continue
 		}
@@ -585,6 +587,7 @@ func UpdatePrePubKeyDataForDb() {
 		    continue
 		}
 		
+		PutPreSign(string(kd.Key),val.(*PrePubData))
 		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
 		continue
 	    }
@@ -625,6 +628,8 @@ func UpdatePrePubKeyDataForDb() {
 		continue
 	    }
 
+	    SetPrePubDataUseStatus(string(kd.Key),kd.Data,false)
+	    //PutPreSign(string(kd.Key),val.(*PrePubData)) ////////delete val
 	    common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db success ===============","key",string(kd.Key),"pick key",kd.Data)
 	    /////////////
 

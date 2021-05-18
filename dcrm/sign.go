@@ -273,7 +273,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if reqaddrkey == "" {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
+						//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
 					}
@@ -288,7 +288,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if !exsit {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
+						//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
 					}
@@ -304,7 +304,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if !ok || acceptreqdata == nil {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
+						//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
 					}
@@ -388,7 +388,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
+						//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
 					}
@@ -408,7 +408,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				if err != nil {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
+						//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
 					}
@@ -429,7 +429,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				//common.Debug("===================InitAcceptData2,DeletePrePubData,11111===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				DtPreSign.Lock()
 				for _,vv := range sbd.PickHash {
-					DeletePrePubDataBak(pub,vv.PickKey)
+					//DeletePrePubDataBak(pub,vv.PickKey)
 					kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 					PrePubKeyDataChan <- kd
 				}
@@ -496,7 +496,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 						/////bug
 						DtPreSign.Lock()
 						for _,vv := range sbd.PickHash {
-							DeletePrePubDataBak(pub,vv.PickKey)
+							//DeletePrePubDataBak(pub,vv.PickKey)
 							kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 							PrePubKeyDataChan <- kd
 						}
@@ -519,7 +519,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 			if cherr != nil {
 				DtPreSign.Lock()
 				for _,vv := range sbd.PickHash {
-					SetPrePubDataUseStatus(pub,vv.PickKey,false)
+					//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 					kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 					PrePubKeyDataChan <- kd
 				}
@@ -532,7 +532,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 
 			DtPreSign.Lock()
 			for _,vv := range sbd.PickHash {
-				SetPrePubDataUseStatus(pub,vv.PickKey,false)
+				//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 				kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 				PrePubKeyDataChan <- kd
 			}
@@ -661,7 +661,7 @@ func HandleRpcSign() {
 					common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
 					DtPreSign.Lock()
 					for _,vv := range pickhash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
+						//SetPrePubDataUseStatus(pub,vv.PickKey,false)
 						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
 						PrePubKeyDataChan <- kd
 					}

@@ -633,91 +633,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return true
 	}
 
-	m, err2 := Decode2(res, "SignData")
-	if err2 == nil {
-	    sd,ok := m.(*SignData)
-	    if ok {
-		common.Debug("===============RecvMsg.Run,it is signdata===================","msgprex",sd.MsgPrex,"key",sd.Key)
+	msgmap := make(map[string]string)
+	err := json.Unmarshal([]byte(res), &msgmap)
+	if err == nil {
 
-		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
-		pubkeyhex := hex.EncodeToString(ys)
-		pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
-		pre := GetPrePubDataBak(pub,sd.PickKey)
-		if pre == nil {
-			    common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
-			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
-			    ch <- res2
-			    return false
-		}
-
-		w := workers[workid]
-		w.sid = sd.Key
-		w.groupid = sd.GroupId
-		
-		w.NodeCnt = sd.NodeCnt
-		w.ThresHold = sd.ThresHold
-		
-		w.DcrmFrom = sd.DcrmFrom
-
-		dcrmpks, _ := hex.DecodeString(pubkeyhex)
-		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-		if exsit {
-			pd,ok := da.(*PubKeyData)
-			if ok {
-			    exsit,da2 := GetValueFromPubKeyData(pd.Key)
-			    if exsit {
-				    ac,ok := da2.(*AcceptReqAddrData)
-				    if ok {
-					HandleC1Data(ac,sd.Key,workid)
-				    }
-			    }
-
-			}
-		}
-
-		var ch1 = make(chan interface{}, 1)
-		for i:=0;i < recalc_times;i++ {
-		    common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
-		    if len(ch1) != 0 {
-			<-ch1
-		    }
-
-		    //w.Clear2()
-		    //Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
-		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
-		    common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
-		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
-		    if ret != "" && cherr == nil {
-
-			ww, err2 := FindWorker(sd.MsgPrex)
-			if err2 != nil || ww == nil {
-			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
-			    ch <- res2
-			    return false
-			}
-
-			common.Info("===============RecvMsg.Run, ec3 sign success ===================","i",i,"get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
-
-			ww.rsv.PushBack(ret)
-			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
-			ch <- res2
-			return true 
-		    }
-		    
-		    common.Info("===============RecvMsg.Run,ec3 sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
-		    //time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
-		}	
-		
-		res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
-		ch <- res2
-		return false 
-	    }
-	}
-	
-	m, err2 = Decode2(res, "PreSign")
-	if err2 == nil {
-	    ps,ok := m.(*PreSign)
-	    if ok {
+	    //presign
+	    if msgmap["Type"] == "PreSign" {
+		ps := &PreSign{}
+		if err = ps.UnmarshalJSON([]byte(msgmap["PreSign"]));err == nil {
 		    w := workers[workid]
 		    w.sid = ps.Nonce 
 		    w.groupid = ps.Gid
@@ -772,59 +695,143 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    }
 			///////
 
-			var ch1 = make(chan interface{}, 1)
-			pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
-			if pre == nil {
-				res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
-				ch <- res
+		    var ch1 = make(chan interface{}, 1)
+		    pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
+		    if pre == nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			    ch <- res
+			    return false
+		    }
+
+		    //if NeedPreSign(ps.Pub) {
+			    pre.Key = w.sid
+			    pre.Gid = w.groupid
+			    pre.Used = false
+			    
+			    DtPreSign.Lock()
+	    
+			    es,err := Encode2(pre)
+			    common.Debug("========================PreSign at RecvMsg.Run finish,ecode pre-sign data.=================","err",err,"pick key",pre.Key)
+			    if err == nil {
+				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
+				PutPreSign(pub,pre)
+				kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: es,ThresHold:w.ThresHold}
+				PrePubKeyDataChan <- kd
+				//common.Info("===============RecvMsg.Run,call presign_ec3 finish and no error.===================","key",ps.Nonce,"pubkey",ps.Pub,"pub",pub)
+				//time.Sleep(time.Duration(10000000))
+			    }
+			    
+			    DtPreSign.Unlock()
+		    //}
+
+		    res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
+		    ch <- res
+		    return true
+		}
+	    }
+
+	    //signdata
+	    if msgmap["Type"] == "SignData" {
+		sd := &SignData{}
+		if err = sd.UnmarshalJSON([]byte(msgmap["SignData"]));err == nil {
+
+		    common.Debug("===============RecvMsg.Run,it is signdata===================","msgprex",sd.MsgPrex,"key",sd.Key)
+
+		    ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
+		    pubkeyhex := hex.EncodeToString(ys)
+		    pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
+		    pre := GetPrePubDataBak(pub,sd.PickKey)
+		    if pre == nil {
+				common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
+				res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
+				ch <- res2
 				return false
+		    }
+
+		    w := workers[workid]
+		    w.sid = sd.Key
+		    w.groupid = sd.GroupId
+		    
+		    w.NodeCnt = sd.NodeCnt
+		    w.ThresHold = sd.ThresHold
+		    
+		    w.DcrmFrom = sd.DcrmFrom
+
+		    dcrmpks, _ := hex.DecodeString(pubkeyhex)
+		    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    if exsit {
+			    pd,ok := da.(*PubKeyData)
+			    if ok {
+				exsit,da2 := GetValueFromPubKeyData(pd.Key)
+				if exsit {
+					ac,ok := da2.(*AcceptReqAddrData)
+					if ok {
+					    HandleC1Data(ac,sd.Key,workid)
+					}
+				}
+
+			    }
+		    }
+
+		    var ch1 = make(chan interface{}, 1)
+		    for i:=0;i < recalc_times;i++ {
+			common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
+			if len(ch1) != 0 {
+			    <-ch1
 			}
 
-			//if NeedPreSign(ps.Pub) {
-				pre.Key = w.sid
-				pre.Gid = w.groupid
-				pre.Used = false
-				
-				DtPreSign.Lock()
-		
-				es,err := Encode2(pre)
-				common.Debug("========================PreSign at RecvMsg.Run finish,ecode pre-sign data.=================","err",err,"pick key",pre.Key)
-				if err == nil {
-				    pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
-				    //PutPreSign(pub,pre)
-				    kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: es,ThresHold:w.ThresHold}
-				    PrePubKeyDataChan <- kd
-				}
-				
-				DtPreSign.Unlock()
-			//}
+			//w.Clear2()
+			//Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
+			Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
+			common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
+			ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
+			if ret != "" && cherr == nil {
 
-			res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
-			ch <- res
-			return true
-	    }
-	}
+			    ww, err2 := FindWorker(sd.MsgPrex)
+			    if err2 != nil || ww == nil {
+				res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
+				ch <- res2
+				return false
+			    }
 
-	m, err2 = Decode2(res, "PreSignDataStatus")
-	if err2 == nil {
-	    sd,ok := m.(*PreSignDataStatus)
-	    if ok {
-		common.Debug("===============RecvMsg.Run,it is PreSignDataStatus===================","msgprex",sd.MsgPrex,"gid",sd.Gid)
+			    common.Info("===============RecvMsg.Run, ec3 sign success ===================","i",i,"get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 
-		w := workers[workid]
-		w.sid = sd.MsgPrex
-		w.groupid = sd.Gid
-		
-		w.ThresHold = sd.ThresHold
-
-		if CheckAllSignNodesPreSignDataStatus(sd.MsgPrex,ch,w) == false {
+			    ww.rsv.PushBack(ret)
+			    res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
+			    ch <- res2
+			    return true 
+			}
+			
+			common.Info("===============RecvMsg.Run,ec3 sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+			//time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
+		    }	
+		    
+		    res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
+		    ch <- res2
 		    return false
-		}
+		}/////
+	    }
+	    
+	    //presigndatastatus
+	    if msgmap["Type"] == "PreSignDataStatus" {
+		psds := &PreSignDataStatus{}
+		if err = psds.UnmarshalJSON([]byte(msgmap["PreSignDataStatus"]));err == nil {
 
-		return true
+		    w := workers[workid]
+		    w.sid = psds.MsgPrex
+		    w.groupid = psds.Gid
+		    
+		    w.ThresHold = psds.ThresHold
+
+		    if CheckAllSignNodesPreSignDataStatus(psds.MsgPrex,ch,w) == false {
+			return false
+		    }
+
+		    return true
+		}
 	    }
 	}
-	
+
 	signbrocast,err := UnCompressSignBrocastData(res)
 	if err == nil {
 	    errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)

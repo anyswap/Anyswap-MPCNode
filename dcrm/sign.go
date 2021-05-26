@@ -1735,6 +1735,15 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RP
 	iter := w.msg_mkg.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(mkgs) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllMKGFail)}
+			ch <- res
+			return false
+		}
+		//
+
 		mkgs[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -1812,6 +1821,15 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RP
 	iter = w.msg_mkw.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(mkws) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllMKWFail)}
+			ch <- res
+			return false
+		}
+		//
+
 		mkws[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2101,6 +2119,15 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 	iter := w.msg_delta1.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(dels) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all delta fail.")}
+			ch <- res
+			return nil
+		}
+		//
+
 		dels[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2259,6 +2286,15 @@ func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortabl
 	iter := w.msg_d11_1.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(d11s) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all d11 fail.")}
+			ch <- res
+			return nil
+		}
+		//
+
 		d11s[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2275,6 +2311,15 @@ func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortabl
 	iter = w.msg_c11.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(c11s) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all c11 fail.")}
+			ch <- res
+			return nil
+		}
+		//
+
 		c11s[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2517,6 +2562,15 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	iter := w.msg_commitbigvab.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(commitbigvabs) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all CommitBigVAB fail.")}
+			ch <- res
+			return nil, nil, nil, nil
+		}
+		//
+
 		commitbigvabs[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2598,6 +2652,15 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	iter := w.msg_zkabproof.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(zkabproofs) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all ZKABPROOF fail.")}
+			ch <- res
+			return nil, nil
+		}
+		//
+
 		zkabproofs[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2837,6 +2900,15 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RPCReqWorker, idSig
 	iter := w.msg_commitbigut.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(commitbiguts) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all CommitBigUT fail.")}
+			ch <- res
+			return nil, nil
+		}
+		//
+
 		commitbiguts[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2899,6 +2971,15 @@ func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RPCReqW
 	iter := w.msg_commitbigutd11.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(commitbigutd11s) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all CommitBigUTD11 fail.")}
+			ch <- res
+			return nil
+		}
+		//
+
 		commitbigutd11s[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -3055,6 +3136,15 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idS
 	iter := w.msg_ss1.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		//bug
+		if len(uss1s) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get ss1 fail.")}
+			ch <- res
+			return nil
+		}
+		//
+
 		uss1s[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -3188,6 +3278,13 @@ func GetPaillierPk2(cointype string,w *RPCReqWorker,uid *big.Int) *ec2.PublicKey
 			    iter = iter.Next()
 			    continue
 			}
+
+			//bug
+			if len(ms) < 6 {
+			    iter = iter.Next()
+			    continue
+			}
+			//
 
 			node3 := prexs[1]
 			if strings.EqualFold(node3,node2) {

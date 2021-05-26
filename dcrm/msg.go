@@ -2948,6 +2948,17 @@ func DisMsg(msg string) {
 			return
 		}
 
+		//test
+		tail := w.msg_sendsignres.Back()
+		head := w.msg_sendsignres.Front()
+		fmt.Printf("=================DisMsg,tail = %v,head = %v, len = %v, key = %v ====================\n",tail,head,w.msg_sendsignres.Len(),prexs[0])
+		if tail != nil && tail.Next() == nil {
+			fmt.Printf("=================DisMsg, tail.next is nil, key = %v ====================\n",prexs[0])
+		}
+		if head != nil && head.Next() == nil {
+			fmt.Printf("=================DisMsg, head.next is nil, key = %v ====================\n",prexs[0])
+		}
+		//
 		w.msg_sendsignres.PushBack(msg)
 		if w.msg_sendsignres.Len() == w.ThresHold {
 			w.bsendsignres <- true

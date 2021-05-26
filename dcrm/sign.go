@@ -1424,6 +1424,15 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 	iter := w.msg_mtazk1proof.Front()
 	for iter != nil {
 		mdss := iter.Value.(string)
+
+		////bug
+		if len(mtazk1s) < (itmp + 1) {
+			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllMTAZK1PROOFFail)}
+			ch <- res
+			return false
+		}
+		///////
+
 		mtazk1s[itmp] = mdss
 		iter = iter.Next()
 		itmp++

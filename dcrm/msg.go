@@ -648,6 +648,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    gcnt, _ := GetGroup(w.groupid)
 		    w.NodeCnt = gcnt //TODO
 		    w.ThresHold = gcnt
+		    //bug
+		    //if w.ThresHold == 0 {
+		//	th,_ := strconv.Atoi(nums[0])
+		//	w.ThresHold = th
+		//	common.Info("=============== InitAcceptData2 ===================","new w.ThresHold ",w.ThresHold,"key ",key,"gid",w.groupid)
+		//    }
 
 		    dcrmpks, _ := hex.DecodeString(ps.Pub)
 		    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
@@ -703,26 +709,69 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 		    }
 
-		    //if NeedPreSign(ps.Pub) {
-			    pre.Key = w.sid
-			    pre.Gid = w.groupid
-			    pre.Used = false
-			    
-			    DtPreSign.Lock()
-	    
-			    es,err := Encode2(pre)
-			    common.Debug("========================PreSign at RecvMsg.Run finish,ecode pre-sign data.=================","err",err,"pick key",pre.Key)
-			    if err == nil {
-				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
-				PutPreSign(pub,pre)
-				kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: es,ThresHold:w.ThresHold}
-				PrePubKeyDataChan <- kd
-				//common.Info("===============RecvMsg.Run,call presign_ec3 finish and no error.===================","key",ps.Nonce,"pubkey",ps.Pub,"pub",pub)
-				//time.Sleep(time.Duration(10000000))
-			    }
-			    
-			    DtPreSign.Unlock()
-		    //}
+		    pre.Key = w.sid
+		    pre.Gid = w.groupid
+		    pre.Used = false
+		    pre.Index = ps.Index
+		    
+		    //check all sign nodes pre-sign data status
+		    /*psds := &PreSignDataStatus{MsgPrex:w.sid,Status:"true",Gid:w.groupid,ThresHold:w.ThresHold}
+		    m := make(map[string]string)
+		    psdsjson,err := psds.MarshalJSON()
+		    if err == nil {
+			m["PreSignDataStatus"] = string(psdsjson) 
+		    }
+		    m["Type"] = "PreSignDataStatus"
+		    psdstmp,err := json.Marshal(m)
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			ch <- res
+			return false
+		    }
+		
+		    rch := make(chan interface{}, 1)
+		    SetUpMsgList3(string(psdstmp),cur_enode,rch)
+		    _, _,cherr := GetChannelValue(waitall,rch)
+		    if cherr != nil {
+			predb.Delete(kd.Key)
+			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
+			continue
+		    }*/
+		    ///////////
+
+		    err = PutPreSignData(ps.Pub,ps.Gid,ps.Index,pre)
+		    if err == nil {
+			//check all sign nodes pre-sign data status
+			psds := &PreSignDataStatus{MsgPrex:w.sid,Status:"true",Gid:w.groupid,ThresHold:w.ThresHold}
+			m := make(map[string]string)
+			psdsjson,err := psds.MarshalJSON()
+			if err == nil {
+			    m["PreSignDataStatus"] = string(psdsjson) 
+			}
+			m["Type"] = "PreSignDataStatus"
+			psdstmp,err := json.Marshal(m)
+			if err != nil {
+			    DeletePreSignData(ps.Pub,ps.Gid,pre.Key)
+			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			    ch <- res
+			    return false
+			}
+		    
+			rch := make(chan interface{}, 1)
+			SetUpMsgList3(string(psdstmp),cur_enode,rch)
+			_, _,cherr := GetChannelValue(waitall,rch)
+			if cherr != nil {
+			    DeletePreSignData(ps.Pub,ps.Gid,pre.Key)
+			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			    ch <- res
+			    return false
+			}
+			///////////
+		    } else {
+			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			ch <- res
+			return false
+		    }
 
 		    res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 		    ch <- res
@@ -739,14 +788,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
 		    pubkeyhex := hex.EncodeToString(ys)
-		    pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
-		    pre := GetPrePubDataBak(pub,sd.PickKey)
-		    if pre == nil {
-				common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
-				res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
-				ch <- res2
-				return false
-		    }
+		    //pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
 
 		    w := workers[workid]
 		    w.sid = sd.Key
@@ -782,7 +824,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			//w.Clear2()
 			//Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
-			Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
+			Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,sd.Pre)
 			common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
 			ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
 			if ret != "" && cherr == nil {
@@ -830,16 +872,53 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    return true
 		}
 	    }
-	}
 
-	signbrocast,err := UnCompressSignBrocastData(res)
-	if err == nil {
-	    errtmp := InitAcceptData2(signbrocast,workid,self.sender,ch)
-	    if errtmp == nil {
-		    return true
+	    //
+	    if msgmap["Type"] == "ComSignBrocastData" {
+		signbrocast,err := UnCompressSignBrocastData(msgmap["ComSignBrocastData"])
+		if err == nil {
+		    _,_,_,txdata,err := CheckRaw(signbrocast.Raw)
+		    if err == nil {
+			sig,ok := txdata.(*TxDataSign)
+			if ok {
+			    pickdata := make([]*PickHashData,0)
+			    for _,vv := range signbrocast.PickHash {
+				pre := GetPreSignData(sig.PubKey,sig.GroupId,vv.PickKey)
+				if pre == nil {
+				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre-sign data fail", Err: fmt.Errorf("get pre-sign data fail.")}
+				    ch <- res
+				    return false
+				}
+
+				pd := &PickHashData{Hash:vv.Hash,Pre:pre}
+				pickdata = append(pickdata,pd)
+				DeletePreSignData(sig.PubKey,sig.GroupId,vv.PickKey)
+			    }
+
+			    signpick := &SignPickData{Raw:signbrocast.Raw,PickData:pickdata}
+			    errtmp := InitAcceptData2(signpick,workid,self.sender,ch)
+			    if errtmp == nil {
+				return true
+			    }
+			    
+			    return false
+			}
+		    }
+		}
 	    }
 
-	    return false
+	    //
+	    if msgmap["Type"] == "ComSignData" {
+		signpick,err := UnCompressSignData(msgmap["ComSignData"])
+		if err == nil {
+		    errtmp := InitAcceptData2(signpick,workid,self.sender,ch)
+		    if errtmp == nil {
+			return true
+		    }
+
+		    return false
+		}
+	    }
 	}
 
 	////////////////////////////

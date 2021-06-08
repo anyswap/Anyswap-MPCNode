@@ -300,7 +300,8 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 		if ok {
 			if ac.Status != "Pending" || ac.Rsv != "" {
 				common.Info("=====================AcceptSign,already in ldb=======================","key",key)
-				return "",nil
+				//return "",nil
+				return "sign accept data already in localdb",fmt.Errorf("sign accept data already in localdb")
 			}
 		}
 	}

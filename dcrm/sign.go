@@ -493,7 +493,7 @@ func Sign(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataSign",fmt.Errorf("check raw fail,it is not *TxDataSign")
     }
 
-    common.Debug("=====================Sign================","key",key,"from",from,"raw",raw)
+    common.Info("=====================Sign================","key",key,"from",from,"raw",raw)
 
     rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
     SignChan <- rsd
@@ -506,10 +506,10 @@ func HandleRpcSign() {
 	
 		dcrmpks, _ := hex.DecodeString(rsd.PubKey)
 		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-		common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit)
+		common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit)
 		if exsit {
 			_,ok := da.(*PubKeyData)
-			common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok)
+			common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok)
 			if ok {
 				pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
 				bret := false
@@ -553,21 +553,23 @@ func HandleRpcSign() {
 					continue
 				}
 
+				fmt.Printf("====================HandleRpcSign,send ComSignBrocastData to all nodes, msg = %v ===================\n",string(val))
 				SendMsgToDcrmGroup(string(val),rsd.GroupId)
 
 				////valtmp
 				m2 := make(map[string]string)
 				selfsend,err := CompressSignData(rsd.Raw,pickdata)
 				if err == nil {
-				    m["ComSignData"] = selfsend
+				    m2["ComSignData"] = selfsend
 				}
-				m["Type"] = "ComSignData"
+				m2["Type"] = "ComSignData"
 				val2,err := json.Marshal(m2)
 				if err != nil {
 					common.Info("=========================HandleRpcSign,compress hash data.======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
 					continue
 				}
 
+				fmt.Printf("====================HandleRpcSign,send ComSignData to all nodes, msg = %v ===================\n",string(val2))
 				SetUpMsgList(string(val2),cur_enode)
 			}
 		}
@@ -662,6 +664,10 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 
 		if !CheckAccept(vv.PubKey,vv.Mode,geter_acc) {
 			return
+		}
+
+		if key == "" || vv.Account == "" || vv.GroupId == "" {
+		    return
 		}
 
 		/////bug:no find worker

@@ -196,7 +196,7 @@ func NeedPreSign(pubkey string,gid string) (int,bool) {
 	return -1,false
     }
 
-    idx := make(chan int, 1)
+    idx := make(chan int, PrePubDataCount)
 
     var wg sync.WaitGroup
     for i:=0;i<PrePubDataCount;i++ {
@@ -207,14 +207,16 @@ func NeedPreSign(pubkey string,gid string) (int,bool) {
 	    key := &PreSignKey{PubKey:pubkey,Gid:gid,Index:index}
 	    s,err := key.MarshalJSON()
 	    if err != nil {
+		fmt.Printf("==================NeedPreSign,marshal pre-sign data err = %v ====================\n",err)
 		return
 	    }
 	    
 	    _, err = predb.Get([]byte(strings.ToLower(string(s))))
 	    if err != nil {
-		if len(idx) == 0 {
+		//if len(idx) == 0 {
+		    //fmt.Printf("==================NeedPreSign,write index = %v to idx channel ====================\n",index)
 		    idx <- index
-		}
+		//}
 	    }
 	}(i)
     }
@@ -361,7 +363,7 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	return nil
     }
     
-    data := make(chan *PreSignData, 1)
+    data := make(chan *PreSignData, PrePubDataCount)
     
     var wg sync.WaitGroup
     for i:=0;i<PrePubDataCount;i++ {
@@ -379,13 +381,13 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	    if err == nil {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
-		    if len(data) == 0 {
-			err := predb.Delete([]byte(strings.ToLower(string(s))))
-			if err == nil {
+		    //if len(data) == 0 {
+			//err := predb.Delete([]byte(strings.ToLower(string(s))))
+			//if err == nil {
 			    data <- psd
 			    return
-			}
-		    }
+			//}
+		    //}
 		}
 	    }
 	}(i)
@@ -397,60 +399,20 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
     }
 
     ret := <- data
+
+    key2 := &PreSignKey{PubKey:pubkey,Gid:gid,Index:ret.Index}
+    s,err := key2.MarshalJSON()
+    if err != nil {
+	return nil
+    }
+
+    err = predb.Delete([]byte(strings.ToLower(string(s))))
+    if err != nil {
+	return nil
+    }
+
     return ret
 }
-
-/////////
-/*type PreSignHashPair struct {
-	PubKey string
-	Gid string
-}
-
-func (PsHp *PreSignHashPair) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		PubKey string `json:"PubKey"`
-		Gid string `json:"Gid"`
-	}{
-		PubKey: PsHp.PubKey,
-		Gid: PsHp.Gid,
-	})
-}
-
-func (PsHp *PreSignHashPair) UnmarshalJSON(raw []byte) error {
-	var pshp struct {
-		PubKey string `json:"PubKey"`
-		Gid string `json:"Gid"`
-	}
-	if err := json.Unmarshal(raw, &pshp); err != nil {
-		return err
-	}
-
-	PsHp.PubKey = pshp.PubKey
-	PsHp.Gid = pshp.Gid
-	return nil
-}
-
-func GetPreSignHashPair(pub string) *PreSignHashPair {
-	data,exsit := PreSignHashPairMap.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		pshp := data.(*PreSignHashPair)
-		if pshp != nil {
-			return pshp
-		}
-	}
-
-	return nil
-}
-
-func PutPreSignHashPair(pub string,val *PreSignHashPair) {
-	if val == nil {
-		return
-	}
-
-	PreSignHashPairMap.WriteMap(strings.ToLower(pub),val)
-}
-*/
-////////
 
 //pub = hash256(pubkey + gid)
 
@@ -474,266 +436,6 @@ func PutPreSigal(pub string,val bool) {
 
 	PreSigal.WriteMap(strings.ToLower(pub),"false")
 }
-
-/*func GetTotalCount(pub string) int {
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-
-		if len(datas) == 0 {
-			return 0
-		} else {
-			if datas[0].Used == true {
-				return 0
-			}
-		}
-
-		return len(datas)
-	}
-
-	return 0
-}
-
-func GetTotalCount2(pub string) int {
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		if len(datas) == 0 {
-			return 0
-		} else {
-			if datas[0].Used == true {
-				return 0
-			}
-		}
-
-		return len(datas)
-	}
-
-	return 0
-}
-
-func NeedPreSignBak(pub string) bool {
-	if GetTotalCount2(pub) >= PrePubDataCount {
-		return false
-	}
-
-	return true
-}
-
-func PutPreSignBak(pub string,val *PrePubData) {
-	if val == nil {
-		return
-	}
-
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		datas = append(datas,val)
-		PreSignDataBak.WriteMap(strings.ToLower(pub),datas)
-		return
-	}
-
-	datas := make([]*PrePubData,0)
-	datas = append(datas,val)
-	PreSignDataBak.WriteMap(strings.ToLower(pub),datas)
-}
-
-func NeedPreSign(pub string) bool {
-	
-	if GetTotalCount(pub) >= PrePubDataCount {
-		return false
-	}
-
-	return true
-}
-
-func GetPrePubData(pub string,key string) *PrePubData {
-	if pub == "" || key == "" {
-		return nil
-	}
-
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		for _,v := range datas {
-			if v != nil && strings.EqualFold(v.Key,key) {
-				return v
-			}
-		}
-		return nil
-	}
-
-	return nil
-}
-
-func GetPrePubDataBak(pub string,key string) *PrePubData {
-	if pub == "" || key == "" {
-		return nil
-	}
-
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		for _,v := range datas {
-			if v != nil && strings.EqualFold(v.Key,key) {
-				return v
-			}
-		}
-		return nil
-	}
-
-	return nil
-}
-
-func PutPreSign(pub string,val *PrePubData) {
-	if val == nil {
-		return
-	}
-
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		////check same 
-		for _,v := range datas {
-			if v != nil && strings.EqualFold(v.Key,val.Key) {
-				common.Debug("========================PutPreSign,already have this key==================","pub",pub,"key",v.Key)
-				return
-			}
-		}
-		///
-
-		datas = append(datas,val)
-		PreSignData.WriteMap(strings.ToLower(pub),datas)
-		return
-	}
-
-	datas := make([]*PrePubData,0)
-	datas = append(datas,val)
-	PreSignData.WriteMap(strings.ToLower(pub),datas)
-}
-
-func DeletePrePubDataBak(pub string,key string) {
-	if pub == "" || key == "" {
-		return
-	}
-
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub))
-	if !exsit {
-		return
-	}
-
-	tmp := make([]*PrePubData,0)
-	datas := data.([]*PrePubData)
-	for _,v := range datas {
-		if strings.EqualFold(v.Key,key) {
-			continue
-		}
-
-		tmp = append(tmp,v)
-	}
-
-	PreSignDataBak.WriteMap(strings.ToLower(pub),tmp)
-}
-
-func DeletePrePubData(pub string,key string) {
-	if pub == "" || key == "" {
-		return
-	}
-
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
-	if !exsit {
-		return
-	}
-
-	tmp := make([]*PrePubData,0)
-	datas := data.([]*PrePubData)
-	for _,v := range datas {
-		if strings.EqualFold(v.Key,key) {
-			continue
-		}
-
-		tmp = append(tmp,v)
-	}
-
-	PreSignData.WriteMap(strings.ToLower(pub),tmp)
-}
-
-func PickPrePubData(pub string) string {
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		key := ""
-		var val *PrePubData
-		datas := data.([]*PrePubData)
-		for _,v := range datas {
-			if v != nil && v.Used == false {
-				key = v.Key
-				val = v
-				break
-			}
-		}
-
-		if key != "" {
-			tmp := make([]*PrePubData,0)
-			for _,v := range datas {
-				if strings.EqualFold(v.Key,key) {
-					continue
-				}
-
-				tmp = append(tmp,v)
-			}
-
-			PreSignData.WriteMap(strings.ToLower(pub),tmp)
-			PutPreSignBak(pub,val)
-			return key
-		}
-	}
-
-	return ""
-}
-
-func PickPrePubDataByKey(pub string,key string) {
-	if pub == "" || key == "" {
-		return
-	}
-	
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if !exsit {
-		return
-	}
-
-	var val *PrePubData
-	tmp := make([]*PrePubData,0)
-	datas := data.([]*PrePubData)
-	for _,v := range datas {
-		if v != nil && strings.EqualFold(v.Key,key) {
-			val = v
-			break
-		}
-	}
-
-	for _,v := range datas {
-		if strings.EqualFold(v.Key,key) {
-			continue
-		}
-
-		tmp = append(tmp,v)
-	}
-
-	PreSignData.WriteMap(strings.ToLower(pub),tmp)
-	PutPreSignBak(pub,val)
-}
-
-func SetPrePubDataUseStatus(pub string,key string,used bool ) {
-
-	if !used {
-		val := GetPrePubDataBak(pub,key)
-		if val != nil {
-			//PutPreSign(pub,val) //don't put into queue again??
-			DeletePrePubDataBak(pub,key)
-		}
-	}
-}
-*/
 
 //-------------------------------------------
 type PickHashData struct {
@@ -985,223 +687,6 @@ func GetPreDbDir() string {
 	return dir
 }
 
-/*func UpdatePrePubKeyDataForDb() {
-    for {
-	kd := <-PrePubKeyDataChan
-	if predb != nil {
-	    if !kd.Del {
-		val,err := Decode2(kd.Data,"PrePubData")
-		if err != nil {
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		   continue 
-		}
-
-		da, err := predb.Get([]byte(kd.Key))
-		if err != nil {
-		    datas := make([]*PrePubData,0)
-		    datas = append(datas,val.(*PrePubData))
-		    es,err := EncodePreSignDataValue(datas)
-		    if err != nil {
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-		    err = predb.Put(kd.Key, []byte(es))
-		    common.Info("=====================UpdatePrePubKeyDataForDb,no key,put pre-sign data into db========================","pick key",val.(*PrePubData).Key,"pub",string(kd.Key),"err",err)
-		    if err != nil {
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-
-		    ///////////check all sign nodes pre-sign data status
-		    psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:(val.(*PrePubData)).Gid,ThresHold:kd.ThresHold}
-		    m := make(map[string]string)
-		    psdsjson,err := psds.MarshalJSON()
-		    if err == nil {
-			m["PreSignDataStatus"] = string(psdsjson) 
-		    }
-		    m["Type"] = "PreSignDataStatus"
-		    psdstmp,err := json.Marshal(m)
-		    if err != nil {
-			predb.Delete(kd.Key)
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-		
-		    rch := make(chan interface{}, 1)
-		    SetUpMsgList3(string(psdstmp),cur_enode,rch)
-		    _, _,cherr := GetChannelValue(waitall,rch)
-		    if cherr != nil {
-			predb.Delete(kd.Key)
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-		    ///////////
-		    
-		    //PutPreSign(string(kd.Key),val.(*PrePubData))
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		    continue
-		}
-
-		ps,err := DecodePreSignDataValue(string(da))
-		if err != nil {
-		    datas := make([]*PrePubData,0)
-		    datas = append(datas,val.(*PrePubData))
-		    es,err := EncodePreSignDataValue(datas)
-		    if err != nil {
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-		    err = predb.Put(kd.Key, []byte(es))
-		    common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db========================","pick key",val.(*PrePubData).Key,"pub",string(kd.Key),"err",err)
-		    if err != nil {
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-
-		    ///////////check all sign nodes pre-sign data status
-		    psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:(val.(*PrePubData)).Gid,ThresHold:kd.ThresHold}
-		    m := make(map[string]string)
-		    psdsjson,err := psds.MarshalJSON()
-		    if err == nil {
-			m["PreSignDataStatus"] = string(psdsjson) 
-		    }
-		    m["Type"] = "PreSignDataStatus"
-		    psdstmp,err := json.Marshal(m)
-		    if err != nil {
-			predb.Delete(kd.Key)
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-		
-		    rch := make(chan interface{}, 1)
-		    SetUpMsgList3(string(psdstmp),cur_enode,rch)
-		    _, _,cherr := GetChannelValue(waitall,rch)
-		    if cherr != nil {
-			predb.Delete(kd.Key)
-			time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-			continue
-		    }
-		    ///////////
-		    
-		    //PutPreSign(string(kd.Key),val.(*PrePubData))
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		    continue
-		}
-
-		ps.Data = append(ps.Data,val.(*PrePubData))
-		es,err := EncodePreSignDataValue(ps.Data)
-		if err != nil {
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		    continue
-		}
-		err = predb.Put(kd.Key, []byte(es))
-		common.Info("=====================UpdatePrePubKeyDataForDb,put pre-sign data into db========================","pick key",val.(*PrePubData).Key,"pub",string(kd.Key),"err",err)
-		if err != nil {
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		    continue
-		}
-		
-		///////////check all sign nodes pre-sign data status
-		psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:(val.(*PrePubData)).Gid,ThresHold:kd.ThresHold}
-		m := make(map[string]string)
-		psdsjson,err := psds.MarshalJSON()
-		if err == nil {
-		    m["PreSignDataStatus"] = string(psdsjson) 
-		}
-		m["Type"] = "PreSignDataStatus"
-		psdstmp,err := json.Marshal(m)
-		if err != nil {
-		    predb.Put(kd.Key, da)
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		    continue
-		}
-	    
-		rch := make(chan interface{}, 1)
-		SetUpMsgList3(string(psdstmp),cur_enode,rch)
-		_, _,cherr := GetChannelValue(waitall,rch)
-		if cherr != nil {
-		    predb.Put(kd.Key, da)
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		    continue
-		}
-		///////////
-		    
-		//PutPreSign(string(kd.Key),val.(*PrePubData))
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		continue
-	    }
-
-	    ////////////
-	    da, err := predb.Get([]byte(kd.Key))
-	    if err != nil {
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		continue	
-	    }
-	    ps,err := DecodePreSignDataValue(string(da))
-	    if err != nil {
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		continue
-	    }
-
-	    tmp := make([]*PrePubData,0)
-	    for _,v := range ps.Data {
-		    if v != nil && strings.EqualFold(v.Key,kd.Data) {
-			   continue 
-		    }
-		    
-		    tmp = append(tmp,v)
-	    }
-	    
-	    es,err := EncodePreSignDataValue(tmp)
-	    if err != nil {
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		continue
-	    }
-	    err = predb.Put(kd.Key, []byte(es))
-	    common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db ===============","key",string(kd.Key),"pick key",kd.Data,"err",err)
-	    if err != nil {
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		continue
-	    }
-
-	    ///////////check all sign nodes pre-sign data status
-	    psds := &PreSignDataStatus{MsgPrex:string(kd.Key),Status:"true",Gid:((ps.Data)[0]).Gid,ThresHold:kd.ThresHold}
-	    m := make(map[string]string)
-	    psdsjson,err := psds.MarshalJSON()
-	    if err == nil {
-		m["PreSignDataStatus"] = string(psdsjson) 
-	    }
-	    m["Type"] = "PreSignDataStatus"
-	    val,err := json.Marshal(m)
-	    if err != nil {
-		predb.Put(kd.Key, da)
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		continue
-	    }
-	
-	    rch := make(chan interface{}, 1)
-	    SetUpMsgList3(string(val),cur_enode,rch)
-	    _, _,cherr := GetChannelValue(waitall,rch)
-	    if cherr != nil {
-		predb.Put(kd.Key, da)
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		continue
-	    }
-	    ///////////
-		
-	    //SetPrePubDataUseStatus(string(kd.Key),kd.Data,false)
-	    common.Info("=================UpdatePrePubKeyDataForDb, delete pre-sign data from db success ===============","pub",string(kd.Key),"pick key",kd.Data)
-	    /////////////
-
-	} else {
-	    common.Info("=================UpdatePrePubKeyDataForDb, save to db fail ,db is nil ===============","pub",string(kd.Key))
-	}
-
-	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-    }
-}
-*/
-
 type PreSignDataStatus struct {
     MsgPrex string
     Status string
@@ -1259,12 +744,14 @@ func CheckAllSignNodesPreSignDataStatus(msgprex string, ch chan interface{},w *R
     _, tip, cherr := GetChannelValue(ch_t, w.bcheckpresigndatastatus)
 
     if cherr != nil {
+	fmt.Printf("==========================CheckAllSignNodesPreSignDataStatus, cherr = %v ================================\n",cherr)
 	res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("check pre-sign data status fail.")}
 	ch <- res
 	return false
     }
 
-    res := RpcDcrmRes{Ret: "", Tip: "", Err: nil}
+    fmt.Printf("==========================CheckAllSignNodesPreSignDataStatus, success.================================\n")
+    res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
     ch <- res
     return true
 }

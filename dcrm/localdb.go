@@ -177,7 +177,7 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 
 	da, err := db.Get([]byte(key))
 	if err != nil {
-	    common.Info("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
+	    common.Debug("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
 
 	    /*dir := GetDbDir()
 	    ////////
@@ -456,7 +456,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 
     datmp, exsit := LdbPubKeyData.ReadMap(key)
     if !exsit {
-	    common.Info("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
+	    common.Debug("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
 	    common.Info("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
@@ -465,7 +465,7 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 
 	ss, err := UnCompress(string(da))
 	if err != nil {
-	    common.Info("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
+	    common.Debug("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
 	    return true,da
 	}
 

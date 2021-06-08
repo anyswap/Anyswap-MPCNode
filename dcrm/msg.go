@@ -304,7 +304,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Info("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
+	    common.Debug("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -567,7 +567,19 @@ func Call(msg interface{}, enode string) {
 	if err == nil {
 		s = raw
 	}
+	msgdata, errdec := DecryptMsg(s) //for SendMsgToPeer
+	if errdec == nil {
+		s = msgdata
+	}
 	////////
+	mm := strings.Split(s, common.Sep)
+	if len(mm) >= 2 {
+		//msg:  key-enode:C1:X1:X2....:Xn
+		//msg:  key-enode1:NoReciv:enode2:C1
+		DisMsg(s)
+		return
+	}
+	
 	SetUpMsgList(s, enode)
 }
 
@@ -635,6 +647,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	msgmap := make(map[string]string)
 	err := json.Unmarshal([]byte(res), &msgmap)
+	fmt.Printf("===========================RecvMsg.Run,res = %v, err = %v ============================\n",res,err)
 	if err == nil {
 
 	    //presign
@@ -648,6 +661,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    gcnt, _ := GetGroup(w.groupid)
 		    w.NodeCnt = gcnt //TODO
 		    w.ThresHold = gcnt
+		    common.Info("=============== RecvMsg.Run,xxxxxxxxxxxxx ===================","w.ThresHold ",gcnt)
+
 		    //bug
 		    //if w.ThresHold == 0 {
 		//	th,_ := strconv.Atoi(nums[0])
@@ -742,7 +757,9 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    err = PutPreSignData(ps.Pub,ps.Gid,ps.Index,pre)
 		    if err == nil {
 			//check all sign nodes pre-sign data status
-			psds := &PreSignDataStatus{MsgPrex:w.sid,Status:"true",Gid:w.groupid,ThresHold:w.ThresHold}
+			//tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+			/*prex := Keccak256Hash(([]byte(strings.ToLower(w.sid)))).Hex()
+			psds := &PreSignDataStatus{MsgPrex:prex,Status:"true",Gid:w.groupid,ThresHold:w.ThresHold}
 			m := make(map[string]string)
 			psdsjson,err := psds.MarshalJSON()
 			if err == nil {
@@ -766,6 +783,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    ch <- res
 			    return false
 			}
+
+			fmt.Printf("===============================PreSign at RecvMsg.Run,presign success.======================\n")*/
 			///////////
 		    } else {
 			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
@@ -773,6 +792,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return false
 		    }
 
+		    fmt.Printf("===============================PreSign at RecvMsg.Run,presign success.222222222222222======================\n")
 		    res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 		    ch <- res
 		    return true
@@ -859,12 +879,19 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		psds := &PreSignDataStatus{}
 		if err = psds.UnmarshalJSON([]byte(msgmap["PreSignDataStatus"]));err == nil {
 
+		    //w, err := FindWorker(psds.MsgPrex)
+		    //if err != nil {
+		//	res2 := RpcDcrmRes{Ret: "", Tip: "get worker id fail", Err: fmt.Errorf("get worker id fail")}
+		//	ch <- res2
+		//	return false
+		//    }
+
 		    w := workers[workid]
 		    w.sid = psds.MsgPrex
 		    w.groupid = psds.Gid
-		    
 		    w.ThresHold = psds.ThresHold
 
+		    fmt.Printf("==============================RecvMsg.Run,wait pre-sign data status.============================\n")
 		    if CheckAllSignNodesPreSignDataStatus(psds.MsgPrex,ch,w) == false {
 			return false
 		    }
@@ -876,6 +903,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    //
 	    if msgmap["Type"] == "ComSignBrocastData" {
 		signbrocast,err := UnCompressSignBrocastData(msgmap["ComSignBrocastData"])
+		fmt.Printf("==============================RecvMsg.Run, compress sign brocast data err = %v.============================\n",err)
 		if err == nil {
 		    _,_,_,txdata,err := CheckRaw(signbrocast.Raw)
 		    if err == nil {
@@ -910,6 +938,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    //
 	    if msgmap["Type"] == "ComSignData" {
 		signpick,err := UnCompressSignData(msgmap["ComSignData"])
+		fmt.Printf("==============================RecvMsg.Run, uncompress sign data err = %v.============================\n",err)
 		if err == nil {
 		    errtmp := InitAcceptData2(signpick,workid,self.sender,ch)
 		    if errtmp == nil {
@@ -3137,6 +3166,7 @@ func DisMsg(msg string) {
 		}
 	case "CHECKPRESIGNDATASTATUS":
 		///bug
+		fmt.Printf("======================DisMsg, threshold = %v, len of w.msg_checkpresigndatastatus = %v ====================\n",w.ThresHold,w.msg_checkpresigndatastatus.Len())
 		if w.msg_checkpresigndatastatus.Len() >= w.ThresHold {
 			return
 		}
@@ -3146,6 +3176,7 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_checkpresigndatastatus.PushBack(msg)
+		fmt.Printf("======================DisMsg, push back msg. threshold = %v, len of w.msg_checkpresigndatastatus = %v ====================\n",w.ThresHold,w.msg_checkpresigndatastatus.Len())
 		if w.msg_checkpresigndatastatus.Len() == w.ThresHold {
 			w.bcheckpresigndatastatus <- true
 		}

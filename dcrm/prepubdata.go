@@ -40,7 +40,7 @@ var (
 type PreSign struct {
 	Pub string
 	Gid string
-	Nonce string
+	Nonce string // == data pocket KEY
 	Index int //pre-sign data index
 }
 
@@ -148,6 +148,7 @@ func (psd *PreSignData) UnmarshalJSON(raw []byte) error {
 
 //---------------------------------------
 //presignkey
+// (k,v) in db,  k == PreSignKey.MarshalJSON,  v == PreSignData.MarshalJSON
 type PreSignKey struct {
 	PubKey string
 	Gid string
@@ -211,7 +212,7 @@ func NeedPreSign(pubkey string,gid string) (int,bool) {
 		return
 	    }
 	    
-	    _, err = predb.Get([]byte(strings.ToLower(string(s))))
+	    _, err = predb.Get(s)
 	    if err != nil {
 		//if len(idx) == 0 {
 		    //fmt.Printf("==================NeedPreSign,write index = %v to idx channel ====================\n",index)
@@ -249,7 +250,7 @@ func GetTotalCount(pubkey string,gid string) int {
 		return
 	    }
 	    
-	    _, err = predb.Get([]byte(strings.ToLower(string(s))))
+	    _, err = predb.Get(s)
 	    if err == nil {
 		count++
 	    }
@@ -271,14 +272,14 @@ func PutPreSignData(pubkey string,gid string,index int,val *PreSignData) error {
 	return err
     }
     
-    _, err = predb.Get([]byte(strings.ToLower(string(s))))
+    _, err = predb.Get(s)
     if err != nil {
 	value,err := val.MarshalJSON()
 	if err != nil {
 	    return err
 	}
 
-	predb.Put([]byte(strings.ToLower(string(s))), value)
+	predb.Put(s, value)
 	return nil
     }
 
@@ -304,7 +305,7 @@ func GetPreSignData(pubkey string,gid string,key string) *PreSignData {
 		return
 	    }
 	    
-	    da, err := predb.Get([]byte(strings.ToLower(string(s))))
+	    da, err := predb.Get(s)
 	    if err == nil {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
@@ -343,12 +344,12 @@ func DeletePreSignData(pubkey string,gid string,key string) {
 		return
 	    }
 	    
-	    da, err := predb.Get([]byte(strings.ToLower(string(s))))
+	    da, err := predb.Get(s)
 	    if err == nil {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
 		    if strings.EqualFold(psd.Key,key) {
-			predb.Delete([]byte(strings.ToLower(string(s))))
+			predb.Delete(s)
 			return
 		    }
 		}
@@ -377,12 +378,12 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 		return
 	    }
 	    
-	    da, err := predb.Get([]byte(strings.ToLower(string(s))))
+	    da, err := predb.Get(s)
 	    if err == nil {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
 		    //if len(data) == 0 {
-			//err := predb.Delete([]byte(strings.ToLower(string(s))))
+			//err := predb.Delete(s)
 			//if err == nil {
 			    data <- psd
 			    return
@@ -400,13 +401,14 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 
     ret := <- data
 
+    //we also remove it from the local db.
     key2 := &PreSignKey{PubKey:pubkey,Gid:gid,Index:ret.Index}
     s,err := key2.MarshalJSON()
     if err != nil {
 	return nil
     }
 
-    err = predb.Delete([]byte(strings.ToLower(string(s))))
+    err = predb.Delete(s)
     if err != nil {
 	return nil
     }
@@ -415,7 +417,6 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 }
 
 //pub = hash256(pubkey + gid)
-
 func GetPreSigal(pub string) bool {
 	data,exsit := PreSigal.ReadMap(strings.ToLower(pub)) 
 	if exsit {
@@ -516,6 +517,8 @@ func (Phk *PickHashKey) UnmarshalJSON(raw []byte) error {
 }
 
 //--------------------------------------------
+
+//the data brocast to all nodes in group,include sign data and Pick Key Of PreSignData.
 type SignBrocastData struct {
 	Raw string
 	PickHash []*PickHashKey
@@ -598,6 +601,7 @@ func UnCompressSignBrocastData(data string) (*SignBrocastData,error) {
 
 //-------------------------------------------------
 
+//the data prepare for signing,include sign data and PreSignData 
 type SignPickData struct {
 	Raw string
 	PickData []*PickHashData
@@ -680,13 +684,17 @@ func UnCompressSignData(data string) (*SignPickData,error) {
 
 //---------------------------------------------------
 
+//the path save the pre-sign data
 func GetPreDbDir() string {
 	dir := common.DefaultDataDir()
 	//dir += "/dcrmdata/dcrmpredb" + cur_enode  //old path
-	dir += "/smpcdata/presigndb" + cur_enode //new path
+	dir += "/smpcdata/pre-sign-db" + cur_enode //new path
 	return dir
 }
 
+//----------------------------------------------------
+
+//the data broacast to all nodes in group for checking the status of writing pre-sign data to local db
 type PreSignDataStatus struct {
     MsgPrex string
     Status string
@@ -726,6 +734,8 @@ func (psds *PreSignDataStatus) UnmarshalJSON(raw []byte) error {
 	return nil
 }
 
+//--------------------------------------------------------------------------
+
 func CheckAllSignNodesPreSignDataStatus(msgprex string, ch chan interface{},w *RPCReqWorker) bool {
     if msgprex == "" || w == nil {
 	res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
@@ -756,11 +766,16 @@ func CheckAllSignNodesPreSignDataStatus(msgprex string, ch chan interface{},w *R
     return true
 }
 
+//--------------------------------------------------------------------------------
+
+//the data for pre-generating pre-sign data pockets
 type TxDataPreSignData struct {
     TxType string
     PubKey string
     SubGid []string
 }
+
+//-------------------------------------------------------------------------------------
 
 func PreGenSignData(raw string) (string, error) {
     common.Debug("=====================PreGenSignData call CheckRaw ================","raw",raw)
@@ -826,4 +841,42 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	}(gid)
     }
 }
+
+func AutoPreGenSignData() {
+    if predb == nil {
+	return
+    }
+
+    var allpresign sync.Map
+
+    iter := predb.NewIterator()
+    for iter.Next() {
+
+	key := iter.Key()
+	if len(key) == 0 {
+	    continue
+	}
+
+	go func(kd []byte) {
+	    psk := &PreSignKey{}
+	    if err := psk.UnmarshalJSON(kd);err != nil {
+	       return 
+	    }
+
+	    pub := Keccak256Hash([]byte(strings.ToLower(psk.PubKey + ":" + psk.Gid))).Hex()
+	    if _, ok := allpresign.Load(strings.ToLower(pub)); ok {
+		return	
+	    }
+	    allpresign.Store(strings.ToLower(pub), true)
+
+	    subgid := make([]string,0)
+	    subgid = append(subgid,psk.Gid)
+	    pre := &TxDataPreSignData{TxType:"PRESIGNDATA",PubKey:psk.PubKey,SubGid:subgid}
+	    ExcutePreSignData(pre)
+	}(key)
+    }
+    
+    iter.Release()
+}
+
 

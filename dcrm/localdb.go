@@ -136,39 +136,6 @@ func GetSkU1FromLocalDb(key string) []byte {
 
 func GetPubKeyDataValueFromDb(key string) []byte {
 	lock.Lock()
-	/*if db == nil {
-	    dir := GetDbDir()
-	    ////////
-	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	    //bug
-	    if err != nil {
-		    for i := 0; i < 100; i++ {
-			    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			    if err == nil {
-				    break
-			    }
-
-			    time.Sleep(time.Duration(1000000))
-		    }
-	    }
-	    if err != nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get, ===================","err",err,"dir",dir,"key",key)
-		lock.Unlock()
-		return nil
-	    } else {
-		db = dbtmp
-		da, err := db.Get([]byte(key))
-		if err != nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get success,but get data fail ===================","err",err,"dir",dir,"key",key)
-		    lock.Unlock()
-		    return nil
-		}
-
-		lock.Unlock()
-		return da
-	    }
-	}
-	*/
 
 	if db == nil {
 	    lock.Unlock()
@@ -178,35 +145,6 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 	da, err := db.Get([]byte(key))
 	if err != nil {
 	    common.Debug("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
-
-	    /*dir := GetDbDir()
-	    ////////
-	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	    if err != nil {
-		    for i := 0; i < 100; i++ {
-			    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			    if err == nil {
-				    break
-			    }
-
-			    time.Sleep(time.Duration(1000000))
-		    }
-	    }
-	    if err != nil {
-		lock.Unlock()
-		return nil
-	    } else {
-		db = dbtmp
-		da, err := db.Get([]byte(key))
-		if err != nil {
-		    lock.Unlock()
-		    return nil
-		}
-
-		lock.Unlock()
-		return da
-	    }*/
-
 	    lock.Unlock()
 	    return nil
 	}
@@ -227,12 +165,12 @@ func SavePubKeyDataToDb() {
 		    if kd.Data == "CLEAN" {
 			err := db.Delete(kd.Key)
 			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
+			    common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
 			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
+			    common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
 			    dir := GetDbDir()
 			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -252,7 +190,7 @@ func SavePubKeyDataToDb() {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
+				    common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
 				}
 			    }
 
@@ -562,30 +500,6 @@ func GetDbDir() string {
 func GetSkU1Dir() string {
 	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/sk" + cur_enode
-	return dir
-}
-
-func GetAllAccountsDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/allaccounts" + cur_enode
-	return dir
-}
-
-func GetAcceptLockOutDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/dcrmdb/acceptlockout" + cur_enode
-	return dir
-}
-
-func GetAcceptReqAddrDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/dcrmdb/acceptreqaddr" + cur_enode
-	return dir
-}
-
-func GetGAccsDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/dcrmdb/gaccs" + cur_enode
 	return dir
 }
 

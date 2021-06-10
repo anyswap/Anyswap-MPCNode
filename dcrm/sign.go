@@ -118,7 +118,7 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 			w.groupid = sig.GroupId 
 			w.limitnum = sig.ThresHold
 			gcnt, _ := GetGroup(w.groupid)
-			common.Info("=============== InitAcceptData2, ===================","gcnt ",gcnt,"key ",key,"gid",w.groupid)
+			//common.Info("=============== InitAcceptData2, ===================","gcnt ",gcnt,"key ",key,"gid",w.groupid)
 			w.NodeCnt = gcnt
 			w.ThresHold = w.NodeCnt
 
@@ -130,12 +130,12 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 			    }
 
 			    w.ThresHold = gcnt
-			    common.Info("=============== InitAcceptData2 ===================","old w.ThresHold ",w.ThresHold,"key ",key,"gid",w.groupid)
+			    //common.Info("=============== InitAcceptData2 ===================","old w.ThresHold ",w.ThresHold,"key ",key,"gid",w.groupid)
 			    //bug
 			    if w.ThresHold == 0 {
 				th,_ := strconv.Atoi(nums[0])
 				w.ThresHold = th
-				common.Info("=============== InitAcceptData2 ===================","new w.ThresHold ",w.ThresHold,"key ",key,"gid",w.groupid)
+				//common.Info("=============== InitAcceptData2 ===================","new w.ThresHold ",w.ThresHold,"key ",key,"gid",w.groupid)
 			    }
 			}
 
@@ -223,7 +223,7 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 
 				//common.Info("===============InitAcceptData2, call DisAcceptMsg begin===================","key ",key)
 				DisAcceptMsg(sbd.Raw,workid)
-				common.Debug("===============InitAcceptData2, call DisAcceptMsg finish===================","key ",key)
+				//common.Debug("===============InitAcceptData2, call DisAcceptMsg finish===================","key ",key)
 				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_SIGN)
 				if reqaddrkey == "" {
 
@@ -382,7 +382,7 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 					iter := w.msg_sendsignres.Front()
 					for iter != nil {
 						mdss := iter.Value.(string)
-						common.Info("========================InitAcceptData2,get sign result==================","sign result",mdss)
+						//common.Info("========================InitAcceptData2,get sign result==================","sign result",mdss)
 						ms := strings.Split(mdss, common.Sep)
 						if strings.EqualFold(ms[2], "Success") {
 							reply2 = "true"
@@ -506,10 +506,10 @@ func HandleRpcSign() {
 	
 		dcrmpks, _ := hex.DecodeString(rsd.PubKey)
 		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-		common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit)
+		common.Info("=========================HandleRpcSign======================","Pubkey",rsd.PubKey,"key",rsd.Key,"pubkey data exsit",exsit)
 		if exsit {
 			_,ok := da.(*PubKeyData)
-			common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok)
+			common.Info("=========================HandleRpcSign======================","Pubkey",rsd.PubKey,"key",rsd.Key,"pubkey data exsit",exsit,"ok",ok)
 			if ok {
 				pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
 				bret := false

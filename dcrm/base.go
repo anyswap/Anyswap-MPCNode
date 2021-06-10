@@ -148,7 +148,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreDbDir())
 			}
 
-			//time.Sleep(time.Duration(1000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -165,34 +164,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	}
 
 	//////////////////
-	/*pairdbtmp, err := ethdb.NewLDBDatabase(GetPreSignHashPairDbDir(), cache, handles)
-	//bug
-	if err != nil {
-	    common.Info("======================dcrm.Start,open pairdb fail======================","err",err,"dir",GetPreSignHashPairDbDir())
-		for i := 0; i < 80; i++ {
-			pairdbtmp, err = ethdb.NewLDBDatabase(GetPreSignHashPairDbDir(), cache, handles)
-			if err == nil && pairdbtmp != nil {
-				break
-			} else {
-			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreSignHashPairDbDir())
-			}
-
-			time.Sleep(time.Duration(2) * time.Second)
-		}
-	}
-	if err != nil {
-	    presignhashpairdb = nil
-	} else {
-	    presignhashpairdb = pairdbtmp
-	}
-	   
-	if presignhashpairdb == nil {
-	    common.Info("======================dcrm.Start,open presignhashpairdb fail and gdcrm panic======================")
-	    os.Exit(1)
-	    return
-	}*/
-
-	//////////////////
 
 	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
 	
@@ -202,13 +173,9 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
 	
-	//GetAllPreSignHashPairFromDb()
-	//go UpdatePreSignHashPairForDb()
-	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
-	//GetAllPreSignFromDb()
+	AutoPreGenSignData()
 
-	//go UpdatePrePubKeyDataForDb()
 	go HandleRpcSign()
 
 	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
@@ -422,7 +389,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-//	common.Debug("================CheckRaw, it is reqaddr tx=================","raw ",raw,"key ",key,"req ",&req)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
     }
     
@@ -511,7 +477,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
 	    }
 
-//	    common.Debug("================CheckRaw=============","cur_enode ",cur_enode,"from ",from.Hex(),"ac.Sigs ",ac.Sigs)
 	    if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
 		return "","","",nil,fmt.Errorf("invalid lockout account")
 	    }
@@ -601,7 +566,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + get_sign_hash(hash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
-//	common.Debug("=================CheckRaw, it is sign tx==================","raw ",raw,"key ",key,"sig ",&sig)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
@@ -627,7 +591,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("invalid pubkey")
 	}
 
-//	common.Debug("=================CheckRaw, it is presigndata tx==================","raw ",raw,"pre ",&pre)
 	return "",from.Hex(),fmt.Sprintf("%v", Nonce),&pre,nil
     }
 
@@ -800,7 +763,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
 	}
 
-//	common.Debug("=================CheckRaw, it is acceptreshare tx=====================","raw ",raw,"key ",acceptrh.Key,"acceptrh ",&acceptrh)
 	return "",from.Hex(),"",&acceptrh,nil
     }
 
@@ -991,13 +953,6 @@ func GetAddr(pubkey string,cointype string) (string,string,error) {
 func Encode2(obj interface{}) (string, error) {
     switch ch := obj.(type) {
 	case *SendMsg:
-		/*ch := obj.(*SendMsg)
-		ret,err := json.Marshal(ch)
-		if err != nil {
-		    return "",err
-		}
-		return string(ret),nil*/
-
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
 
@@ -1033,16 +988,6 @@ func Encode2(obj interface{}) (string, error) {
 		    return "",err
 		}
 		return string(ret),nil
-		/*ch := obj.(*AcceptReqAddrData)
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil*/
 	case *AcceptSignData:
 
 		var buff bytes.Buffer
@@ -1071,14 +1016,6 @@ func Encode2(obj interface{}) (string, error) {
 func Decode2(s string, datatype string) (interface{}, error) {
 
 	if datatype == "SendMsg" {
-		/*var m SendMsg
-		err := json.Unmarshal([]byte(s), &m)
-		if err != nil {
-		    fmt.Println("================Decode2,json Unmarshal err =%v===================",err)
-		    return nil,err
-		}
-
-		return &m,nil*/
 		var data bytes.Buffer
 		data.Write([]byte(s))
 
@@ -1131,18 +1068,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		}
 
 		return &m,nil
-		/*var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res AcceptReqAddrData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil*/
 	}
 
 	if datatype == "AcceptSignData" {

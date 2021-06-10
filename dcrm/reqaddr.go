@@ -1158,7 +1158,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 }
 
 func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeout int) bool {
-	return false //tmp code
+	return false // TODO
 
     /*w := workers[wid]
     if w == nil {

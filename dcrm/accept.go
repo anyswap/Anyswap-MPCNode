@@ -460,13 +460,13 @@ func SaveAcceptSignData(ac *AcceptSignData) error {
 
 	alos, err := Encode2(ac)
 	if err != nil {
-	    common.Debug("========================SaveAcceptSignData======================","enode err",err,"key",key)
+	    common.Info("========================SaveAcceptSignData======================","enode err",err,"key",key)
 	    return err
 	}
 
 	ss, err := Compress([]byte(alos))
 	if err != nil {
-		common.Debug("========================SaveAcceptSignData======================","compress err",err,"key",key)
+		common.Info("========================SaveAcceptSignData======================","compress err",err,"key",key)
 		return err
 	}
 

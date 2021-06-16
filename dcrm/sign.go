@@ -88,7 +88,7 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
     key,from,nonce,txdata,err := CheckRaw(sbd.Raw)
     common.Info("=====================InitAcceptData2,get result from call CheckRaw ================","key",key,"from",from,"err",err,"raw",sbd.Raw,"tx data",txdata)
     if err != nil {
-	common.Debug("===============InitAcceptData2,check raw===================","err ",err,"key",key,"from",from,"raw",sbd.Raw)
+	common.Info("===============InitAcceptData2,check raw===================","err ",err,"key",key,"from",from,"raw",sbd.Raw)
 	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 	ch <- res
 	return err
@@ -96,7 +96,6 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
     
     sig,ok := txdata.(*TxDataSign)
     if ok {
-
 	common.Debug("===============InitAcceptData2, it is sign txdata and check sign raw success==================","key ",key,"from ",from,"nonce ",nonce)
 	exsit,_ := GetValueFromPubKeyData(key)
 	if !exsit {
@@ -443,11 +442,12 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 
 func RpcAcceptSign(raw string) (string, string, error) {
     common.Debug("=====================RpcAcceptSign call CheckRaw ================","raw",raw)
-    _,from,_,txdata,err := CheckRaw(raw)
+    key,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	common.Info("=====================RpcAcceptSign,call CheckRaw finish================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
+    common.Info("=====================RpcAcceptSign call CheckRaw finish================","key",key,"from",from,"txdata",txdata,"raw",raw)
 
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if !ok {
@@ -458,7 +458,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
-	    common.Info("=====================RpcAcceptSign,call CheckRaw finish ================","key",acceptsig.Key,"from",from,"accept",acceptsig.Accept,"raw",raw)
+	    common.Debug("=====================RpcAcceptSign,call CheckRaw finish ================","key",acceptsig.Key,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil

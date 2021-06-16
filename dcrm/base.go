@@ -325,12 +325,14 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
     if err := rlp.DecodeBytes(raws, tx); err != nil {
-	    return "","","",nil,err
+	fmt.Printf("====================CheckRaw,decode fail,err = %v,raw = %v===============\n",err,raw)
+	return "","","",nil,err
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
     from, err := types.Sender(signer, tx)
     if err != nil {
+	fmt.Printf("====================CheckRaw,sender fail,err = %v,raw = %v===============\n",err,raw)
 	return "", "","",nil,err
     }
 
@@ -718,6 +720,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	exsit,da := GetValueFromPubKeyData(acceptsig.Key)
 	if !exsit {
+	    fmt.Printf("====================CheckRaw,get data from db fail, key = %v===============\n",acceptsig.Key)
 	    return "","","",nil,fmt.Errorf("get accept result from db fail")
 	}
 

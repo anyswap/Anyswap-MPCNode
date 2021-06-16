@@ -448,11 +448,22 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	return "Failure",err.Error(),err
     }
     common.Info("=====================RpcAcceptSign call CheckRaw finish================","key",key,"from",from,"txdata",txdata,"raw",raw)
+    //check accept data first
+    if key == "" || from == "" || txdata == nil {
+	return "Failure","check accept raw data fail",fmt.Errorf("check accept raw data fail")
+    }
+    //
 
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if !ok {
 	return "Failure","check raw fail,it is not *TxDataAcceptSign",fmt.Errorf("check raw fail,it is not *TxDataAcceptSign")
     }
+
+    //check accept data first
+    if acceptsig.Key == "" || acceptsig.Accept == "" {
+	return "Failure","check accept raw data fail",fmt.Errorf("check accept raw data fail")
+    }
+    //
 
     exsit,da := GetValueFromPubKeyData(acceptsig.Key)
     if exsit {

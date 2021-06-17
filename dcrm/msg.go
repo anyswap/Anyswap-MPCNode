@@ -551,16 +551,19 @@ func Call(msg interface{}, enode string) {
 	common.Debug("====================Call===================","get msg",msg,"sender node",enode)
 	s := msg.(string)
 	if s == "" {
+	    common.Debug("====================Call,s is nil===================","get msg",msg,"sender node",enode)
 	    return
 	}
 
 	////////
 	raw,err := UnCompress(s)
 	if err == nil {
+		common.Debug("====================Call,uncompress success===================","get msg",msg,"sender node",enode)
 		s = raw
 	}
 	msgdata, errdec := DecryptMsg(s) //for SendMsgToPeer
 	if errdec == nil {
+		common.Debug("====================Call,decrypt success===================","get msg",msg,"sender node",enode)
 		s = msgdata
 	}
 	////////
@@ -568,6 +571,7 @@ func Call(msg interface{}, enode string) {
 	if len(mm) >= 2 {
 		//msg:  key-enode:C1:X1:X2....:Xn
 		//msg:  key-enode1:NoReciv:enode2:C1
+		common.Debug("====================Call,call dismsg===================","get msg",msg,"sender node",enode)
 		DisMsg(s)
 		return
 	}
@@ -581,7 +585,9 @@ func SetUpMsgList(msg string, enode string) {
 	//rpc-req
 	rch := make(chan interface{}, 1)
 	req := RPCReq{rpcdata: &v, ch: rch}
+	common.Debug("====================SetUpMsgList,===================","len of RPCReqQueue",len(RPCReqQueue),"get msg",msg,"sender node",enode)
 	RPCReqQueue <- req
+	common.Debug("====================SetUpMsgList,put msg into queue success===================","get msg",msg,"sender node",enode)
 }
 
 func SetUpMsgList3(msg string, enode string,rch chan interface{}) {
@@ -613,6 +619,7 @@ type SendMsg struct {
 
 func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if workid < 0 || workid >= RPCMaxWorker { //TODO
+		common.Debug("====================RecvMsg.Run,check param error.===================","get msg",self.msg,"sender node",self.sender)
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id fail", Err: fmt.Errorf("no find worker.")}
 		ch <- res2
 		return false
@@ -620,6 +627,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	res := self.msg
 	if res == "" { //TODO
+		common.Debug("====================RecvMsg.Run,msg is nil.===================","get msg",self.msg,"sender node",self.sender)
 		res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get data fail in RecvMsg.Run", Err: fmt.Errorf("no find worker.")}
 		ch <- res2
 		return false
@@ -627,18 +635,21 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
 	if errdec == nil {
+		common.Debug("====================RecvMsg.Run,decrypt msg success.===================","get msg",self.msg,"sender node",self.sender)
 		res = msgdata
 	}
 	mm := strings.Split(res, common.Sep)
 	if len(mm) >= 2 {
 		//msg:  key-enode:C1:X1:X2....:Xn
 		//msg:  key-enode1:NoReciv:enode2:C1
+		common.Debug("====================RecvMsg.Run,call dismsg.===================","get msg",self.msg,"sender node",self.sender)
 		DisMsg(res)
 		return true
 	}
 
 	msgmap := make(map[string]string)
 	err := json.Unmarshal([]byte(res), &msgmap)
+	common.Debug("====================RecvMsg.Run,unmarshal to map.===================","get msg",res,"sender node",self.sender,"err",err)
 	//fmt.Printf("===========================RecvMsg.Run,res = %v, err = %v ============================\n",res,err)
 	if err == nil {
 
@@ -646,6 +657,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    if msgmap["Type"] == "PreSign" {
 		ps := &PreSign{}
 		if err = ps.UnmarshalJSON([]byte(msgmap["PreSign"]));err == nil {
+		    common.Debug("====================RecvMsg.Run,presign.===================","get msg",res,"sender node",self.sender,"err",err)
 		    w := workers[workid]
 		    w.sid = ps.Nonce 
 		    w.groupid = ps.Gid
@@ -688,12 +700,14 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    ///sku1
 		    da2 := GetSkU1FromLocalDb(string(dcrmpks[:]))
 		    if da2 == nil {
+			    common.Debug("====================RecvMsg.Run,presign get sku1 fail.===================","get msg",res,"sender node",self.sender,"err",err)
 			    res := RpcDcrmRes{Ret: "", Tip: "presign get sku1 fail", Err: fmt.Errorf("presign get sku1 fail")}
 			    ch <- res
 			    return false
 		    }
 		    sku1 := new(big.Int).SetBytes(da2)
 		    if sku1 == nil {
+			    common.Debug("====================RecvMsg.Run,presign get sku1 fail 2222.===================","get msg",res,"sender node",self.sender,"err",err)
 			    res := RpcDcrmRes{Ret: "", Tip: "presign get sku1 fail", Err: fmt.Errorf("presign get sku1 fail")}
 			    ch <- res
 			    return false
@@ -711,6 +725,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    var ch1 = make(chan interface{}, 1)
 		    pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
 		    if pre == nil {
+			    common.Debug("====================RecvMsg.Run,presign fail.===================","get msg",res,"sender node",self.sender,"err",err)
 			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 			    ch <- res
 			    return false
@@ -779,6 +794,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			fmt.Printf("===============================PreSign at RecvMsg.Run,presign success.======================\n")*/
 			///////////
 		    } else {
+			common.Debug("====================RecvMsg.Run,put presign data fail.===================","get msg",res,"sender node",self.sender,"err",err)
 			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 			ch <- res
 			return false
@@ -843,6 +859,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			    ww, err2 := FindWorker(sd.MsgPrex)
 			    if err2 != nil || ww == nil {
+				common.Debug("====================RecvMsg.Run,signdata,not find worker.===================","get msg",res,"sender node",self.sender,"err",err)
 				res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
 				ch <- res2
 				return false
@@ -870,6 +887,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    if msgmap["Type"] == "PreSignDataStatus" {
 		psds := &PreSignDataStatus{}
 		if err = psds.UnmarshalJSON([]byte(msgmap["PreSignDataStatus"]));err == nil {
+		    common.Debug("====================RecvMsg.Run,PreSignDataStatus.===================","get msg",res,"sender node",self.sender,"err",err)
 
 		    //w, err := FindWorker(psds.MsgPrex)
 		    //if err != nil {
@@ -905,6 +923,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    for _,vv := range signbrocast.PickHash {
 				pre := GetPreSignData(sig.PubKey,sig.GroupId,vv.PickKey)
 				if pre == nil {
+				    common.Debug("====================RecvMsg.Run,get pre-sign data fail.===================","get msg",res,"sender node",self.sender,"err",err)
 				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre-sign data fail", Err: fmt.Errorf("get pre-sign data fail.")}
 				    ch <- res
 				    return false
@@ -918,6 +937,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    signpick := &SignPickData{Raw:signbrocast.Raw,PickData:pickdata}
 			    errtmp := InitAcceptData2(signpick,workid,self.sender,ch)
 			    if errtmp == nil {
+				common.Debug("====================RecvMsg.Run,signdata,call InitAcceptData2.===================","get msg",res,"sender node",self.sender,"err",err)
 				return true
 			    }
 			    
@@ -934,6 +954,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		if err == nil {
 		    errtmp := InitAcceptData2(signpick,workid,self.sender,ch)
 		    if errtmp == nil {
+			common.Debug("====================RecvMsg.Run,comsigndata,call InitAcceptData2.===================","get msg",res,"sender node",self.sender,"err",err)
 			return true
 		    }
 
@@ -946,6 +967,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 	errtmp := InitAcceptData(res,workid,self.sender,ch)
 	if errtmp == nil {
+	    common.Debug("====================RecvMsg.Run,InitAcceptData success.===================","get msg",res,"sender node",self.sender,"err",err)
 	    return true
 	}
 	common.Debug("================RecvMsg.Run, init accept data fail=================","res",res,"err",errtmp)

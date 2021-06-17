@@ -272,18 +272,39 @@ func PutPreSignData(pubkey string,gid string,index int,val *PreSignData) error {
 	return err
     }
     
-    _, err = predb.Get(s)
-    if err != nil {
+    //da, err = predb.Get(s)
+    //if err != nil || da == nil {
 	value,err := val.MarshalJSON()
 	if err != nil {
 	    return err
 	}
 
-	predb.Put(s, value)
-	return nil
-    }
+	/*err = predb.Put(s, value)
+	if err == nil {
+	    common.Debug("===============PutPreSignData, put pre-sign data into db success.=================","pubkey",pubkey,"gid",gid,"index",index,"key",val.Key)
+	} else {
+	    common.Debug("===============PutPreSignData, put pre-sign data into db fail.=================","pubkey",pubkey,"gid",gid,"index",index,"key",val.Key,"err",err)
+	}*/
 
-    return errors.New("pre-sign data on the key already exsit.")
+	//retry
+	for i:=0;i<10;i++ {
+	    err = predb.Put(s, value)
+	    if err == nil {
+		common.Debug("===============PutPreSignData, put pre-sign data into db success.=================","pubkey",pubkey,"gid",gid,"index",index,"key",val.Key)
+		return nil	
+	    }
+	    
+	    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+	}
+	
+	common.Debug("===============PutPreSignData, put pre-sign data into db fail.=================","pubkey",pubkey,"gid",gid,"index",index,"key",val.Key)
+	return errors.New("put pre-sign data into db fail.")
+	//
+	
+	//return nil
+    //}
+
+    //return errors.New("pre-sign data on the key already exsit.")
 }
 
 func GetPreSignData(pubkey string,gid string,key string) *PreSignData {
@@ -349,7 +370,25 @@ func DeletePreSignData(pubkey string,gid string,key string) {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
 		    if strings.EqualFold(psd.Key,key) {
-			predb.Delete(s)
+			/*err = predb.Delete(s)
+			if err == nil {
+			    common.Debug("===============DeletePreSignData, del pre-sign data from db success.=================","pubkey",pubkey,"gid",gid,"index",index,"key",key)
+			} else {
+			    common.Debug("===============DeletePreSignData, del pre-sign data from db fail.=================","pubkey",pubkey,"gid",gid,"index",index,"key",key,"err",err)
+			}
+			
+			return*/
+			for i:=0;i<10;i++ {
+			    err = predb.Delete(s)
+			    if err == nil {
+				common.Debug("===============DeletePreSignData, del pre-sign data from db success.=================","pubkey",pubkey,"gid",gid,"index",index,"key",key)
+				return
+			    }
+
+			    time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+			}
+			
+			common.Debug("===============DeletePreSignData, del pre-sign data from db fail.=================","pubkey",pubkey,"gid",gid,"index",index,"key",key)
 			return
 		    }
 		}
@@ -364,7 +403,7 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	return nil
     }
     
-    data := make(chan *PreSignData, PrePubDataCount)
+    data := make(chan *PreSignData,1)
     
     var wg sync.WaitGroup
     for i:=0;i<PrePubDataCount;i++ {
@@ -382,13 +421,13 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	    if err == nil {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
-		    //if len(data) == 0 {
+		    if len(data) == 0 {
 			//err := predb.Delete(s)
 			//if err == nil {
 			    data <- psd
 			    return
 			//}
-		    //}
+		    }
 		}
 	    }
 	}(i)
@@ -408,12 +447,26 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	return nil
     }
 
-    err = predb.Delete(s)
+    /*err = predb.Delete(s)
     if err != nil {
+	common.Debug("===============PickPreSignData, pick pre-sign data fail.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key,"err",err)
 	return nil
     }
 
-    return ret
+    common.Debug("===============PickPreSignData, pick pre-sign data success.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key,"err",err)*/
+
+    for i:=0;i<10;i++ {
+	err = predb.Delete(s)
+	if err == nil {
+	    common.Debug("===============PickPreSignData, pick pre-sign data success.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key)
+	    return ret
+	}
+
+	time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+    }
+
+    common.Debug("===============PickPreSignData, pick pre-sign data fail.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key,"err",err)
+    return nil 
 }
 
 //pub = hash256(pubkey + gid)
@@ -688,7 +741,7 @@ func UnCompressSignData(data string) (*SignPickData,error) {
 func GetPreDbDir() string {
 	dir := common.DefaultDataDir()
 	//dir += "/dcrmdata/dcrmpredb" + cur_enode  //old path
-	dir += "/smpcdata/pre-sign-db" + cur_enode //new path
+	dir += "/smpc-data/pre-sign-db" + cur_enode //new path
 	return dir
 }
 
@@ -810,7 +863,8 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	    for {
 		    index,need := NeedPreSign(pre.PubKey,gg)
 		    if need && index != -1 && GetPreSigal(pub) {
-			    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+			    //tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+			    tt := fmt.Sprintf("%v",time.Now().UnixNano())
 			    nonce := Keccak256Hash([]byte(strings.ToLower(pub + tt + strconv.Itoa(index)))).Hex()
 			    ps := &PreSign{Pub:pre.PubKey,Gid:gg,Nonce:nonce,Index:index}
 

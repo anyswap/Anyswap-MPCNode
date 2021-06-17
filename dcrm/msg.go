@@ -763,6 +763,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    err = PutPreSignData(ps.Pub,ps.Gid,ps.Index,pre)
 		    if err == nil {
+			common.Debug("====================RecvMsg.Run,put presign data success.===================","get msg",res,"sender node",self.sender)
 			//check all sign nodes pre-sign data status
 			//tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 			/*prex := Keccak256Hash(([]byte(strings.ToLower(w.sid)))).Hex()

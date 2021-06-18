@@ -801,7 +801,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return false
 		    }
 
-		    fmt.Printf("===============================PreSign at RecvMsg.Run,presign success.222222222222222======================\n")
+		    //fmt.Printf("===============================PreSign at RecvMsg.Run,presign success.222222222222222======================\n")
 		    res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 		    ch <- res
 		    return true

@@ -859,7 +859,11 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 
 	    PutPreSigal(pub,true)
 
-	    common.Info("===================ExcutePreSignData,before generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg)
+	    //common.Info("===================ExcutePreSignData,before generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg)
+	    common.Info("===================ExcutePreSignData,before generate pre-sign data===============")
+	    common.Info("","current total number of the data",GetTotalCount(pre.PubKey,gg))
+	    common.Info("","the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)))
+	    common.Info("","pubkey",pre.PubKey,"sub-gid",gg)
 	    for {
 		    index,need := NeedPreSign(pre.PubKey,gg)
 		    if need && index != -1 && GetPreSigal(pub) {
@@ -886,8 +890,13 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 			    _, _,cherr := GetChannelValue(waitall+10,rch)
 			    if cherr != nil {
 				common.Info("=====================ExcutePreSignData in genkey fail========================","pubkey",pre.PubKey,"cherr",cherr,"Index",index)
+			    } else {
+				//common.Info("===================ExcutePreSignData,after generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
+				common.Info("===================ExcutePreSignData,after generate pre-sign data===============")
+				common.Info("","current total number of the data",GetTotalCount(pre.PubKey,gg))
+				common.Info("","the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)))
+				common.Info("","pubkey",pre.PubKey,"sub-gid",gg,"Index",index)
 			    }
-			    common.Info("===================ExcutePreSignData,after generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
 		    } 
 
 		    time.Sleep(time.Duration(1000000))
@@ -906,7 +915,7 @@ func AutoPreGenSignData() {
     iter := predb.NewIterator()
     for iter.Next() {
 
-	key := iter.Key()
+	key := []byte(string(iter.Key())) //must be deep copy,or show me the error: "panic: JSON decoder out of sync - data changing underfoot?"
 	if len(key) == 0 {
 	    continue
 	}

@@ -269,6 +269,7 @@ func PutPreSignData(pubkey string,gid string,index int,val *PreSignData) error {
     key := &PreSignKey{PubKey:pubkey,Gid:gid,Index:index}
     s,err := key.MarshalJSON()
     if err != nil {
+	common.Info("======================PutPreSignData,marshal presign key error.=================","pubkey",pubkey,"gid",gid,"index",index,"err",err)
 	return err
     }
     
@@ -276,6 +277,7 @@ func PutPreSignData(pubkey string,gid string,index int,val *PreSignData) error {
     //if err != nil || da == nil {
 	value,err := val.MarshalJSON()
 	if err != nil {
+	    common.Info("======================PutPreSignData,marshal presign data error.=================","pubkey",pubkey,"gid",gid,"index",index,"err",err)
 	    return err
 	}
 
@@ -414,10 +416,12 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	    key2 := &PreSignKey{PubKey:pubkey,Gid:gid,Index:index}
 	    s,err := key2.MarshalJSON()
 	    if err != nil {
+		common.Info("=========================PickPreSignData,marshal presign key error.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",index)
 		return
 	    }
 	    
 	    da, err := predb.Get(s)
+	    common.Info("=========================PickPreSignData,get presign data from localdb.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",index)
 	    if err == nil {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
@@ -425,16 +429,20 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 			//err := predb.Delete(s)
 			//if err == nil {
 			    data <- psd
+			    common.Info("=========================PickPreSignData,pick success.=========================","pubkey",pubkey,"gid",gid,"index",index)
 			    return
 			//}
 		    }
 		}
+
+		common.Info("=========================PickPreSignData,unmarshal presign data error.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",index)
 	    }
 	}(i)
     }
     wg.Wait()
 
     if len(data) == 0 {
+	common.Info("=========================PickPreSignData,pick fail.=========================","pubkey",pubkey,"gid",gid)
 	return nil
     }
 
@@ -444,6 +452,7 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
     key2 := &PreSignKey{PubKey:pubkey,Gid:gid,Index:ret.Index}
     s,err := key2.MarshalJSON()
     if err != nil {
+	common.Info("=========================PickPreSignData,remove presign data from localdb. marshal presign key error.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",ret.Index)
 	return nil
     }
 
@@ -458,14 +467,14 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
     for i:=0;i<10;i++ {
 	err = predb.Delete(s)
 	if err == nil {
-	    common.Debug("===============PickPreSignData, pick pre-sign data success.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key)
+	    common.Debug("===============PickPreSignData, remove presign data from localdb success.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key)
 	    return ret
 	}
 
 	time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
     }
 
-    common.Debug("===============PickPreSignData, pick pre-sign data fail.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key,"err",err)
+    common.Debug("===============PickPreSignData, remove presign data from localdb fail.=================","pubkey",pubkey,"gid",gid,"index",ret.Index,"key",ret.Key,"err",err)
     return nil 
 }
 
@@ -916,6 +925,7 @@ func AutoPreGenSignData() {
     for iter.Next() {
 
 	key := []byte(string(iter.Key())) //must be deep copy,or show me the error: "panic: JSON decoder out of sync - data changing underfoot?"
+	common.Debug("====================AutoPreGenSignData===================","key",string(iter.Key()))
 	if len(key) == 0 {
 	    continue
 	}
@@ -923,14 +933,18 @@ func AutoPreGenSignData() {
 	go func(kd []byte) {
 	    psk := &PreSignKey{}
 	    if err := psk.UnmarshalJSON(kd);err != nil {
+		common.Debug("====================AutoPreGenSignData,unmarshal presign key err===================","key",string(iter.Key()),"err",err)
 	       return 
 	    }
 
 	    pub := Keccak256Hash([]byte(strings.ToLower(psk.PubKey + ":" + psk.Gid))).Hex()
 	    if _, ok := allpresign.Load(strings.ToLower(pub)); ok {
+		common.Debug("====================AutoPreGenSignData,load presign key fail===================","key",string(iter.Key()),"pubkey",psk.PubKey,"gid",psk.Gid)
 		return	
 	    }
 	    allpresign.Store(strings.ToLower(pub), true)
+
+	    common.Debug("====================AutoPreGenSignData,bagin to auto gen presign data.===================","key",string(iter.Key()),"pubkey",psk.PubKey,"gid",psk.Gid)
 
 	    subgid := make([]string,0)
 	    subgid = append(subgid,psk.Gid)

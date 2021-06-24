@@ -507,13 +507,17 @@ func Sign(raw string) (string, string, error) {
     common.Info("=====================Sign================","key",key,"from",from,"raw",raw)
 
     rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
+    common.Info("=======================Sign,before put into sign channel====================","key",key,"sign channel len",len(SignChan))
     SignChan <- rsd
+    common.Info("=======================Sign,after put into sign channel====================","key",key,"sign channel len",len(SignChan))
     return key, "", nil
 }
 
 func HandleRpcSign() {
 	for {
 		rsd := <-SignChan
+
+		common.Info("=========================HandleRpcSign,get sign cmd from sign channel======================","Pubkey",rsd.PubKey,"key",rsd.Key,"sign channel len",len(SignChan))
 	
 		dcrmpks, _ := hex.DecodeString(rsd.PubKey)
 		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
@@ -529,6 +533,7 @@ func HandleRpcSign() {
 				for _,vv := range rsd.MsgHash {
 					pick := PickPreSignData(rsd.PubKey,rsd.GroupId)
 					if pick == nil {
+						common.Info("========================HandleRpcSign,pick key fail.==================","txhash",vv,"pubkey",rsd.PubKey,"key",rsd.Key)
 						bret = true
 						break
 					}

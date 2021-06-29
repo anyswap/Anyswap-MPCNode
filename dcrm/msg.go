@@ -176,7 +176,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	}
 
 	raw := s 
-	keytmp,from,_,txdata,err := CheckRaw(raw)
+	_,from,_,txdata,err := CheckRaw(raw)
 	if err != nil {
 	    continue
 	}
@@ -219,7 +219,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
-	    common.Debug("=================GetRawReply,the list item is TxDataSign=================","key",keytmp,"from",from,"sig",sig)
+	    //common.Debug("=================GetRawReply,the list item is TxDataSign=================","key",keytmp,"from",from,"sig",sig)
 	    reply := &RawReply{From:from,Accept:"true",TimeStamp:sig.TimeStamp}
 	    tmp,ok := ret[from]
 	    if !ok {
@@ -296,7 +296,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Debug("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
+	    //common.Debug("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -916,7 +916,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		signbrocast,err := UnCompressSignBrocastData(msgmap["ComSignBrocastData"])
 		fmt.Printf("==============================RecvMsg.Run, compress sign brocast data err = %v.============================\n",err)
 		if err == nil {
-		    _,_,_,txdata,err := CheckRaw(signbrocast.Raw)
+		    kkk,_,_,txdata,err := CheckRaw(signbrocast.Raw)
 		    if err == nil {
 			sig,ok := txdata.(*TxDataSign)
 			if ok {
@@ -924,7 +924,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    for _,vv := range signbrocast.PickHash {
 				pre := GetPreSignData(sig.PubKey,sig.GroupId,vv.PickKey)
 				if pre == nil {
-				    common.Debug("====================RecvMsg.Run,get pre-sign data fail.===================","get msg",res,"sender node",self.sender,"err",err)
+				    common.Debug("====================RecvMsg.Run,get pre-sign data fail.===================","get msg",res,"sender node",self.sender,"err",err,"key",kkk,"pick key",vv.PickKey)
 				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre-sign data fail", Err: fmt.Errorf("get pre-sign data fail.")}
 				    ch <- res
 				    return false
@@ -938,7 +938,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    signpick := &SignPickData{Raw:signbrocast.Raw,PickData:pickdata}
 			    errtmp := InitAcceptData2(signpick,workid,self.sender,ch)
 			    if errtmp == nil {
-				common.Debug("====================RecvMsg.Run,signdata,call InitAcceptData2.===================","get msg",res,"sender node",self.sender,"err",err)
+				common.Debug("====================RecvMsg.Run,signdata,call InitAcceptData2.===================","get msg",res,"sender node",self.sender,"err",err,"key",kkk)
 				return true
 			    }
 			    
@@ -955,7 +955,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		if err == nil {
 		    errtmp := InitAcceptData2(signpick,workid,self.sender,ch)
 		    if errtmp == nil {
-			common.Debug("====================RecvMsg.Run,comsigndata,call InitAcceptData2.===================","get msg",res,"sender node",self.sender,"err",err)
+			kkk,_,_,_,_ := CheckRaw(signpick.Raw)
+			common.Debug("====================RecvMsg.Run,comsigndata,call InitAcceptData2.===================","get msg",res,"sender node",self.sender,"key",kkk)
 			return true
 		    }
 

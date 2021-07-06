@@ -60,23 +60,13 @@ type PubKeyData struct {
 func GetReqAddrNonce(account string) (string, string, error) {
 	key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	var da []byte
-	datmp, exsit := LdbPubKeyData.ReadMap(key2)
+	exsit,datmp := GetPubKeyData([]byte(key2))
 	if !exsit {
-		da2 := GetPubKeyDataValueFromDb(key2)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
+		return "0", "", nil
 	} else {
 		da = datmp.([]byte)
 	}
 	///////
-	if !exsit {
-		return "0", "", nil
-	}
-
 	nonce, _ := new(big.Int).SetString(string(da), 10)
 	one, _ := new(big.Int).SetString("1", 10)
 	nonce = new(big.Int).Add(nonce, one)
@@ -86,9 +76,12 @@ func GetReqAddrNonce(account string) (string, string, error) {
 
 func SetReqAddrNonce(account string, nonce string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-	kd := KeyData{Key: []byte(key), Data: nonce}
-	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key, []byte(nonce))
+	//kd := KeyData{Key: []byte(key), Data: nonce}
+	err := PutPubKeyData([]byte(key),[]byte(nonce))
+	if err != nil {
+	    return err.Error(),err
+	}
+
 	return "", nil
 }
 
@@ -159,7 +152,7 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 	return "Failure","check raw fail,it is not *TxDataAcceptReqAddr",fmt.Errorf("check raw fail,it is not *TxDataAcceptReqAddr")
     }
 
-    exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+    exsit,da := GetPubKeyData([]byte(acceptreq.Key))
     if exsit {
 	ac,ok := da.(*AcceptReqAddrData)
 	if ok && ac != nil {
@@ -183,7 +176,7 @@ type ReqAddrStatus struct {
 }
 
 func GetReqAddrStatus(key string) (string, string, error) {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyData([]byte(key))
 	///////
 	if !exsit || da == nil {
 		common.Debug("=====================GetReqAddrStatus,no exist key======================","key",key)
@@ -222,9 +215,21 @@ type ReqAddrReply struct {
 
 func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	var ret []*ReqAddrReply
+	
 	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
+
+	iter := db.NewIterator()
+	for iter.Next() {
+	    key2 := []byte(string(iter.Key())) //must be deep copy,or show me the error: "panic: JSON decoder out of sync - data changing underfoot?"
+	    if len(key2) == 0 {
+		continue
+	    }
+
+	    exsit,da := GetPubKeyData(key2) 
+	    if !exsit || da == nil {
+		continue
+	    }
+
 	    wg.Add(1)
 	    go func(key string,value interface{}) {
 		defer wg.Done()
@@ -254,10 +259,11 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
 		common.Debug("================GetCurNodeReqAddrInfo success return================","key",key)
-	    }(k,v)
+	    }(string(key2),da)
 	}
-	LdbPubKeyData.RUnlock()
+	iter.Release()
 	wg.Wait()
+	
 	return ret, "", nil
 }
 
@@ -367,30 +373,66 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			}
 
 			//add for lockout
-			kd := KeyData{Key: sedpk[:], Data: ss}
-			PubKeyDataChan <- kd
+			//kd := KeyData{Key: sedpk[:], Data: ss}
+			//PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			//LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			err = PutPubKeyData(sedpk[:],[]byte(ss))
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			    ch <- res
+			    return
+			}
 			////
 
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-			kd = KeyData{Key: []byte(key), Data: ss}
-			PubKeyDataChan <- kd
+			//kd = KeyData{Key: []byte(key), Data: ss}
+			//PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(key, pubs)
+			//LdbPubKeyData.WriteMap(key, pubs)
+			err = PutPubKeyData([]byte(key),[]byte(ss))
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			    ch <- res
+			    return
+			}
 			////
-			sk := KeyData{Key: sedpk[:], Data: sedsku1}
-			SkU1Chan <- sk
-			sk = KeyData{Key: []byte(key), Data: sedsku1}
-			SkU1Chan <- sk
+			//sk := KeyData{Key: sedpk[:], Data: sedsku1}
+			//SkU1Chan <- sk
+			err = putSkU1ToLocalDb(sedpk[:],[]byte(sedsku1))
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			    ch <- res
+			    return
+			}
+			//sk = KeyData{Key: []byte(key), Data: sedsku1}
+			//SkU1Chan <- sk
+			err = putSkU1ToLocalDb([]byte(key),[]byte(sedsku1))
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			    ch <- res
+			    return
+			}
 		} else {
-			kd := KeyData{Key: sedpk[:], Data: ss}
-			PubKeyDataChan <- kd
+			//kd := KeyData{Key: sedpk[:], Data: ss}
+			//PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			//LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			err = PutPubKeyData(sedpk[:],[]byte(ss))
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			    ch <- res
+			    return
+			}
 			////
-			sk := KeyData{Key: sedpk[:], Data: sedsku1}
-			SkU1Chan <- sk
+			//sk := KeyData{Key: sedpk[:], Data: sedsku1}
+			//SkU1Chan <- sk
+			err = putSkU1ToLocalDb(sedpk[:],[]byte(sedsku1))
+			if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			    ch <- res
+			    return
+			}
 
 			for _, ct := range coins.Cointypes {
 				if strings.EqualFold(ct, "ALL") {
@@ -407,13 +449,25 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				}
 
 				key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-				kd = KeyData{Key: []byte(key), Data: ss}
-				PubKeyDataChan <- kd
+				//kd = KeyData{Key: []byte(key), Data: ss}
+				//PubKeyDataChan <- kd
 				/////
-				LdbPubKeyData.WriteMap(key, pubs)
+				//LdbPubKeyData.WriteMap(key, pubs)
+				err = PutPubKeyData([]byte(key),[]byte(ss))
+				if err != nil {
+				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+				    ch <- res
+				    return
+				}
 				////
-				sk = KeyData{Key: []byte(key), Data: sedsku1}
-				SkU1Chan <- sk
+				//sk = KeyData{Key: []byte(key), Data: sedsku1}
+				//SkU1Chan <- sk
+				err = putSkU1ToLocalDb([]byte(key),[]byte(sedsku1))
+				if err != nil {
+				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+				    ch <- res
+				    return
+				}
 			}
 		}
 
@@ -474,8 +528,14 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	}
 	sku1 := iter.Value.(string)
 	////////
-	sk := KeyData{Key: ys, Data: sku1}
-	SkU1Chan <- sk
+	//sk := KeyData{Key: ys, Data: sku1}
+	//SkU1Chan <- sk
+	err = putSkU1ToLocalDb(ys,[]byte(sku1)) 
+	if err != nil {
+	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:put sku1 to local db fail.", Err: GetRetErr(ErrGetGenSaveDataFail)}
+	    ch <- res
+	    return
+	}
 	//save sku1
 	//
 
@@ -526,25 +586,53 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			return
 		}
 
-		kd := KeyData{Key: ys, Data: ss}
-		PubKeyDataChan <- kd
+		//kd := KeyData{Key: ys, Data: ss}
+		//PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(string(ys), pubs)
+		//LdbPubKeyData.WriteMap(string(ys), pubs)
+		err = PutPubKeyData(ys,[]byte(ss))
+		if err != nil {
+		    common.Info("================================dcrm_genPubKey,put pubkey data fail,111111=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+		    ch <- res
+		    return
+		}
 		////
 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-		kd = KeyData{Key: []byte(key), Data: ss}
-		PubKeyDataChan <- kd
+		//kd = KeyData{Key: []byte(key), Data: ss}
+		//PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(key, pubs)
+		//LdbPubKeyData.WriteMap(key, pubs)
+		err = PutPubKeyData([]byte(key),[]byte(ss))
+		if err != nil {
+		    common.Info("================================dcrm_genPubKey,put pubkey data fail,222222=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+		    ch <- res
+		    return
+		}
 		////
-		sk = KeyData{Key: []byte(key), Data: sku1}
-		SkU1Chan <- sk
+		//sk = KeyData{Key: []byte(key), Data: sku1}
+		//SkU1Chan <- sk
+		err = putSkU1ToLocalDb([]byte(key),[]byte(sku1))
+		if err != nil {
+		    common.Info("================================dcrm_genPubKey,put sku1 data fail,=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+		    ch <- res
+		    return
+		}
 	} else {
-		kd := KeyData{Key: ys, Data: ss}
-		PubKeyDataChan <- kd
+		//kd := KeyData{Key: ys, Data: ss}
+		//PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(string(ys), pubs)
+		//LdbPubKeyData.WriteMap(string(ys), pubs)
+		err = PutPubKeyData(ys,[]byte(ss))
+		if err != nil {
+		    common.Info("================================dcrm_genPubKey,put pubkey data fail,33333=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+		    ch <- res
+		    return
+		}
 		////
 
 		for _, ct := range coins.Cointypes {
@@ -562,13 +650,27 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			}
 
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-			kd = KeyData{Key: []byte(key), Data: ss}
-			PubKeyDataChan <- kd
+			//kd = KeyData{Key: []byte(key), Data: ss}
+			//PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(key, pubs)
+			//LdbPubKeyData.WriteMap(key, pubs)
+			err = PutPubKeyData([]byte(key),[]byte(ss))
+			if err != nil {
+			    common.Info("================================dcrm_genPubKey,put pubkey data fail,44444=========================","err",err,"key",msgprex)
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			    ch <- res
+			    return
+			}
 			////
-			sk = KeyData{Key: []byte(key), Data: sku1}
-			SkU1Chan <- sk
+			//sk = KeyData{Key: []byte(key), Data: sku1}
+			//SkU1Chan <- sk
+			err = putSkU1ToLocalDb([]byte(key),[]byte(sku1))
+			if err != nil {
+			    common.Info("================================dcrm_genPubKey,put sku1 data fail,22222=========================","err",err,"key",msgprex)
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			    ch <- res
+			    return
+			}
 		}
 	}
 

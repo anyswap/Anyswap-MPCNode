@@ -190,7 +190,7 @@ func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
 }
 
 //lockout
-func (this *Service) LockOut(raw string) map[string]interface{} {
+/*func (this *Service) LockOut(raw string) map[string]interface{} {
 	//fmt.Printf("%v ==========call rpc LockOut from web,raw = %v ===========\n", common.CurrentTime(), raw)
 
 	data := make(map[string]interface{})
@@ -316,6 +316,7 @@ func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
 		"Data":   data,
 	}
 }
+*/
 
 //sign
 func (this *Service) AcceptSign(raw string) map[string]interface{} {

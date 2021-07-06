@@ -427,7 +427,7 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	    }
 	    
 	    da, err := predb.Get(s)
-	    //common.Info("=========================PickPreSignData,get presign data from localdb.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",index)
+	    common.Debug("=========================PickPreSignData,get presign data from localdb.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",index)
 	    if err == nil {
 		psd := &PreSignData{}
 		if err = psd.UnmarshalJSON(da);err == nil {
@@ -439,9 +439,10 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 			    return
 			//}
 		    }
+		} else {
+		    common.Debug("=========================PickPreSignData,unmarshal presign data error.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",index)
 		}
 
-		//common.Info("=========================PickPreSignData,unmarshal presign data error.=========================","err",err,"pubkey",pubkey,"gid",gid,"index",index)
 	    }
 	}(i)
     }

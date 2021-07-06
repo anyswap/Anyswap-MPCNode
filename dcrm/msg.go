@@ -199,7 +199,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	    continue
 	}
 	
-	lo,ok := txdata.(*TxDataLockOut)
+	/*lo,ok := txdata.(*TxDataLockOut)
 	if ok {
 	    reply := &RawReply{From:from,Accept:"true",TimeStamp:lo.TimeStamp}
 	    tmp,ok := ret[from]
@@ -216,6 +216,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 
 	    continue
 	}
+	*/
 	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
@@ -348,7 +349,8 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 
     /////reshare only
     if rt == Rpc_RESHARE {
-	exsit,da := GetValueFromPubKeyData(key)
+	//exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit {
 	    return false
 	}
@@ -402,7 +404,8 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	return false
     }
 
-    exsit,da := GetValueFromPubKeyData(k)
+    //exsit,da := GetValueFromPubKeyData(k)
+    exsit,da := GetPubKeyData([]byte(k))
     if !exsit {
 	return false
     }
@@ -446,7 +449,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	return true
     }
 
-    if rt == Rpc_LOCKOUT {
+    /*if rt == Rpc_LOCKOUT {
 	exsit,data := GetValueFromPubKeyData(key)
 	if !exsit {
 	    return false
@@ -491,10 +494,12 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 
 	return true
     }
+    */
 
     if rt == Rpc_SIGN {
     common.Debug("===================== CheckReply,get raw reply finish================","key",key)
-	exsit,data := GetValueFromPubKeyData(key)
+	//exsit,data := GetValueFromPubKeyData(key)
+	exsit,data := GetPubKeyData([]byte(key))
 	if !exsit {
     common.Debug("===================== CheckReply,get raw reply finish and get value by key fail================","key",key)
 	    return false
@@ -675,10 +680,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		//    }
 
 		    dcrmpks, _ := hex.DecodeString(ps.Pub)
-		    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    //exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    exsit,da := GetPubKeyData(dcrmpks[:])
 		    if !exsit {
 			time.Sleep(time.Duration(5000000000))
-			exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+			exsit,da = GetPubKeyData(dcrmpks[:])
 		    }
 		    ///////
 		    if !exsit {
@@ -698,7 +704,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    save := (da.(*PubKeyData)).Save
 		    ///sku1
-		    da2 := GetSkU1FromLocalDb(string(dcrmpks[:]))
+		    da2 := getSkU1FromLocalDb(dcrmpks[:])
 		    if da2 == nil {
 			    common.Debug("====================RecvMsg.Run,presign get sku1 fail.===================","get msg",res,"sender node",self.sender,"err",err)
 			    res := RpcDcrmRes{Ret: "", Tip: "presign get sku1 fail", Err: fmt.Errorf("presign get sku1 fail")}
@@ -715,7 +721,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    //
 
 			///////
-		    exsit,da3 := GetValueFromPubKeyData(pd.Key)
+		    //exsit,da3 := GetValueFromPubKeyData(pd.Key)
+		    exsit,da3 := GetPubKeyData([]byte(pd.Key))
 		    ac,ok := da3.(*AcceptReqAddrData)
 		    if ok {
 			HandleC1Data(ac,w.sid,workid)
@@ -829,11 +836,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    w.DcrmFrom = sd.DcrmFrom
 
 		    dcrmpks, _ := hex.DecodeString(pubkeyhex)
-		    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    //exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    exsit,da := GetPubKeyData(dcrmpks[:])
 		    if exsit {
 			    pd,ok := da.(*PubKeyData)
 			    if ok {
-				exsit,da2 := GetValueFromPubKeyData(pd.Key)
+				//exsit,da2 := GetValueFromPubKeyData(pd.Key)
+				exsit,da2 := GetPubKeyData([]byte(pd.Key))
 				if exsit {
 					ac,ok := da2.(*AcceptReqAddrData)
 					if ok {
@@ -980,7 +989,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
     //reshare only
     if ac == nil {
-	exsit,da := GetValueFromPubKeyData(key)
+	//exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit {
 	    return
 	}
@@ -1111,7 +1121,8 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreqaddrres <- true
-	    exsit,da := GetValueFromPubKeyData(key)
+	    //exsit,da := GetValueFromPubKeyData(key)
+	    exsit,da := GetPubKeyData([]byte(key))
 	    if !exsit {
 		return
 	    }
@@ -1125,7 +1136,7 @@ func DisAcceptMsg(raw string,workid int) {
 	}
     }
     
-    _,ok = txdata.(*TxDataLockOut)
+    /*_,ok = txdata.(*TxDataLockOut)
     if ok {
 	if Find(w.msg_acceptlockoutres, raw) {
 	    return
@@ -1138,7 +1149,8 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptlockoutres <- true
-	    exsit,da := GetValueFromPubKeyData(key)
+	    //exsit,da := GetValueFromPubKeyData(key)
+	    exsit,da := GetPubKeyData([]byte(key))
 	    if !exsit {
 		return
 	    }
@@ -1151,6 +1163,7 @@ func DisAcceptMsg(raw string,workid int) {
 	    workers[ac.WorkId].acceptLockOutChan <- "go on"
 	}
     }
+    */
     
     sig2,ok := txdata.(*TxDataSign)
     if ok {
@@ -1170,7 +1183,8 @@ func DisAcceptMsg(raw string,workid int) {
 
 	    //common.Info("=====================DisAcceptMsg,check reply success and will set timeout channel===================","key",key,"from",from)
 	    w.bacceptsignres <- true
-	    exsit,da := GetValueFromPubKeyData(key)
+	    //exsit,da := GetValueFromPubKeyData(key)
+	    exsit,da := GetPubKeyData([]byte(key))
 	    if !exsit {
 		return
 	    }
@@ -1197,7 +1211,8 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreshareres <- true
-	    exsit,da := GetValueFromPubKeyData(key)
+	    //exsit,da := GetValueFromPubKeyData(key)
+	    exsit,da := GetPubKeyData([]byte(key))
 	    if !exsit {
 		return
 	    }
@@ -1224,7 +1239,7 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreqaddrres <- true
-	    exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+	    exsit,da := GetPubKeyData([]byte(acceptreq.Key))
 	    if !exsit {
 		return
 	    }
@@ -1251,7 +1266,8 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptlockoutres <- true
-	    exsit,da := GetValueFromPubKeyData(acceptlockout.Key)
+	    //exsit,da := GetValueFromPubKeyData(acceptlockout.Key)
+	    exsit,da := GetPubKeyData([]byte(acceptlockout.Key))
 	    if !exsit {
 		return
 	    }
@@ -1282,7 +1298,8 @@ func DisAcceptMsg(raw string,workid int) {
 
 	    common.Info("======================DisAcceptMsg,the msg is accept sign tx,and check reply success and will set timeout channel.===========================","sig key",acceptsig.Key,"from",from)
 	    w.bacceptsignres <- true
-	    exsit,da := GetValueFromPubKeyData(acceptsig.Key)
+	    //exsit,da := GetValueFromPubKeyData(acceptsig.Key)
+	    exsit,da := GetPubKeyData([]byte(acceptsig.Key))
 	    if !exsit {
 		return
 	    }
@@ -1309,7 +1326,8 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreshareres <- true
-	    exsit,da := GetValueFromPubKeyData(acceptreshare.Key)
+	    //exsit,da := GetValueFromPubKeyData(acceptreshare.Key)
+	    exsit,da := GetPubKeyData([]byte(acceptreshare.Key))
 	    if !exsit {
 		return
 	    }
@@ -1343,7 +1361,8 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     req,ok := txdata.(*TxDataReqAddr)
     if ok {
 	common.Info("===============InitAcceptData, check reqaddr raw success==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",req)
-	exsit,_ := GetValueFromPubKeyData(key)
+	//exsit,_ := GetValueFromPubKeyData(key)
+	exsit,_ := GetPubKeyData([]byte(key))
 	if !exsit {
 	    cur_nonce, _, _ := GetReqAddrNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
@@ -1606,10 +1625,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	}
     }
 
-    lo,ok := txdata.(*TxDataLockOut)
+    /*lo,ok := txdata.(*TxDataLockOut)
     if ok {
 	common.Debug("===============InitAcceptData, check lockout raw success=================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",lo)
-	exsit,_ := GetValueFromPubKeyData(key)
+	exsti,_ := GetPubKeyData([]byte(key))
 	if !exsit {
 	    cur_nonce, _, _ := GetLockOutNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
@@ -1621,7 +1640,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 		    
 		    pubkey := ""
 		    lokey := Keccak256Hash([]byte(strings.ToLower(lo.DcrmAddr))).Hex()
-		    exsit,loda := GetValueFromPubKeyData(lokey)
+		    exsti,loda := GetPubKeyData([]byte(lokey))
 		    if exsit {
 			_,ok := loda.(*PubKeyData)
 			if ok {
@@ -1728,7 +1747,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 				DisAcceptMsg(raw,workid)
 				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_LOCKOUT)
-				exsit,da := GetValueFromPubKeyData(reqaddrkey)
+				exsit,da := GetPubKeyData([]byte(reqaddrkey))
 				if !exsit {
 				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
 				    ch <- res
@@ -1917,6 +1936,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    }
 	}
     }
+    */
 
     rh,ok := txdata.(*TxDataReShare)
     if ok {
@@ -2179,7 +2199,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("get reqaddr accept data fail from db when no find worker.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+	exsit,da := GetPubKeyData([]byte(acceptreq.Key))
 	if !exsit {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get reqaddr accept data fail from db", Err: fmt.Errorf("get reqaddr accept data fail from db in init accept data")}
 	    ch <- res
@@ -2230,7 +2250,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("get lockout accept data fail from db when no find worker.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptlo.Key)
+	exsit,da := GetPubKeyData([]byte(acceptlo.Key))
 	if !exsit {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get lockout accept data fail from db in init accept data", Err: fmt.Errorf("get lockout accept data fail from db in init accept data")}
 	    ch <- res
@@ -2262,7 +2282,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	id,_ := GetWorkerId(w)
 	DisAcceptMsg(raw,id)
 	reqaddrkey := GetReqAddrKeyByOtherKey(acceptlo.Key,Rpc_LOCKOUT)
-	exsit,da = GetValueFromPubKeyData(reqaddrkey)
+	exsit,da = GetPubKeyData([]byte(reqaddrkey))
 	if !exsit {
 	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
 	    ch <- res
@@ -2303,7 +2323,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("get sign accept data fail from db when no find worker.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptsig.Key)
+	exsit,da := GetPubKeyData([]byte(acceptsig.Key))
 	if !exsit {
 		common.Info("===============InitAcceptData, it is acceptsign and get sign accept data fail from db=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get sign accept data fail from db in init accept data", Err: fmt.Errorf("get sign accept data fail from db in init accept data")}
@@ -2337,7 +2357,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	id,_ := GetWorkerId(w)
 	DisAcceptMsg(raw,id)
 	reqaddrkey := GetReqAddrKeyByOtherKey(acceptsig.Key,Rpc_SIGN)
-	exsit,da = GetValueFromPubKeyData(reqaddrkey)
+	exsit,da = GetPubKeyData([]byte(reqaddrkey))
 	if !exsit {
 		common.Debug("===============InitAcceptData, it is acceptsign and get reqaddr sigs data fail=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
@@ -2387,7 +2407,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("get reshare accept data fail from db whern no find worker.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+	exsit,da := GetPubKeyData([]byte(acceptrh.Key))
 	if !exsit {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get reshare accept data fail from db in init accept data", Err: fmt.Errorf("get reshare accept data fail from db in init accept data")}
 	    ch <- res

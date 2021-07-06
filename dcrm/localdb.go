@@ -21,21 +21,25 @@ import (
     "github.com/fsn-dev/dcrm-walletService/internal/common/fdlimit"
     "github.com/fsn-dev/dcrm-walletService/ethdb"
     "time"
-    "sync"
+    //"sync"
+    "fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
 var (
-	LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
-	PubKeyDataChan = make(chan KeyData, 2000)
-	SkU1Chan = make(chan KeyData, 2000)
+	//LdbPubKeyData  = common.NewSafeMap(10) //make(map[string][]byte)
+	//PubKeyDataChan = make(chan KeyData, 2000)
+	//SkU1Chan = make(chan KeyData, 2000)
+	
 	cache = (75*1024)/1000 
 	handles = makeDatabaseHandles()
 	
-	lock                     sync.Mutex
+	//lock                     sync.Mutex
 	db *ethdb.LDBDatabase
 	dbsk *ethdb.LDBDatabase
 )
+
+//----------------------------------------------------------------
 
 func makeDatabaseHandles() int {
      limit, err := fdlimit.Current()
@@ -56,104 +60,186 @@ func makeDatabaseHandles() int {
      return limit / 2 // Leave half for networking and other stuff
 }
 
-func GetSkU1FromLocalDb(key string) []byte {
-	lock.Lock()
-	if dbsk == nil {
-	    common.Debug("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
-	    dir := GetSkU1Dir()
-	    ////////
-	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	    //bug
-	    if err != nil {
-		    for i := 0; i < 100; i++ {
-			    dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			    if err == nil {
-				    break
-			    }
+//--------------------------------------------------------------
 
-			    time.Sleep(time.Duration(1000000))
-		    }
-	    }
-	    if err != nil {
-		dbsk = nil
-	    } else {
-		dbsk = dbsktmp
-	    }
+func GetPubKeyData(key []byte) (bool,interface{}) {
+    if key == nil || db == nil {
+	    common.Debug("========================GetPubKeyData, param err=======================","key",string(key))
+	return false,nil
+    }
+	
+    da, err := db.Get(key)
+    if da == nil || err != nil {
+	common.Info("========================GetPubKeyData, get pubkey data from local db fail =======================","key",string(key))
+	return false,nil
+    }
 
-		lock.Unlock()
-		return nil
+    ss, err := UnCompress(string(da))
+    if err != nil {
+	common.Debug("========================GetPubKeyData, uncompress err=======================","err",err,"key",string(key))
+	return true,da
+    }
+
+    pubs3, err := Decode2(ss, "PubKeyData")
+    //common.Debug("========================GetPubKeyData, decode PubKeyData finish 11111=======================","key",string(key),"err",err)
+    if err == nil {
+	pd,ok := pubs3.(*PubKeyData)
+	if ok && pd.Key != "" && pd.Save != "" {  
+	    //common.Debug("========================GetPubKeyData, the type is *PubKeyData,decode PubKeyData success=======================","key",string(key),"data",pubs3)
+	    return true,pd
 	}
-
-	da, err := dbsk.Get([]byte(key))
-	if err != nil {
-	    dir := GetSkU1Dir()
-	    ////////
-	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	    //bug
-	    if err != nil {
-		    for i := 0; i < 100; i++ {
-			    dbsktmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			    if err == nil {
-				    break
-			    }
-
-			    time.Sleep(time.Duration(1000000))
-		    }
-	    }
-	    if err != nil {
-		//dbsk = nil
-	    } else {
-		dbsk = dbsktmp
-	    }
-
-	    da, err = dbsk.Get([]byte(key))
-	    if err != nil {
-		lock.Unlock()
-		return nil
-	    }
-	    
-	    sk,err := DecryptMsg(string(da))
-	    if err != nil {
-		lock.Unlock()
-		return da //TODO ,tmp code 
-		//return nil
-	    }
-
-	    lock.Unlock()
-	    return []byte(sk)
+    }
+    
+    pubs4, err := Decode2(ss, "AcceptSignData")
+    //common.Debug("========================GetPubKeyData, decode PubKeyData finish 222222=======================","key",string(key),"err",err)
+    if err == nil {
+	pd,ok := pubs4.(*AcceptSignData)
+	if ok && pd.Keytype != "" {
+	    //common.Debug("========================GetPubKeyData, decode AcceptSignData success,the type is *AcceptSignData=======================","key",string(key),"data",pubs4)
+	    return true,pd
 	}
-
-	sk,err := DecryptMsg(string(da))
-	if err != nil {
-	    lock.Unlock()
-	    return da //TODO ,tmp code 
-	    //return nil
+    }
+    
+    pubs5, err := Decode2(ss, "AcceptReShareData")
+    if err == nil {
+	pd,ok := pubs5.(*AcceptReShareData)
+	if ok && pd.TSGroupId != "" {
+	    //common.Debug("========================GetPubKeyData, decode AcceptReShareData success,the type is *AcceptReShareData=======================","key",string(key),"data",pubs5)
+	    return true,pd
 	}
+    }
+    
+    pubs, err := Decode2(ss, "AcceptReqAddrData")
+    if err == nil {
+	pd,ok := pubs.(*AcceptReqAddrData)
+	if ok {
+	    //common.Debug("========================GetPubKeyData, decode AcceptReqAddrData success, the type is *AcceptReqAddrData=======================","key",string(key),"data",pubs)
+	    return true,pd
+	}
+    }
+    
+    /*pubs2, err := Decode2(ss, "AcceptLockOutData")
+    if err == nil {
+	pd,ok := pubs2.(*AcceptLockOutData)
+	if ok {
+	    return true,pd
+	}
+    }*/
 
-	lock.Unlock()
-	return []byte(sk)
+    return false,nil
 }
 
-func GetPubKeyDataValueFromDb(key string) []byte {
-	lock.Lock()
+//-------------------------------------------------------------------
 
-	if db == nil {
-	    lock.Unlock()
-	    return nil
- 	}
+func PutPubKeyData(key []byte,value []byte) error {
+    if db == nil || key == nil || value == nil {
+	return fmt.Errorf("put pubkey data fail")
+    }
 
-	da, err := db.Get([]byte(key))
-	if err != nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
-	    lock.Unlock()
-	    return nil
+    for i:=0;i<10;i++ {
+	err := db.Put(key,value)
+	if err == nil {
+	    common.Debug("===============PutPubKeyData, put pubkey data into db success.=================","key",string(key))
+	    return nil	
 	}
+	
+	time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+    }
 
-	lock.Unlock()
-	return da
+    common.Debug("===============PutPubKeyData, put pubkey data into db fail.=================","key",string(key))
+    return fmt.Errorf("put pubkey data into db fail")
 }
 
-type KeyData struct {
+//--------------------------------------------------------------------------
+
+func DeletePubKeyData(key []byte) {
+    if key == nil || db == nil {
+	return
+    }
+
+    for i:=0;i<10;i++ {
+	err := db.Delete(key)
+	if err == nil {
+	    common.Debug("===============DeletePubKeyData, del pubkey data from db success.=================","key",string(key))
+	    return
+	}
+
+	time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+    }
+    
+    common.Debug("===============DeletePubKeyData, del pubkey data from db fail.=================","key",string(key))
+}
+
+//-------------------------------------------------------------------------------
+
+func getSkU1FromLocalDb(key []byte) []byte {
+    if key == nil || dbsk == nil {
+	return nil
+    }
+
+    da, err := dbsk.Get(key)
+    if err != nil || da == nil {
+	common.Info("========================getSkU1FromLocalDb,get sku1 from local db error.=========================","err",err,"key",string(key))
+	return nil
+    }
+
+    sk,err := DecryptMsg(string(da))
+    if err != nil {
+	common.Info("========================getSkU1FromLocalDb,decrypt sku1 data error.=========================","err",err,"key",string(key))
+	return da //TODO ,tmp code 
+    }
+
+    return []byte(sk)
+}
+
+func putSkU1ToLocalDb(key []byte,value []byte)  error {
+    if dbsk == nil || key == nil || value == nil {
+	return fmt.Errorf("put sku1 data fail")
+    }
+
+    cm,err := EncryptMsg(string(value),cur_enode)
+    if err != nil {
+	common.Debug("===============putSkU1ToLocalDb, encrypt sku1 data fail.=================","err",err,"key",string(key))
+	return err
+    }
+
+    for i:=0;i<10;i++ {
+	err = dbsk.Put(key, []byte(cm))
+	if err == nil {
+	    common.Debug("===============putSkU1ToLocalDb, put sku1 data into db success.=================","key",string(key))
+	    return nil	
+	}
+	
+	time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+    }
+
+    common.Debug("===============putSkU1ToLocalDb, put sku1 data into db fail.=================","key",string(key))
+    return fmt.Errorf("put sku1 data into db fail")
+}
+
+//--------------------------------------------------------------------------
+
+func deleteSkU1FromLocalDb(key []byte) {
+    if key == nil || dbsk == nil {
+	return
+    }
+
+    for i:=0;i<10;i++ {
+	err := dbsk.Delete(key)
+	if err == nil {
+	    common.Debug("===============deleteSkU1FromLocalDb, del sku1 data from db success.=================","key",string(key))
+	    return
+	}
+
+	time.Sleep(time.Duration(1) * time.Second) //1000 == 1s
+    }
+    
+    common.Debug("===============deleteSkU1FromLocalDb, del sku1 data from db fail.=================","key",string(key))
+}
+
+//------------------------------------------------------------------------------
+
+/*type KeyData struct {
 	Key  []byte
 	Data string
 }
@@ -276,102 +362,9 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 			if ok {
 			    kd.WriteMap(key, pd)
 
-				////////ec3////
-				/*common.Debug("==================GetAllPubKeyDataFromDb at ec3==============","key",key,"pubkey",pd.PubKey,"initiator",pd.Initiator,"pd.Status",pd.Status)
-			       if strings.EqualFold(pd.Initiator,cur_enode) && pd.Status == "Success" {
-					go func() {
-						PutPreSigal(pd.PubKey,true)
-
-						for {
-							if NeedPreSign(pd.PubKey) && GetPreSigal(pd.PubKey) {
-								//one,_ := new(big.Int).SetString("1",0)
-								//PreSignNonce = new(big.Int).Add(PreSignNonce,one)
-								tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-								nonce := Keccak256Hash([]byte(strings.ToLower(pd.PubKey + pd.GroupId + tt))).Hex()
-								index := 0
-								ids := GetIds2("ECDSA", pd.GroupId)
-								for kk, id := range ids {
-									enodes := GetEnodesByUid(id, "ECDSA", pd.GroupId)
-									if IsCurNode(enodes, cur_enode) {
-										if kk >= 2 {
-											index = kk - 2
-										} else {
-											index = kk
-										}
-										break
-									}
-
-								}
-								tmp := ids[index:index+3]
-								ps := &PreSign{Pub:pd.PubKey,Gid:pd.GroupId,Nonce:nonce,Index:index}
-
-								val,err := Encode2(ps)
-								if err != nil {
-									common.Debug("=====================GetAllPubKeyDataFromDb at ec3, at start========================","err",err)
-									time.Sleep(time.Duration(10000000))
-								    continue 
-								}
-								
-								for _, id := range tmp {
-									enodes := GetEnodesByUid(id, "ECDSA", pd.GroupId)
-									common.Debug("===============GetAllPubKeyDataFromDb at ec3, at start ,get enodes===============","enodes",enodes,"index",index)
-									if IsCurNode(enodes, cur_enode) {
-										common.Debug("===============GetAllPubKeyDataFromDb at ec3, at start ,get cur enodes===============","enodes",enodes)
-										continue
-									}
-									SendMsgToPeer(enodes, val)
-								}
-
-								rch := make(chan interface{}, 1)
-								SetUpMsgList3(val,cur_enode,rch)
-								_, _,cherr := GetChannelValue(waitall+10,rch)
-								if cherr != nil {
-									common.Debug("=====================GetAllPubKeyDataFromDb at ec3, at start ========================","cherr",cherr)
-								}
-
-								common.Debug("===================generate pre-sign data at start===============","current total number of the data ",GetTotalCount(pd.PubKey),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pd.PubKey)),"pubkey",pd.PubKey)
-							} 
-
-							time.Sleep(time.Duration(1000000))
-						}
-					}()
-			       }*/
-				////////////
-
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
 			    continue
 			}
 		    }
-		    
-		    /*pubs2, err := Decode2(ss, "AcceptLockOutData")
-		    if err == nil {
-			pd,ok := pubs2.(*AcceptLockOutData)
-			if ok {
-			    kd.WriteMap(key, pd)
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-			    continue
-			}
-		    }
-
-		    pubs4, err := Decode2(ss, "AcceptSignData")
-		    if err == nil {
-			pd,ok := pubs4.(*AcceptSignData)
-			if ok {
-			    kd.WriteMap(key, pd)
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-			    continue
-			}
-		    }
-		    
-		    pubs5, err := Decode2(ss, "AcceptReShareData")
-		    if err == nil {
-			pd,ok := pubs5.(*AcceptReShareData)
-			if ok {
-			    kd.WriteMap(key, pd)
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-			    continue
-			}
-		    }*/
 		    
 		    continue
 		}
@@ -384,73 +377,6 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 	}
 
 	return kd
-}
-
-func GetValueFromPubKeyData(key string) (bool,interface{}) {
-    if key == "" {
-	    common.Debug("========================GetValueFromPubKeyData, param err=======================","key",key)
-	return false,nil
-    }
-
-    datmp, exsit := LdbPubKeyData.ReadMap(key)
-    if !exsit {
-	    common.Debug("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
-	da := GetPubKeyDataValueFromDb(key)
-	if da == nil {
-	    common.Info("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
-	    return false,nil
-	}
-
-	ss, err := UnCompress(string(da))
-	if err != nil {
-	    common.Debug("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
-	    return true,da
-	}
-
-	pubs3, err := Decode2(ss, "PubKeyData")
-	if err == nil {
-	    pd,ok := pubs3.(*PubKeyData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	pubs, err := Decode2(ss, "AcceptReqAddrData")
-	if err == nil {
-	    pd,ok := pubs.(*AcceptReqAddrData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	pubs2, err := Decode2(ss, "AcceptLockOutData")
-	if err == nil {
-	    pd,ok := pubs2.(*AcceptLockOutData)
-	    if ok {
-		return true,pd
-	    }
-	}
-
-	pubs4, err := Decode2(ss, "AcceptSignData")
-	if err == nil {
-	    pd,ok := pubs4.(*AcceptSignData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	pubs5, err := Decode2(ss, "AcceptReShareData")
-	if err == nil {
-	    pd,ok := pubs5.(*AcceptReShareData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	return true,da
-    }
-
-    return exsit,datmp
 }
 
 func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
@@ -484,6 +410,7 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
     return true,pd 
 }
+*/
 
 func GetGroupDir() string { //TODO
 	dir := common.DefaultDataDir()

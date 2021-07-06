@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	mrand "math/rand"
@@ -185,6 +185,8 @@ func writeData(rw *bufio.ReadWriter) {
 }
 
 func main() {
+
+
 	t := time.Now()
 	genesisBlock := Block{}
 	genesisBlock = Block{0, t.String(), 0, calculateHash(genesisBlock), ""}
@@ -220,7 +222,6 @@ func main() {
 		ha.SetStreamHandler("/p2p/1.0.0", handleStream)
 
 		select {} // hang forever
-		/**** This is where the listener code ends ****/
 	} else {
 		ha.SetStreamHandler("/p2p/1.0.0", handleStream)
 

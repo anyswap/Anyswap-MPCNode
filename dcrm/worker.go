@@ -396,10 +396,11 @@ func (w *RPCReqWorker) Clear() {
 		w.msg_sendreshareres.Remove(e)
 	}
 
-	for e := w.msg_sendsignres.Front(); e != nil; e = next {
+	/*for e := w.msg_sendsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendsignres.Remove(e)
-	}
+	}*/
+	w.msg_sendsignres = list.New()
 
 	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
 		next = e.Next()
@@ -776,10 +777,11 @@ func (w *RPCReqWorker) Clear2() {
 		w.msg_sendreshareres.Remove(e)
 	}
 
-	for e := w.msg_sendsignres.Front(); e != nil; e = next {
+	/*for e := w.msg_sendsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendsignres.Remove(e)
-	}
+	}*/
+	w.msg_sendsignres = list.New()
 
 	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
 		next = e.Next()

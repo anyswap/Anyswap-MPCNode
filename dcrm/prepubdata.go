@@ -493,6 +493,45 @@ func SetPrePubDataUseStatus(pub string,key string,used bool ) {
 	}
 }
 
+func DeletePreSignDataFromDb(pub string,key string) error {
+    if pub == "" || key == "" {
+	return fmt.Errorf("param error.")
+    }
+
+    da, err := predb.Get([]byte(pub))
+    if err != nil {
+	return err
+    }
+
+    ps,err := DecodePreSignDataValue(string(da))
+    if err != nil {
+	return err
+    }
+
+    tmp := make([]*PrePubData,0)
+    for _,v := range ps.Data {
+	    if v != nil && strings.EqualFold(v.Key,key) {
+		   continue 
+	    }
+
+	    tmp = append(tmp,v)
+    }
+
+    es,err := EncodePreSignDataValue(tmp)
+    if err != nil {
+	return err
+    }
+
+    err = predb.Put([]byte(pub), []byte(es))
+    if err != nil {
+	common.Info("=================DeletePreSignDataFromDb, delete pre-sign data from db fail. ===============","key",pub,"pick key",key,"err",err)
+	return err
+    }
+
+    common.Debug("=================DeletePreSignDataFromDb, delete pre-sign data from db success ===============","pub",pub,"pick key",key)
+    return nil
+}
+
 type SignBrocastData struct {
 	Raw string
 	PickHash []*PickHashKey
@@ -537,6 +576,34 @@ func UnCompressSignBrocastData(data string) (*SignBrocastData,error) {
 	}
 
 	return ret.(*SignBrocastData),nil
+}
+
+func PutPreSignDataIntoDb(key string,val *PrePubData) error {
+    if val == nil || key == "" {
+	return fmt.Errorf("param error.")
+    }
+
+    if predb == nil {
+	return fmt.Errorf("db open fail.")
+    }
+
+    da, err := predb.Get([]byte(key))
+    if err != nil || da == nil {
+	datas := make([]*PrePubData,0)
+	datas = append(datas,val)
+	es,err := EncodePreSignDataValue(datas)
+	if err != nil {
+	    return err
+	}
+
+	err = predb.Put([]byte(key), []byte(es))
+	if err != nil {
+	    common.Info("=====================PutPreSignDataIntoDb,put pre-sign data into db fail.========================","pick key",val.Key,"key",key,"err",err)
+	    return err
+	}
+    }
+
+    return nil
 }
 
 func GetPreDbDir() string {

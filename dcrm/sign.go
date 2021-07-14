@@ -94,6 +94,24 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 		for _,vv := range sbd.PickHash {
 		    common.Debug("===============InitAcceptData2,check pickkey===================","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
 		   PickPrePubDataByKey(pub,vv.PickKey)
+
+		   for i:=0;i<3;i++ {
+			err = DeletePreSignDataFromDb(strings.ToLower(pub),vv.PickKey)
+			if err == nil {
+			    break
+			} else {
+			    common.Info("===============InitAcceptData2,delete pre-sign data from db fail.===================","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key,"err",err)
+			}
+
+			time.Sleep(time.Duration(1) * time.Second)
+		    }
+		    
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "delete pre-sign data from db fail", Err: errors.New("delete pre-sign data from db fail")}
+			ch <- res
+			DtPreSign.Unlock()
+			return errors.New("delete pre-sign data from db fail")
+		    }
 		}
 		///////
 		DtPreSign.Unlock()
@@ -274,8 +292,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-						PrePubKeyDataChan <- kd
 					}
 					DtPreSign.Unlock()
 
@@ -289,8 +305,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-						PrePubKeyDataChan <- kd
 					}
 					DtPreSign.Unlock()
 
@@ -305,8 +319,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-						PrePubKeyDataChan <- kd
 					}
 					DtPreSign.Unlock()
 
@@ -389,8 +401,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-						PrePubKeyDataChan <- kd
 					}
 					DtPreSign.Unlock()
 
@@ -409,8 +419,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-						PrePubKeyDataChan <- kd
 					}
 					DtPreSign.Unlock()
 
@@ -430,8 +438,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				DtPreSign.Lock()
 				for _,vv := range sbd.PickHash {
 					DeletePrePubDataBak(pub,vv.PickKey)
-					kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-					PrePubKeyDataChan <- kd
 				}
 				DtPreSign.Unlock()
 				//common.Debug("===================InitAcceptData2,DeletePrePubData,22222===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
@@ -497,8 +503,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 						DtPreSign.Lock()
 						for _,vv := range sbd.PickHash {
 							DeletePrePubDataBak(pub,vv.PickKey)
-							kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-							PrePubKeyDataChan <- kd
 						}
 						DtPreSign.Unlock()
 
@@ -520,8 +524,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				DtPreSign.Lock()
 				for _,vv := range sbd.PickHash {
 					SetPrePubDataUseStatus(pub,vv.PickKey,false)
-					kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-					PrePubKeyDataChan <- kd
 				}
 				DtPreSign.Unlock()
 
@@ -533,8 +535,6 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 			DtPreSign.Lock()
 			for _,vv := range sbd.PickHash {
 				SetPrePubDataUseStatus(pub,vv.PickKey,false)
-				kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-				PrePubKeyDataChan <- kd
 			}
 			DtPreSign.Unlock()
 
@@ -639,6 +639,25 @@ func HandleRpcSign() {
 						break
 					}
 
+					DtPreSign.Lock()
+					var err error
+					for i:=0;i<3;i++ {
+					    err = DeletePreSignDataFromDb(strings.ToLower(pub),pickkey)
+					    if err == nil {
+						break
+					    } else {
+						common.Info("========================HandleRpcSign,delete pre-sign data form db fail.==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key,"err",err)
+					    }
+
+					    time.Sleep(time.Duration(1) * time.Second)
+					}
+					DtPreSign.Unlock()
+					
+					if err != nil {
+						bret = true
+						break
+					}
+
 					common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
 					ph := &PickHashKey{Hash:vv,PickKey:pickkey}
 					pickhash = append(pickhash,ph)
@@ -662,8 +681,6 @@ func HandleRpcSign() {
 					DtPreSign.Lock()
 					for _,vv := range pickhash {
 						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-						kd := UpdataPreSignData{Key:[]byte(strings.ToLower(pub)),Del:true,Data:vv.PickKey}
-						PrePubKeyDataChan <- kd
 					}
 					DtPreSign.Unlock()
 

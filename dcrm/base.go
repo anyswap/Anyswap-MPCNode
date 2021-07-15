@@ -208,7 +208,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 	GetAllPreSignFromDb()
 
-	go UpdatePrePubKeyDataForDb()
 	go HandleRpcSign()
 
 	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
@@ -1117,13 +1116,6 @@ func Encode2(obj interface{}) (string, error) {
 		    return "",err
 		}
 		return string(ret),nil
-	case *UpdataPreSignData:
-		ch2 := obj.(*UpdataPreSignData)
-		ret,err := json.Marshal(ch2)
-		if err != nil {
-		    return "",err
-		}
-		return string(ret),nil
 	default:
 		return "", fmt.Errorf("encode obj fail.")
 	}
@@ -1306,16 +1298,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 
 	if datatype == "PreSignDataValue" {
 		var m PreSignDataValue 
-		err := json.Unmarshal([]byte(s), &m)
-		if err != nil {
-		    return nil,err
-		}
-
-		return &m,nil
-	}
-
-	if datatype == "UpdataPreSignData" {
-		var m UpdataPreSignData 
 		err := json.Unmarshal([]byte(s), &m)
 		if err != nil {
 		    return nil,err

@@ -547,6 +547,12 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
     return true,pd 
 }
 
+func GetPreDbDir() string {
+	dir := common.DefaultDataDir()
+	dir += "/dcrmdata/dcrmpredb" + cur_enode
+	return dir
+}
+
 func GetGroupDir() string { //TODO
 	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb" + discover.GetLocalID().String() + "group"

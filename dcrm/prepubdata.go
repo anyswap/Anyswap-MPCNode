@@ -24,81 +24,25 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"time"
 	"fmt"
+	"errors"
 	"sync"
+	"strconv"
 	"encoding/json"
 )
 
 var (
-	//PrePubKeyDataQueueChan = make(chan *PrePubData, 1000)
-	PreSignData  = common.NewSafeMap(10) //make(map[string][]byte)
-	PreSignDataBak  = common.NewSafeMap(10) //make(map[string][]byte)
 	predb *ethdb.LDBDatabase
-	presignhashpairdb *ethdb.LDBDatabase
 	PrePubDataCount = 2000
-	SignChan = make(chan *RpcSignData, 10000)
-	//DelSignChan = make(chan *DelSignData, 10000)
-	DtPreSign sync.Mutex
 	PreSigal  = common.NewSafeMap(10) //make(map[string][]byte)
-	PreSignHashPairMap  = common.NewSafeMap(10) //make(map[string][]byte)
-	PreSignHashPairChan = make(chan UpdataPreSignHashPair, 20000)
 )
 
-/////////
-type PreSignHashPair struct {
-	PubKey string
-	Gid string
-}
-
-func (PsHp *PreSignHashPair) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		PubKey string `json:"PubKey"`
-		Gid string `json:"Gid"`
-	}{
-		PubKey: PsHp.PubKey,
-		Gid: PsHp.Gid,
-	})
-}
-
-func (PsHp *PreSignHashPair) UnmarshalJSON(raw []byte) error {
-	var pshp struct {
-		PubKey string `json:"PubKey"`
-		Gid string `json:"Gid"`
-	}
-	if err := json.Unmarshal(raw, &pshp); err != nil {
-		return err
-	}
-
-	PsHp.PubKey = pshp.PubKey
-	PsHp.Gid = pshp.Gid
-	return nil
-}
-
-func GetPreSignHashPair(pub string) *PreSignHashPair {
-	data,exsit := PreSignHashPairMap.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		pshp := data.(*PreSignHashPair)
-		if pshp != nil {
-			return pshp
-		}
-	}
-
-	return nil
-}
-
-func PutPreSignHashPair(pub string,val *PreSignHashPair) {
-	if val == nil {
-		return
-	}
-
-	PreSignHashPairMap.WriteMap(strings.ToLower(pub),val)
-}
-
-////////
+//------------------------------------------------
 
 type PreSign struct {
 	Pub string
 	Gid string
 	Nonce string
+	Index int //pre-sign data index
 }
 
 func (ps *PreSign) MarshalJSON() ([]byte, error) {
@@ -106,10 +50,12 @@ func (ps *PreSign) MarshalJSON() ([]byte, error) {
 		Pub string `json:"Pub"`
 		Gid string `json:"Gid"`
 		Nonce string `json:"Nonce"`
+		Index string `json:"Index"`
 	}{
 		Pub: ps.Pub,
 		Gid: ps.Gid,
 		Nonce: ps.Nonce,
+		Index: strconv.Itoa(ps.Index),
 	})
 }
 
@@ -118,6 +64,7 @@ func (ps *PreSign) UnmarshalJSON(raw []byte) error {
 		Pub string `json:"Pub"`
 		Gid string `json:"Gid"`
 		Nonce string `json:"Nonce"`
+		Index string `json:"Index"`
 	}
 	if err := json.Unmarshal(raw, &pre); err != nil {
 		return err
@@ -126,18 +73,13 @@ func (ps *PreSign) UnmarshalJSON(raw []byte) error {
 	ps.Pub = pre.Pub
 	ps.Gid = pre.Gid
 	ps.Nonce = pre.Nonce
+	ps.Index,_ = strconv.Atoi(pre.Index)
 	return nil
 }
 
-type RpcSignData struct {
-	Raw string
-	PubKey string
-	GroupId string
-	MsgHash []string
-	Key string
-}
+//-------------------------------------------
 
-type PrePubData struct {
+type PreSignData struct {
 	Key string
 	K1 *big.Int
 	R *big.Int
@@ -145,23 +87,645 @@ type PrePubData struct {
 	Sigma1 *big.Int
 	Gid string
 	Used bool //useless? TODO
+	Index int
 }
 
-/*type DelSignData struct {
-	PubKey string
-	PickKey string
+func (psd *PreSignData) MarshalJSON() ([]byte, error) {
+    used := "false"
+    if psd.Used == true {
+	used = "true"
+    }
 
-	Pbd *PrePubData //for PutPreSign
+    return json.Marshal(struct {
+	    Key string `json:"Key"`
+	    K1 string `json:"K1"`
+	    R string `json:"R"`
+	    Ry string `json:"Ry"`
+	    Sigma1 string `json:"Sigma1"`
+	    Gid string `json:"Gid"`
+	    Used string `json:"Used"`
+	    Index string `json:"Index"`
+    }{
+	    Key: psd.Key,
+	    K1: fmt.Sprintf("%v",psd.K1),
+	    R: fmt.Sprintf("%v",psd.R),
+	    Ry: fmt.Sprintf("%v",psd.Ry),
+	    Sigma1: fmt.Sprintf("%v",psd.Sigma1),
+	    Gid: psd.Gid,
+	    Used: used,
+	    Index: strconv.Itoa(psd.Index),
+    })
 }
-*/
+
+func (psd *PreSignData) UnmarshalJSON(raw []byte) error {
+	var pre struct {
+	    Key string `json:"Key"`
+	    K1 string `json:"K1"`
+	    R string `json:"R"`
+	    Ry string `json:"Ry"`
+	    Sigma1 string `json:"Sigma1"`
+	    Gid string `json:"Gid"`
+	    Used string `json:"Used"`
+	    Index string `json:"Index"`
+	}
+	if err := json.Unmarshal(raw, &pre); err != nil {
+		return err
+	}
+
+	psd.Key = pre.Key
+	psd.K1,_ = new(big.Int).SetString(pre.K1,10)
+	psd.R,_ = new(big.Int).SetString(pre.R,10)
+	psd.Ry,_ = new(big.Int).SetString(pre.Ry,10)
+	psd.Sigma1,_ = new(big.Int).SetString(pre.Sigma1,10)
+	psd.Gid = pre.Gid
+	if pre.Used == "true" {
+	    psd.Used = true
+	} else {
+	    psd.Used = false
+	}
+	psd.Index,_ = strconv.Atoi(pre.Index)
+
+	return nil
+}
+
+//---------------------------------------
+
+type PickHashData struct {
+	Hash string
+	Pre *PreSignData
+}
+
+func (Phd *PickHashData) MarshalJSON() ([]byte, error) {
+    if Phd.Pre == nil {
+	return nil,errors.New("get pre-sign data fail.")
+    }
+
+    s,err := Phd.Pre.MarshalJSON()
+    if err != nil {
+	return nil,err
+    }
+
+    return json.Marshal(struct {
+	    Hash string `json:"Hash"`
+	    PickData string `json:"PickData"`
+    }{
+	    Hash: Phd.Hash,
+	    PickData: string(s),
+    })
+}
+
+func (Phd *PickHashData) UnmarshalJSON(raw []byte) error {
+	var phd struct {
+		Hash string `json:"Hash"`
+		PickData string `json:"PickData"`
+	}
+	if err := json.Unmarshal(raw, &phd); err != nil {
+		return err
+	}
+
+	Phd.Hash = phd.Hash
+
+	pre := &PreSignData{}
+	err := pre.UnmarshalJSON([]byte(phd.PickData))
+	if err != nil {
+	    return err
+	}
+
+	Phd.Pre = pre
+
+	return nil
+}
+
+//--------------------------------------------------
 
 type PickHashKey struct {
 	Hash string
 	PickKey string
 }
 
-//pub = hash256(pubkey + gid)
+func (Phk *PickHashKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Hash string `json:"Hash"`
+		PickKey string `json:"PickKey"`
+	}{
+		Hash: Phk.Hash,
+		PickKey: Phk.PickKey,
+	})
+}
 
+func (Phk *PickHashKey) UnmarshalJSON(raw []byte) error {
+	var phk struct {
+		Hash string `json:"Hash"`
+		PickKey string `json:"PickKey"`
+	}
+	if err := json.Unmarshal(raw, &phk); err != nil {
+		return err
+	}
+
+	Phk.Hash = phk.Hash
+	Phk.PickKey = phk.PickKey
+
+	return nil
+}
+
+//----------------------------------------------------------------
+
+type SignBrocastData struct {
+	Raw string
+	PickHash []*PickHashKey
+}
+
+func (Sbd *SignBrocastData) MarshalJSON() ([]byte, error) {
+    ph := make([]string,0)
+    for _,v := range Sbd.PickHash {
+	s,err := v.MarshalJSON()
+	if err != nil {
+	    return nil,err
+	}
+
+	ph = append(ph,string(s))
+    }
+    phs := strings.Join(ph,"|")
+
+    return json.Marshal(struct {
+	    Raw string `json:"Raw"`
+	    PickHash string `json:"PickHash"`
+    }{
+	    Raw: Sbd.Raw,
+	    PickHash: phs,
+    })
+}
+
+func (Sbd *SignBrocastData) UnmarshalJSON(raw []byte) error {
+	var sbd struct {
+		Raw string `json:"Raw"`
+		PickHash string `json:"PickHash"`
+	}
+	if err := json.Unmarshal(raw, &sbd); err != nil {
+		return err
+	}
+
+	Sbd.Raw = sbd.Raw
+	phs := strings.Split(sbd.PickHash,"|")
+	pickhash := make([]*PickHashKey,0)
+	for _,v := range phs {
+	    vv := &PickHashKey{}
+	    if err := vv.UnmarshalJSON([]byte(v));err != nil {
+		return err
+	    }
+
+	    pickhash = append(pickhash,vv)
+	}
+
+	Sbd.PickHash = pickhash
+
+	return nil
+}
+
+//-------------------------------------------------------
+
+type SignPickData struct {
+	Raw string
+	PickData []*PickHashData
+}
+
+func (Spd *SignPickData) MarshalJSON() ([]byte, error) {
+    ph := make([]string,0)
+    for _,v := range Spd.PickData {
+	s,err := v.MarshalJSON()
+ 	if err != nil {
+	    return nil,err
+	}
+
+	ph = append(ph,string(s))
+    }
+    phs := strings.Join(ph,"|")
+
+    return json.Marshal(struct {
+	    Raw string `json:"Raw"`
+	    PickData string `json:"PickData"`
+    }{
+	    Raw: Spd.Raw,
+	    PickData: phs,
+    })
+}
+
+func (Spd *SignPickData) UnmarshalJSON(raw []byte) error {
+	var spd struct {
+		Raw string `json:"Raw"`
+		PickData string `json:"PickData"`
+	}
+	if err := json.Unmarshal(raw, &spd); err != nil {
+		return err
+	}
+
+	Spd.Raw = spd.Raw
+
+	phs := strings.Split(spd.PickData,"|")
+	pickdata := make([]*PickHashData,0)
+	for _,v := range phs {
+	    vv := &PickHashData{}
+	    if err := vv.UnmarshalJSON([]byte(v));err != nil {
+		return err
+	    }
+
+	    pickdata = append(pickdata,vv)
+	}
+
+	Spd.PickData = pickdata
+
+	return nil
+}
+
+//-------------------------------------------------------------
+
+func CompressSignData(raw string,pickdata []*PickHashData) (string,error) {
+	if raw == "" || pickdata == nil {
+		return "",fmt.Errorf("sign data error")
+	}
+
+	s := &SignPickData{Raw:raw,PickData:pickdata}
+	data,err := s.MarshalJSON()
+ 	if err != nil {
+	    return "",err
+	}
+
+	return string(data),nil
+}
+
+func UnCompressSignData(data string) (*SignPickData,error) {
+	if data == "" {
+		return nil,fmt.Errorf("Sign Data error")
+	}
+
+	s := &SignPickData{}
+	if err := s.UnmarshalJSON([]byte(data));err != nil {
+	    return nil,err
+ 	}
+
+	return s,nil
+ }
+
+//---------------------------------------------------------------
+
+func CompressSignBrocastData(raw string,pickhash []*PickHashKey) (string,error) {
+	if raw == "" || pickhash == nil {
+		return "",fmt.Errorf("sign brocast data error")
+	}
+
+	s := &SignBrocastData{Raw:raw,PickHash:pickhash}
+	data,err := s.MarshalJSON()
+	if err != nil {
+		return "",err
+	}
+
+	return string(data),nil
+}
+
+func UnCompressSignBrocastData(data string) (*SignBrocastData,error) {
+	if data == "" {
+		return nil,fmt.Errorf("Sign Brocast Data error")
+	}
+
+	s := &SignBrocastData{}
+	if err := s.UnmarshalJSON([]byte(data));err != nil {
+	    return nil,err
+	}
+
+	return s,nil
+}
+
+//-----------------------------------------------------------------------
+
+func GetPreSignKey(pubkey string,gid string,index int) (string,error) {
+    if pubkey == "" || gid == "" || index < 0 {
+	return "",fmt.Errorf("get pre-sign key fail,param error.")
+    }
+
+    key := strings.ToLower(Keccak256Hash([]byte(strings.ToLower(pubkey + ":" + gid + ":" + strconv.Itoa(index)))).Hex())
+    return key,nil
+}
+
+func NeedPreSign(pubkey string,gid string) (int,bool) {
+
+    if predb == nil || pubkey == "" || gid == "" {
+	return -1,false
+    }
+
+    idx := make(chan int, 1)
+
+    for i:=0;i<PrePubDataCount;i++ {
+	go func(index int) {
+
+	    key,err := GetPreSignKey(pubkey,gid,index)
+	    if err != nil {
+		return
+	    }
+
+	    exsit, err := predb.Has([]byte(key))
+	    if !exsit || err != nil {
+		if len(idx) == 0 {
+		    idx <- index
+		}
+	    }
+	}(i)
+    }
+
+    WaitTime := 30 * time.Second
+    getIndexTimeOut := time.NewTicker(WaitTime)
+    
+    select {
+	case ret := <-idx:
+	    return ret,true
+	case <-getIndexTimeOut.C:
+	    common.Errorf("=====================NeedPreSign,get index timeout.==========================","pubkey",pubkey,"gid",gid)
+	    return -1,false
+    }
+
+    return -1,false
+}
+
+func GetTotalCount(pubkey string,gid string) int {
+    if predb == nil || pubkey == "" || gid == "" {
+	return 0
+    }
+
+    count := 0
+
+     var wg sync.WaitGroup
+    for i:=0;i<PrePubDataCount;i++ {
+	wg.Add(1)
+	go func(index int) {
+	    defer wg.Done()
+
+	    key,err := GetPreSignKey(pubkey,gid,index)
+	    if err != nil {
+		return
+	    }
+
+	    exsit, err := predb.Has([]byte(key))
+	    if exsit && err == nil {
+		count++
+	    }
+	}(i)
+    }
+    wg.Wait()
+
+    return count
+}
+
+func PutPreSignData(pubkey string,gid string,index int,val *PreSignData) error {
+    if predb == nil || val == nil || index < 0 {
+	return fmt.Errorf("put pre-sign data fail,param error.") 
+    }
+
+    key,err := GetPreSignKey(pubkey,gid,index)
+    if err != nil {
+	return err
+    }
+
+    exsit, err := predb.Has([]byte(key))
+    if !exsit || err != nil {
+	value,err := val.MarshalJSON()
+	if err != nil {
+	    common.Errorf("====================PutPreSignData,marshal pre-sign data error ======================","pubkey",pubkey,"gid",gid,"index",index,"val",val,"err",err)
+	    return err
+ 	}
+
+	err = predb.Put([]byte(key),value)
+	if err != nil {
+	    common.Errorf("====================PutPreSignData,put pre-sign data to db fail ======================","pubkey",pubkey,"gid",gid,"index",index,"val",val,"err",err)
+	}
+
+ 	return err
+    }
+
+    return fmt.Errorf("pre-sign data on the key already exsit.")
+}
+
+func GetPreSignData(pubkey string,gid string,datakey string) *PreSignData {
+    if predb == nil || pubkey == "" || gid == "" || datakey == "" {
+	return nil
+    }
+
+    data := make(chan *PreSignData, 1)
+
+    for i:=0;i<PrePubDataCount;i++ {
+	go func(index int) {
+
+	    key,err := GetPreSignKey(pubkey,gid,index)
+	    if err != nil {
+ 		return
+	    }
+
+	    da,err := predb.Get([]byte(key))
+	    if da != nil && err == nil {
+		psd := &PreSignData{}
+		if err = psd.UnmarshalJSON(da);err == nil {
+		    if strings.EqualFold(psd.Key,datakey) {
+			data <- psd
+			return
+		    }
+		}
+	    }
+	}(i)
+    }
+
+    WaitTime := 30 * time.Second
+    checkKeyTimeOut := time.NewTicker(WaitTime)
+    
+    select {
+	case ret := <-data:
+	    return ret
+	case <-checkKeyTimeOut.C:
+	    common.Errorf("=====================GetPreSignData,get pre-sign data timeout.==========================","pubkey",pubkey,"gid",gid)
+	    return nil
+    }
+
+    return nil
+}
+
+func DeletePreSignData(pubkey string,gid string,datakey string) error {
+    if predb == nil || pubkey == "" || gid == "" || datakey == "" {
+	common.Errorf("=======================DeletePreSignData,delete pre-sign data from db fail========================","pubkey",pubkey,"gid",gid,"datakey",datakey)
+	return fmt.Errorf("delete pre-sign data from db error.")
+    }
+
+    data := make(chan string, 1)
+
+    for i:=0;i<PrePubDataCount;i++ {
+	go func(index int) {
+
+	    key,err := GetPreSignKey(pubkey,gid,index)
+	    if err != nil {
+		return
+	    }
+
+	    da, err := predb.Get([]byte(key))
+	    if da != nil && err == nil {
+		psd := &PreSignData{}
+		if err = psd.UnmarshalJSON(da);err == nil {
+		    if strings.EqualFold(psd.Key,datakey) {
+			data <- key
+			return
+		    }
+		}
+	    }
+	}(i)
+    }
+    
+    WaitTime := 30 * time.Second
+    checkKeyTimeOut := time.NewTicker(WaitTime)
+    
+    select {
+	case ret := <-data:
+	    err := predb.Delete([]byte(ret))
+	    if err != nil {
+		common.Errorf("=====================DeletePreSignData,delete pre-sign data from db fail.==========================","pubkey",pubkey,"gid",gid,"err",err)
+	    }
+
+	    return err
+	case <-checkKeyTimeOut.C:
+	    common.Errorf("=====================DeletePreSignData,delete pre-sign data from db timeout.==========================","pubkey",pubkey,"gid",gid)
+	    return fmt.Errorf("delete pre-sign data from db timeout.")
+    }
+
+    return fmt.Errorf("delete pre-sign data from db fail.")
+}
+
+func PickPreSignData(pubkey string,gid string) *PreSignData {
+    if predb == nil || pubkey == "" || gid == "" {
+	common.Errorf("=======================PickPreSignData,pick pre-sign data from db fail========================","pubkey",pubkey,"gid",gid)
+	return nil
+    }
+
+    data := make(chan string, 1)
+
+    for i:=0;i<PrePubDataCount;i++ {
+	go func(index int) {
+
+	    key,err := GetPreSignKey(pubkey,gid,index)
+	    if err != nil {
+		return
+	    }
+
+	    da, err := predb.Get([]byte(key))
+	    if da != nil && err == nil {
+		psd := &PreSignData{}
+		if err = psd.UnmarshalJSON(da);err == nil {
+		    if len(data) == 0 {
+			data <- key
+			return
+		    }
+		}
+	    }
+	}(i)
+    }
+
+    WaitTime := 30 * time.Second
+    pickTimeOut := time.NewTicker(WaitTime)
+    
+    select {
+	case ret := <-data:
+	    da, err := predb.Get([]byte(ret))
+	    if da != nil && err == nil {
+		psd := &PreSignData{}
+		if err = psd.UnmarshalJSON(da);err == nil {
+		    err := predb.Delete([]byte(ret))
+		    if err != nil {
+			common.Errorf("=====================PickPreSignData,pick pre-sign data from db fail.==========================","pubkey",pubkey,"gid",gid,"err",err)
+			return nil
+		    }
+
+		    return psd
+		}
+	    }
+
+	case <-pickTimeOut.C:
+	    common.Errorf("=====================PickPreSignData,pick pre-sign data from db timeout.==========================","pubkey",pubkey,"gid",gid)
+	    return nil
+    }
+    
+    return nil
+}
+
+//-----------------------------------------------------------------------
+
+type TxDataPreSignData struct {
+    TxType string
+    PubKey string
+    SubGid []string
+}
+
+func PreGenSignData(raw string) (string, error) {
+    common.Debug("=====================PreGenSignData call CheckRaw ================","raw",raw)
+    _,from,_,txdata,err := CheckRaw(raw)
+    if err != nil {
+	common.Errorf("=====================PreGenSignData,call CheckRaw finish================","raw",raw,"err",err)
+	return err.Error(),err
+    }
+
+    pre,ok := txdata.(*TxDataPreSignData)
+    if !ok {
+	return "check raw fail,it is not *TxDataPreSignData",fmt.Errorf("check raw fail,it is not *TxDataPreSignData")
+    }
+
+    common.Debug("=====================PreGenSignData================","from",from,"raw",raw)
+    ExcutePreSignData(pre)
+    return "", nil
+}
+
+func ExcutePreSignData(pre *TxDataPreSignData) {
+    if pre == nil {
+	return
+    }
+    
+    for _,gid := range pre.SubGid {
+	go func(gg string) {
+	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
+
+	    PutPreSigal(pub,true)
+
+	    common.Info("===================ExcutePreSignData,before generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg)
+	    for {
+		    index,need := NeedPreSign(pre.PubKey,gg)
+		    if need && index != -1 && GetPreSigal(pub) {
+			    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+			    nonce := Keccak256Hash([]byte(strings.ToLower(pub + tt + strconv.Itoa(index)))).Hex()
+			    ps := &PreSign{Pub:pre.PubKey,Gid:gg,Nonce:nonce,Index:index}
+
+			    m := make(map[string]string)
+			    psjson,err := ps.MarshalJSON()
+			    if err == nil {
+				m["PreSign"] = string(psjson) 
+			    }
+			    m["Type"] = "PreSign"
+			    val,err := json.Marshal(m)
+			    if err != nil {
+				time.Sleep(time.Duration(10000000))
+				continue 
+			    }
+			    SendMsgToDcrmGroup(string(val),gg)
+
+			    rch := make(chan interface{}, 1)
+			    SetUpMsgList3(string(val),cur_enode,rch)
+			    _, _,cherr := GetChannelValue(waitall+10,rch)
+			    if cherr != nil {
+				common.Errorf("=====================ExcutePreSignData in genkey fail========================","pubkey",pre.PubKey,"cherr",cherr,"Index",index)
+			    }
+			    
+			    common.Info("===================ExcutePreSignData,after generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
+		    } 
+
+		    time.Sleep(time.Duration(1000000))
+	    }
+	}(gid)
+    }
+}
+
+//--------------------------------------------------------------
+
+//pub = hash256(pubkey + gid)
 func GetPreSigal(pub string) bool {
 	data,exsit := PreSigal.ReadMap(strings.ToLower(pub)) 
 	if exsit {
@@ -183,656 +747,6 @@ func PutPreSigal(pub string,val bool) {
 	PreSigal.WriteMap(strings.ToLower(pub),"false")
 }
 
-func GetTotalCount(pub string) int {
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-
-		if len(datas) == 0 {
-			return 0
-		} else {
-			if datas[0].Used == true {
-				return 0
-			}
-		}
-
-		return len(datas)
-	}
-
-	return 0
-}
-
-func GetTotalCount2(pub string) int {
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		if len(datas) == 0 {
-			return 0
-		} else {
-			if datas[0].Used == true {
-				return 0
-			}
-		}
-
-		return len(datas)
-	}
-
-	return 0
-}
-
-func NeedPreSignBak(pub string) bool {
-	if GetTotalCount2(pub) >= PrePubDataCount {
-		return false
-	}
-
-	return true
-
-	/*data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		if len(datas) >= PrePubDataCount {
-			return false
-		}
-	}
-
-	return true 
-	*/
-}
-
-func PutPreSignBak(pub string,val *PrePubData) {
-	if val == nil {
-		return
-	}
-
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		datas = append(datas,val)
-		PreSignDataBak.WriteMap(strings.ToLower(pub),datas)
-		return
-	}
-
-	datas := make([]*PrePubData,0)
-	datas = append(datas,val)
-	PreSignDataBak.WriteMap(strings.ToLower(pub),datas)
-}
-
-func NeedPreSign(pub string) bool {
-	
-	if GetTotalCount(pub) >= PrePubDataCount {
-		return false
-	}
-
-	return true
-
-	/*data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		if len(datas) >= PrePubDataCount {
-			return false
-		}
-	}
-
-	return true 
-	*/
-}
-
-func GetPrePubData(pub string,key string) *PrePubData {
-	if pub == "" || key == "" {
-		return nil
-	}
-
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		for _,v := range datas {
-			if v != nil && strings.EqualFold(v.Key,key) {
-				return v
-			}
-		}
-		return nil
-	}
-
-	return nil
-}
-
-func GetPrePubDataBak(pub string,key string) *PrePubData {
-	if pub == "" || key == "" {
-		return nil
-	}
-
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		for _,v := range datas {
-			if v != nil && strings.EqualFold(v.Key,key) {
-				return v
-			}
-		}
-		return nil
-	}
-
-	return nil
-}
-
-func PutPreSign(pub string,val *PrePubData) {
-	if val == nil {
-		return
-	}
-
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		////check same 
-		for _,v := range datas {
-			if v != nil && strings.EqualFold(v.Key,val.Key) {
-				common.Debug("========================PutPreSign,already have this key==================","pub",pub,"key",v.Key)
-				return
-			}
-		}
-		///
-
-		datas = append(datas,val)
-		PreSignData.WriteMap(strings.ToLower(pub),datas)
-		return
-	}
-
-	datas := make([]*PrePubData,0)
-	datas = append(datas,val)
-	PreSignData.WriteMap(strings.ToLower(pub),datas)
-}
-
-func DeletePrePubDataBak(pub string,key string) {
-	if pub == "" || key == "" {
-		return
-	}
-
-	data,exsit := PreSignDataBak.ReadMap(strings.ToLower(pub))
-	if !exsit {
-		return
-	}
-
-	tmp := make([]*PrePubData,0)
-	datas := data.([]*PrePubData)
-	for _,v := range datas {
-		if strings.EqualFold(v.Key,key) {
-			continue
-		}
-
-		tmp = append(tmp,v)
-	}
-
-	PreSignDataBak.WriteMap(strings.ToLower(pub),tmp)
-}
-
-func DeletePrePubData(pub string,key string) {
-	if pub == "" || key == "" {
-		return
-	}
-
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
-	if !exsit {
-		return
-	}
-
-	tmp := make([]*PrePubData,0)
-	datas := data.([]*PrePubData)
-	for _,v := range datas {
-		if strings.EqualFold(v.Key,key) {
-			continue
-		}
-
-		tmp = append(tmp,v)
-	}
-
-	PreSignData.WriteMap(strings.ToLower(pub),tmp)
-}
-
-/*func PickPrePubData(pub string) string {
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		datas := data.([]*PrePubData)
-		for _,v := range datas {
-			if v != nil && !v.Used {
-				v.Used = true //bug
-				return v.Key
-			}
-		}
-	}
-
-	return ""
-}*/
-
-func PickPrePubData(pub string) string {
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-		key := ""
-		var val *PrePubData
-		datas := data.([]*PrePubData)
-		for _,v := range datas {
-			if v != nil && v.Used == false {
-				key = v.Key
-				val = v
-				break
-			}
-		}
-
-		if key != "" {
-			tmp := make([]*PrePubData,0)
-			for _,v := range datas {
-				if strings.EqualFold(v.Key,key) {
-					continue
-				}
-
-				tmp = append(tmp,v)
-			}
-
-			PreSignData.WriteMap(strings.ToLower(pub),tmp)
-			PutPreSignBak(pub,val)
-			return key
-		}
-	}
-
-	return ""
-}
-
-func PickPrePubDataByKey(pub string,key string) error {
-	if pub == "" || key == "" {
-		return fmt.Errorf("param error.")
-	}
-	
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if !exsit {
-		return fmt.Errorf("key no exsit.")
-	}
-
-	var val *PrePubData
-	tmp := make([]*PrePubData,0)
-	datas := data.([]*PrePubData)
-	for _,v := range datas {
-		if v != nil && strings.EqualFold(v.Key,key) {
-			val = v
-			break
-		}
-	}
-
-	for _,v := range datas {
-		if strings.EqualFold(v.Key,key) {
-			continue
-		}
-
-		tmp = append(tmp,v)
-	}
-
-	PreSignData.WriteMap(strings.ToLower(pub),tmp)
-	PutPreSignBak(pub,val)
-	return nil
-}
-
-func SetPrePubDataUseStatus(pub string,key string,used bool ) {
-	/*data,exsit := PreSignData.ReadMap(strings.ToLower(pub))
-	if !exsit {
-		return
-	}
-
-	datas := data.([]*PrePubData)
-	for _,v := range datas {
-		if v != nil && strings.EqualFold(v.Key,key) {
-			v.Used = used
-			//PreSignData.WriteMap(strings.ToLower(pub),datas)
-			return
-		}
-	}*/
-
-	if !used {
-		val := GetPrePubDataBak(pub,key)
-		if val != nil {
-			//PutPreSign(pub,val) //don't put into queue again??
-			DeletePrePubDataBak(pub,key)
-		}
-	}
-}
-
-func PutPreSignDataIntoDb(key string,val *PrePubData) error {
-    if val == nil || key == "" {
-	return fmt.Errorf("param error.")
-    }
-
-    if predb == nil {
-	return fmt.Errorf("db open fail.")
-    }
-
-    da, err := predb.Get([]byte(key))
-    if err != nil || da == nil {
-	datas := make([]*PrePubData,0)
-	datas = append(datas,val)
-	es,err := EncodePreSignDataValue(datas)
-	if err != nil {
-	    return err
-	}
-
-	err = predb.Put([]byte(key), []byte(es))
-	if err != nil {
-	    common.Errorf("=====================PutPreSignDataIntoDb,put pre-sign data into db fail.========================","pick key",val.Key,"key",key,"err",err)
-	    return err
-	}
-    }
-
-    return nil
-}
-
-func DeletePreSignDataFromDb(pub string,key string) error {
-    if pub == "" || key == "" {
-	return fmt.Errorf("param error.")
-    }
-
-    da, err := predb.Get([]byte(pub))
-    if err != nil {
-	return err
-    }
-
-    ps,err := DecodePreSignDataValue(string(da))
-    if err != nil {
-	return err
-    }
-
-    tmp := make([]*PrePubData,0)
-    for _,v := range ps.Data {
-	    if v != nil && strings.EqualFold(v.Key,key) {
-		   continue 
-	    }
-
-	    tmp = append(tmp,v)
-    }
-
-    es,err := EncodePreSignDataValue(tmp)
-    if err != nil {
-	return err
-    }
-
-    err = predb.Put([]byte(pub), []byte(es))
-    if err != nil {
-	common.Errorf("=================DeletePreSignDataFromDb, delete pre-sign data from db fail. ===============","key",pub,"pick key",key,"err",err)
-	return err
-    }
-
-    common.Debug("=================DeletePreSignDataFromDb, delete pre-sign data from db success ===============","pub",pub,"pick key",key)
-    return nil
-}
-
-type SignBrocastData struct {
-	Raw string
-	PickHash []*PickHashKey
-}
-
-func CompressSignBrocastData(raw string,pickhash []*PickHashKey) (string,error) {
-	if raw == "" || pickhash == nil {
-		return "",fmt.Errorf("sign brocast data error")
-	}
-
-	s := &SignBrocastData{Raw:raw,PickHash:pickhash}
-	send,err := Encode2(s)
-	if err != nil {
-		return "",err
-	}
-
-	return send,nil
-
-	/*ret,err := Compress([]byte(send))
-	if err != nil {
-		return "",err
-	}
-
-	return ret,nil*/
-}
-
-func UnCompressSignBrocastData(data string) (*SignBrocastData,error) {
-	if data == "" {
-		return nil,fmt.Errorf("Sign Brocast Data error")
-	}
-
-	/*s,err := UnCompress(data)
-	if err != nil {
-		return nil,err
-	}*/
-
-	s := data
-
-	ret,err := Decode2(s,"SignBrocastData")
-	if err != nil {
-		return nil,err
-	}
-
-	return ret.(*SignBrocastData),nil
-}
-
-func GetPreDbDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/dcrmpredb" + cur_enode
-	return dir
-}
-
-type TxDataPreSignData struct {
-    TxType string
-    PubKey string
-    SubGid []string
-}
-
-func PreGenSignData(raw string) (string, error) {
-    common.Debug("=====================PreGenSignData call CheckRaw ================","raw",raw)
-    _,from,_,txdata,err := CheckRaw(raw)
-    if err != nil {
-	common.Info("=====================PreGenSignData,call CheckRaw finish================","raw",raw,"err",err)
-	return err.Error(),err
-    }
-
-    pre,ok := txdata.(*TxDataPreSignData)
-    if !ok {
-	return "check raw fail,it is not *TxDataPreSignData",fmt.Errorf("check raw fail,it is not *TxDataPreSignData")
-    }
-
-    common.Debug("=====================PreGenSignData================","from",from,"raw",raw)
-    ExcutePreSignData(pre,true)
-    return "", nil
-}
-
-func ExcutePreSignData(pre *TxDataPreSignData,over bool) {
-    if pre == nil {
-	return
-    }
-    
-    for _,gid := range pre.SubGid {
-	go func(gg string) {
-	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
-
-	    PutPreSigal(pub,true)
-
-	    //////////
-	    if over {
-		    pshp := &PreSignHashPair{PubKey:pre.PubKey,Gid:gg}
-		    PutPreSignHashPair(pub,pshp)
-		    databyte,err := pshp.MarshalJSON()
-		    if err == nil {
-			    kd := UpdataPreSignHashPair{Key: []byte(strings.ToLower(pub)), Del:false,Data: string(databyte)}
-			    PreSignHashPairChan <- kd
-		    }
-	    }
-	    //////////
-
-	    common.Info("===================ExcutePreSignData,before generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pub",pub,"pubkey",pre.PubKey,"sub-groupid",gg)
-	    for {
-		    if NeedPreSign(pub) && GetPreSigal(pub) {
-			    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-			    nonce := Keccak256Hash([]byte(strings.ToLower(pub + tt))).Hex()
-			    ps := &PreSign{Pub:pre.PubKey,Gid:gg,Nonce:nonce}
-
-			    m := make(map[string]string)
-			    psjson,err := ps.MarshalJSON()
-			    if err == nil {
-				m["PreSign"] = string(psjson) 
-			    }
-			    m["Type"] = "PreSign"
-			    val,err := json.Marshal(m)
-			    if err != nil {
-				time.Sleep(time.Duration(10000000))
-				continue 
-			    }
-			    SendMsgToDcrmGroup(string(val),gg)
-
-			    rch := make(chan interface{}, 1)
-			    SetUpMsgList3(string(val),cur_enode,rch)
-			    _, _,cherr := GetChannelValue(waitall+10,rch)
-			    if cherr != nil {
-				common.Info("=====================ExcutePreSignData in genkey fail========================","pub",pub,"cherr",cherr)
-			    }
-			    common.Info("===================ExcutePreSignData,after generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pub",pub,"pubkey",pre.PubKey,"sub-groupid",gg)
-		    } 
-
-		    time.Sleep(time.Duration(1000000))
-	    }
-	}(gid)
-    }
-}
-
-type PreSignDataValue struct {
-    Data []*PrePubData
-}
-
-func EncodePreSignDataValue(data []*PrePubData) (string,error) {
-	if data == nil {
-		return "",fmt.Errorf("pre-sign data error")
-	}
-
-	s := &PreSignDataValue{Data:data}
-	cs,err := Encode2(s)
-	if err != nil {
-		return "",err
-	}
-
-	return cs,nil
-}
-
-func DecodePreSignDataValue(s string) (*PreSignDataValue,error) {
-	if s == "" {
-		return nil,fmt.Errorf("pre-sign data error")
-	}
-
-	ret,err := Decode2(s,"PreSignDataValue")
-	if err != nil {
-		return nil,err
-	}
-
-	return ret.(*PreSignDataValue),nil
-}
-
-func GetPreSign(pub string) []*PrePubData {
-	if pub == "" {
-	    return nil
-	}
-
-	data,exsit := PreSignData.ReadMap(strings.ToLower(pub)) 
-	if exsit {
-	    return data.([]*PrePubData)
-	}
-
-	return nil
-}
-
-func GetAllPreSignFromDb() {
-    if predb == nil {
-	return
-    }
-
-    iter := predb.NewIterator()
-    for iter.Next() {
-	key := string(iter.Key())
-	value := string(iter.Value())
-
-	ps, err := DecodePreSignDataValue(value)
-	if err != nil {
-	    common.Info("=================GetAllPreSignFromDb=================\n","err",err) 
-	    continue
-	}
-
-	common.Info("=================GetAllPreSignFromDb=================\n","data count",len(ps.Data)) 
-	for _,v := range ps.Data {
-	    //common.Info("=================GetAllPreSignFromDb=================\n","pub",key,"pick key",v.Key) 
-	    PutPreSign(key,v)
-	}
-
-	subgid := make([]string,0)
-	pshp := GetPreSignHashPair(key)
-	if pshp != nil {
-		subgid = append(subgid,pshp.Gid)
-		pre := &TxDataPreSignData{TxType:"PRESIGNDATA",PubKey:pshp.PubKey,SubGid:subgid}
-		common.Info("================= GetAllPreSignFromDb, call ExcutePreSignData to generate pre-sign data =================\n")
-		ExcutePreSignData(pre,false)
-	}
-    }
-    
-    iter.Release()
-}
-
-func GetPreSignHashPairDbDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/presignhashpair" + cur_enode
-	return dir
-}
-
-type UpdataPreSignHashPair struct {
-    Key []byte
-    Del bool 
-    Data string
-}
-
-func UpdatePreSignHashPairForDb() {
-    for {
-	kd := <-PreSignHashPairChan
-	if presignhashpairdb != nil {
-	    if !kd.Del {
-		    err := presignhashpairdb.Put(kd.Key, []byte(kd.Data))
-		    common.Info("=====================UpdatePreSignHashPairForDb,put pre-sign hash pair into db========================","pub",string(kd.Key),"err",err)
-
-		    time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-		    continue
-	    }
-
-	    ////////////
-	    err := presignhashpairdb.Delete(kd.Key)
-	    if err != nil {
-		    common.Info("=====================UpdatePreSignHashPairForDb,delete pre-sign hash pair from db========================","pub",string(kd.Key),"err",err)
-	    }
-	    /////////////
-
-	} else {
-	    common.Info("=================UpdatePreSignHashPairForDb, save to db fail ,db is nil ===============","key",string(kd.Key))
-	}
-
-	time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-    }
-}
-
-func GetAllPreSignHashPairFromDb() {
-    if presignhashpairdb == nil {
-	return
-    }
-
-    iter := presignhashpairdb.NewIterator()
-    for iter.Next() {
-	key := string(iter.Key())
-	value := string(iter.Value())
-
-	pshp := &PreSignHashPair{}
-	if err := pshp.UnmarshalJSON([]byte(value));err != nil {
-	    common.Info("=================GetAllPreSignHashPairFromDb=================\n","pub",key,"err",err) 
-	    continue 
-	}
-
-	common.Info("=================GetAllPreSignHashPairFromDb=================\n","pub",key,"PubKey",pshp.PubKey,"Gid",pshp.Gid) 
-	PutPreSignHashPair(key,pshp)
-    }
-    
-    iter.Release()
-}
+//-------------------------------------------------------------------------
 
 

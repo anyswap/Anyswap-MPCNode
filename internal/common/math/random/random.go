@@ -38,7 +38,7 @@ func GetRandomIntFromZn(n *big.Int) *big.Int {
 
 	for {
 		rndNumZn = GetRandomInt(n.BitLen())
-		if rndNumZn.Cmp(n) < 0 && rndNumZn.Cmp(zero) >= 0 {
+		if rndNumZn != nil && rndNumZn.Cmp(n) < 0 && rndNumZn.Cmp(zero) >= 0 {
 			break
 		}
 	}
@@ -53,7 +53,7 @@ func GetRandomIntFromZnStar(n *big.Int) *big.Int {
 
 	for {
 		rndNumZnStar = GetRandomInt(n.BitLen())
-		if rndNumZnStar.Cmp(n) < 0 && rndNumZnStar.Cmp(one) >= 0 && gcdNum.GCD(nil, nil, rndNumZnStar, n).Cmp(one) == 0 {
+		if rndNumZnStar != nil && rndNumZnStar.Cmp(n) < 0 && rndNumZnStar.Cmp(one) >= 0 && gcdNum.GCD(nil, nil, rndNumZnStar, n).Cmp(one) == 0 {
 			break
 		}
 	}
@@ -66,7 +66,7 @@ func GetRandomPrimeInt(length int) *big.Int {
 
 	for {
 		rndInt = GetRandomInt(length)
-		if rndInt.ProbablyPrime(512) {
+		if rndInt != nil && rndInt.ProbablyPrime(512) {
 			break
 		}
 	}

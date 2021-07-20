@@ -1063,6 +1063,10 @@ func DECDSASignRoundOne(msgprex string, w *RPCReqWorker, idSign sortableIDSSlice
 	}
 
 	u1K, u1Gamma, commitU1GammaG := signing.DECDSA_Sign_RoundOne()
+	if commitU1GammaG == nil {
+	    return nil,nil,nil
+	}
+
 	// 4. Broadcast
 	//	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
 	mp := []string{msgprex, cur_enode}
@@ -2414,6 +2418,9 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	}
 
 	commitBigVAB1, rho1, l1 := signing.DECDSA_Sign_Round_Seven(r, deltaGammaGy, us1)
+	if commitBigVAB1 == nil {
+	    return nil,nil,nil,nil
+	}
 
 	mp := []string{msgprex, cur_enode}
 	enode := strings.Join(mp, "-")
@@ -2751,6 +2758,9 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RPCReqWorker, idSig
 	}
 
 	commitBigUT1 := signing.DECDSA_Sign_Round_Nine_Commitment(bigT1x, bigT1y, l1, bigU1x, bigU1y)
+	if commitBigUT1 == nil {
+	    return nil,nil
+	}
 
 	// Broadcast commitBigUT1.C
 	mp := []string{msgprex, cur_enode}

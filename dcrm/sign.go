@@ -635,11 +635,13 @@ type SignCurNodeInfo struct {
 
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	var ret []*SignCurNodeInfo
+	data := make(chan *SignCurNodeInfo, LdbPubKeyData.MapLength())
+
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
 	for k, v := range LdbPubKeyData.Map {
 	    wg.Add(1)
-	    go func(key string,value interface{}) {
+	    go func(key string,value interface{},ch chan *SignCurNodeInfo) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptSignData)
@@ -669,12 +671,20 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		////////
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
-		ret = append(ret, los)
+		ch <-los
+
 		common.Debug("================GetCurNodeSignInfo success return=======================","key",key)
-	    }(k,v)
+	    }(k,v,data)
 	}
 	LdbPubKeyData.RUnlock()
 	wg.Wait()
+
+	l := len(data)
+	for i:=0;i<l;i++ {
+	    info := <-data
+	    ret = append(ret,info)
+	}
+
 	return ret, "", nil
 }
 

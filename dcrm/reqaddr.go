@@ -222,11 +222,13 @@ type ReqAddrReply struct {
 
 func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	var ret []*ReqAddrReply
+	data := make(chan *ReqAddrReply, LdbPubKeyData.MapLength())
+
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
 	for k, v := range LdbPubKeyData.Map {
 	    wg.Add(1)
-	    go func(key string,value interface{}) {
+	    go func(key string,value interface{},ch chan *ReqAddrReply) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptReqAddrData)
@@ -252,12 +254,20 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		}
 
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
-		ret = append(ret, los)
+		ch <- los
+
 		common.Debug("================GetCurNodeReqAddrInfo success return================","key",key)
-	    }(k,v)
+	    }(k,v,data)
 	}
 	LdbPubKeyData.RUnlock()
 	wg.Wait()
+
+	l := len(data)
+	for i:=0;i<l;i++ {
+	    info := <-data
+	    ret = append(ret,info)
+	}
+
 	return ret, "", nil
 }
 

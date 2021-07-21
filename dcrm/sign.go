@@ -2172,6 +2172,23 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 	return u1GammaZKProof
 }
 
+func checkCommitmentGammaGOnCurve(secrets []*big.Int) bool {
+    if len(secrets) == 0 || (len(secrets) % 2) != 0 {
+	return false
+    }
+
+    l := (len(secrets) / 2)
+    for i:=0;i<l;i++ {
+	x := secrets[2*i]
+	y := secrets[2*i+1]
+	if x == nil || y == nil || !secp256k1.S256().IsOnCurve(x,y) {
+	    return false
+	}
+    }
+
+    return true
+}
+
 func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortableIDSSlice, commitU1GammaG *ec2.Commitment, u1GammaZKProof *ec2.ZkUProof, ch chan interface{}) map[string][]*big.Int {
 	if cointype == "" || w == nil || len(idSign) == 0 || commitU1GammaG == nil || u1GammaZKProof == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
@@ -2356,6 +2373,15 @@ func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortabl
 
 		en := strings.Split(string(enodes[8:]), "@")
 		_, u1GammaG := signing.DECDSA_Key_DeCommit(udecom[en[0]])
+		
+		//check gammaG
+		if !checkCommitmentGammaGOnCurve(u1GammaG) {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify gammaG on elliptic curve fail.")}
+		    ch <- res
+		    return nil
+		}
+		//
+
 		ug[en[0]] = u1GammaG
 		if !keygen.DECDSA_Key_ZkUVerify(u1GammaG, zkuproof[en[0]]) {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify zkuproof fail.")}
@@ -2693,6 +2719,14 @@ func DECDSASignVerifyBigVAB(cointype string, w *RPCReqWorker, commitbigvabs []st
 		}
 
 		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		//check gammaG
+		if !checkCommitmentGammaGOnCurve(BigVAB1) {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify gammaG on elliptic curve fail.")}
+		    ch <- res
+		    return nil,nil,nil
+		}
+		//
+
 		if !signing.DECDSA_Sign_ZkABVerify([]*big.Int{BigVAB1[2], BigVAB1[3]}, []*big.Int{BigVAB1[4], BigVAB1[5]}, []*big.Int{BigVAB1[0], BigVAB1[1]}, []*big.Int{r, deltaGammaGy}, zkabproofmap[en[0]]) {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify zkabproof fail.")}
 			ch <- res
@@ -2739,6 +2773,14 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RPCReqWorker, idSig
 		}
 
 		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		//check gammaG
+		if !checkCommitmentGammaGOnCurve(BigVAB1) {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify gammaG on elliptic curve fail.")}
+		    ch <- res
+		    return nil,nil
+		}
+		//
+
 		bigT1x = BigVAB1[2]
 		bigT1y = BigVAB1[3]
 		ind = k
@@ -2764,6 +2806,14 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RPCReqWorker, idSig
 		}
 
 		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		//check gammaG
+		if !checkCommitmentGammaGOnCurve(BigVAB1) {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify gammaG on elliptic curve fail.")}
+		    ch <- res
+		    return nil,nil
+		}
+		//
+
 		bigT1x, bigT1y = secp256k1.S256().Add(bigT1x, bigT1y, BigVAB1[2], BigVAB1[3])
 	}
 
@@ -2970,7 +3020,23 @@ func DECDSASignVerifyBigUTCommitment(msgprex string,cointype string, commitbigut
 		}
 
 		_, BigUT1 := signing.DECDSA_Key_DeCommit(commitbigutmap[en[0]])
+		//check gammaG
+		if !checkCommitmentGammaGOnCurve(BigUT1) {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify gammaG on elliptic curve fail.")}
+		    ch <- res
+		    return false 
+		}
+		//
+
 		_, BigVAB1 := signing.DECDSA_Key_DeCommit(commitbigcom[en[0]])
+		//check gammaG
+		if !checkCommitmentGammaGOnCurve(BigVAB1) {
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify gammaG on elliptic curve fail.")}
+		    ch <- res
+		    return false 
+		}
+		//
+
 		if k == 0 {
 			bigTBx = BigUT1[2]
 			bigTBy = BigUT1[3]

@@ -184,8 +184,7 @@ func InitDev(keyfile string) {
 
 	go SavePubKeyDataToDb()
 	go SaveSkU1ToDb()
-	go ec2.GenRandomInt(2048)
-	go ec2.GenRandomSafePrime(2048)
+	go ec2.GenRandomSafePrime() 
 }
 
 func InitGroupInfo(groupId string) {

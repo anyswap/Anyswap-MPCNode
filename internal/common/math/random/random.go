@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"time"
-	//"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 //commitment question 2
@@ -61,27 +60,15 @@ func GetRandomIntFromZnStar(n *big.Int) *big.Int {
 	return rndNumZnStar
 }
 
-func GetRandomPrimeInt(length int) *big.Int {
-	var rndInt *big.Int
-
-	for {
-		rndInt = GetRandomInt(length)
-		if rndInt != nil && rndInt.ProbablyPrime(512) {
-			break
-		}
-	}
-
-	return rndInt
-}
-
-func GetSafeRandomPrimeInt(length int) *big.Int {
+func GetSafeRandomPrimeInt() *big.Int {
 	var rndInt *big.Int
 	var err error
 	one := big.NewInt(1)
 	two := big.NewInt(2)
+	length := 1024 // L/2 
 
 	for {
-		rndInt, err = rand.Prime(rand.Reader, length-2)
+		rndInt, err = rand.Prime(rand.Reader, length-1)
 		if err != nil {
 			fmt.Println("Generate Safe Random Prime ERROR!")
 			break
@@ -89,7 +76,6 @@ func GetSafeRandomPrimeInt(length int) *big.Int {
 		rndInt = new(big.Int).Mul(rndInt, two)
 		rndInt = new(big.Int).Add(rndInt, one)
 		if rndInt.ProbablyPrime(512) {
-			fmt.Printf("======================Success Generate Safe Random Prime.====================\n")
 			break
 		}
 
@@ -99,32 +85,3 @@ func GetSafeRandomPrimeInt(length int) *big.Int {
 	return rndInt
 }
 
-func GetSafeRandomPrimeInt2(length int, rndInt *big.Int) *big.Int {
-	one := big.NewInt(1)
-	two := big.NewInt(2)
-
-	rndInt = new(big.Int).Mul(rndInt, two)
-	rndInt = new(big.Int).Add(rndInt, one)
-	if rndInt.ProbablyPrime(512) {
-		fmt.Printf("======================Success Generate Safe Random Prime.====================\n")
-		return rndInt
-	}
-
-	return nil
-}
-
-func GetSafeRandomInt(length int) *big.Int {
-	var rndInt *big.Int
-	var err error
-	for {
-		rndInt, err = rand.Prime(rand.Reader, length-2)
-		if err == nil {
-			//fmt.Println("Generate Safe Random Int Success!")
-			break
-		}
-
-		time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-	}
-
-	return rndInt
-}

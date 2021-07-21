@@ -96,13 +96,11 @@ func SendMsgToDcrmGroup(msg string, groupid string) {
 
 ///
 func EncryptMsg(msg string, enodeID string) (string, error) {
-	//fmt.Println("=============EncryptMsg,KeyFile = %s,enodeID = %s ================",KeyFile,enodeID)
 	hprv, err1 := hex.DecodeString(enodeID)
 	if err1 != nil {
 		return "", err1
 	}
 
-	//fmt.Println("=============EncryptMsg,hprv len = %v ================",len(hprv))
 	p := &ecdsa.PublicKey{Curve: crypto.S256(), X: new(big.Int), Y: new(big.Int)}
 	half := len(hprv) / 2
 	p.X.SetBytes(hprv[:half])
@@ -122,10 +120,8 @@ func EncryptMsg(msg string, enodeID string) (string, error) {
 }
 
 func DecryptMsg(cm string) (string, error) {
-	//test := Keccak256Hash([]byte(strings.ToLower(cm))).Hex()
 	nodeKey, errkey := crypto.LoadECDSA(KeyFile)
 	if errkey != nil {
-		//fmt.Printf("%v =========DecryptMsg finish crypto.LoadECDSA,err = %v,keyfile = %v,msg hash = %v =================\n", common.CurrentTime(), errkey, KeyFile, test)
 		return "", errkey
 	}
 
@@ -133,7 +129,6 @@ func DecryptMsg(cm string) (string, error) {
 	var m []byte
 	m, err := prv.Decrypt([]byte(cm), nil, nil)
 	if err != nil {
-		//fmt.Printf("%v =========DecryptMsg finish prv.Decrypt,err = %v,keyfile = %v,msg hash = %v =================\n", common.CurrentTime(), err, KeyFile, test)
 		return "", err
 	}
 
@@ -142,17 +137,14 @@ func DecryptMsg(cm string) (string, error) {
 
 ///
 func SendMsgToPeer(enodes string, msg string) {
-//	common.Debug("=========SendMsgToPeer===========","msg",msg,"send to peer",enodes)
 	en := strings.Split(string(enodes[8:]), "@")
 	cm, err := EncryptMsg(msg, en[0])
 	if err != nil {
-		//fmt.Printf("%v =========SendMsgToPeer,encrypt msg fail,err = %v =================\n", common.CurrentTime(), err)
 		return
 	}
 
 	err = SendToPeer(enodes, cm)
 	if err != nil {
-//	    common.Debug("=========SendMsgToPeer,send to peer fail===========","msg",msg,"send to peer",enodes,"err",err)
 	    return
 	}
 }
@@ -687,13 +679,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    }
 		    //
 
-			///////
 		    exsit,da3 := GetValueFromPubKeyData(pd.Key)
 		    ac,ok := da3.(*AcceptReqAddrData)
 		    if ok {
 			HandleC1Data(ac,w.sid,workid)
 		    }
-			///////
 
 		    var ch1 = make(chan interface{}, 1)
 		    pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
@@ -703,19 +693,17 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 		    }
 
-		    //if NeedPreSign(ps.Pub) {
-			    pre.Key = w.sid
-			    pre.Gid = w.groupid
-			    pre.Used = false
-			    pre.Index = ps.Index
+		    pre.Key = w.sid
+		    pre.Gid = w.groupid
+		    pre.Used = false
+		    pre.Index = ps.Index
 
-			    err = PutPreSignData(ps.Pub,ps.Gid,ps.Index,pre)
-			    if err != nil {
-				res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
-				ch <- res
-				return false
-			    }
-		    //}
+		    err = PutPreSignData(ps.Pub,ps.Gid,ps.Index,pre)
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			ch <- res
+			return false
+		    }
 
 		    res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 		    ch <- res
@@ -765,8 +753,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    <-ch1
 			}
 
-			//w.Clear2()
-			//Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
 			Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,sd.Pre)
 			common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
 			ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
@@ -788,13 +774,12 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			}
 			
 			common.Info("===============RecvMsg.Run,ec3 sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
-			//time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		    }	
 		    
 		    res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
 		    ch <- res2
 		    return false
-		}/////
+		}
 	    }
 	}
 
@@ -842,8 +827,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	    }
 	}
-
-	////////////////////////////
 
 	errtmp := InitAcceptData(res,workid,self.sender,ch)
 	if errtmp == nil {
@@ -898,48 +881,46 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 	return
     }
    
-    /////////bug
-	_, enodes := GetGroup(ac.GroupId)
-	nodes := strings.Split(enodes, common.Sep2)
-	for _, node := range nodes {
-	    node2 := ParseNode(node)
-		c1data := key + "-" + node2 + common.Sep + "SS1"
-		//common.Debug("===============HandleC1Data====================","c1data",c1data)
-		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-		if exist {
-		common.Info("===============HandleC1Data,exsit c1data in C1Data map for ss1====================","c1data",c1data)
-		    DisMsg(c1.(string))
-		    go C1Data.DeleteMap(strings.ToLower(c1data))
-		}
+    _, enodes := GetGroup(ac.GroupId)
+    nodes := strings.Split(enodes, common.Sep2)
+    for _, node := range nodes {
+	node2 := ParseNode(node)
+	    c1data := key + "-" + node2 + common.Sep + "SS1"
+	    //common.Debug("===============HandleC1Data====================","c1data",c1data)
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+	    common.Info("===============HandleC1Data,exsit c1data in C1Data map for ss1====================","c1data",c1data)
+		DisMsg(c1.(string))
+		go C1Data.DeleteMap(strings.ToLower(c1data))
+	    }
     }
-	for _, node := range nodes {
-	    node2 := ParseNode(node)
-		c1data := key + "-" + node2 + common.Sep + "C11" 
-		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-		if exist {
-		    DisMsg(c1.(string))
-		    go C1Data.DeleteMap(strings.ToLower(c1data))
-		}
+    for _, node := range nodes {
+	node2 := ParseNode(node)
+	    c1data := key + "-" + node2 + common.Sep + "C11" 
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		DisMsg(c1.(string))
+		go C1Data.DeleteMap(strings.ToLower(c1data))
+	    }
     }
-	for _, node := range nodes {
-	    node2 := ParseNode(node)
-		c1data := key + "-" + node2 + common.Sep + "CommitBigVAB" 
-		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-		if exist {
-		    DisMsg(c1.(string))
-		    go C1Data.DeleteMap(strings.ToLower(c1data))
-		}
+    for _, node := range nodes {
+	node2 := ParseNode(node)
+	    c1data := key + "-" + node2 + common.Sep + "CommitBigVAB" 
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		DisMsg(c1.(string))
+		go C1Data.DeleteMap(strings.ToLower(c1data))
+	    }
     }
-	for _, node := range nodes {
-	    node2 := ParseNode(node)
-		c1data := key + "-" + node2 + common.Sep + "C1" 
-		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
-		if exist {
-		    DisMsg(c1.(string))
-		    go C1Data.DeleteMap(strings.ToLower(c1data))
-		}
+    for _, node := range nodes {
+	node2 := ParseNode(node)
+	    c1data := key + "-" + node2 + common.Sep + "C1" 
+	    c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
+	    if exist {
+		DisMsg(c1.(string))
+		go C1Data.DeleteMap(strings.ToLower(c1data))
+	    }
     }
-    ////////////
     
     mms := strings.Split(ac.Sigs, common.Sep)
     if len(mms) < 3 { //1:eid1:acc1
@@ -1041,11 +1022,9 @@ func DisAcceptMsg(raw string,workid int) {
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,key) {
-		//common.Info("=====================DisAcceptMsg,check reply fail===================","key",key,"from",from)
 		return
 	    }
 
-	    //common.Info("=====================DisAcceptMsg,check reply success and will set timeout channel===================","key",key,"from",from)
 	    w.bacceptsignres <- true
 	    exsit,da := GetValueFromPubKeyData(key)
 	    if !exsit {
@@ -1154,7 +1133,6 @@ func DisAcceptMsg(raw string,workid int) {
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,acceptsig.Key) {
-		    //common.Info("======================DisAcceptMsg,the msg is accept sign tx,and check reply fail.===========================","sig key",acceptsig.Key,"from",from)
 		return
 	    }
 
@@ -1413,71 +1391,9 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				return cherr 
 			}
 
-			////////ec3////
-		       /*if strings.EqualFold(sender,cur_enode) {
-				go func() {
-					PutPreSigal(chret,true)
-
-					for {
-						if NeedPreSign(chret) && GetPreSigal(chret) {
-							//one,_ := new(big.Int).SetString("1",0)
-							//PreSignNonce = new(big.Int).Add(PreSignNonce,one)
-							tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-							nonce := Keccak256Hash([]byte(strings.ToLower(chret + req.GroupId + tt))).Hex()
-							index := 0
-							ids := GetIds2("ECDSA", req.GroupId)
-							for kk, id := range ids {
-								enodes := GetEnodesByUid(id, "ECDSA", req.GroupId)
-								if IsCurNode(enodes, cur_enode) {
-									if kk >= 2 {
-										index = kk - 2
-									} else {
-										index = kk
-									}
-									break
-								}
-
-							}
-							tmp := ids[index:index+3]
-							ps := &PreSign{Pub:chret,Gid:req.GroupId,Nonce:nonce,Index:index}
-
-							val,err := Encode2(ps)
-							if err != nil {
-								common.Debug("=====================PreSign========================","err",err)
-								time.Sleep(time.Duration(10000000))
-							    continue 
-							}
-							
-							for _, id := range tmp {
-								enodes := GetEnodesByUid(id, "ECDSA", req.GroupId)
-								common.Info("===============PreSign in genkey,get enodes===============","enodes",enodes,"index",index)
-								if IsCurNode(enodes, cur_enode) {
-									common.Debug("===============PreSign in genkey,get cur enodes===============","enodes",enodes)
-									continue
-								}
-								SendMsgToPeer(enodes, val)
-							}
-
-							rch := make(chan interface{}, 1)
-							SetUpMsgList3(val,cur_enode,rch)
-							_, _,cherr := GetChannelValue(waitall+10,rch)
-							if cherr != nil {
-								common.Debug("=====================PreSign in genkey fail========================","cherr",cherr)
-							}
-
-							common.Info("===================generate pre-sign data===============","current total number of the data ",GetTotalCount(chret),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(chret)),"pubkey",chret)
-						} 
-
-						time.Sleep(time.Duration(1000000))
-					}
-				}()
-		       }*/
-			////////////
-
 			res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_req_dcrmaddr" + common.Sep + chret, Tip: "", Err: nil}
 			ch <- res
 			return nil
-			/////////////
 		   }
 		}
 	    }
@@ -1796,319 +1712,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	}
     }
 
-    /*sig,ok := txdata.(*TxDataSign)
-    if ok {
-	common.Debug("===============InitAcceptData, it is sign txdata and check sign raw success==================","key ",key,"from ",from,"nonce ",nonce)
-	exsit,_ := GetValueFromPubKeyData(key)
-	if !exsit {
-	    cur_nonce, _, _ := GetSignNonce(from)
-	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
-	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
-	    common.Debug("===============InitAcceptData===============","sign cur_nonce_num ",cur_nonce_num,"sign new_nonce_num ",new_nonce_num,"key ",key)
-	    //if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-		//_, err := SetSignNonce(from,nonce)
-		_, err := SetSignNonce(from,cur_nonce) //bug
-		if err == nil {
-		    ars := GetAllReplyFromGroup(workid,sig.GroupId,Rpc_SIGN,sender)
-		    ac := &AcceptSignData{Initiator:sender,Account: from, GroupId: sig.GroupId, Nonce: nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext: sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
-		    err = SaveAcceptSignData(ac)
-		    if err == nil {
-			common.Debug("===============InitAcceptData,save sign accept data finish===================","ars ",ars,"key ",key)
-			w := workers[workid]
-			w.sid = key 
-			w.groupid = sig.GroupId 
-			w.limitnum = sig.ThresHold
-			gcnt, _ := GetGroup(w.groupid)
-			w.NodeCnt = gcnt
-			w.ThresHold = w.NodeCnt
-
-			nums := strings.Split(w.limitnum, "/")
-			if len(nums) == 2 {
-			    nodecnt, err := strconv.Atoi(nums[1])
-			    if err == nil {
-				w.NodeCnt = nodecnt
-			    }
-
-			    w.ThresHold = gcnt
-			}
-
-			w.DcrmFrom = sig.PubKey  // pubkey replace dcrmfrom in sign
-			
-			if sig.Mode == "0" { // self-group
-				////
-				var reply bool
-				var tip string
-				timeout := make(chan bool, 1)
-				go func(wid int) {
-					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := 2 * time.Minute
-					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
-
-					wtmp2 := workers[wid]
-
-					for {
-						select {
-						case account := <-wtmp2.acceptSignChan:
-							common.Debug("InitAcceptData,", "account= ", account, "key = ", key)
-							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-							common.Debug("================== InitAcceptData , get all AcceptSignRes===============","result ",ars,"key ",key)
-							
-							//TODO//
-							reply = true
-							recount := 0
-							for _,nr := range ars {
-							    if strings.EqualFold(nr.Status,"Agree") {
-								    recount++
-							    }
-							}
-							if recount < w.ThresHold {
-								reply = false
-							}
-							////////
-							//
-
-							if !reply {
-								tip = "don't accept sign"
-								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "false", "Failure", "", "don't accept sign", "don't accept sign", ars,wid)
-							} else {
-							    	common.Debug("=======================InitAcceptData,11111111111111,set sign pending=============================","key",key)
-								tip = ""
-								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "", "", ars,wid)
-							}
-
-							if err != nil {
-							    tip = tip + " and accept sign data fail"
-							}
-
-							///////
-							timeout <- true
-							return
-						case <-agreeWaitTimeOut.C:
-							common.Debug("================== InitAcceptData , agree wait timeout=============","key ",key)
-							ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "false", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,wid)
-							reply = false
-							tip = "get other node accept sign result timeout"
-							if err != nil {
-							    tip = tip + " and accept sign data fail"
-							}
-							//
-
-							timeout <- true
-							return
-						}
-					}
-				}(workid)
-
-				if len(workers[workid].acceptWaitSignChan) == 0 {
-					workers[workid].acceptWaitSignChan <- "go on"
-				}
-
-				DisAcceptMsg(raw,workid)
-				common.Debug("===============InitAcceptData, call DisAcceptMsg finish===================","key ",key)
-				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_SIGN)
-				if reqaddrkey == "" {
-				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get req addr key fail", Err: fmt.Errorf("get reqaddr key fail")}
-				    ch <- res
-				    return fmt.Errorf("get reqaddr key fail") 
-				}
-
-				exsit,da := GetValueFromPubKeyData(reqaddrkey)
-				if !exsit {
-					common.Debug("===============InitAcceptData, get req addr key by other key fail ===================","key ",key)
-				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
-				    ch <- res
-				    return fmt.Errorf("get reqaddr sigs data fail") 
-				}
-
-				acceptreqdata,ok := da.(*AcceptReqAddrData)
-				if !ok || acceptreqdata == nil {
-					common.Debug("===============InitAcceptData, get req addr key by other key error ===================","key ",key)
-				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
-				    ch <- res
-				    return fmt.Errorf("get reqaddr sigs data fail") 
-				}
-
-				common.Debug("===============InitAcceptData, start call HandleC1Data===================","reqaddrkey ",reqaddrkey,"key ",key)
-
-				HandleC1Data(acceptreqdata,key,workid)
-
-				<-timeout
-
-				if !reply {
-					if tip == "get other node accept sign result timeout" {
-						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", "get other node accept sign result timeout", "get other node accept sign result timeout", ars,workid)
-					} else {
-						//sid-enode:SendSignRes:Success:rsv
-						//sid-enode:SendSignRes:Fail:err
-						mp := []string{w.sid, cur_enode}
-						enode := strings.Join(mp, "-")
-						s0 := "SendSignRes"
-						s1 := "Fail"
-						s2 := "don't accept sign."
-						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-						SendMsgToDcrmGroup(ss, w.groupid)
-						DisMsg(ss)
-						_, _, err := GetChannelValue(waitall, w.bsendsignres)
-						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-						if err != nil {
-							tip = "get other node terminal accept sign result timeout" ////bug
-							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip, tip, ars,workid)
-							if err != nil {
-							    tip = tip + " and accept sign data fail"
-							}
-
-						} else if w.msg_sendsignres.Len() != w.ThresHold {
-							_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars,workid)
-							if err != nil {
-							    tip = tip + " and accept sign data fail"
-							}
-
-						} else {
-							reply2 := "false"
-							lohash := ""
-							iter := w.msg_sendsignres.Front()
-							for iter != nil {
-								mdss := iter.Value.(string)
-								ms := strings.Split(mdss, common.Sep)
-								if strings.EqualFold(ms[2], "Success") {
-									reply2 = "true"
-									lohash = ms[3]
-									break
-								}
-
-								lohash = ms[3]
-								iter = iter.Next()
-							}
-
-							if reply2 == "true" {
-								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars,workid)
-								if err != nil {
-								    tip = tip + " and accept sign data fail"
-								}
-
-							} else {
-								_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", lohash,lohash, ars,workid)
-								if err != nil {
-								    tip = tip + " and accept sign data fail"
-								}
-
-							}
-						}
-					}
-
-					res := RpcDcrmRes{Ret:"", Tip: tip, Err: fmt.Errorf("don't accept sign.")}
-					ch <- res
-					return fmt.Errorf("don't accept sign.")
-				}
-			} else {
-				if len(workers[workid].acceptWaitSignChan) == 0 {
-					workers[workid].acceptWaitSignChan <- "go on"
-				}
-
-				ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-				common.Debug("=======================InitAcceptData,2222222222222222222,set sign pending=============================","key",key)
-				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,workid)
-				if err != nil {
-				    res := RpcDcrmRes{Ret:"", Tip: err.Error(), Err:err}
-				    ch <- res
-				    return err
-				}
-			}
-
-			common.Debug("===============InitAcceptData,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
-			rch := make(chan interface{}, 1)
-			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,rch)
-			chret, tip, cherr := GetChannelValue(waitall, rch)
-			common.Debug("================== InitAcceptData,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
-			if chret != "" {
-				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
-				ch <- res
-				return nil
-			}
-
-			ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
-			if tip == "get other node accept sign result timeout" {
-				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip,cherr.Error(),ars,workid)
-			} else {
-				//sid-enode:SendSignRes:Success:rsv
-				//sid-enode:SendSignRes:Fail:err
-				mp := []string{w.sid, cur_enode}
-				enode := strings.Join(mp, "-")
-				s0 := "SendSignRes"
-				s1 := "Fail"
-				s2 := cherr.Error()
-				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-				SendMsgToDcrmGroup(ss, w.groupid)
-				DisMsg(ss)
-				_, _, err := GetChannelValue(waitall, w.bsendsignres)
-				if err != nil {
-					tip = "get other node terminal accept sign result timeout" ////bug
-					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip, tip, ars, workid)
-					if err != nil {
-					    tip = tip + " and accept sign data fail"
-					}
-
-				} else if w.msg_sendsignres.Len() != w.ThresHold {
-					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", "get other node sign result fail", "get other node sign result fail", ars, workid)
-					if err != nil {
-					    tip = tip + " and accept sign data fail"
-					}
-
-				} else {
-					reply2 := "false"
-					lohash := ""
-					iter := w.msg_sendsignres.Front()
-					for iter != nil {
-						mdss := iter.Value.(string)
-						ms := strings.Split(mdss, common.Sep)
-						if strings.EqualFold(ms[2], "Success") {
-							reply2 = "true"
-							lohash = ms[3]
-							break
-						}
-
-						lohash = ms[3]
-						iter = iter.Next()
-					}
-
-					if reply2 == "true" {
-						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "true", "Success", lohash, " ", " ", ars, workid)
-						if err != nil {
-						    tip = tip + " and accept sign data fail"
-						}
-
-					} else {
-						_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Failure", "", lohash, lohash, ars, workid)
-						if err != nil {
-						    tip = tip + " and accept sign data fail"
-						}
-					}
-				}
-			}
-
-			if cherr != nil {
-				res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
-				ch <- res
-				return cherr
-			}
-
-			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("sign fail.")}
-			ch <- res
-			return fmt.Errorf("sign fail.")
-		    } else {
-			common.Debug("===============InitAcceptData, it is sign txdata,but save accept data fail==================","key ",key,"from ",from)
-		    }
-		} else {
-			common.Debug("===============InitAcceptData, it is sign txdata,but set nonce fail==================","key ",key,"from ",from)
-		}
-	    //}
-	} else {
-		common.Debug("===============InitAcceptData, it is sign txdata,but has handled before==================","key ",key,"from ",from)
-	}
-    }*/
-
     rh,ok := txdata.(*TxDataReShare)
     if ok {
 	ars := GetAllReplyFromGroup(workid,rh.GroupId,Rpc_RESHARE,sender)
@@ -2161,7 +1764,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				    ars := GetAllReplyFromGroup(w.id,rh.GroupId,Rpc_RESHARE,sender)
 				    common.Info("================== InitAcceptData, get all AcceptReShareRes================","raw ",raw,"result ",ars,"key ",key)
 				    
-				    //bug
 				    reply = true
 				    for _,nr := range ars {
 					if !strings.EqualFold(nr.Status,"Agree") {
@@ -2169,7 +1771,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 					    break
 					}
 				    }
-				    //
 
 				    if !reply {
 					    tip = "don't accept reshare"
@@ -2183,7 +1784,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 					tip = tip + " and accept reshare data fail"
 				    }
 
-				    ///////
 				    timeout <- true
 				    return
 			    case <-agreeWaitTimeOut.C:
@@ -2195,7 +1795,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				    if err != nil {
 					tip = tip + " and accept reshare data fail"
 				    }
-				    //
 
 				    timeout <- true
 				    return
@@ -2361,7 +1960,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
     if ok {
-	//common.Info("===============InitAcceptData, check accept reqaddr raw success======================","raw ",raw,"key ",acceptreq.Key,"from ",from,"txdata ",acceptreq)
 	w, err := FindWorker(acceptreq.Key)
 	if err != nil || w == nil {
 	    c1data := acceptreq.Key + "-" + from
@@ -2709,7 +2307,6 @@ func GetGroupSigsDataByRaw(raw string) (string,error) {
 		}
 
 		sig := enodesigs[len(node):]
-		//sigbit, _ := hex.DecodeString(string(sig[:]))
 		sigbit := common.FromHex(string(sig[:]))
 		if sigbit == nil {
 		    return "",fmt.Errorf("group sigs error")
@@ -2858,8 +2455,6 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
     mm := make([]string,0)
     mm = append(mm,key + "-" + ower)
     mm = append(mm,datatype)
-    //mm[0] = key + "-" + ower
-    //mm[1] = datatype
     var next *list.Element
     for e := l.Front(); e != nil; e = next {
 	    next = e.Next()

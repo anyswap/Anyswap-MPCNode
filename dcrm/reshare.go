@@ -37,7 +37,6 @@ import (
 func GetReShareNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "RESHARE"))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
-	///////
 	if !exsit {
 		return "0", "", nil
 	}
@@ -143,7 +142,6 @@ type ReShareStatus struct {
 
 func GetReShareStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
-	///////
 	if !exsit || da == nil  {
 		return "", "dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus")
 	}
@@ -464,13 +462,11 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    // for all nodes, verify the commitment
 	    for _, id := range idSign {
 		    enodes := GetEnodesByUid(id, "ALL", w.groupid)
-		    ////////bug
 		    if len(enodes) < 9 {
 			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get enodes error")}
 			    ch <- res
 			    return 
 		    }
-		    ////////
 		    en := strings.Split(string(enodes[8:]), "@")
 		    //bug
 		    if len(en) <= 0 || en[0] == "" {
@@ -485,7 +481,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    ch <- res
 			    return
 		    }
-		    //
 
 		    if udecom[en[0]] == nil {
 			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
@@ -525,7 +520,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    ch <- res
 			    return
 		    }
-		    //
 		    ushare := &ec2.ShareStruct2{Id: new(big.Int).SetBytes([]byte(mm[2])), Share: new(big.Int).SetBytes([]byte(mm[3]))}
 		    prex := mm[0]
 		    prexs := strings.Split(prex, "-")
@@ -662,7 +656,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    }
 	    }
 	    if err != nil {
-		//dbsk = nil
 	    } else {
 		dbsk = dbsktmp
 	    }
@@ -947,9 +940,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		    kd = KeyData{Key: []byte(key), Data: ss1}
 		    PubKeyDataChan <- kd
-		    /////
 		    LdbPubKeyData.WriteMap(key, pubs)
-		    ////
 	    }
 	    
 	    _,err = SetReqAddrNonce(account,nonce)
@@ -970,7 +961,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		}
 	    }
 
-	    //ars := GetAllReplyFromGroup(-1,groupid,Rpc_REQADDR,cur_enode)
 	    ac := &AcceptReqAddrData{Initiator:cur_enode,Account: account, Cointype: "ALL", GroupId: groupid, Nonce: nonce, LimitNum: w.limitnum, Mode: mode, TimeStamp: tt, Deal: "true", Accept: "true", Status: "Success", PubKey: pubkey, Tip: "", Error: "", AllReply: allreply, WorkId: wid,Sigs:sigs}
 	    err = SaveAcceptReqAddrData(ac)
 	    if err != nil {
@@ -999,7 +989,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 				break
 			    }
 			}
-			//
 
 			if !found {
 			    da2 := string(da.([]byte)) + ":" + rk
@@ -1025,7 +1014,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    break
 			}
 		    }
-		    //
 
 		    if !found {
 			da2 := string(da.([]byte)) + ":" + rk
@@ -1036,8 +1024,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		}
 	    }
-	    //AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
-	    /////////////////////
 	    common.Info("=====================ReShare_ec2====================","gen newsku1",newskU1,"key",msgprex)
 
 	    res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
@@ -1770,7 +1756,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    }
 	}
 
-	//ars := GetAllReplyFromGroup(-1,groupid,Rpc_REQADDR,cur_enode)
 	ac := &AcceptReqAddrData{Initiator:cur_enode,Account: account, Cointype: "ALL", GroupId: groupid, Nonce: nonce, LimitNum: w.limitnum, Mode: mode, TimeStamp: tt, Deal: "true", Accept: "true", Status: "Success", PubKey: pubkey, Tip: "", Error: "", AllReply: allreply, WorkId: wid,Sigs:sigs}
 	err = SaveAcceptReqAddrData(ac)
 	if err != nil {
@@ -1836,12 +1821,9 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		}
 	}
-	//AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
-	/////////////////////
 	common.Info("=====================ReShare_ec2===================","gen newsku1",newskU1,"key",msgprex)
 
 	res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	ch <- res
-	////////////////////////////////
 }
 

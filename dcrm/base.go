@@ -86,7 +86,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 			    common.Info("======================dcrm.Start,open db fail======================","i",i,"err",err2,"dir",dir)
 			}
 
-			//time.Sleep(time.Duration(1000000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -117,7 +116,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 			    common.Info("======================dcrm.Start,open dbsk fail======================","i",i,"err",err,"dir",GetSkU1Dir())
 			}
 
-			//time.Sleep(time.Duration(1000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -148,7 +146,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreDbDir())
 			}
 
-			//time.Sleep(time.Duration(1000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -177,7 +174,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 			    common.Info("======================dcrm.Start,open prekey fail======================","i",i,"err",err,"dir",GetPreKeyDir())
 			}
 
-			//time.Sleep(time.Duration(1000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -416,7 +412,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-//	common.Debug("================CheckRaw, it is reqaddr tx=================","raw ",raw,"key ",key,"req ",&req)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
     }
     
@@ -437,7 +432,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("param error.")
 	}
 
-	////
 	nums := strings.Split(threshold, "/")
 	if len(nums) != 2 {
 		return "","","",nil,fmt.Errorf("tx.data error.")
@@ -463,8 +457,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
 	}
 	
-	////
-
 	//check mode
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
 	exsit,da := GetValueFromPubKeyData(key2)
@@ -505,7 +497,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
 	    }
 
-//	    common.Debug("================CheckRaw=============","cur_enode ",cur_enode,"from ",from.Hex(),"ac.Sigs ",ac.Sigs)
 	    if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
 		return "","","",nil,fmt.Errorf("invalid lockout account")
 	    }
@@ -523,7 +514,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
 
-//	common.Debug("=================CheckRaw, it is lockout tx================","raw ",raw,"key ",key,"lo ",&lo)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&lo,nil
     }
 
@@ -595,7 +585,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + get_sign_hash(hash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
-//	common.Debug("=================CheckRaw, it is sign tx==================","raw ",raw,"key ",key,"sig ",&sig)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
@@ -621,11 +610,8 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 		return "","","",nil,fmt.Errorf("invalid pubkey")
 	}
 
-//	common.Debug("=================CheckRaw, it is presigndata tx==================","raw ",raw,"pre ",&pre)
 	return "",from.Hex(),fmt.Sprintf("%v", Nonce),&pre,nil
     }
-
-    //************************/////////////
 
     rh := TxDataReShare{}
     err = json.Unmarshal(tx.Data(), &rh)
@@ -692,7 +678,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
 
-//	common.Debug("=================CheckRaw, it is acceptreqaddr tx====================","raw ",raw,"key ",acceptreq.Key,"acceptreq ",&acceptreq)
 	return "",from.Hex(),"",&acceptreq,nil
     }
 
@@ -722,7 +707,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
 
-//	common.Debug("=================CheckRaw, it is acceptlockout tx================","raw ",raw,"key ",acceptlo.Key,"acceptlo ",&acceptlo)
 	return "",from.Hex(),"",&acceptlo,nil
     }
 
@@ -765,7 +749,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("invalid accepter")
 	}
 	
-//	common.Debug("=================CheckRaw, it is acceptsign tx====================","raw ",raw,"key ",acceptsig.Key,"acceptsig ",&acceptsig)
 	return acceptsig.Key,from.Hex(),"",&acceptsig,nil
     }
 
@@ -794,7 +777,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
 	}
 
-//	common.Debug("=================CheckRaw, it is acceptreshare tx=====================","raw ",raw,"key ",acceptrh.Key,"acceptrh ",&acceptrh)
 	return "",from.Hex(),"",&acceptrh,nil
     }
 
@@ -923,7 +905,6 @@ func receiveGroupInfo(msg interface{}) {
 	}
 	p, _ := strconv.Atoi(strings.Split(head, "dcrmslash")[0])
 	total, _ := strconv.Atoi(strings.Split(head, "dcrmslash")[1])
-	//parts[p] = body
 	parts.WriteMap(strconv.Itoa(p),body)
 
 	if parts.MapLength() == total {
@@ -939,7 +920,6 @@ func receiveGroupInfo(msg interface{}) {
 		}
 
 		time.Sleep(time.Duration(2) * time.Second) //1000 == 1s
-		////
 		Init(m[0])
 	}
 }
@@ -985,13 +965,6 @@ func GetAddr(pubkey string,cointype string) (string,string,error) {
 func Encode2(obj interface{}) (string, error) {
     switch ch := obj.(type) {
 	case *SendMsg:
-		/*ch := obj.(*SendMsg)
-		ret,err := json.Marshal(ch)
-		if err != nil {
-		    return "",err
-		}
-		return string(ret),nil*/
-
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
 
@@ -1026,16 +999,6 @@ func Encode2(obj interface{}) (string, error) {
 		    return "",err
 		}
 		return string(ret),nil
-		/*ch := obj.(*AcceptReqAddrData)
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil*/
 	case *AcceptSignData:
 
 		var buff bytes.Buffer
@@ -1064,14 +1027,6 @@ func Encode2(obj interface{}) (string, error) {
 func Decode2(s string, datatype string) (interface{}, error) {
 
 	if datatype == "SendMsg" {
-		/*var m SendMsg
-		err := json.Unmarshal([]byte(s), &m)
-		if err != nil {
-		    fmt.Println("================Decode2,json Unmarshal err =%v===================",err)
-		    return nil,err
-		}
-
-		return &m,nil*/
 		var data bytes.Buffer
 		data.Write([]byte(s))
 
@@ -1124,18 +1079,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		}
 
 		return &m,nil
-		/*var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res AcceptReqAddrData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil*/
 	}
 
 	if datatype == "AcceptSignData" {
@@ -1170,8 +1113,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 
 	return nil, fmt.Errorf("decode obj fail.")
 }
-
-///////
 
 func Compress(c []byte) (string, error) {
 	if c == nil {
@@ -1217,8 +1158,6 @@ func UnCompress(s string) (string, error) {
 
 	return out.String(), nil
 }
-
-////
 
 type DcrmHash [32]byte
 
@@ -1620,12 +1559,6 @@ func CheckAcc(eid string, geter_acc string, sigs string) bool {
 	//sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
 	mms := strings.Split(sigs, common.Sep)
 	for _, mm := range mms {
-//		if strings.EqualFold(mm, eid) {
-//			if len(mms) >= (k+1) && strings.EqualFold(mms[k+1], geter_acc) {
-//			    return true
-//			}
-//		}
-		
 		if strings.EqualFold(geter_acc,mm) { //allow user login diffrent node
 		    return true
 		}
@@ -1687,7 +1620,6 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 			    if ok && al2 != nil {
 				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
 				al2 = append(al2, tmp)
-				//gp[gid] = al
 				gp.WriteMap(strings.ToLower(gid),al2)
 			    }
 			} else {
@@ -1695,7 +1627,6 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
 				a = append(a, tmp)
 				gp.WriteMap(strings.ToLower(gid),a)
-				//gp[gid] = a
 			}
 		}
 	    }(k,v)

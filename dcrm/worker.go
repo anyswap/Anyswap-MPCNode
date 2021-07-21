@@ -25,7 +25,6 @@ import (
 
 var (
 	RPCReqQueueCache = make(chan RPCReq, RPCMaxQueue)
-	//rpc-req //dcrm node
 	RPCMaxWorker = 20000
 	RPCMaxQueue  = 20000
 	RPCReqQueue  chan RPCReq

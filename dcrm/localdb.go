@@ -35,6 +35,8 @@ var (
 	lock                     sync.Mutex
 	db *ethdb.LDBDatabase
 	dbsk *ethdb.LDBDatabase
+	predb *ethdb.LDBDatabase
+	prekey *ethdb.LDBDatabase
 )
 
 func makeDatabaseHandles() int {
@@ -545,6 +547,12 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
     }
 
     return true,pd 
+}
+
+func GetPreKeyDir() string {
+	dir := common.DefaultDataDir()
+	dir += "/dcrmdata/dcrmprekey" + cur_enode
+	return dir
 }
 
 func GetPreDbDir() string {

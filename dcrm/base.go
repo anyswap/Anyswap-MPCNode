@@ -164,6 +164,35 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	    return
 	}
 
+	//
+	prekeytmp, err := ethdb.NewLDBDatabase(GetPreKeyDir(), cache, handles)
+	//bug
+	if err != nil {
+	    common.Info("======================dcrm.Start,open prekey fail======================","err",err,"dir",GetPreKeyDir())
+		for i := 0; i < 80; i++ {
+			prekeytmp, err = ethdb.NewLDBDatabase(GetPreKeyDir(), cache, handles)
+			if err == nil && prekeytmp != nil {
+				break
+			} else {
+			    common.Info("======================dcrm.Start,open prekey fail======================","i",i,"err",err,"dir",GetPreKeyDir())
+			}
+
+			//time.Sleep(time.Duration(1000000))
+			time.Sleep(time.Duration(2) * time.Second)
+		}
+	}
+	if err != nil {
+	    prekey = nil
+	} else {
+	    prekey = prekeytmp
+	}
+	   
+	if prekey == nil {
+	    common.Info("======================dcrm.Start,open prekey fail and gdcrm panic======================")
+	    os.Exit(1)
+	    return
+	}
+
 	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
 	
 	PrePubDataCount = int(presignnum)
@@ -173,6 +202,7 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	AgreeWait = int(waitagree)
 	
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
+	AutoPreGenSignData()
 
 	go HandleRpcSign()
 

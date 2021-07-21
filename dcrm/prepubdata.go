@@ -21,7 +21,6 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"strings"
 	"math/big"
-	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"time"
 	"fmt"
 	"errors"
@@ -31,7 +30,6 @@ import (
 )
 
 var (
-	predb *ethdb.LDBDatabase
 	PrePubDataCount = 2000
 	PreSigal  = common.NewSafeMap(10) //make(map[string][]byte)
 )
@@ -685,6 +683,11 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
 
 	    PutPreSigal(pub,true)
+	    err := SavePrekeyToDb(pre.PubKey,gg)
+	    if err != nil {
+		common.Error("=========================ExcutePreSignData,save prekey to db fail.=======================","pubkey",pre.PubKey,"gid",gg,"err",err)
+		return
+	    }
 
 	    common.Info("===================ExcutePreSignData,before generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg)
 	    for {
@@ -721,6 +724,56 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	    }
 	}(gid)
     }
+}
+
+func AutoPreGenSignData() {
+    if prekey == nil {
+	return
+    }
+
+    iter := prekey.NewIterator()
+    for iter.Next() {
+	value := []byte(string(iter.Value()))
+	if len(value) == 0 {
+	    continue
+	}
+
+	go func(val string) {
+	    tmp := strings.Split(val,":") // val = pubkey:gid
+	    if len(tmp) < 2 || tmp[0] == "" || tmp[1] == "" {
+		return
+	    }
+	    
+	    subgid := make([]string,0)
+	    subgid = append(subgid,tmp[1])
+	    pre := &TxDataPreSignData{TxType:"PRESIGNDATA",PubKey:tmp[0],SubGid:subgid}
+	    ExcutePreSignData(pre)
+	}(string(value))
+    }
+    
+    iter.Release()
+}
+
+func SavePrekeyToDb(pubkey string,gid string) error {
+    if prekey == nil {
+	return fmt.Errorf("db open fail.")
+    }
+
+    pub := strings.ToLower(Keccak256Hash([]byte(strings.ToLower(pubkey + ":" + gid))).Hex())
+    val := pubkey + ":" + gid
+    exsit,err := prekey.Has([]byte(pub))
+    if exsit || err == nil {
+	common.Info("==================SavePrekeyToDb,already have the key in db.=====================","pub",pub,"pubkey",pubkey,"gid",gid)
+	return nil
+    }
+
+    err = prekey.Put([]byte(pub),[]byte(val))
+    if err != nil {
+	common.Errorf("==================SavePrekeyToDb, put prekey to db fail.=====================","pub",pub,"pubkey",pubkey,"gid",gid,"err",err)
+	return err
+    }
+
+    return nil
 }
 
 //--------------------------------------------------------------

@@ -440,15 +440,23 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 
 func RpcAcceptSign(raw string) (string, string, error) {
     common.Debug("=====================RpcAcceptSign call CheckRaw ================","raw",raw)
-    _,from,_,txdata,err := CheckRaw(raw)
+    key,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	common.Info("=====================RpcAcceptSign,call CheckRaw finish================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
+    if key == "" || from == "" || txdata == nil {
+	return "Failure","check accept raw data fail",fmt.Errorf("check accept raw data fail")
+    }
+
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if !ok {
 	return "Failure","check raw fail,it is not *TxDataAcceptSign",fmt.Errorf("check raw fail,it is not *TxDataAcceptSign")
+    }
+
+    if acceptsig.Key == "" || acceptsig.Accept == "" {
+	return "Failure","check accept raw data fail",fmt.Errorf("check accept raw data fail")
     }
 
     exsit,da := GetValueFromPubKeyData(acceptsig.Key)

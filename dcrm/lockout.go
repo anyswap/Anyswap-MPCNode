@@ -30,7 +30,6 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 
-	"sync"
 	"github.com/agl/ed25519"
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/cryptoCoins/coins"
@@ -63,7 +62,7 @@ type TxDataLockOut struct {
 
 func GetLockOutNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyData([]byte(key))
 	///////
 	if !exsit {
 		return "0", "", nil
@@ -77,9 +76,10 @@ func GetLockOutNonce(account string) (string, string, error) {
 
 func SetLockOutNonce(account string,nonce string) (string, error) {
 	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
-	kd := KeyData{Key: []byte(key2), Data: nonce}
-	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key2, []byte(nonce))
+	err := PutPubKeyData([]byte(key2),[]byte(nonce))
+	if err != nil {
+	    return err.Error(),err
+	}
 
 	return "", nil
 }
@@ -97,7 +97,7 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 	return "Failure","check raw fail,it is not *TxDataAcceptLockOut",fmt.Errorf("check raw fail,it is not *TxDataAcceptLockOut")
     }
 
-    exsit,da := GetValueFromPubKeyData(acceptlo.Key)
+    exsit,da := GetPubKeyData([]byte(acceptlo.Key))
     if exsit {
 	ac,ok := da.(*AcceptLockOutData)
 	if ok && ac != nil {
@@ -140,8 +140,7 @@ type LockOutStatus struct {
 }
 
 func GetLockOutStatus(key string) (string, string, error) {
-	exsit,da := GetValueFromPubKeyData(key)
-	///////
+	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit || da == nil {
 		return "", "dcrm back-end internal error:get lockout accept data fail from db when GetLockOutStatus", fmt.Errorf("dcrm back-end internal error:get lockout accept data fail from db when GetLockOutStatus")
 	}
@@ -170,46 +169,7 @@ type LockOutCurNodeInfo struct {
 }
 
 func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, error) {
-
-	var ret []*LockOutCurNodeInfo
-	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
-	    wg.Add(1)
-	    go func(key string,value interface{}) {
-		defer wg.Done()
-
-		vv,ok := value.(*AcceptLockOutData)
-		if vv == nil || !ok {
-		    return
-		}
-
-		common.Debug("================GetCurNodeLockOutInfo, it is *AcceptLockOutData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
-		if vv.Deal == "true" || vv.Status == "Success" {
-		    return
-		}
-
-		if vv.Status != "Pending" {
-		    return
-		}
-
-		dcrmaddr,_,err := GetAddr(vv.PubKey,vv.Cointype)
-		if err != nil {
-		    return
-		}
-
-		if !CheckAccept(vv.PubKey,vv.Mode,geter_acc) {
-			return
-		}
-		
-		los := &LockOutCurNodeInfo{Key: key, Account: vv.Account, GroupId: vv.GroupId, Nonce: vv.Nonce, DcrmFrom: dcrmaddr, DcrmTo: vv.DcrmTo, Value: vv.Value, Cointype: vv.Cointype, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
-		ret = append(ret, los)
-		common.Debug("================GetCurNodeLockOutInfo success return===================","key",key)
-	    }(k,v)
-	}
-	LdbPubKeyData.RUnlock()
-	wg.Wait()
-	return ret, "", nil
+    return nil,"",nil //TODO
 }
 
 func validate_lockout(wsid string, account string, dcrmaddr string, cointype string, value string, to string, nonce string, memo string,ch chan interface{}) {
@@ -223,12 +183,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
 	//exsit,da := GetValueFromPubKeyData(key2)
-	exsit,da := GetPubKeyDataFromLocalDb(key2)
-	if !exsit {
-	    time.Sleep(time.Duration(5000000000))
-	    exsit,da = GetPubKeyDataFromLocalDb(key2)
-	}
-	///////
+	exsit,da := GetPubKeyData([]byte(key2))
 	if !exsit {
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get lockout data from db fail", Err: fmt.Errorf("get lockout data from db fail")}
 		ch <- res
@@ -267,7 +222,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	}
 
 	///sku1
-	da2 := GetSkU1FromLocalDb(key2)
+	da2 := getSkU1FromLocalDb([]byte(key2))
 	if da2 == nil {
 		res := RpcDcrmRes{Ret: "", Tip: "lockout get sku1 fail", Err: fmt.Errorf("lockout get sku1 fail")}
 		ch <- res
@@ -434,7 +389,7 @@ func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpk
 
 		var eosstr string
 		key := string([]byte("eossettings"))
-		exsit,da := GetValueFromPubKeyData(key)
+		exsit,da := GetPubKeyData([]byte(key))
 		if exsit {
 			eosstr = string(da.([]byte))
 		}

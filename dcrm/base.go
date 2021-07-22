@@ -66,7 +66,8 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	
-	InitDev(KeyFile)
+	go ec2.GenRandomSafePrime() 
+	
 	cur_enode = p2pdcrm.GetSelfID()
 	
 	common.Info("======================dcrm.Start======================","cache",cache,"handles",handles,"cur enode",cur_enode)
@@ -197,20 +198,11 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
 	
-	LdbPubKeyData = GetAllPubKeyDataFromDb()
 	AutoPreGenSignData()
 
 	go HandleRpcSign()
 
 	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
-}
-
-func InitDev(keyfile string) {
-	cur_enode = discover.GetLocalID().String()
-
-	go SavePubKeyDataToDb()
-	go SaveSkU1ToDb()
-	go ec2.GenRandomSafePrime() 
 }
 
 func InitGroupInfo(groupId string) {
@@ -247,20 +239,20 @@ type DcrmPubkeyRes struct {
 	DcrmAddress map[string]string
 }
 
-func GetPubKeyData(key string, account string, cointype string) (string, string, error) {
+func GetPubKeyData2(key string, account string, cointype string) (string, string, error) {
 	if key == "" || cointype == "" {
-		return "", "dcrm back-end internal error:parameter error in func GetPubKeyData", fmt.Errorf("get pubkey data param error.")
+		return "", "dcrm back-end internal error:parameter error", fmt.Errorf("get pubkey data param error.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyData([]byte(key))
 	///////
 	if !exsit {
-		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
+		return "", "dcrm back-end internal error:get data from db fail ", fmt.Errorf("dcrm back-end internal error:get data from db fail")
 	}
 
 	pubs,ok := da.(*PubKeyData)
 	if !ok {
-		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
+		return "", "dcrm back-end internal error:get data from db fail", fmt.Errorf("dcrm back-end internal error:get data from db fail")
 	}
 
 	pubkey := hex.EncodeToString([]byte(pubs.Pub))
@@ -312,11 +304,11 @@ func CheckAccept(pubkey string,mode string,account string) bool {
     }
 
     dcrmpks, _ := hex.DecodeString(pubkey)
-    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+    exsit,da := GetPubKeyData(dcrmpks[:])
     if exsit {
 	pd,ok := da.(*PubKeyData)
 	if ok {
-	    exsit,da2 := GetValueFromPubKeyData(pd.Key)
+	    exsit,da2 := GetPubKeyData([]byte(pd.Key))
 	    if exsit {
 		ac,ok := da2.(*AcceptReqAddrData)
 		if ok {
@@ -414,7 +406,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
     }
-    
+   
     lo := TxDataLockOut{}
     err = json.Unmarshal(tx.Data(), &lo)
     if err == nil && lo.TxType == "LOCKOUT" {
@@ -459,7 +451,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	//check mode
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-	exsit,da := GetValueFromPubKeyData(key2)
+	exsit,da := GetPubKeyData([]byte(key2))
 	if !exsit {
 		return "","","",nil,fmt.Errorf("dcrm back-end internal error:get data from db fail in lockout")
 	}
@@ -479,7 +471,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if pubs.Key != "" {
-	    exsit,da = GetValueFromPubKeyData(pubs.Key)
+	    exsit,da = GetPubKeyData([]byte(pubs.Key))
 	    if !exsit {
 		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
 	    }
@@ -561,7 +553,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	//check mode
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+	exsit,da := GetPubKeyData([]byte(dcrmpks[:]))
 	if !exsit {
 	    return "","","",nil,fmt.Errorf("get data from db fail in func sign")
 	}
@@ -601,11 +593,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,_ := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-	if !exsit {
-	    time.Sleep(time.Duration(5000000000))
-	    exsit,_ = GetPubKeyDataFromLocalDb(string(dcrmpks[:])) //try again
-	}
+	exsit,_ := GetPubKeyData(dcrmpks[:])
 	if !exsit {
 		return "","","",nil,fmt.Errorf("invalid pubkey")
 	}
@@ -659,7 +647,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+	exsit,da := GetPubKeyData([]byte(acceptreq.Key))
 	if !exsit {
 	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw reqaddr accept data")
 	}
@@ -689,7 +677,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptlo.Key)
+	exsit,da := GetPubKeyData([]byte(acceptlo.Key))
 	if !exsit {
 	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw lockout accept data")
 	}
@@ -731,7 +719,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptsig.Key)
+	exsit,da := GetPubKeyData([]byte(acceptsig.Key))
 	if !exsit {
 	    return "","","",nil,fmt.Errorf("get accept result from db fail")
 	}
@@ -759,7 +747,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+	exsit,da := GetPubKeyData([]byte(acceptrh.Key))
 	if !exsit {
 	    return "","","",nil,fmt.Errorf("get accept result from db fail")
 	}
@@ -789,7 +777,7 @@ func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, e
 		return nil, "decode pubkey fail", err2
 	}
 
-	ret, tip, err := GetPubKeyData(string(keytmp), pubkey, "ALL")
+	ret, tip, err := GetPubKeyData2(string(keytmp), pubkey, "ALL")
 	var m interface{}
 	if err == nil {
 		dp := DcrmPubkeyRes{}
@@ -1233,7 +1221,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		    common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_LOCKOUT ================")
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
-		    exsit,da := GetValueFromPubKeyData(key2)
+		    exsit,da := GetPubKeyData([]byte(key2))
 		    if exsit {
 			ac,ok := da.(*AcceptReqAddrData)
 			if ok && ac != nil {
@@ -1280,7 +1268,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		    mdss := iter.Value.(string)
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
-		    exsit,da := GetValueFromPubKeyData(key2)
+		    exsit,da := GetPubKeyData([]byte(key2))
 		    if exsit {
 			ac,ok := da.(*AcceptReqAddrData)
 			if ok && ac != nil {
@@ -1399,7 +1387,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		mdss := iter.Value.(string)
 		common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_REQADDR ================")
 		key,_,_,_,_ := CheckRaw(mdss)
-		exsit,da := GetValueFromPubKeyData(key)
+		exsit,da := GetPubKeyData([]byte(key))
 		if exsit {
 		    ac,ok := da.(*AcceptReqAddrData)
 		    if ok && ac != nil {
@@ -1440,12 +1428,12 @@ func GetReqAddrKeyByOtherKey(key string,rt RpcType) string {
     }
 
     if rt == Rpc_LOCKOUT {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyData([]byte(key))
 	if exsit {
 	    ad,ok := da.(*AcceptLockOutData)
 	    if ok && ad != nil {
 		dcrmpks, _ := hex.DecodeString(ad.PubKey)
-		exsit,da2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+		exsit,da2 := GetPubKeyData(dcrmpks[:])
 		if exsit && da2 != nil {
 		    pd,ok := da2.(*PubKeyData)
 		    if ok && pd != nil {
@@ -1457,12 +1445,12 @@ func GetReqAddrKeyByOtherKey(key string,rt RpcType) string {
     }
 
     if rt == Rpc_SIGN {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyData([]byte(key))
 	if exsit {
 	    ad,ok := da.(*AcceptSignData)
 	    if ok && ad != nil {
 		dcrmpks, _ := hex.DecodeString(ad.PubKey)
-		exsit,da2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+		exsit,da2 := GetPubKeyData(dcrmpks[:])
 		if exsit && da2 != nil {
 		    pd,ok := da2.(*PubKeyData)
 		    if ok && pd != nil {
@@ -1575,10 +1563,16 @@ type PubKeyInfo struct {
 
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	gp  := common.NewSafeMap(10)
-	//gp := make(map[string][]PubKeyInfo)
+	
 	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
+	iter := db.NewIterator()
+	for iter.Next() {
+	    key2 := []byte(string(iter.Key())) //must be deep copy,or show me the error: "panic: JSON decoder out of sync - data changing underfoot?"
+	    exsit,da := GetPubKeyData(key2) 
+	    if !exsit || da == nil {
+		continue
+	    }
+	    
 	    wg.Add(1)
 	    go func(key string,value interface{}) {
 		defer wg.Done()
@@ -1599,7 +1593,7 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 		}
 
 		dcrmpks, _ := hex.DecodeString(vv.PubKey)
-		exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+		exsit,data2 := GetPubKeyData(dcrmpks[:])
 		if !exsit || data2 == nil {
 		    return
 		}
@@ -1629,9 +1623,9 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 				gp.WriteMap(strings.ToLower(gid),a)
 			}
 		}
-	    }(k,v)
+	    }(string(key2),da)
 	}
-	LdbPubKeyData.RUnlock()
+	iter.Release()
 	wg.Wait()
 	
 	als := make([]AccountsList, 0)

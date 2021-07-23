@@ -240,12 +240,6 @@ func GetAllAccountsDir() string {
 	return dir
 }
 
-func GetAcceptLockOutDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/dcrmdb/acceptlockout" + cur_enode
-	return dir
-}
-
 func GetAcceptReqAddrDir() string {
 	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb/acceptreqaddr" + cur_enode

@@ -407,108 +407,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
     }
    
-    lo := TxDataLockOut{}
-    err = json.Unmarshal(tx.Data(), &lo)
-    if err == nil && lo.TxType == "LOCKOUT" {
-	dcrmaddr := lo.DcrmAddr
-	dcrmto := lo.DcrmTo
-	value := lo.Value
-	cointype := lo.Cointype
-	groupid := lo.GroupId
-	threshold := lo.ThresHold
-	mode := lo.Mode
-	timestamp := lo.TimeStamp
-	Nonce := tx.Nonce()
-
-	if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
-		return "","","",nil,fmt.Errorf("param error.")
-	}
-
-	nums := strings.Split(threshold, "/")
-	if len(nums) != 2 {
-		return "","","",nil,fmt.Errorf("tx.data error.")
-	}
-	nodecnt, err := strconv.Atoi(nums[1])
-	if err != nil {
-		return "","","",nil,err
-	}
-	limit, err := strconv.Atoi(nums[0])
-	if err != nil {
-		return "","","",nil,err
-	}
-	if nodecnt < limit || limit < 2 {
-	    return "","","",nil,fmt.Errorf("threshold format error")
-	}
-
-	nc,_ := GetGroup(groupid)
-	if nc < limit || nc > nodecnt {
-	    return "","","",nil,fmt.Errorf("check group node count error")
-	}
-	
-	if !CheckGroupEnode(groupid) {
-	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
-	}
-	
-	//check mode
-	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-	exsit,da := GetPubKeyData([]byte(key2))
-	if !exsit {
-		return "","","",nil,fmt.Errorf("dcrm back-end internal error:get data from db fail in lockout")
-	}
-
-	pubs,ok := da.(*PubKeyData)
-	if pubs == nil || !ok {
-		return "","","",nil,fmt.Errorf("dcrm back-end internal error:get data from db fail in func lockout")
-	}
-
-	if pubs.Key != "" && pubs.Mode != mode {
-	    return "","","",nil,fmt.Errorf("can not lockout with different mode in dcrm addr.")
-	}
-
-	////bug:check accout
-	if pubs.Key != "" && pubs.Mode == "1" && !strings.EqualFold(pubs.Account,from.Hex()) {
-	    return "","","",nil,fmt.Errorf("invalid lockout account")
-	}
-
-	if pubs.Key != "" {
-	    exsit,da = GetPubKeyData([]byte(pubs.Key))
-	    if !exsit {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-	    if da == nil {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-	    ac,ok := da.(*AcceptReqAddrData)
-	    if !ok {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-	    if ac == nil {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-	    if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
-		return "","","",nil,fmt.Errorf("invalid lockout account")
-	    }
-	}
-
-	//check to addr
-	validator := coins.NewDcrmAddressValidator(cointype)
-	if validator == nil {
-	    return "","","",nil,fmt.Errorf("unsupported cointype")
-	}
-	if !validator.IsValidAddress(dcrmto) {
-	    return "","","",nil,fmt.Errorf("invalid to addr")
-	}
-	//
-
-	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
-
-	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&lo,nil
-    }
-
     sig := TxDataSign{}
     err = json.Unmarshal(tx.Data(), &sig)
     if err == nil && sig.TxType == "SIGN" {
@@ -667,35 +565,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	return "",from.Hex(),"",&acceptreq,nil
-    }
-
-    acceptlo := TxDataAcceptLockOut{}
-    err = json.Unmarshal(tx.Data(), &acceptlo)
-    if err == nil && acceptlo.TxType == "ACCEPTLOCKOUT" {
-
-	if acceptlo.Accept != "AGREE" && acceptlo.Accept != "DISAGREE" {
-	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
-	}
-
-	exsit,da := GetPubKeyData([]byte(acceptlo.Key))
-	if !exsit {
-	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw lockout accept data")
-	}
-
-	ac,ok := da.(*AcceptLockOutData)
-	if !ok || ac == nil {
-	    return "","","",nil,fmt.Errorf("decode accept data fail")
-	}
-
-	if ac.Mode == "1" {
-	    return "","","",nil,fmt.Errorf("mode = 1,do not need to accept")
-	}
-	
-	if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
-	    return "","","",nil,fmt.Errorf("invalid accept account")
-	}
-
-	return "",from.Hex(),"",&acceptlo,nil
     }
 
     acceptsig := TxDataAcceptSign{}
@@ -971,16 +840,6 @@ func Encode2(obj interface{}) (string, error) {
 			return "", err1
 		}
 		return buff.String(), nil
-	case *AcceptLockOutData:
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil
 	case *AcceptReqAddrData:
 		ret,err := json.Marshal(ch)
 		if err != nil {
@@ -1036,21 +895,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		dec := gob.NewDecoder(&data)
 
 		var res PubKeyData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	}
-
-	if datatype == "AcceptLockOutData" {
-		var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res AcceptLockOutData
 		err := dec.Decode(&res)
 		if err != nil {
 			return nil, err
@@ -1169,7 +1013,6 @@ type RpcType int32
 
 const (
     Rpc_REQADDR      RpcType = 0
-    Rpc_LOCKOUT     RpcType = 1
     Rpc_SIGN      RpcType = 2
     Rpc_RESHARE     RpcType = 3
 )
@@ -1205,54 +1048,6 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 	return nil
     }
 
-    if rt == Rpc_LOCKOUT {
-	for _, node := range nodes {
-		node2 := ParseNode(node)
-		sta := "Pending"
-		ts := ""
-		in := "0"
-		if strings.EqualFold(initiator,node2) {
-		    in = "1"
-		}
-
-		iter := w.msg_acceptlockoutres.Front()
-		if iter != nil {
-		    mdss := iter.Value.(string)
-		    common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_LOCKOUT ================")
-		    key,_,_,_,_ := CheckRaw(mdss)
-		    key2 := GetReqAddrKeyByOtherKey(key,rt)
-		    exsit,da := GetPubKeyData([]byte(key2))
-		    if exsit {
-			ac,ok := da.(*AcceptReqAddrData)
-			if ok && ac != nil {
-			    ret := GetRawReply(w.msg_acceptlockoutres)
-			    //sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
-			    mms := strings.Split(ac.Sigs, common.Sep)
-			    for k,mm := range mms {
-				if strings.EqualFold(mm,node2) {
-				    reply,ok := ret[mms[k+1]]
-				    if ok && reply != nil {
-					if reply.Accept == "true" {
-					    sta = "Agree"
-					} else {
-					    sta = "DisAgree"
-					}
-					ts = reply.TimeStamp
-				    }
-
-				    break
-				}
-			    }
-
-			}
-		    }
-		}
-		
-		nr := NodeReply{Enode:node2,Status:sta,TimeStamp:ts,Initiator:in}
-		ars = append(ars,nr)
-	}
-    } 
-    
     if rt == Rpc_SIGN {
 	for _, node := range nodes {
 		node2 := ParseNode(node)
@@ -1425,23 +1220,6 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 func GetReqAddrKeyByOtherKey(key string,rt RpcType) string {
     if key == "" {
 	return ""
-    }
-
-    if rt == Rpc_LOCKOUT {
-	exsit,da := GetPubKeyData([]byte(key))
-	if exsit {
-	    ad,ok := da.(*AcceptLockOutData)
-	    if ok && ad != nil {
-		dcrmpks, _ := hex.DecodeString(ad.PubKey)
-		exsit,da2 := GetPubKeyData(dcrmpks[:])
-		if exsit && da2 != nil {
-		    pd,ok := da2.(*PubKeyData)
-		    if ok && pd != nil {
-			return pd.Key
-		    }
-		}
-	    }
-	}
     }
 
     if rt == Rpc_SIGN {

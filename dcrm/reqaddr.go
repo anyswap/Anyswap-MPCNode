@@ -375,7 +375,6 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				return
 			}
 
-			//add for lockout
 			err = PutPubKeyData(sedpk[:],[]byte(ss))
 			if err != nil {
 			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}

@@ -199,24 +199,6 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	    continue
 	}
 	
-	lo,ok := txdata.(*TxDataLockOut)
-	if ok {
-	    reply := &RawReply{From:from,Accept:"true",TimeStamp:lo.TimeStamp}
-	    tmp,ok := ret[from]
-	    if !ok {
-		ret[from] = reply
-	    } else {
-		t1,_ := new(big.Int).SetString(reply.TimeStamp,10)
-		t2,_ := new(big.Int).SetString(tmp.TimeStamp,10)
-		if t1.Cmp(t2) > 0 {
-		    ret[from] = reply
-		}
-
-	    }
-
-	    continue
-	}
-	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
 	    common.Debug("=================GetRawReply,the list item is TxDataSign=================","key",keytmp,"from",from,"sig",sig)
@@ -260,27 +242,6 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	    }
 
 	    reply := &RawReply{From:from,Accept:accept,TimeStamp:acceptreq.TimeStamp}
-	    tmp,ok := ret[from]
-	    if !ok {
-		ret[from] = reply
-	    } else {
-		t1,_ := new(big.Int).SetString(reply.TimeStamp,10)
-		t2,_ := new(big.Int).SetString(tmp.TimeStamp,10)
-		if t1.Cmp(t2) > 0 {
-		    ret[from] = reply
-		}
-
-	    }
-	}
-	
-	acceptlockout,ok := txdata.(*TxDataAcceptLockOut)
-	if ok {
-	    accept := "false"
-	    if acceptlockout.Accept == "AGREE" {
-		    accept = "true"
-	    }
-
-	    reply := &RawReply{From:from,Accept:accept,TimeStamp:acceptlockout.TimeStamp}
 	    tmp,ok := ret[from]
 	    if !ok {
 		ret[from] = reply
@@ -439,52 +400,6 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 
 	    if !found {
 		common.Debug("===================== CheckReply,reqaddr, return false.====================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key)
-		return false
-	    }
-	}
-
-	return true
-    }
-
-    if rt == Rpc_LOCKOUT {
-	exsit,data := GetPubKeyData([]byte(key))
-	if !exsit {
-	    return false
-	}
-
-	lo,ok := data.(*AcceptLockOutData)
-	if !ok || lo == nil {
-	    return false
-	}
-
-	mms := strings.Split(ac.Sigs, common.Sep)
-	_, enodes := GetGroup(lo.GroupId)
-	nodes := strings.Split(enodes, common.Sep2)
-	for _, node := range nodes {
-	    node2 := ParseNode(node)
-	    foundeid := false
-	    for kk,v := range mms {
-		if strings.EqualFold(v,node2) {
-		    foundeid = true
-		    found := false
-		    for _,vv := range ret {
-			    common.Debug("===================== CheckReply,lockout===============","ac.Sigs",ac.Sigs,"kk",kk,"key",key,"vv.From",vv.From,"mms[kk+1]",mms[kk+1])
-			if strings.EqualFold(vv.From,mms[kk+1]) { //allow user login diffrent node
-			    found = true
-			    break
-			}
-		    }
-
-		    if !found {
-			common.Debug("===================== CheckReply,lockout,return false==================","ac.Sigs",ac.Sigs,"kk",kk,"key",key)
-			return false
-		    }
-
-		    break
-		}
-	    }
-
-	    if !foundeid {
 		return false
 	    }
 	}
@@ -978,33 +893,6 @@ func DisAcceptMsg(raw string,workid int) {
 	}
     }
     
-    _,ok = txdata.(*TxDataLockOut)
-    if ok {
-	if Find(w.msg_acceptlockoutres, raw) {
-	    return
-	}
-
-	w.msg_acceptlockoutres.PushBack(raw)
-	if w.msg_acceptlockoutres.Len() >= w.ThresHold {
-	    if !CheckReply(w.msg_acceptlockoutres,Rpc_LOCKOUT,key) {
-		return
-	    }
-
-	    w.bacceptlockoutres <- true
-	    exsit,da := GetPubKeyData([]byte(key))
-	    if !exsit {
-		return
-	    }
-
-	    ac,ok := da.(*AcceptLockOutData)
-	    if !ok || ac == nil {
-		return
-	    }
-
-	    workers[ac.WorkId].acceptLockOutChan <- "go on"
-	}
-    }
-    
     sig2,ok := txdata.(*TxDataSign)
     if ok {
 	    common.Debug("======================DisAcceptMsg, get the msg and it is sign tx===========================","key",key,"from",from,"raw",raw)
@@ -1086,33 +974,6 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    workers[ac.WorkId].acceptReqAddrChan <- "go on"
-	}
-    }
-    
-    acceptlockout,ok := txdata.(*TxDataAcceptLockOut)
-    if ok {
-	if Find(w.msg_acceptlockoutres, raw) {
-	    return
-	}
-
-	w.msg_acceptlockoutres.PushBack(raw)
-	if w.msg_acceptlockoutres.Len() >= w.ThresHold {
-	    if !CheckReply(w.msg_acceptlockoutres,Rpc_LOCKOUT,acceptlockout.Key) {
-		return
-	    }
-
-	    w.bacceptlockoutres <- true
-	    exsit,da := GetPubKeyData([]byte(acceptlockout.Key))
-	    if !exsit {
-		return
-	    }
-
-	    ac,ok := da.(*AcceptLockOutData)
-	    if !ok || ac == nil {
-		return
-	    }
-
-	    workers[ac.WorkId].acceptLockOutChan <- "go on"
 	}
     }
     
@@ -1390,318 +1251,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			ch <- res
 			return nil
 		   }
-		}
-	    }
-	}
-    }
-
-    lo,ok := txdata.(*TxDataLockOut)
-    if ok {
-	common.Debug("===============InitAcceptData, check lockout raw success=================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",lo)
-	exsit,_ := GetPubKeyData([]byte(key))
-	if !exsit {
-	    cur_nonce, _, _ := GetLockOutNonce(from)
-	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
-	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
-	    common.Debug("===============InitAcceptData================","lockout cur_nonce_num ",cur_nonce_num,"lockout new_nonce_num ",new_nonce_num,"key ",key)
-	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
-		_, err := SetLockOutNonce(from,nonce)
-		if err == nil {
-		    
-		    pubkey := ""
-		    lokey := Keccak256Hash([]byte(strings.ToLower(lo.DcrmAddr))).Hex()
-		    exsit,loda := GetPubKeyData([]byte(lokey))
-		    if exsit {
-			_,ok := loda.(*PubKeyData)
-			if ok {
-			    dcrmpub := (loda.(*PubKeyData)).Pub
-			    pubkey = hex.EncodeToString([]byte(dcrmpub))
-			}
-		    }
-		    if pubkey == "" {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pubkey fail", Err: fmt.Errorf("get pubkey fail")}
-			ch <- res
-			return fmt.Errorf("get pubkey fail") 
-		    }
-		    
-		    ars := GetAllReplyFromGroup(workid,lo.GroupId,Rpc_LOCKOUT,sender)
-		    ac := &AcceptLockOutData{Initiator:sender,Account:from, GroupId:lo.GroupId, Nonce: nonce, PubKey: pubkey, DcrmTo: lo.DcrmTo, Value: lo.Value, Cointype: lo.Cointype, LimitNum: lo.ThresHold, Mode: lo.Mode, TimeStamp: lo.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", OutTxHash: "", Tip: "", Error: "", AllReply: ars, WorkId: workid}
-		    err := SaveAcceptLockOutData(ac)
-		    if err == nil {
-			w := workers[workid]
-			w.sid = key
-			w.groupid = lo.GroupId 
-			w.limitnum = lo.ThresHold
-			gcnt, _ := GetGroup(w.groupid)
-			w.NodeCnt = gcnt
-			common.Debug("===================InitAcceptData====================","w.NodeCnt ",w.NodeCnt,"w.groupid ",w.groupid,"wid ",workid,"key ",key)
-			w.ThresHold = w.NodeCnt
-
-			nums := strings.Split(w.limitnum, "/")
-			if len(nums) == 2 {
-			    nodecnt, err := strconv.Atoi(nums[1])
-			    if err == nil {
-				w.NodeCnt = nodecnt
-			    }
-
-			    w.ThresHold = gcnt
-			}
-
-			w.DcrmFrom = lo.DcrmAddr
-
-			////////////////////
-			if lo.Mode == "0" {
-				////
-				var reply bool
-				var tip string
-				timeout := make(chan bool, 1)
-				go func(wid int) {
-					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := 10 * time.Minute
-					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
-
-					wtmp2 := workers[wid]
-
-					for {
-						select {
-						case account := <-wtmp2.acceptLockOutChan:
-							common.Debug("InitAcceptData", "account= ", account, "key = ", key)
-							ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-							common.Debug("================== InitAcceptData, get all AcceptLockOutRes=================","raw ",raw,"result ",ars,"key ",key)
-							
-							//bug
-							reply = true
-							for _,nr := range ars {
-							    if !strings.EqualFold(nr.Status,"Agree") {
-								reply = false
-								break
-							    }
-							}
-							//
-
-							if !reply {
-								tip = "don't accept lockout"
-								_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Failure", "", "don't accept lockout", "don't accept lockout", ars, wid)
-							} else {
-								tip = ""
-								_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, wid)
-							}
-
-							if err != nil {
-							    tip = "accept lock data error"
-							}
-
-							///////
-							timeout <- true
-							return
-						case <-agreeWaitTimeOut.C:
-							common.Debug("================== InitAcceptData , agree wait timeout==============","raw ",raw,"key ",key)
-							ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-							_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "false", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, wid)
-							reply = false
-							tip = "get other node accept lockout result timeout"
-							if err != nil {
-							    tip = "get other node accept lockout result timeout and accept lockout data fail"
-							}
-							//
-
-							timeout <- true
-							return
-						}
-					}
-				}(workid)
-
-				if len(workers[workid].acceptWaitLockOutChan) == 0 {
-					workers[workid].acceptWaitLockOutChan <- "go on"
-				}
-
-				DisAcceptMsg(raw,workid)
-				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_LOCKOUT)
-				exsit,da := GetPubKeyData([]byte(reqaddrkey))
-				if !exsit {
-				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
-				    ch <- res
-				    return fmt.Errorf("get reqaddr sigs data fail") 
-				}
-				acceptreqdata,ok := da.(*AcceptReqAddrData)
-				if !ok || acceptreqdata == nil {
-				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
-				    ch <- res
-				    return fmt.Errorf("get reqaddr sigs data fail") 
-				}
-
-				HandleC1Data(acceptreqdata,key,workid)
-
-				<-timeout
-
-				common.Debug("================== InitAcceptData==================","raw ",raw,"the terminal accept lockout result ",reply,"key ",key)
-
-				if !reply {
-					if tip == "get other node accept lockout result timeout" {
-						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-						_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", "get other node accept lockout result timeout", "get other node accept lockout result timeout", ars, workid)
-					} else {
-						/////////////TODO
-						//sid-enode:SendLockOutRes:Success:lockout_tx_hash
-						//sid-enode:SendLockOutRes:Fail:err
-						mp := []string{w.sid, cur_enode}
-						enode := strings.Join(mp, "-")
-						s0 := "SendLockOutRes"
-						s1 := "Fail"
-						s2 := "don't accept lockout."
-						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-						SendMsgToDcrmGroup(ss, w.groupid)
-						DisMsg(ss)
-						_, _, err := GetChannelValue(ch_t, w.bsendlockoutres)
-						ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-						if err != nil {
-							tip = "get other node terminal accept lockout result timeout" ////bug
-							_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, workid)
-							if err != nil {
-							    tip = tip + "accept lockout data fail"
-							}
-
-						} else if w.msg_sendlockoutres.Len() != w.ThresHold {
-							_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars, workid)
-							if err != nil {
-							    tip = tip + "accept lockout data fail"
-							}
-
-						} else {
-							reply2 := "false"
-							lohash := ""
-							iter := w.msg_sendlockoutres.Front()
-							for iter != nil {
-								mdss := iter.Value.(string)
-								ms := strings.Split(mdss, common.Sep)
-								if strings.EqualFold(ms[2], "Success") {
-									reply2 = "true"
-									lohash = ms[3]
-									break
-								}
-
-								lohash = ms[3]
-								iter = iter.Next()
-							}
-
-							if reply2 == "true" {
-								_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, workid)
-								if err != nil {
-								    tip = tip + "accept lockout data fail"
-								}
-
-							} else {
-								_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, workid)
-								if err != nil {
-								    tip = tip + "accept lockout data fail"
-								}
-
-							}
-						}
-					}
-
-					res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_lockout", Tip: tip, Err: fmt.Errorf("don't accept lockout.")}
-					ch <- res
-					return fmt.Errorf("don't accept lockout.") 
-				}
-			} else {
-				if len(workers[workid].acceptWaitLockOutChan) == 0 {
-					workers[workid].acceptWaitLockOutChan <- "go on"
-				}
-
-				ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-				_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "true", "Pending", "", "", "", ars, workid)
-				if err != nil {
-				    res := RpcDcrmRes{Ret:"", Tip:err.Error(), Err: err}
-				    ch <- res
-				    return err
-				}
-			}
-
-			rch := make(chan interface{}, 1)
-			common.Debug("================== InitAcceptData , start call validate_lockout================","key ",key)
-			validate_lockout(w.sid,from,lo.DcrmAddr,lo.Cointype, lo.Value, lo.DcrmTo,nonce, lo.Memo,rch)
-			chret, tip, cherr := GetChannelValue(waitall, rch)
-			common.Debug("================== InitAcceptData, finish and get validate_lockout=================","return value ",chret,"err ",cherr,"key ",key)
-			if chret != "" {
-				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_lockout" + common.Sep + chret, Tip: "", Err: nil}
-				ch <- res
-				return nil
-			}
-
-			ars := GetAllReplyFromGroup(w.id,lo.GroupId,Rpc_LOCKOUT,sender)
-			if tip == "get other node accept lockout result timeout" {
-				_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, cherr.Error(), ars, workid)
-			} else {
-				/////////////TODO
-				//sid-enode:SendLockOutRes:Success:lockout_tx_hash
-				//sid-enode:SendLockOutRes:Fail:err
-				mp := []string{w.sid, cur_enode}
-				enode := strings.Join(mp, "-")
-				s0 := "SendLockOutRes"
-				s1 := "Fail"
-				s2 := cherr.Error()
-				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
-				SendMsgToDcrmGroup(ss, w.groupid)
-				DisMsg(ss)
-				_, _, err := GetChannelValue(ch_t, w.bsendlockoutres)
-				if err != nil {
-					tip = "get other node terminal accept lockout result timeout" ////bug
-					_,err = AcceptLockOut(sender,from, lo.GroupId, nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Timeout", "", tip, tip, ars, workid)
-					if err != nil {
-					    tip = tip + " and accept lockout data fail"
-					}
-			
-				} else if w.msg_sendlockoutres.Len() != w.ThresHold {
-					_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", "get other node lockout result fail", "get other node lockout result fail", ars,workid)
-					if err != nil {
-					    tip = tip + " and accept lockout data fail"
-					}
-			
-				} else {
-					reply2 := "false"
-					lohash := ""
-					iter := w.msg_sendlockoutres.Front()
-					for iter != nil {
-						mdss := iter.Value.(string)
-						ms := strings.Split(mdss, common.Sep)
-						if strings.EqualFold(ms[2], "Success") {
-							reply2 = "true"
-							lohash = ms[3]
-							break
-						}
-
-						lohash = ms[3]
-						iter = iter.Next()
-					}
-
-					if reply2 == "true" {
-						_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "true", "true", "Success", lohash, " ", " ", ars, workid)
-						if err != nil {
-						    tip = tip + " and accept lockout data fail"
-						}
-			
-					} else {
-						_,err = AcceptLockOut(sender,from, lo.GroupId,nonce, lo.DcrmAddr, lo.ThresHold, "false", "", "Failure", "", lohash, lohash, ars, workid)
-						if err != nil {
-						    tip = tip + " and accept lockout data fail"
-						}
-			
-					}
-				}
-			}
-
-			if cherr != nil {
-				res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_lockout", Tip: tip, Err: cherr}
-				ch <- res
-				return cherr
-			}
-
-			res := RpcDcrmRes{Ret: strconv.Itoa(workid) + common.Sep + "rpc_lockout", Tip: tip, Err: fmt.Errorf("send tx to net fail.")}
-			ch <- res
-			return fmt.Errorf("send tx to net fail.")
-			////////////////////
-		    }
 		}
 	    }
 	}
@@ -1992,78 +1541,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_REQADDR,ac.Initiator)
 	tip, err := AcceptReqAddr(ac.Initiator,ac.Account, ac.Cointype, ac.GroupId, ac.Nonce, ac.LimitNum, ac.Mode, "false", accept, status, "", "", "", ars, ac.WorkId,"")
-	if err != nil {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: tip, Err: err}
-	    ch <- res
-	    return err 
-	}
-
-	res := RpcDcrmRes{Ret:"Success", Tip: "", Err: nil}
-	ch <- res
-	return nil
-    }
-
-    acceptlo,ok := txdata.(*TxDataAcceptLockOut)
-    if ok {
-	common.Debug("===============InitAcceptData, check accept lockout raw success=================","raw ",raw,"key ",acceptlo.Key,"from ",from,"txdata ",acceptlo)
-	w, err := FindWorker(acceptlo.Key)
-	if err != nil || w == nil {
-	    c1data := acceptlo.Key + "-" + from
-	    C1Data.WriteMap(strings.ToLower(c1data),raw)
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "get lockout accept data fail from db when no find worker.", Err: fmt.Errorf("get lockout accept data fail from db when no find worker")}
-	    ch <- res
-	    return fmt.Errorf("get lockout accept data fail from db when no find worker.")
-	}
-
-	exsit,da := GetPubKeyData([]byte(acceptlo.Key))
-	if !exsit {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get lockout accept data fail from db in init accept data", Err: fmt.Errorf("get lockout accept data fail from db in init accept data")}
-	    ch <- res
-	    return fmt.Errorf("get lockout accept data fail from db in init accept data.")
-	}
-
-	ac,ok := da.(*AcceptLockOutData)
-	if !ok || ac == nil {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:decode accept data fail", Err: fmt.Errorf("decode accept data fail")}
-	    ch <- res
-	    return fmt.Errorf("decode accept data fail")
-	}
-
-	dcrmaddr,_,err := GetAddr(ac.PubKey,ac.Cointype)
-	if err != nil {
-	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get dcrm addr fail", Err: fmt.Errorf("get dcrm addr fail")}
-	    ch <- res
-	    return fmt.Errorf("get dcrm addr fail")
-	}
-
-	status := "Pending"
-	accept := "false"
-	if acceptlo.Accept == "AGREE" {
-		accept = "true"
-	} else {
-		status = "Failure"
-	}
-
-	id,_ := GetWorkerId(w)
-	DisAcceptMsg(raw,id)
-	reqaddrkey := GetReqAddrKeyByOtherKey(acceptlo.Key,Rpc_LOCKOUT)
-	exsit,da = GetPubKeyData([]byte(reqaddrkey))
-	if !exsit {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
-	    ch <- res
-	    return fmt.Errorf("get reqaddr sigs data fail") 
-	}
-	acceptreqdata,ok := da.(*AcceptReqAddrData)
-	if !ok || acceptreqdata == nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
-	    ch <- res
-	    return fmt.Errorf("get reqaddr sigs data fail") 
-	}
-
-	HandleC1Data(acceptreqdata,acceptlo.Key,id)
-
-	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_LOCKOUT,ac.Initiator)
-	tip, err := AcceptLockOut(ac.Initiator,ac.Account, ac.GroupId, ac.Nonce, dcrmaddr, ac.LimitNum, "false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: tip, Err: err}
 	    ch <- res
@@ -2369,10 +1846,6 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
     switch datatype {
 	case "AcceptReqAddrRes":
 	    l = w.msg_acceptreqaddrres
-	case "AcceptLockOutRes":
-	    l = w.msg_acceptlockoutres
-	case "SendLockOutRes":
-	    l = w.msg_sendlockoutres
 	case "AcceptSignRes":
 	    l = w.msg_acceptsignres 
 	case "AcceptReShareRes":
@@ -2515,20 +1988,6 @@ func DisMsg(msg string) {
 
 	msgCode := mm[1]
 	switch msgCode {
-	case "SendLockOutRes":
-		///bug
-		if w.msg_sendlockoutres.Len() >= w.ThresHold {
-			return
-		}
-		///
-		if Find(w.msg_sendlockoutres, msg) {
-			return
-		}
-
-		w.msg_sendlockoutres.PushBack(msg)
-		if w.msg_sendlockoutres.Len() == w.ThresHold {
-			w.bsendlockoutres <- true
-		}
 	case "SendSignRes":
 		///bug
 		if w.msg_sendsignres.Len() >= w.ThresHold {

@@ -294,11 +294,6 @@ type AcceptSignData struct {
 	WorkId   int
 }
 
-type SignBak struct {
-	Key string
-	Ac *AcceptSignData
-}
-
 func SaveAcceptSignData(ac *AcceptSignData) error {
 	if ac == nil {
 	    return fmt.Errorf("no accept data.")

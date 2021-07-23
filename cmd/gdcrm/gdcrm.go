@@ -67,7 +67,7 @@ func StartDcrm(c *cli.Context) {
 	startP2pNode()
 	time.Sleep(time.Duration(180) * time.Second) //wait 3 ms for ec3
 	rpcdcrm.RpcInit(rpcport)
-	dcrm.Start(waitmsg,trytimes,presignnum,waitagree)
+	dcrm.Start(waitmsg,presignnum,waitagree)
 	select {} // note for server, or for client
 }
 
@@ -96,7 +96,6 @@ var (
 	json   bool
 	color   bool
 	waitmsg   uint64
-	trytimes   uint64
 	presignnum   uint64
 	waitagree   uint64
 
@@ -143,7 +142,6 @@ func init() {
 		cli.BoolFlag{Name: "json", Usage: "output log in json format",Destination: &json},
 		cli.BoolFlag{Name: "color", Usage: "output log in color text format", Destination: &color},
 		cli.Uint64Flag{Name: "waitmsg", Value: 120, Usage: "the time to wait p2p msg", Destination: &waitmsg},
-		cli.Uint64Flag{Name: "trytimes", Value: 1, Usage: "the times to try key-gen/sign", Destination: &trytimes},
 		cli.Uint64Flag{Name: "presignnum", Value: 2000, Usage: "the total of pre-sign data", Destination: &presignnum},
 		cli.Uint64Flag{Name: "waitagree", Value: 2, Usage: "the time to wait for agree from all nodes", Destination: &waitagree},
 	}

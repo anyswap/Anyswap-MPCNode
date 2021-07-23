@@ -288,22 +288,16 @@ func dcrm_reshare(msgprex string, initator string, groupid string,pubkey string,
 	id := w.id
 
     var ch1 = make(chan interface{}, 1)
-    for i:=0;i < recalc_times;i++ {
-	if len(ch1) != 0 {
-	    <-ch1
-	}
-
-	ReShare_ec2(msgprex, initator, groupid,pubkey, account,mode,sigs, ch1, id)
-	ret, _, cherr := GetChannelValue(ch_t, ch1)
-	if ret != "" && cherr == nil {
-		res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
-		ch <- res
-		break
-	}
-	
-	w.Clear2()
-	time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
+    ReShare_ec2(msgprex, initator, groupid,pubkey, account,mode,sigs, ch1, id)
+    ret, _, cherr := GetChannelValue(ch_t, ch1)
+    if ret != "" && cherr == nil {
+	    res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+	    ch <- res
+	    return
     }
+    
+    res := RpcDcrmRes{Ret: "", Tip: "reshare fail.", Err: cherr}
+    ch <- res
 }
 
 //msgprex = hash
@@ -362,13 +356,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    common.Info("=============ReShare_ec2,cur node not take part in reshare==============","gid",groupid,"ids",ids,"key",msgprex)
 	    
 	    _, tip, cherr := GetChannelValue(120, w.bc11)
-	    suss := false
 	    if cherr != nil {
-		suss = ReqDataFromGroup(msgprex,w.id,"C11",reqdata_trytimes,reqdata_timeout)
-	    } else {
-		suss = true
-	    }
-	    if !suss {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC11Timeout)}
 		    ch <- res
 		    return
@@ -376,11 +364,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	    _, tip, cherr = GetChannelValue(120, w.bss1)
 	    if cherr != nil {
-		suss = ReqDataFromGroup(msgprex,w.id,"SS1",reqdata_trytimes,reqdata_timeout)
-	    } else {
-		suss = true
-	    }
-	    if !suss {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ss1 timeout")}
 		    ch <- res
 		    return
@@ -388,11 +371,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	    _, tip, cherr = GetChannelValue(120, w.bd11_1)
 	    if cherr != nil {
-		suss = ReqDataFromGroup(msgprex,w.id,"D11",reqdata_trytimes,reqdata_timeout)
-	    } else {
-		suss = true
-	    }
-	    if !suss {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get d11 timeout")}
 		    ch <- res
 		    return
@@ -721,12 +699,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	    _, _, cherr = GetChannelValue(120, w.bpaillierkey)
 	    if cherr != nil {
-		suss = ReqDataFromGroup(msgprex,w.id,"PaillierKey",reqdata_trytimes,reqdata_timeout)
-	    } else {
-		suss = true
-	    }
-
-	    if !suss {
 		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier key fail")}
 		    ch <- res
 		    return 
@@ -753,12 +725,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    DisMsg(ss)
 	    _, _, cherr = GetChannelValue(120, w.bzkfact)
 	    if cherr != nil {
-		suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",reqdata_trytimes,reqdata_timeout)
-	    } else {
-		suss = true
-	    }
-	    
-	    if !suss {
 		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get NTILDEH1H2 fail")}
 		    ch <- res
 		    return
@@ -1092,13 +1058,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	DisMsg(ss)
 
 	_, tip, cherr := GetChannelValue(ch_t, w.bc11)
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"C11",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC11Timeout)}
 		ch <- res
 		return 
@@ -1187,11 +1147,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	
 	_, tip, cherr = GetChannelValue(ch_t, w.bss1)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"SS1",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ss1 timeout")}
 		ch <- res
 		return
@@ -1199,11 +1154,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bd11_1)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"D11",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get d11 timeout")}
 		ch <- res
 		return 
@@ -1538,12 +1488,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	_, _, cherr = GetChannelValue(120, w.bpaillierkey)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"PaillierKey",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get paillier key fail")}
 		ch <- res
 		return 
@@ -1570,12 +1514,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	DisMsg(ss)
 	_, _, cherr = GetChannelValue(120, w.bzkfact)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-	
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get NTILDEH1H2 fail")}
 		ch <- res
 		return

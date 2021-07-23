@@ -712,7 +712,7 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 
 			    rch := make(chan interface{}, 1)
 			    SetUpMsgList3(string(val),cur_enode,rch)
-			    _, _,cherr := GetChannelValue(waitall+10,rch)
+			    _, _,cherr := GetChannelValue(ch_t+10,rch)
 			    if cherr != nil {
 				common.Errorf("=====================ExcutePreSignData in genkey fail========================","pubkey",pre.PubKey,"cherr",cherr,"Index",index)
 			    }

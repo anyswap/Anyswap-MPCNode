@@ -233,22 +233,3 @@ func GetSkU1Dir() string {
 	return dir
 }
 
-//
-func GetAllAccountsDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/allaccounts" + cur_enode
-	return dir
-}
-
-func GetAcceptReqAddrDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/dcrmdb/acceptreqaddr" + cur_enode
-	return dir
-}
-
-func GetGAccsDir() string {
-	dir := common.DefaultDataDir()
-	dir += "/dcrmdata/dcrmdb/gaccs" + cur_enode
-	return dir
-}
-

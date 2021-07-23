@@ -41,8 +41,6 @@ var (
 	C1Data  = common.NewSafeMap(10)
 	ch_t                     = 300 
 	WaitMsgTimeGG20                     = 100
-	waitall                     = ch_t * recalc_times
-	waitallgg20                     = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = 2
 	
 	//callback
@@ -495,7 +493,7 @@ func SetUpMsgList3(msg string, enode string,rch chan interface{}) {
 	RPCReqQueue <- req
 }
 
-//==================================================================
+//---------------------------------------------------------------
 
 type WorkReq interface {
     Run(workid int, ch chan interface{}) bool
@@ -535,7 +533,6 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	mm := strings.Split(res, common.Sep)
 	if len(mm) >= 2 {
 		//msg:  key-enode:C1:X1:X2....:Xn
-		//msg:  key-enode1:NoReciv:enode2:C1
 		DisMsg(res)
 		return true
 	}
@@ -657,34 +654,27 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    }
 
 		    var ch1 = make(chan interface{}, 1)
-		    for i:=0;i < recalc_times;i++ {
-			common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
-			if len(ch1) != 0 {
-			    <-ch1
-			}
+		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,sd.Pre)
+		    common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
+		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
+		    if ret != "" && cherr == nil {
 
-			Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,sd.Pre)
-			common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
-			ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
-			if ret != "" && cherr == nil {
-
-			    ww, err2 := FindWorker(sd.MsgPrex)
-			    if err2 != nil || ww == nil {
-				res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
-				ch <- res2
-				return false
-			    }
-
-			    common.Info("===============RecvMsg.Run, ec3 sign success ===================","i",i,"get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
-
-			    ww.rsv.PushBack(ret)
-			    res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
+			ww, err2 := FindWorker(sd.MsgPrex)
+			if err2 != nil || ww == nil {
+			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
 			    ch <- res2
-			    return true 
+			    return false
 			}
-			
-			common.Info("===============RecvMsg.Run,ec3 sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
-		    }	
+
+			common.Info("===============RecvMsg.Run, ec3 sign success ===================","get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+
+			ww.rsv.PushBack(ret)
+			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
+			ch <- res2
+			return true 
+		    }
+		    
+		    common.Info("===============RecvMsg.Run,ec3 sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
 		    
 		    res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
 		    ch <- res2
@@ -1231,7 +1221,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 			common.Info("================== InitAcceptData, start call dcrm_genPubKey====================","w.id ",w.id,"w.groupid ",w.groupid,"key ",key)
 			dcrm_genPubKey(w.sid, from, "ALL", rch, req.Mode, nonce)
-			chret, tip, cherr := GetChannelValue(waitall, rch)
+			chret, tip, cherr := GetChannelValue(ch_t, rch)
 			common.Info("================== InitAcceptData , finish dcrm_genPubKey ===================","get return value ",chret,"err ",cherr,"key ",key)
 			if cherr != nil {
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
@@ -1836,127 +1826,7 @@ func CheckGroupEnode(gid string) bool {
     return true
 }
 
-func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) {
-    w := workers[wid]
-    if w == nil {
-	return
-    }
-
-    var l *list.List
-    switch datatype {
-	case "AcceptReqAddrRes":
-	    l = w.msg_acceptreqaddrres
-	case "AcceptSignRes":
-	    l = w.msg_acceptsignres 
-	case "AcceptReShareRes":
-	    l = w.msg_acceptreshareres 
-	case "SendSignRes":
-	    l = w.msg_sendsignres 
-	case "SendReShareRes":
-	    l = w.msg_sendreshareres 
-	case "C1":
-	    l = w.msg_c1
-	case "D1":
-	    l = w.msg_d1_1
-	case "SHARE1":
-	    l = w.msg_share1
-	case "NTILDEH1H2":
-	    l = w.msg_zkfact
-	case "ZKUPROOF":
-	    l = w.msg_zku
-	case "MTAZK1PROOF":
-	    l = w.msg_mtazk1proof 
-	case "C11":
-	    l = w.msg_c11
-	case "KC":
-	    l = w.msg_kc
-	case "MKG":
-	    l = w.msg_mkg
-	case "MKW":
-	    l = w.msg_mkw
-	case "DELTA1":
-	    l = w.msg_delta1
-	case "D11":
-	    l = w.msg_d11_1
-	case "CommitBigVAB":
-	    l = w.msg_commitbigvab
-	case "ZKABPROOF":
-	    l = w.msg_zkabproof
-	case "CommitBigUT":
-	    l = w.msg_commitbigut
-	case "CommitBigUTD11":
-	    l = w.msg_commitbigutd11
-	case "S1":
-	    l = w.msg_s1
-	case "SS1":
-	    l = w.msg_ss1
-	case "PaillierKey":
-	    l = w.msg_paillierkey
-	case "EDC11":
-	    l = w.msg_edc11
-	case "EDZK":
-	    l = w.msg_edzk
-	case "EDD11":
-	    l = w.msg_edd11
-	case "EDSHARE1":
-	    l = w.msg_edshare1
-	case "EDCFSB":
-	    l = w.msg_edcfsb
-	case "EDC21":
-	    l = w.msg_edc21
-	case "EDZKR":
-	    l = w.msg_edzkr
-	case "EDD21":
-	    l = w.msg_edd21 
-	case "EDC31":
-	    l = w.msg_edc31
-	case "EDD31":
-	    l = w.msg_edd31
-	case "EDS":
-	    l = w.msg_eds 
-    }
-    
-    if l == nil {
-	return
-    }
-
-    mm := make([]string,0)
-    mm = append(mm,key + "-" + ower)
-    mm = append(mm,datatype)
-    var next *list.Element
-    for e := l.Front(); e != nil; e = next {
-	    next = e.Next()
-
-	    if e.Value == nil {
-		    continue
-	    }
-
-	    s := e.Value.(string)
-
-	    if s == "" {
-		    continue
-	    }
-
-	    tmp := strings.Split(s, common.Sep)
-	    tmp2 := tmp[0:2]
-	    if testEq(mm, tmp2) {
-		_, enodes := GetGroup(w.groupid)
-		nodes := strings.Split(enodes, common.Sep2)
-		for _, node := range nodes {
-		    node2 := ParseNode(node)
-		    if strings.EqualFold(node2,reqer) {
-			SendMsgToPeer(node,s)
-			break
-		    }
-		}
-
-		break
-	    }
-    }
-}
-
 //msg: key-enode:C1:X1:X2...:Xn
-//msg: key-enode1:NoReciv:enode2:C1
 func DisMsg(msg string) {
 
 	if msg == "" {
@@ -2027,12 +1897,6 @@ func DisMsg(msg string) {
 		if w.msg_sendreshareres.Len() == w.NodeCnt {
 			w.bsendreshareres <- true
 		}
-	case "NoReciv":
-		key := prexs[0]
-		enode1 := prexs[1]
-		enode2 := mm[2]
-		datatype := mm[3]
-		HandleNoReciv(key,enode1,enode2,datatype,w.id)
 	case "C1":
 		///bug
 		if w.msg_c1.Len() >= w.NodeCnt {
@@ -2314,7 +2178,6 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_paillierkey.PushBack(msg)
-		//if w.msg_paillierkey.Len() == w.ThresHold {
 		if w.msg_paillierkey.Len() == w.NodeCnt {
 			common.Debug("=====================Get All PaillierKey====================","key",prexs[0])
 			w.bpaillierkey <- true
@@ -2482,7 +2345,7 @@ func DisMsg(msg string) {
 	}
 }
 
-//==========================================================================
+//----------------------------------------------------------------
 
 func Find(l *list.List, msg string) bool {
 	if l == nil || msg == "" {

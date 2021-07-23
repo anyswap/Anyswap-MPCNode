@@ -40,8 +40,6 @@ import (
 
 var (
 	PaillierKeyLength        = 2048
-	reqdata_trytimes = 5
-	reqdata_timeout = 60
 )
 
 type PubKeyData struct {
@@ -287,184 +285,157 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	cur_enode = GetSelfEnode()
 
 	if types.IsDefaultED25519(cointype) {
-		ok2 := false
-		for j := 0;j < recalc_times;j++ { //try 20 times
-		    if len(ch) != 0 {
-			<-ch
-		    }
-
-		    ok2 = KeyGenerate_ed(msgprex, ch, id, cointype)
-		    if ok2 {
-			break
-		    }
-		    
-		    wk.Clear2()
-		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
-		}
-
-		if !ok2 {
-			return
-		}
-
-		itertmp := workers[id].edpk.Front()
-		if itertmp == nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edpk fail", Err: GetRetErr(ErrGetGenPubkeyFail)}
-			ch <- res
-			return
-		}
-		sedpk := []byte(itertmp.Value.(string))
-
-		itertmp = workers[id].edsave.Front()
-		if itertmp == nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsave fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
-			ch <- res
-			return
-		}
-
-		sedsave := itertmp.Value.(string)
-		itertmp = workers[id].edsku1.Front()
-		if itertmp == nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsku1 fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
-			ch <- res
-			return
-		}
-
-		sedsku1 := itertmp.Value.(string)
-		tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-
-		pubkeyhex := hex.EncodeToString(sedpk)
-		
-		pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
-		epubs, err := Encode2(pubs)
-		if err != nil {
-			common.Debug("===============dcrm_genPubKey,encode fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ed pubkey", Err: err}
-			ch <- res
-			return
-		}
-
-		ss, err := Compress([]byte(epubs))
-		if err != nil {
-			common.Debug("===============dcrm_genPubKey,commpress fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ed pubkey", Err: err}
-			ch <- res
-			return
-		}
-
-		common.Debug("===============dcrm_genPubKey,start call AcceptReqAddr to update success status=================","account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
-		tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id,"")
-		if reply != nil {
-			common.Debug("===============dcrm_genPubKey,update reqaddr status=================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
-			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
-			ch <- res
-			return
-		}
-
-		if !strings.EqualFold(cointype, "ALL") {
-			h := coins.NewCryptocoinHandler(cointype)
-			if h == nil {
-				res := RpcDcrmRes{Ret: "", Tip: "cointype is not supported", Err: fmt.Errorf("req addr fail,cointype is not supported.")}
-				ch <- res
-				return
-			}
-
-			ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-			if err != nil {
-				res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkeyhex, Err: err}
-				ch <- res
-				return
-			}
-
-			err = PutPubKeyData(sedpk[:],[]byte(ss))
-			if err != nil {
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
-			    ch <- res
-			    return
-			}
-
-			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-			err = PutPubKeyData([]byte(key),[]byte(ss))
-			if err != nil {
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
-			    ch <- res
-			    return
-			}
-			err = putSkU1ToLocalDb(sedpk[:],[]byte(sedsku1))
-			if err != nil {
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
-			    ch <- res
-			    return
-			}
-
-			err = putSkU1ToLocalDb([]byte(key),[]byte(sedsku1))
-			if err != nil {
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
-			    ch <- res
-			    return
-			}
-		} else {
-			err = PutPubKeyData(sedpk[:],[]byte(ss))
-			if err != nil {
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
-			    ch <- res
-			    return
-			}
-			err = putSkU1ToLocalDb(sedpk[:],[]byte(sedsku1))
-			if err != nil {
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
-			    ch <- res
-			    return
-			}
-
-			for _, ct := range coins.Cointypes {
-				if strings.EqualFold(ct, "ALL") {
-					continue
-				}
-
-				h := coins.NewCryptocoinHandler(ct)
-				if h == nil {
-					continue
-				}
-				ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
-				if err != nil {
-					continue
-				}
-
-				key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-				err = PutPubKeyData([]byte(key),[]byte(ss))
-				if err != nil {
-				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
-				    ch <- res
-				    return
-				}
-				err = putSkU1ToLocalDb([]byte(key),[]byte(sedsku1))
-				if err != nil {
-				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
-				    ch <- res
-				    return
-				}
-			}
-		}
-
-		res := RpcDcrmRes{Ret: pubkeyhex, Tip: "", Err: nil}
-		ch <- res
-		return
-	}
-
-	ok := false
-	for j := 0;j < recalc_times;j++ { //try 20 times
-	    if len(ch) != 0 {
-		<-ch
+	    ok2 := KeyGenerate_ed(msgprex, ch, id, cointype)
+	    if !ok2 {
+		    return
 	    }
 
-	    ok = KeyGenerate_DECDSA(msgprex, ch, id, cointype)
-	    if ok {
-		break
+	    itertmp := workers[id].edpk.Front()
+	    if itertmp == nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edpk fail", Err: GetRetErr(ErrGetGenPubkeyFail)}
+		    ch <- res
+		    return
 	    }
+	    sedpk := []byte(itertmp.Value.(string))
+
+	    itertmp = workers[id].edsave.Front()
+	    if itertmp == nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsave fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
+		    ch <- res
+		    return
+	    }
+
+	    sedsave := itertmp.Value.(string)
+	    itertmp = workers[id].edsku1.Front()
+	    if itertmp == nil {
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsku1 fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
+		    ch <- res
+		    return
+	    }
+
+	    sedsku1 := itertmp.Value.(string)
+	    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+
+	    pubkeyhex := hex.EncodeToString(sedpk)
 	    
-	    wk.Clear2()
+	    pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
+	    epubs, err := Encode2(pubs)
+	    if err != nil {
+		    common.Debug("===============dcrm_genPubKey,encode fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ed pubkey", Err: err}
+		    ch <- res
+		    return
+	    }
+
+	    ss, err := Compress([]byte(epubs))
+	    if err != nil {
+		    common.Debug("===============dcrm_genPubKey,commpress fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ed pubkey", Err: err}
+		    ch <- res
+		    return
+	    }
+
+	    common.Debug("===============dcrm_genPubKey,start call AcceptReqAddr to update success status=================","account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
+	    tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id,"")
+	    if reply != nil {
+		    common.Debug("===============dcrm_genPubKey,update reqaddr status=================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
+		    ch <- res
+		    return
+	    }
+
+	    if !strings.EqualFold(cointype, "ALL") {
+		    h := coins.NewCryptocoinHandler(cointype)
+		    if h == nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "cointype is not supported", Err: fmt.Errorf("req addr fail,cointype is not supported.")}
+			    ch <- res
+			    return
+		    }
+
+		    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+		    if err != nil {
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkeyhex, Err: err}
+			    ch <- res
+			    return
+		    }
+
+		    err = PutPubKeyData(sedpk[:],[]byte(ss))
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			ch <- res
+			return
+		    }
+
+		    key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+		    err = PutPubKeyData([]byte(key),[]byte(ss))
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			ch <- res
+			return
+		    }
+		    err = putSkU1ToLocalDb(sedpk[:],[]byte(sedsku1))
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			ch <- res
+			return
+		    }
+
+		    err = putSkU1ToLocalDb([]byte(key),[]byte(sedsku1))
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			ch <- res
+			return
+		    }
+	    } else {
+		    err = PutPubKeyData(sedpk[:],[]byte(ss))
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			ch <- res
+			return
+		    }
+		    err = putSkU1ToLocalDb(sedpk[:],[]byte(sedsku1))
+		    if err != nil {
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			ch <- res
+			return
+		    }
+
+		    for _, ct := range coins.Cointypes {
+			    if strings.EqualFold(ct, "ALL") {
+				    continue
+			    }
+
+			    h := coins.NewCryptocoinHandler(ct)
+			    if h == nil {
+				    continue
+			    }
+			    ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
+			    if err != nil {
+				    continue
+			    }
+
+			    key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
+			    err = PutPubKeyData([]byte(key),[]byte(ss))
+			    if err != nil {
+				res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+				ch <- res
+				return
+			    }
+			    err = putSkU1ToLocalDb([]byte(key),[]byte(sedsku1))
+			    if err != nil {
+				res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+				ch <- res
+				return
+			    }
+		    }
+	    }
+
+	    res := RpcDcrmRes{Ret: pubkeyhex, Tip: "", Err: nil}
+	    ch <- res
+	    return
 	}
 
+	ok := KeyGenerate_DECDSA(msgprex, ch, id, cointype)
 	if !ok {
 		return
 	}
@@ -691,14 +662,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	DisMsg(ss)
 
 	_, tip, cherr := GetChannelValue(ch_t, w.bedc11)
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDC11",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c11 timeout.")}
 		ch <- res
 		return false
@@ -743,12 +707,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedzk)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDZK",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed zk timeout.")}
 		ch <- res
 		return false
@@ -794,12 +752,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedd11)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDD11",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d11 timeout.")}
 		ch <- res
 		return false
@@ -947,12 +899,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedshare1)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDSHARE1",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed share1 fail.")}
 		ch <- res
 		return false
@@ -1003,12 +949,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 
 	_, tip, cherr = GetChannelValue(ch_t, w.bedcfsb)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"EDCFSB",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed cfsb timeout.")}
 		ch <- res
 		return false
@@ -1187,10 +1127,6 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	return true
 }
 
-func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeout int) bool {
-	return false //tmp code
-}
-
 func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
 	if w == nil || msgprex == "" {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
@@ -1246,14 +1182,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	// u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk
 	_, tip, cherr := GetChannelValue(ch_t, w.bc1)
 
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"C1",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 	    /////check
 	    ///bug groupid == nil ???
 	    w, err := FindWorker(msgprex)
@@ -1399,15 +1328,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	_, tip, cherr := GetChannelValue(ch_t, w.bd1_1)
 	common.Debug("===================finish get D1===============","key",msgprex,"err",cherr)
 	/////////////////////////request data from dcrm group
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"D1",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-	///////////////////////////////////
-
-	if !suss {
 	    _, enodes := GetGroup(w.groupid)
 	    nodes := strings.Split(enodes, common.Sep2)
 	    for _, node := range nodes {
@@ -1453,14 +1374,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 
 	// 2. Receive Personal Data
 	_, tip, cherr := GetChannelValue(ch_t, w.bshare1)
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"SHARE1",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetSHARE1Timeout)}
 		ch <- res
 		return nil, nil, false
@@ -1792,15 +1706,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 	common.Debug("===================send NTILDEH1H2 finish===================","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
 	common.Debug("===================finish get NTILDEH1H2===================","key",msgprex,"err",cherr)
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"NTILDEH1H2",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
-	    /////check
 	    _, enodes := GetGroup(w.groupid)
 	    nodes := strings.Split(enodes, common.Sep2)
 	    for _, node := range nodes {
@@ -1863,15 +1769,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker,
 	common.Debug("===================send ZKUPROOF finish=================","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzku)
 	common.Debug("===================finish get ZKUPROOF=================","key",msgprex,"err",cherr)
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"ZKUPROOF",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
-	    /////check
 	    _, enodes := GetGroup(w.groupid)
 	    nodes := strings.Split(enodes, common.Sep2)
 	    for _, node := range nodes {

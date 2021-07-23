@@ -51,18 +51,25 @@ import (
 var (
 	cur_enode  string
 	init_times = 0
-	recalc_times = 1 
 	KeyFile    string
 )
 
-type NodeReply struct {
-    Enode string
-    Status string
-    TimeStamp string
-    Initiator string // "1"/"0"
+func init() {
+	p2pdcrm.RegisterRecvCallback(Call2)
+	p2pdcrm.SdkProtocol_registerBroadcastInGroupCallback(Call)
+	p2pdcrm.RegisterCallback(Call)
+
+	RegP2pGetGroupCallBack(p2pdcrm.SdkProtocol_getGroup)
+	RegP2pSendToGroupAllNodesCallBack(p2pdcrm.SdkProtocol_SendToGroupAllNodes)
+	RegP2pGetSelfEnodeCallBack(p2pdcrm.GetSelfID)
+	RegP2pBroadcastInGroupOthersCallBack(p2pdcrm.SdkProtocol_broadcastInGroupOthers)
+	RegP2pSendMsgToPeerCallBack(p2pdcrm.SendMsgToPeer)
+	RegP2pParseNodeCallBack(p2pdcrm.ParseNodeID)
+	RegDcrmGetEosAccountCallBack(eos.GetEosAccount)
+	InitChan()
 }
 
-func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
+func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	
@@ -194,36 +201,25 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	
 	PrePubDataCount = int(presignnum)
 	WaitMsgTimeGG20 = int(waitmsg)
-	recalc_times = int(trytimes)
-	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
 	
 	AutoPreGenSignData()
 
 	go HandleRpcSign()
 
-	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
+	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"presignnum",PrePubDataCount)
 }
 
 func InitGroupInfo(groupId string) {
 	cur_enode = discover.GetLocalID().String()
 }
 
+//-------------------------------------------------------------
+
 type RpcDcrmRes struct {
 	Ret string
 	Tip string
 	Err error
-}
-
-type DcrmAccountsBalanceRes struct {
-	PubKey   string
-	Balances []SubAddressBalance
-}
-
-type SubAddressBalance struct {
-	Cointype string
-	DcrmAddr string
-	Balance  string
 }
 
 type DcrmAddrRes struct {
@@ -297,6 +293,8 @@ func GetPubKeyData2(key string, account string, cointype string) (string, string
 	b, _ := json.Marshal(m)
 	return string(b), "", nil
 }
+
+//------------------------------------------------------------------
 
 func CheckAccept(pubkey string,mode string,account string) bool {
     if pubkey == "" || mode == "" || account == "" {
@@ -640,6 +638,19 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     return "","","",nil,fmt.Errorf("check fail")
 }
 
+//---------------------------------------------------------------------
+
+type SubAddressBalance struct {
+	Cointype string
+	DcrmAddr string
+	Balance  string
+}
+
+type DcrmAccountsBalanceRes struct {
+	PubKey   string
+	Balances []SubAddressBalance
+}
+
 func GetAccountsBalance(pubkey string, geter_acc string) (interface{}, string, error) {
 	keytmp, err2 := hex.DecodeString(pubkey)
 	if err2 != nil {
@@ -723,20 +734,7 @@ func GetBalance(account string, cointype string, dcrmaddr string) (string, strin
 	return ret, "", nil
 }
 
-func init() {
-	p2pdcrm.RegisterRecvCallback(Call2)
-	p2pdcrm.SdkProtocol_registerBroadcastInGroupCallback(Call)
-	p2pdcrm.RegisterCallback(Call)
-
-	RegP2pGetGroupCallBack(p2pdcrm.SdkProtocol_getGroup)
-	RegP2pSendToGroupAllNodesCallBack(p2pdcrm.SdkProtocol_SendToGroupAllNodes)
-	RegP2pGetSelfEnodeCallBack(p2pdcrm.GetSelfID)
-	RegP2pBroadcastInGroupOthersCallBack(p2pdcrm.SdkProtocol_broadcastInGroupOthers)
-	RegP2pSendMsgToPeerCallBack(p2pdcrm.SendMsgToPeer)
-	RegP2pParseNodeCallBack(p2pdcrm.ParseNodeID)
-	RegDcrmGetEosAccountCallBack(eos.GetEosAccount)
-	InitChan()
-}
+//---------------------------------------------------------------------
 
 func Call2(msg interface{}) {
 	s := msg.(string)
@@ -801,6 +799,8 @@ func SetUpMsgList2(msg string) {
 	}
 }
 
+//-------------------------------------------------------------------------
+
 func GetAddr(pubkey string,cointype string) (string,string,error) {
     if pubkey == "" || cointype == "" {
 	return "","param error",fmt.Errorf("param error")
@@ -818,6 +818,8 @@ func GetAddr(pubkey string,cointype string) (string,string,error) {
 
      return ctaddr, "", nil
 }
+
+//--------------------------------------------------
 
 func Encode2(obj interface{}) (string, error) {
     switch ch := obj.(type) {
@@ -991,6 +993,8 @@ func UnCompress(s string) (string, error) {
 	return out.String(), nil
 }
 
+//------------------------------------------------------------------------
+
 type DcrmHash [32]byte
 
 func (h DcrmHash) Hex() string { return hexutil.Encode(h[:]) }
@@ -1009,6 +1013,8 @@ func Keccak256Hash(data ...[]byte) (h DcrmHash) {
 	return h
 }
 
+//-----------------------------------------------------------------------
+
 type RpcType int32
 
 const (
@@ -1016,6 +1022,13 @@ const (
     Rpc_SIGN      RpcType = 2
     Rpc_RESHARE     RpcType = 3
 )
+
+type NodeReply struct {
+    Enode string
+    Status string
+    TimeStamp string
+    Initiator string // "1"/"0"
+}
 
 func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []NodeReply {
     if gid == "" {
@@ -1242,6 +1255,8 @@ func GetReqAddrKeyByOtherKey(key string,rt RpcType) string {
     return ""
 }
 
+//-----------------------------------------------------------------------
+
 func GetChannelValue(t int, obj interface{}) (string, string, error) {
 	timeout := make(chan bool, 1)
 	go func() {
@@ -1420,6 +1435,8 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	return pa, "", nil
 }
 
+//-------------------------------------------------------------------------
+
 func IsCurNode(enodes string, cur string) bool {
 	if enodes == "" || cur == "" {
 		return false
@@ -1471,20 +1488,7 @@ func GetIds(cointype string, groupid string) sortableIDSSlice {
 	return ids
 }
 
-func GetIds2(keytype string, groupid string) sortableIDSSlice {
-	var ids sortableIDSSlice
-	_, nodes := GetGroup(groupid)
-	others := strings.Split(nodes, common.Sep2)
-	for _, v := range others {
-		node2 := ParseNode(v) //bug??
-		uid := DoubleHash2(node2, keytype)
-		ids = append(ids, uid)
-	}
-	sort.Sort(ids)
-	return ids
-}
-
-func DoubleHash2(id string, keytype string) *big.Int {
+func DoubleHash(id string, keytype string) *big.Int {
 	// Generate the random num
 
 	// First, hash with the keccak256

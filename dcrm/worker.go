@@ -185,34 +185,20 @@ func (d *ReqDispatcher) Run() {
 }
 
 func (d *ReqDispatcher) dispatch() {
-	/*for {
-		select {
-		case req := <-RPCReqQueue:
-			// a job request has been received
-			go func(req RPCReq) {
-				// try to obtain a worker job channel that is available.
-				// this will block until a worker is idle
-				reqChannel := <-d.WorkerPool
+    for {
+	    select {
+	    case req := <-RPCReqQueue:
+		    // a job request has been received
+		    go func(req RPCReq) {
+			    // try to obtain a worker job channel that is available.
+			    // this will block until a worker is idle
+			    reqChannel := <-d.WorkerPool
 
-				// dispatch the job to the worker job channel
-				reqChannel <- req
-			}(req)
-		}
-	}
-	*/
-
-	for {
-	    req := <-RPCReqQueue
-	    // a job request has been received
-	    go func(req RPCReq) {
-		    // try to obtain a worker job channel that is available.
-		    // this will block until a worker is idle
-		    reqChannel := <-d.WorkerPool
-
-		    // dispatch the job to the worker job channel
-		    reqChannel <- req
-	    }(req)
-	}
+			    // dispatch the job to the worker job channel
+			    reqChannel <- req
+		    }(req)
+	    }
+    }
 }
 
 func FindWorker(sid string) (*RPCReqWorker, error) {

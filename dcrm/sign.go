@@ -32,10 +32,8 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 
 	"sync"
-	"github.com/fsn-dev/cryptoCoins/coins/types"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"container/list"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
@@ -266,7 +264,7 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 						ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 						SendMsgToDcrmGroup(ss, w.groupid)
 						DisMsg(ss)
-						_, _, err := GetChannelValue(waitall, w.bsendsignres)
+						_, _, err := GetChannelValue(ch_t, w.bsendsignres)
 						ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 						if err != nil {
 							tip = "get other node terminal accept sign result timeout" ////bug
@@ -336,7 +334,7 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 			common.Info("===============InitAcceptData2,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
 			rch := make(chan interface{}, 1)
 			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,sbd.PickData,rch)
-			chret, tip, cherr := GetChannelValue(waitallgg20+20, rch)
+			chret, tip, cherr := GetChannelValue(WaitMsgTimeGG20+20, rch)
 			common.Info("================== InitAcceptData2,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
 			if chret != "" {
 				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
@@ -358,7 +356,7 @@ func InitAcceptData2(sbd *SignPickData,workid int,sender string,ch chan interfac
 				ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 				SendMsgToDcrmGroup(ss, w.groupid)
 				DisMsg(ss)
-				_, _, err := GetChannelValue(waitall, w.bsendsignres)
+				_, _, err := GetChannelValue(ch_t, w.bsendsignres)
 				if err != nil {
 					tip = "get other node terminal accept sign result timeout" ////bug
 					_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"true", "", "Timeout", "", tip, tip, ars, workid)
@@ -578,7 +576,7 @@ func HandleRpcSign() {
 func get_sign_hash(hash []string,keytype string) string {
     var ids sortableIDSSlice
     for _, v := range hash {
-	    uid := DoubleHash2(v, keytype)
+	    uid := DoubleHash(v, keytype)
 	    ids = append(ids, uid)
     }
     sort.Sort(ids)
@@ -593,7 +591,7 @@ func get_sign_hash(hash []string,keytype string) string {
     return ret
 }
 
-//===================================================================
+//----------------------------------------------------------------------
 
 type SignStatus struct {
 	Status    string
@@ -746,7 +744,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	rch := make(chan interface{}, 1)
 	if keytype == "ED25519" {
 	    sign_ed(wsid,unsignhash,save,sku1,dcrmpub,keytype,rch)
-	    ret, tip, cherr := GetChannelValue(waitall, rch)
+	    ret, tip, cherr := GetChannelValue(ch_t, rch)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		    ch <- res
@@ -757,7 +755,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	    cherrtmp = cherr
 	} else {
 	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickdata,rch)
-	    ret, tip, cherr := GetChannelValue(waitall,rch)
+	    ret, tip, cherr := GetChannelValue(ch_t,rch)
 	    common.Info("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
@@ -994,7 +992,7 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		common.Debug("======================sign_ec, encode success=================","vv",vv,"msgprex",msgprex,"key",key)
 		rch := make(chan interface{}, 1)
 		SetUpMsgList3(string(val),cur_enode,rch)
-		_, _,cherr := GetChannelValue(waitall,rch)
+		_, _,cherr := GetChannelValue(ch_t,rch)
 		if cherr != nil {
 		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
 		    return 
@@ -1110,16 +1108,7 @@ func DECDSASignRoundOne(msgprex string, w *RPCReqWorker, idSign sortableIDSSlice
 	common.Debug("===================send C11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bc11)
 	common.Debug("===================finish get C11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	/////////////////////////request data from dcrm group
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"C11",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-	///////////////////////////////////
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC11Timeout)}
 		ch <- res
 		return nil, nil, nil
@@ -1146,7 +1135,6 @@ func DECDSASignPaillierEncrypt(cointype string, save string, w *RPCReqWorker, id
 		en := strings.Split(string(enodes[8:]), "@")
 		if IsCurNode(enodes, cur_enode) {
 			u1PaillierPk := signing.GetPaillierPk(save, GetRealByUid(cointype,w,id))
-			//u1PaillierPk := GetPaillierPk2(cointype,w,id)
 			if u1PaillierPk == nil {
 				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get save paillier pk fail")}
 				ch <- res
@@ -1214,14 +1202,7 @@ func DECDSASignRoundTwo(msgprex string, cointype string, save string, w *RPCReqW
 	}
 
 	_, tip, cherr := GetChannelValue(ch_t, w.bmtazk1proof)
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"MTAZK1PROOF",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetMTAZK1PROOFTimeout)}
 		ch <- res
 		return nil, nil
@@ -1252,14 +1233,7 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RPCRe
 	common.Debug("===================send KC finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bkc)
 	common.Debug("===================finish get KC, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"KC",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetKCTimeout)}
 		ch <- res
 		return false
@@ -1607,14 +1581,7 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RP
 	// 2.9
 	// receive c_kGamma from proper node, MtA(k, gamma)   zk
 	_, tip, cherr := GetChannelValue(ch_t, w.bmkg)
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"MKG",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetMKGTimeout)}
 		ch <- res
 		return false
@@ -1691,12 +1658,6 @@ func DECDSASignVerifyZKGammaW(msgprex string,cointype string, save string, w *RP
 	// receive c_kw from proper node, MtA(k, w)    zk
 	_, tip, cherr = GetChannelValue(ch_t, w.bmkw)
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"MKW",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetMKWTimeout)}
 		ch <- res
 		return false
@@ -1970,14 +1931,7 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 	common.Debug("===================send DELTA1 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bdelta1)
 	common.Debug("===================finish get DELTA1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"DELTA1",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all delta timeout.")}
 		ch <- res
 		return nil
@@ -2122,14 +2076,7 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 	common.Debug("===================send D11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bd11_1)
 	common.Debug("===================finish get D11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"D11",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all d11 fail.")}
 		ch <- res
 		return nil
@@ -2422,14 +2369,7 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	common.Debug("===================send CommitBigVAB finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigvab)
 	common.Debug("===================finish get CommitBigVAB, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigVAB",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigVAB timeout.")}
 		ch <- res
 		return nil, nil, nil, nil
@@ -2508,14 +2448,7 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	common.Debug("===================send ZKABPROOF finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkabproof)
 	common.Debug("===================finish get ZKABPROOF, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"ZKABPROOF",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all ZKABPROOF timeout.")}
 		ch <- res
 		return nil, nil
@@ -2767,14 +2700,7 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RPCReqWorker, idSig
 	common.Debug("===================send CommitBigUT finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigut)
 	common.Debug("===================finish get CommitBigUT, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUT",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigUT timeout.")}
 		ch <- res
 		return nil, nil
@@ -2836,14 +2762,7 @@ func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RPCReqW
 	common.Debug("===================send CommitBigUTD11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigutd11)
 	common.Debug("===================finish get CommitBigUTD11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"CommitBigUTD11",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigUTD11 fail.")}
 		ch <- res
 		return nil
@@ -3008,14 +2927,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idS
 	common.Info("===================send SS1 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(WaitMsgTimeGG20, w.bss1)
 	common.Info("===================finish get SS1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
-	suss := false
 	if cherr != nil {
-	    suss = ReqDataFromGroup(msgprex,w.id,"SS1",reqdata_trytimes,reqdata_timeout)
-	} else {
-	    suss = true
-	}
-
-	if !suss {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ss1 timeout.")}
 		ch <- res
 		return nil
@@ -3126,106 +3038,7 @@ func Calc_s(msgprex string,cointype string, w *RPCReqWorker, idSign sortableIDSS
 	return s
 }
 
-func GetPaillierPk2(cointype string,w *RPCReqWorker,uid *big.Int) *ec2.PublicKey {
-	if cointype == "" || w == nil || uid == nil {
-		return nil
-	}
-
-	key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
-	exsit,da := GetPubKeyData([]byte(key))
-	if !exsit {
-	    return nil 
-	}
-
-	pubs,ok := da.(*PubKeyData)
-	if !ok {
-	    return nil
-	}
-
-	_, nodes := GetGroup(pubs.GroupId)
-	others := strings.Split(nodes, common.Sep2)
-	for _, v := range others {
-		node2 := ParseNode(v) //bug??
-		uid2 := DoubleHash(node2, cointype)
-		if uid2.Cmp(uid) == 0 {
-		    iter := w.msg_paillierkey.Front() //////by type
-		    for iter != nil {
-			if iter.Value == nil {
-			    iter = iter.Next()
-			    continue
-			}
-
-			mdss,ok := iter.Value.(string)
-			if !ok {
-			    iter = iter.Next()
-			    continue
-			}
-
-			ms := strings.Split(mdss, common.Sep)
-			prexs := strings.Split(ms[0], "-")
-			if len(prexs) < 2 {
-			    iter = iter.Next()
-			    continue
-			}
-
-			//bug
-			if len(ms) < 6 {
-			    iter = iter.Next()
-			    continue
-			}
-			//
-
-			node3 := prexs[1]
-			if strings.EqualFold(node3,node2) {
-			    l := ms[2]
-			    n := new(big.Int).SetBytes([]byte(ms[3]))
-			    g := new(big.Int).SetBytes([]byte(ms[4]))
-			    n2 := new(big.Int).SetBytes([]byte(ms[5]))
-			    publicKey := &ec2.PublicKey{Length: l, N: n, G: g, N2: n2}
-			    return publicKey
-			}
-
-			iter = iter.Next()
-		    }
-
-		    break
-		}
-	}
-
-	return nil
-}
-
-func GetRealByUid(cointype string,w *RPCReqWorker,uid *big.Int) int {
-    if cointype == "ED25519" || cointype == "ECDSA" {
-	return GetRealByUid2(cointype,w,uid)
-    }
-
-    if cointype == "" || w == nil || w.DcrmFrom == "" || uid == nil {
-	return -1
-    }
-
-    key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
-    exsit,da := GetPubKeyData([]byte(key))
-    if !exsit {
-	return -1
-    }
-
-    pubs,ok := da.(*PubKeyData)
-    if !ok {
-	return -1
-    }
-
-    ids := GetIds(cointype, pubs.GroupId)
-    for k,v := range ids {
-	if v.Cmp(uid) == 0 {
-	    return k
-	}
-    }
-
-    return -1
-}
-
-func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
+func GetRealByUid(keytype string,w *RPCReqWorker,uid *big.Int) int {
     if keytype == "" || w == nil || w.DcrmFrom == "" || uid == nil {
 	return -1
     }
@@ -3241,7 +3054,7 @@ func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
 	return -1
     }
 
-    ids := GetIds2(keytype, pubs.GroupId)
+    ids := GetIds(keytype, pubs.GroupId)
     for k,v := range ids {
 	if v.Cmp(uid) == 0 {
 	    return k
@@ -3548,51 +3361,6 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	return ""
 }
 
-func DoubleHash(id string, cointype string) *big.Int {
-	
-    	if cointype == "ED25519" || cointype == "ECDSA" {
-	    return DoubleHash2(id,cointype)
-	}
-
-    	// Generate the random num
-
-	// First, hash with the keccak256
-	keccak256 := sha3.NewKeccak256()
-	_,err := keccak256.Write([]byte(id))
-	if err != nil {
-	    return nil
-	}
-
-	digestKeccak256 := keccak256.Sum(nil)
-
-	//second, hash with the SHA3-256
-	sha3256 := sha3.New256()
-
-	_,err = sha3256.Write(digestKeccak256)
-	if err != nil {
-	    return nil
-	}
-
-	if types.IsDefaultED25519(cointype) {
-		var digest [32]byte
-		copy(digest[:], sha3256.Sum(nil))
-
-		//////
-		var zero [32]byte
-		var one [32]byte
-		one[0] = 1
-		ed.ScMulAdd(&digest, &digest, &one, &zero)
-		//////
-		digestBigInt := new(big.Int).SetBytes(digest[:])
-		return digestBigInt
-	}
-
-	digest := sha3256.Sum(nil)
-	// convert the hash ([]byte) to big.Int
-	digestBigInt := new(big.Int).SetBytes(digest)
-	return digestBigInt
-}
-
 type ECDSASignature struct {
 	r               *big.Int
 	s               *big.Int
@@ -3726,29 +3494,15 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, sku1 *big.Int,pk s
 	cur_enode = GetSelfEnode()
 
 	var ch1 = make(chan interface{}, 1)
-	var bak_sig string
-	for i:=0;i < recalc_times;i++ {
-	    //fmt.Printf("%v===============dcrm_sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
-	    if len(ch1) != 0 {
-		<-ch1
-	    }
-
-	    w := workers[id]
-	    w.Clear2()
-	    //fmt.Printf("%v=====================dcrm_sign_ed, i = %v, key = %v ====================\n",common.CurrentTime(),i,msgprex)
-	    bak_sig = Sign_ed(msgprex, save, sku1,txhash, cointype, pk, ch1, id)
-	    ret, _, cherr := GetChannelValue(ch_t, ch1)
-	    //fmt.Printf("%v=====================dcrm_sign_ed,ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
-	    if ret != "" && cherr == nil {
-		//fmt.Printf("%v=====================dcrm_sign_ed,success sign, ret = %v, cherr = %v, key = %v ====================\n",common.CurrentTime(),ret,cherr,msgprex)
-		    res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
-		    ch <- res
-		    break
-	    }
-	    
-	    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
+	bak_sig := Sign_ed(msgprex, save, sku1,txhash, cointype, pk, ch1, id)
+	ret, _, cherr := GetChannelValue(ch_t, ch1)
+	if ret != "" && cherr == nil {
+		res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
+		ch <- res
+		return bak_sig
 	}
-	return bak_sig
+	    
+	return "" 
 }
 
 func sign_ed(msgprex string,txhash []string,save string, sku1 *big.Int, pk string, keytype string, ch chan interface{}) string {
@@ -3780,25 +3534,11 @@ func sign_ed(msgprex string,txhash []string,save string, sku1 *big.Int, pk strin
 	var bak_sig string
 	for _,v := range tmp {
 	    var ch1 = make(chan interface{}, 1)
-	    for i:=0;i < recalc_times;i++ {
-		//fmt.Printf("%v===============sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
-		if len(ch1) != 0 {
-		    <-ch1
-		}
-
-		w := workers[id]
-		w.Clear2()
-		bak_sig = Sign_ed(msgprex, save, sku1, v, keytype, pk, ch1, id)
-		ret, _, cherr := GetChannelValue(ch_t, ch1)
-		if ret != "" && cherr == nil {
-		    result += ret
-		    result += ":"
-			//res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
-			//ch <- res
-			break
-		}
-		
-		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
+	    bak_sig = Sign_ed(msgprex, save, sku1, v, keytype, pk, ch1, id)
+	    ret, _, cherr := GetChannelValue(ch_t, ch1)
+	    if ret != "" && cherr == nil {
+		result += ret
+		result += ":"
 	    }
 	}
 

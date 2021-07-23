@@ -16,10 +16,6 @@
 
 package dcrm 
 
-import (
-	"encoding/json"
-)
-
 // dcrm erros
 var (
 	//err code 1
@@ -87,17 +83,6 @@ var (
 	ErrSEqualZero             = `{Code:71,Error:"sign error: s equal zero."}`
 	ErrDcrmSignVerifyFail     = `{Code:72,Error:"dcrm sign verify fail."}`
 )
-
-type ErrorRet struct {
-	Code  int
-	Error string
-}
-
-func GetRetErrJsonStr(code int, err string) string {
-	m := &ErrorRet{Code: code, Error: err}
-	ret, _ := json.Marshal(m)
-	return string(ret)
-}
 
 func GetRetErr(err string) error {
 	var ret2 Err

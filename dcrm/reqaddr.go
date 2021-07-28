@@ -118,49 +118,48 @@ func GetDcrmAddr(pubkey string) (string, string, error) {
 
 func ReqDcrmAddr(raw string) (string, string, error) {
 
-    common.Debug("=====================ReqDcrmAddr call CheckRaw ================","raw ",raw)
-    key,_,_,txdata,err := CheckRaw(raw)
+    key,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("============ReqDcrmAddr==============","err ",err)
+	common.Error("=============================ReqDcrmAddr,check raw data error.==========================","key",key,"from",from,"err ",err)
 	return "",err.Error(),err
     }
 
     req,ok := txdata.(*TxDataReqAddr)
     if !ok {
-	return "","check raw fail,it is not *TxDataReqAddr",fmt.Errorf("check raw fail,it is not *TxDataReqAddr")
+	common.Error("=============================ReqDcrmAddr,get tx data error.==========================","key",key,"from",from)
+	return "","get tx data error.",fmt.Errorf("get tx data error.")
     }
 
-    common.Info("============ReqDcrmAddr,SendMsgToDcrmGroup===============","raw ",raw,"gid ",req.GroupId,"key ",key)
     SendMsgToDcrmGroup(raw, req.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }
 
 func RpcAcceptReqAddr(raw string) (string, string, error) {
-    common.Debug("=====================RpcAcceptReqAddr call CheckRaw ================","raw",raw)
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================RpcAcceptReqAddr,CheckRaw ================","raw",raw,"err",err)
+	common.Error("=====================RpcAcceptReqAddr,check raw data error. ================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
     acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
     if !ok {
-	return "Failure","check raw fail,it is not *TxDataAcceptReqAddr",fmt.Errorf("check raw fail,it is not *TxDataAcceptReqAddr")
+	common.Error("=====================RpcAcceptReqAddr,get tx data error. ================","raw",raw)
+	return "Failure","get tx data error.",fmt.Errorf("get tx data error.")
     }
 
     exsit,da := GetPubKeyData([]byte(acceptreq.Key))
     if exsit {
 	ac,ok := da.(*AcceptReqAddrData)
 	if ok && ac != nil {
-	    common.Debug("=====================RpcAcceptReqAddr, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptreq.Key)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
 	}
     }
 
-    return "Failure","accept fail",fmt.Errorf("accept fail")
+    common.Error("=====================RpcAcceptReqAddr,get reqaddr accept data from db error. ================","raw",raw)
+    return "Failure","get reqaddr accept data from db error.",fmt.Errorf("get reqaddr accept data from db error.")
 }
 
 type ReqAddrStatus struct {
@@ -175,17 +174,23 @@ type ReqAddrStatus struct {
 func GetReqAddrStatus(key string) (string, string, error) {
 	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit || da == nil {
-		common.Debug("=====================GetReqAddrStatus,no exist key======================","key",key)
-		return "", "dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus")
+		common.Error("=====================GetReqAddrStatus,get reqaddr accept data from db fail.======================","key",key)
+		return "", "get reqaddr accept data from db fail.", fmt.Errorf("get reqaddr accept data from db fail.")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
 	if !ok {
-		return "", "dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus")
+		common.Error("=====================GetReqAddrStatus,get reqaddr accept data from db error.======================","key",key)
+		return "", "get reqaddr accept data from db error.", fmt.Errorf("get reqaddr accept data from db error.")
 	}
 
 	los := &ReqAddrStatus{Status: ac.Status, PubKey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
-	ret, _ := json.Marshal(los)
+	ret, err := json.Marshal(los)
+	if err != nil {
+	    common.Error("===================================GetReqAddrStatus,marshal reqaddr status data to json error===================================","key",key,"err",err)
+	    return "","marshal reqaddr status data to json error.",err
+	}
+
 	return string(ret), "", nil
 }
 
@@ -216,7 +221,7 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	var wg sync.WaitGroup
 	iter := db.NewIterator()
 	for iter.Next() {
-	    key2 := []byte(string(iter.Key())) //must be deep copy,or show me the error: "panic: JSON decoder out of sync - data changing underfoot?"
+	    key2 := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported : "panic: JSON decoder out of sync - data changing underfoot?"
 	    if len(key2) == 0 {
 		continue
 	    }
@@ -235,7 +240,6 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		    return
 		}
 
-		common.Debug("================GetCurNodeReqAddrInfo, it is *AcceptReqAddrData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Mode",vv.Mode,"vv.Status",vv.Status,"key",key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -255,7 +259,6 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ch <- los
 
-		common.Debug("================GetCurNodeReqAddrInfo success return================","key",key)
 	    }(string(key2),da,data)
 	}
 	iter.Release()
@@ -487,7 +490,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
 	epubs, err := Encode2(pubs)
 	if err != nil {
-		common.Debug("===============dcrm_genPubKey,encode fail===================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
+		common.Error("===============dcrm_genPubKey,encode pubkey data fail===================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
 		ch <- res
 		return
@@ -495,17 +498,15 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	ss, err := Compress([]byte(epubs))
 	if err != nil {
-		common.Debug("===============dcrm_genPubKey,compress fail===================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
+		common.Error("====================dcrm_genPubKey,compress pubkey data fail=======================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
 		ch <- res
 		return
 	}
 
-	common.Debug("===============dcrm_genPubKey,start call AcceptReqAddr to update success status===================","account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
-
 	tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id,"")
 	if reply != nil {
-		common.Debug("===============dcrm_genPubKey,update reqaddr status===================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
+		common.Error("===============dcrm_genPubKey,update reqaddr status error.===================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
 		ch <- res
 		return
@@ -528,8 +529,8 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		err = PutPubKeyData(ys,[]byte(ss))
 		if err != nil {
-		    common.Info("================================dcrm_genPubKey,put pubkey data fail,111111=========================","err",err,"key",msgprex)
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+		    common.Error("==========================dcrm_genPubKey,put pubkey data to db fail=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data to db fail", Err: err}
 		    ch <- res
 		    return
 		}
@@ -537,24 +538,24 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		err = PutPubKeyData([]byte(key),[]byte(ss))
 		if err != nil {
-		    common.Info("================================dcrm_genPubKey,put pubkey data fail,222222=========================","err",err,"key",msgprex)
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+		    common.Error("=============================dcrm_genPubKey,put pubkey data to db fail=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data to db fail", Err: err}
 		    ch <- res
 		    return
 		}
 
 		err = putSkU1ToLocalDb([]byte(key),[]byte(sku1))
 		if err != nil {
-		    common.Info("================================dcrm_genPubKey,put sku1 data fail,=========================","err",err,"key",msgprex)
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+		    common.Error("================================dcrm_genPubKey,put sku1 data to db fail,=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data to db fail", Err: err}
 		    ch <- res
 		    return
 		}
 	} else {
 		err = PutPubKeyData(ys,[]byte(ss))
 		if err != nil {
-		    common.Info("================================dcrm_genPubKey,put pubkey data fail,33333=========================","err",err,"key",msgprex)
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+		    common.Error("================================dcrm_genPubKey,put pubkey data to db fail=========================","err",err,"key",msgprex)
+		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data to db fail", Err: err}
 		    ch <- res
 		    return
 		}
@@ -576,16 +577,16 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			err = PutPubKeyData([]byte(key),[]byte(ss))
 			if err != nil {
-			    common.Info("================================dcrm_genPubKey,put pubkey data fail,44444=========================","err",err,"key",msgprex)
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data fail", Err: err}
+			    common.Error("===========================dcrm_genPubKey,put pubkey data to db fail=======================","err",err,"key",msgprex)
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put pubkey data to db fail", Err: err}
 			    ch <- res
 			    return
 			}
 
 			err = putSkU1ToLocalDb([]byte(key),[]byte(sku1))
 			if err != nil {
-			    common.Info("================================dcrm_genPubKey,put sku1 data fail,22222=========================","err",err,"key",msgprex)
-			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data fail", Err: err}
+			    common.Error("==========================dcrm_genPubKey,put sku1 data to db fail=========================","err",err,"key",msgprex)
+			    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: put sku1 data to db fail", Err: err}
 			    ch <- res
 			    return
 			}
@@ -1216,7 +1217,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 
 		    if !found {
 			c1data := msgprex + "-" + node2 + common.Sep + "C1"
-			common.Info("=================== DECDSAGenKeyRoundOne,get C1 timeout================","No Reciv The C1 Data",c1data,"from Node",node,"key",msgprex)
+			common.Error("=================== DECDSAGenKeyRoundOne,get C1 timeout================","The C1 Data Not Reciv",c1data,"from Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -1324,10 +1325,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	// 1. Receive Broadcast
 	// commitU1G.D, commitU2G.D, commitU3G.D, commitU4G.D, commitU5G.D
 	// u1PolyG, u2PolyG, u3PolyG, u4PolyG, u5PolyG
-	common.Debug("===================send D1 finish===============","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bd1_1)
-	common.Debug("===================finish get D1===============","key",msgprex,"err",cherr)
-	/////////////////////////request data from dcrm group
 	if cherr != nil {
 	    _, enodes := GetGroup(w.groupid)
 	    nodes := strings.Split(enodes, common.Sep2)
@@ -1353,7 +1351,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 
 		    if !found {
 			d1data := msgprex + "-" + node2 + common.Sep + "D1"
-			common.Debug("=================== DECDSAGenKeyRoundThree,get D1 timeout======================","No Reciv The D1 Data",d1data,"From Node",node,"key",msgprex)
+			common.Error("=================== DECDSAGenKeyRoundThree,get D1 timeout======================","The D1 Data Not Reciv",d1data,"From Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -1399,13 +1397,11 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 
 	for _, v := range shares {
 		mm := strings.Split(v, common.Sep)
-		//bug
 		if len(mm) < 4 {
 			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("fill ec2.ShareStruct map error.")}
 			ch <- res
 			return nil, nil, false
 		}
-		//
 		ushare := &ec2.ShareStruct2{Id: new(big.Int).SetBytes([]byte(mm[2])), Share: new(big.Int).SetBytes([]byte(mm[3]))}
 		prex := mm[0]
 		prexs := strings.Split(prex, "-")
@@ -1493,13 +1489,11 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 	for _, id := range ids {
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
-		//bug
 		if len(en) == 0 || en[0] == "" || sstruct[en[0]] == nil || upg[en[0]] == nil {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
 			ch <- res
 			return nil, nil, false
 		}
-		//
 		if !keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) {
 			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
 			ch <- res
@@ -1620,7 +1614,6 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 		prexs := strings.Split(prex, "-")
 		for _, vv := range ds {
 			mmm := strings.Split(vv, common.Sep)
-			//bug
 			if len(mmm) < 3 {
 				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
 				ch <- res
@@ -1703,9 +1696,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 
 	// 1. Receive Broadcast zk
 	// u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
-	common.Debug("===================send NTILDEH1H2 finish===================","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
-	common.Debug("===================finish get NTILDEH1H2===================","key",msgprex,"err",cherr)
 	if cherr != nil {
 	    _, enodes := GetGroup(w.groupid)
 	    nodes := strings.Split(enodes, common.Sep2)
@@ -1731,7 +1722,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 
 		    if !found {
 			zkfactdata := msgprex + "-" + node2 + common.Sep + "NTILDEH1H2"
-			common.Debug("=================== DECDSAGenKeyRoundFour,get NTILDEH1H2 timeout ==================","No Reciv The NTILDEH1H2 Data",zkfactdata,"From Node",node,"key",msgprex)
+			common.Error("=================== DECDSAGenKeyRoundFour,get NTILDEH1H2 timeout ==================","The NTILDEH1H2 Data Not Reciv",zkfactdata,"From Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -1794,7 +1785,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker,
 
 		    if !found {
 			zkudata := msgprex + "-" + node2 + common.Sep + "ZKUPROOF"
-			common.Debug("=================== DECDSAGenKeyRoundFive,get ZKUPROOF timeout=================","No Reciv The ZKUPROOF Data",zkudata,"From Node",node,"key",msgprex)
+			common.Error("=================== DECDSAGenKeyRoundFive,get ZKUPROOF timeout=================","The ZKUPROOF Data Not Reciv",zkudata,"From Node",node,"key",msgprex)
 		    }
 	    }
 	    
@@ -2019,7 +2010,6 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 
 	w := workers[id]
 	if w.groupid == "" {
-		///bug groupid == nil ???
 		w, err := FindWorker(msgprex)
 		if err != nil || w.groupid == "" {
 		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}

@@ -436,7 +436,7 @@ func NeedPreSign(pubkey string,gid string) (int,bool) {
 	case ret := <-idx:
 	    return ret,true
 	case <-getIndexTimeOut.C:
-	    common.Errorf("=====================NeedPreSign,get index timeout.==========================","pubkey",pubkey,"gid",gid)
+	    common.Debug("=====================NeedPreSign,get index timeout.==========================","pubkey",pubkey,"gid",gid)
 	    return -1,false
     }
 
@@ -486,19 +486,19 @@ func PutPreSignData(pubkey string,gid string,index int,val *PreSignData) error {
     if !exsit || err != nil {
 	value,err := val.MarshalJSON()
 	if err != nil {
-	    common.Errorf("====================PutPreSignData,marshal pre-sign data error ======================","pubkey",pubkey,"gid",gid,"index",index,"val",val,"err",err)
+	    common.Error("====================PutPreSignData,marshal pre-sign data error ======================","pubkey",pubkey,"gid",gid,"index",index,"val",val,"err",err)
 	    return err
  	}
 
 	err = predb.Put([]byte(key),value)
 	if err != nil {
-	    common.Errorf("====================PutPreSignData,put pre-sign data to db fail ======================","pubkey",pubkey,"gid",gid,"index",index,"val",val,"err",err)
+	    common.Error("====================PutPreSignData,put pre-sign data to db fail ======================","pubkey",pubkey,"gid",gid,"index",index,"val",val,"err",err)
 	}
 
  	return err
     }
 
-    return fmt.Errorf("pre-sign data on the key already exsit.")
+    return fmt.Errorf(" The pre-sign data of the key has been put to db before.")
 }
 
 func GetPreSignData(pubkey string,gid string,datakey string) *PreSignData {
@@ -536,7 +536,7 @@ func GetPreSignData(pubkey string,gid string,datakey string) *PreSignData {
 	case ret := <-data:
 	    return ret
 	case <-checkKeyTimeOut.C:
-	    common.Errorf("=====================GetPreSignData,get pre-sign data timeout.==========================","pubkey",pubkey,"gid",gid)
+	    common.Debug("=====================GetPreSignData,get pre-sign data timeout.==========================","pubkey",pubkey,"gid",gid)
 	    return nil
     }
 
@@ -545,7 +545,7 @@ func GetPreSignData(pubkey string,gid string,datakey string) *PreSignData {
 
 func DeletePreSignData(pubkey string,gid string,datakey string) error {
     if predb == nil || pubkey == "" || gid == "" || datakey == "" {
-	common.Errorf("=======================DeletePreSignData,delete pre-sign data from db fail========================","pubkey",pubkey,"gid",gid,"datakey",datakey)
+	common.Error("=======================DeletePreSignData,delete pre-sign data from db fail========================","pubkey",pubkey,"gid",gid,"datakey",datakey)
 	return fmt.Errorf("delete pre-sign data from db error.")
     }
 
@@ -579,12 +579,12 @@ func DeletePreSignData(pubkey string,gid string,datakey string) error {
 	case ret := <-data:
 	    err := predb.Delete([]byte(ret))
 	    if err != nil {
-		common.Errorf("=====================DeletePreSignData,delete pre-sign data from db fail.==========================","pubkey",pubkey,"gid",gid,"err",err)
+		common.Error("=====================DeletePreSignData,delete pre-sign data from db fail.==========================","pubkey",pubkey,"gid",gid,"err",err)
 	    }
 
 	    return err
 	case <-checkKeyTimeOut.C:
-	    common.Errorf("=====================DeletePreSignData,delete pre-sign data from db timeout.==========================","pubkey",pubkey,"gid",gid)
+	    common.Debug("=====================DeletePreSignData,delete pre-sign data from db timeout.==========================","pubkey",pubkey,"gid",gid)
 	    return fmt.Errorf("delete pre-sign data from db timeout.")
     }
 
@@ -593,7 +593,7 @@ func DeletePreSignData(pubkey string,gid string,datakey string) error {
 
 func PickPreSignData(pubkey string,gid string) *PreSignData {
     if predb == nil || pubkey == "" || gid == "" {
-	common.Errorf("=======================PickPreSignData,pick pre-sign data from db fail========================","pubkey",pubkey,"gid",gid)
+	common.Error("=======================PickPreSignData,param error.========================","pubkey",pubkey,"gid",gid)
 	return nil
     }
 
@@ -631,7 +631,7 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 		if err = psd.UnmarshalJSON(da);err == nil {
 		    err := predb.Delete([]byte(ret))
 		    if err != nil {
-			common.Errorf("=====================PickPreSignData,pick pre-sign data from db fail.==========================","pubkey",pubkey,"gid",gid,"err",err)
+			common.Error("=====================PickPreSignData,delete pre-sign data from db fail.==========================","pubkey",pubkey,"gid",gid,"err",err)
 			return nil
 		    }
 
@@ -640,7 +640,7 @@ func PickPreSignData(pubkey string,gid string) *PreSignData {
 	    }
 
 	case <-pickTimeOut.C:
-	    common.Errorf("=====================PickPreSignData,pick pre-sign data from db timeout.==========================","pubkey",pubkey,"gid",gid)
+	    common.Debug("=====================PickPreSignData,pick pre-sign data from db timeout.==========================","pubkey",pubkey,"gid",gid)
 	    return nil
     }
     
@@ -656,19 +656,18 @@ type TxDataPreSignData struct {
 }
 
 func PreGenSignData(raw string) (string, error) {
-    common.Debug("=====================PreGenSignData call CheckRaw ================","raw",raw)
     _,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Errorf("=====================PreGenSignData,call CheckRaw finish================","raw",raw,"err",err)
+	common.Error("=====================PreGenSignData,check raw data error================","raw",raw,"from",from,"err",err)
 	return err.Error(),err
     }
 
     pre,ok := txdata.(*TxDataPreSignData)
     if !ok {
-	return "check raw fail,it is not *TxDataPreSignData",fmt.Errorf("check raw fail,it is not *TxDataPreSignData")
+	common.Error("=====================PreGenSignData, get tx data error================","raw",raw,"from",from)
+	return "",fmt.Errorf("get tx data error.")
     }
 
-    common.Debug("=====================PreGenSignData================","from",from,"raw",raw)
     ExcutePreSignData(pre)
     return "", nil
 }
@@ -685,11 +684,11 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	    PutPreSigal(pub,true)
 	    err := SavePrekeyToDb(pre.PubKey,gg)
 	    if err != nil {
-		common.Error("=========================ExcutePreSignData,save prekey to db fail.=======================","pubkey",pre.PubKey,"gid",gg,"err",err)
+		common.Error("=========================ExcutePreSignData,save (pubkey,gid) to db fail.=======================","pubkey",pre.PubKey,"gid",gg,"err",err)
 		return
 	    }
 
-	    common.Info("===================ExcutePreSignData,before generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg)
+	    common.Info("===================ExcutePreSignData, before starting pre-generation of sign data ===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg)
 	    for {
 		    index,need := NeedPreSign(pre.PubKey,gg)
 		    if need && index != -1 && GetPreSigal(pub) {
@@ -714,10 +713,10 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 			    SetUpMsgList3(string(val),cur_enode,rch)
 			    _, _,cherr := GetChannelValue(ch_t+10,rch)
 			    if cherr != nil {
-				common.Errorf("=====================ExcutePreSignData in genkey fail========================","pubkey",pre.PubKey,"cherr",cherr,"Index",index)
+				common.Error("=====================ExcutePreSignData, failed to pre-generate sign data.========================","pubkey",pre.PubKey,"err",cherr,"Index",index)
 			    }
 			    
-			    common.Info("===================ExcutePreSignData,after generate pre-sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
+			    common.Info("===================ExcutePreSignData,after pre-generation of sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,gg)),"pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
 		    } 
 
 		    time.Sleep(time.Duration(1000000))
@@ -763,13 +762,13 @@ func SavePrekeyToDb(pubkey string,gid string) error {
     val := pubkey + ":" + gid
     exsit,err := prekey.Has([]byte(pub))
     if exsit || err == nil {
-	common.Info("==================SavePrekeyToDb,already have the key in db.=====================","pub",pub,"pubkey",pubkey,"gid",gid)
+	common.Error("==================SavePrekeyToDb,already have the key in db.=====================","pub",pub,"pubkey",pubkey,"gid",gid)
 	return nil
     }
 
     err = prekey.Put([]byte(pub),[]byte(val))
     if err != nil {
-	common.Errorf("==================SavePrekeyToDb, put prekey to db fail.=====================","pub",pub,"pubkey",pubkey,"gid",gid,"err",err)
+	common.Error("==================SavePrekeyToDb, put prekey to db fail.=====================","pub",pub,"pubkey",pubkey,"gid",gid,"err",err)
 	return err
     }
 

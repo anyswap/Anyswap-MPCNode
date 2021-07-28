@@ -21,6 +21,62 @@ import (
     "fmt"
 )
 
+//------------------------------------------------------------------
+
+type AcceptReqAddrData struct {
+        Initiator string //enode
+	Account   string
+	Cointype  string
+	GroupId   string
+	Nonce     string
+	LimitNum  string
+	Mode      string
+	TimeStamp string
+
+	Deal   string 
+	Accept string
+
+	Status string
+	PubKey string
+	Tip    string
+	Error  string
+
+	AllReply []NodeReply
+
+	WorkId int
+
+	Sigs string //5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
+}
+
+func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
+	if ac == nil {
+		return fmt.Errorf("no accept data.")
+	}
+
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+
+	alos, err := Encode2(ac)
+	if err != nil {
+	    common.Error("============================SaveAcceptReqAddrData,encode accept data error.============================","err",err,"key",key)
+	    return err
+	}
+
+	ss, err := Compress([]byte(alos))
+	if err != nil {
+	    common.Error("=============================SaveAcceptReqAddrData,compress accept data error.============================","err",err,"key",key)
+	    return err
+	}
+
+	err = PutPubKeyData([]byte(key),[]byte(ss))
+	if err != nil {
+	    common.Error("===============================SaveAcceptReqAddrData,put accept data to db fail===========================","key",key,"err",err)
+	    return err
+	}
+	
+	common.Debug("===============================SaveAcceptReqAddrData,put accept data to db success===========================","key",key)
+	return nil
+}
+
 type TxDataAcceptReqAddr struct {
     TxType string
     Key string
@@ -32,13 +88,14 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit {
-		common.Info("=====================AcceptReqAddr,no exist key=======================","key",key)
+		common.Error("=====================AcceptReqAddr, get accept data fail from db =======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
 	if !ok {
-		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		common.Error("=====================AcceptReqAddr,get accept data error from db =======================","key",key)
+		return "dcrm back-end internal error:get accept data error from db", fmt.Errorf("dcrm back-end internal error:get accept data error from db")
 	}
 
 	in := ac.Initiator
@@ -95,24 +152,81 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 
 	e, err := Encode2(ac2)
 	if err != nil {
-		common.Debug("=====================AcceptReqAddr,encode fail=======================","err",err,"key",key)
+		common.Error("=====================AcceptReqAddr,encode accept data fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:encode accept data fail", err
 	}
 
 	es, err := Compress([]byte(e))
 	if err != nil {
-		common.Debug("=====================AcceptReqAddr,compress fail=======================","err",err,"key",key)
+		common.Error("=====================AcceptReqAddr,compress accept data fail=======================","err",err,"key",key)
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
 	err = PutPubKeyData([]byte(key),[]byte(es))
 	if err != nil {
-	    common.Error("===================================AcceptReqAddr,put pubkey data fail===========================","err",err,"key",key)
+	    common.Error("===================================AcceptReqAddr,put accept data to db fail===========================","err",err,"key",key)
 	    return err.Error(),err
 	}
 
-	common.Debug("=====================AcceptReqAddr,write map success====================","status",ac2.Status,"key",key)
+	common.Debug("=====================AcceptReqAddr, put accept data to db success====================","status",ac2.Status,"key",key)
 	return "", nil
+}
+
+//-------------------------------------------------------------------------
+
+type AcceptSignData struct {
+        Initiator string //enode
+	Account   string
+	GroupId   string
+	Nonce     string
+	PubKey  string
+	MsgHash    []string
+	MsgContext    []string
+	Keytype  string
+	LimitNum  string
+	Mode      string
+	TimeStamp string
+
+	Deal   string 
+	Accept string
+
+	Status    string
+	Rsv string   //rsv1:rsv2:....:rsvn:NULL
+	Tip       string
+	Error     string
+
+	AllReply []NodeReply
+	WorkId   int
+}
+
+func SaveAcceptSignData(ac *AcceptSignData) error {
+	if ac == nil {
+	    return fmt.Errorf("no accept data.")
+	}
+
+	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
+	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Nonce + ":" + ac.PubKey + ":" + get_sign_hash(ac.MsgHash,ac.Keytype) + ":" + ac.Keytype + ":" + ac.GroupId + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
+
+	alos, err := Encode2(ac)
+	if err != nil {
+	    common.Error("========================SaveAcceptSignData,encode accept data fail.======================","err",err,"key",key)
+	    return err
+	}
+
+	ss, err := Compress([]byte(alos))
+	if err != nil {
+		common.Error("========================SaveAcceptSignData,compress accept data fail.======================","err",err,"key",key)
+		return err
+	}
+
+	err = PutPubKeyData([]byte(key),[]byte(ss))
+	if err != nil {
+	    common.Error("========================SaveAcceptSignData,put accept sign data to db fail======================","err",err,"key",key)
+	    return err
+	}
+
+	common.Debug("========================SaveAcceptSignData,put accept sign data to db success======================","key",key)
+	return nil
 }
 
 type TxDataAcceptSign struct {
@@ -128,14 +242,15 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + get_sign_hash(msghash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit {
-		common.Info("=====================AcceptSign,no exist key=======================","key",key)
+		common.Error("=====================AcceptSign,get accept data from db fail=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptSignData)
 
 	if !ok {
-		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		common.Error("=====================AcceptSign,get accept data from db error=======================","key",key)
+		return "dcrm back-end internal error:get accept data error from db", fmt.Errorf("dcrm back-end internal error:get accept data error from db")
 	}
 
 	in := ac.Initiator
@@ -187,13 +302,13 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 
 	e, err := Encode2(ac2)
 	if err != nil {
-		common.Debug("=====================AcceptSign,encode fail=======================","err",err,"key",key)
+		common.Error("============================= AcceptSign,encode accept data fail ============================","err",err,"key",key)
 		return "dcrm back-end internal error:encode accept data fail", err
 	}
 
 	es, err := Compress([]byte(e))
 	if err != nil {
-		common.Debug("=====================AcceptSign,compress fail=======================","err",err,"key",key)
+		common.Error("=========================== AcceptSign,compress accept data fail ============================","err",err,"key",key)
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
@@ -202,7 +317,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 		ac,ok = da.(*AcceptSignData)
 		if ok {
 			if ac.Status != "Pending" || ac.Rsv != "" {
-				common.Info("=====================AcceptSign,already in ldb=======================","key",key)
+				common.Info("=====================AcceptSign, this sign command has been successfully processed before. =======================","key",key)
 				return "",nil
 			}
 		}
@@ -210,118 +325,15 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 
 	err = PutPubKeyData([]byte(key),[]byte(es))
 	if err != nil {
-	    common.Error("========================AcceptSign,put accept sign data fail.=======================","key",key,"err",err)
+	    common.Error("========================AcceptSign,put accept data to db fail.=======================","key",key,"err",err)
 	    return err.Error(),err
 	}
 
-	common.Debug("=====================AcceptSign,finish.========================","key",key)
+	common.Debug("=====================AcceptSign,put accept data to db success.========================","key",key)
 	return "", nil
 }
 
-type AcceptReqAddrData struct {
-        Initiator string //enode
-	Account   string
-	Cointype  string
-	GroupId   string
-	Nonce     string
-	LimitNum  string
-	Mode      string
-	TimeStamp string
-
-	Deal   string 
-	Accept string
-
-	Status string
-	PubKey string
-	Tip    string
-	Error  string
-
-	AllReply []NodeReply
-
-	WorkId int
-
-	Sigs string //5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
-}
-
-func SaveAcceptReqAddrData(ac *AcceptReqAddrData) error {
-	if ac == nil {
-		return fmt.Errorf("no accept data.")
-	}
-
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Cointype + ":" + ac.GroupId + ":" + ac.Nonce + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
-
-	alos, err := Encode2(ac)
-	if err != nil {
-		return err
-	}
-
-	ss, err := Compress([]byte(alos))
-	if err != nil {
-		return err
-	}
-
-	err = PutPubKeyData([]byte(key),[]byte(ss))
-	if err != nil {
-	    common.Error("===============================SaveAcceptReqAddrData,put accept reqaddr data to db fail===========================","key",key,"err",err)
-	    return err
-	}
-	
-	return nil
-}
-
-type AcceptSignData struct {
-        Initiator string //enode
-	Account   string
-	GroupId   string
-	Nonce     string
-	PubKey  string
-	MsgHash    []string
-	MsgContext    []string
-	Keytype  string
-	LimitNum  string
-	Mode      string
-	TimeStamp string
-
-	Deal   string 
-	Accept string
-
-	Status    string
-	Rsv string   //rsv1:rsv2:....:rsvn:NULL
-	Tip       string
-	Error     string
-
-	AllReply []NodeReply
-	WorkId   int
-}
-
-func SaveAcceptSignData(ac *AcceptSignData) error {
-	if ac == nil {
-	    return fmt.Errorf("no accept data.")
-	}
-
-	//key := hash(acc + nonce + pubkey + hash + keytype + groupid + threshold + mode)
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.Nonce + ":" + ac.PubKey + ":" + get_sign_hash(ac.MsgHash,ac.Keytype) + ":" + ac.Keytype + ":" + ac.GroupId + ":" + ac.LimitNum + ":" + ac.Mode))).Hex()
-
-	alos, err := Encode2(ac)
-	if err != nil {
-	    common.Debug("========================SaveAcceptSignData======================","enode err",err,"key",key)
-	    return err
-	}
-
-	ss, err := Compress([]byte(alos))
-	if err != nil {
-		common.Debug("========================SaveAcceptSignData======================","compress err",err,"key",key)
-		return err
-	}
-
-	err = PutPubKeyData([]byte(key),[]byte(ss))
-	if err != nil {
-	    common.Error("========================SaveAcceptSignData,put accept sign data to db fail======================","err",err,"key",key)
-	    return err
-	}
-
-	return nil
-}
+//-------------------------------------------------------------------------
 
 type AcceptReShareData struct {
         Initiator string //enode
@@ -356,21 +368,23 @@ func SaveAcceptReShareData(ac *AcceptReShareData) error {
 
 	alos, err := Encode2(ac)
 	if err != nil {
-		common.Debug("========================SaveAcceptReShareData======================","enode err",err,"key",key)
+		common.Error("========================SaveAcceptReShareData,encode accept data fail.======================","err",err,"key",key)
 		return err
 	}
 
 	ss, err := Compress([]byte(alos))
 	if err != nil {
-		common.Debug("========================SaveAcceptReShareData======================","compress err",err,"key",key)
+		common.Error("========================SaveAcceptReShareData,compress accept data fail.======================","err",err,"key",key)
 		return err
 	}
 
 	err = PutPubKeyData([]byte(key),[]byte(ss))
 	if err != nil {
+	    common.Error("========================SaveAcceptReShareData,put accept data to db fail.======================","err",err,"key",key)
 	    return err
 	}
 	
+	common.Debug("========================SaveAcceptReShareData,put accept data to db success.======================","key",key)
 	return nil
 }
 
@@ -385,14 +399,15 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + tsgroupid + ":" + pubkey + ":" + threshold + ":" + mode))).Hex()
 	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit {
-		common.Debug("=====================AcceptReShare, no exist======================","key",key)
+		common.Error("=====================AcceptReShare,get accept data from db fail.======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptReShareData)
 
 	if !ok {
-		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
+		common.Error("=====================AcceptReShare,get accept data from db error.======================","key",key)
+		return "dcrm back-end internal error:get accept data error from db", fmt.Errorf("dcrm back-end internal error:get accept data error from db")
 	}
 
 	in := ac.Initiator
@@ -444,21 +459,23 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
 
 	e, err := Encode2(ac2)
 	if err != nil {
-		common.Debug("=====================AcceptReShare, encode fail======================","err",err,"key",key)
+		common.Error("=====================AcceptReShare, encode accept data fail======================","err",err,"key",key)
 		return "dcrm back-end internal error:encode accept data fail", err
 	}
 
 	es, err := Compress([]byte(e))
 	if err != nil {
-		common.Debug("=====================AcceptReShare, compress fail======================","err",err,"key",key)
+		common.Error("=====================AcceptReShare, compress accept data fail======================","err",err,"key",key)
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
 	err = PutPubKeyData([]byte(key),[]byte(es))
 	if err != nil {
+	    common.Error("=====================AcceptReShare, put accept data to db fail======================","err",err,"key",key)
 	    return err.Error(),err
 	}
 	
+	common.Debug("=====================AcceptReShare, put accept data to db success======================","key",key)
 	return "", nil
 }
 

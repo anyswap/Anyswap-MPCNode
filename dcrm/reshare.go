@@ -87,42 +87,40 @@ func IsValidReShareAccept(from string,gid string) bool {
 }
 
 func ReShare(raw string) (string, string, error) {
-    common.Debug("=====================ReShare call CheckRaw ================","raw",raw)
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================ReShare,CheckRaw ================","raw",raw,"err",err)
+	common.Error("=====================ReShare,check raw data error. ================","raw",raw,"err",err,"key",key)
 	return "",err.Error(),err
     }
 
     rh,ok := txdata.(*TxDataReShare)
     if !ok {
-	return "","check raw fail,it is not *TxDataReShare",fmt.Errorf("check raw fail,it is not *TxDataReShare")
+	common.Error("=====================ReShare, get tx data error. ================","raw",raw,"key",key)
+	return "","get tx data error.",fmt.Errorf("get tx data error.")
     }
 
-    common.Debug("=====================ReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",rh.GroupId,"key",key)
     SendMsgToDcrmGroup(raw, rh.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }
 
 func RpcAcceptReShare(raw string) (string, string, error) {
-    common.Debug("=====================RpcAcceptReShare call CheckRaw ================","raw",raw)
-    _,_,_,txdata,err := CheckRaw(raw)
+    key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("=====================RpcAcceptReShare,CheckRaw ================","raw",raw,"err",err)
+	common.Error("=====================RpcAcceptReShare,check raw data error. ================","raw",raw,"err",err,"key",key)
 	return "Failure",err.Error(),err
     }
 
     acceptrh,ok := txdata.(*TxDataAcceptReShare)
     if !ok {
-	return "Failure","check raw fail,it is not *TxDataAcceptReShare",fmt.Errorf("check raw fail,it is not *TxDataAcceptReShare")
+	common.Error("=====================RpcAcceptReShare,get tx data error. ================","raw",raw,"key",key)
+	return "Failure","get tx data error.",fmt.Errorf("get tx data error.")
     }
 
     exsit,da := GetPubKeyData([]byte(acceptrh.Key))
     if exsit {
 	ac,ok := da.(*AcceptReShareData)
 	if ok && ac != nil {
-	    common.Debug("=====================RpcAcceptReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptrh.Key)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -144,16 +142,23 @@ type ReShareStatus struct {
 func GetReShareStatus(key string) (string, string, error) {
 	exsit,da := GetPubKeyData([]byte(key))
 	if !exsit || da == nil  {
-		return "", "dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus")
+	    common.Error("============================GetReShareStatus,get reshare accept data from db fail ==========================","key",key)
+	    return "", "get reshare accept data fail from db ", fmt.Errorf("get reshare accept data fail from db ")
 	}
 
 	ac,ok := da.(*AcceptReShareData)
 	if !ok {
-		return "", "dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus")
+	    common.Error("============================GetReShareStatus,get reshare accept data from db error. ==========================","key",key)
+	    return "", "get reshare accept data from db error.", fmt.Errorf("get reshare accept data from db error.")
 	}
 
 	los := &ReShareStatus{Status: ac.Status, Pubkey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
-	ret,_ := json.Marshal(los)
+	ret,err := json.Marshal(los)
+	if err != nil {
+	    common.Error("============================GetReShareStatus, marshal reshare accept data to json error. ==========================","key",key)
+	    return "","marshal reshare accept data to json error.",err
+	}
+
 	return string(ret), "",nil 
 }
 
@@ -175,7 +180,7 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
     var wg sync.WaitGroup
     iter := db.NewIterator()
     for iter.Next() {
-	key2 := []byte(string(iter.Key())) //must be deep copy,or show me the error: "panic: JSON decoder out of sync - data changing underfoot?"
+	key2 := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported : "panic: JSON decoder out of sync - data changing underfoot?"
 	exsit,da := GetPubKeyData(key2) 
 	if !exsit || da == nil {
 	    continue
@@ -189,7 +194,6 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 		return
 	    }
 
-	    common.Debug("================GetCurNodeReShareInfo====================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
 	    if vv.Deal == "true" || vv.Status == "Success" {
 		return
 	    }
@@ -200,7 +204,6 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 
 	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
 	    ch <-los
-	    common.Debug("================GetCurNodeReShareInfo success return============================","key",key)
 	}(string(key2),da,data)
     }
     iter.Release()
@@ -237,12 +240,11 @@ func reshare(wsid string, initator string, groupid string,pubkey string,account 
 	if ret != "" {
 		w, err := FindWorker(wsid)
 		if w == nil || err != nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("get worker error.")}
+			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: worker not found.", Err: fmt.Errorf("worker not found.")}
 			ch <- res
 			return
 		}
 
-		///////TODO tmp
 		//sid-enode:SendReShareRes:Success:ret
 		//sid-enode:SendReShareRes:Fail:err
 		mp := []string{w.sid, cur_enode}
@@ -252,22 +254,23 @@ func reshare(wsid string, initator string, groupid string,pubkey string,account 
 		s2 := ret
 		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 		SendMsgToDcrmGroup(ss, groupid)
-		///////////////
 
 		tip, reply := AcceptReShare("",initator, groupid,w.groupid,pubkey, w.limitnum, mode,"true", "true", "Success", ret, "", "", nil, w.id)
 		if reply != nil {
-			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update reshare status error.")}
-			ch <- res
-			return
+		    common.Error("============================reshare,update reshare status error ======================","key",wsid,"err",reply)
+		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: reply}
+		    ch <- res
+		    return
 		}
 
-		common.Info("================reshare,the terminal res is success=================","key",wsid)
+		common.Debug("=======================reshare,the terminal res is success=====================","key",wsid)
 		res := RpcDcrmRes{Ret: ret, Tip: tip, Err: err}
 		ch <- res
 		return
 	}
 
 	if cherr != nil {
+		common.Error("============================reshare, the terminal res is fail ======================","key",wsid,"err",cherr)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:reshare fail", Err: cherr}
 		ch <- res
 		return
@@ -281,7 +284,7 @@ func dcrm_reshare(msgprex string, initator string, groupid string,pubkey string,
 
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker.")}
+		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: worker not found.", Err: fmt.Errorf(" worker not found.")}
 		ch <- res
 		return
 	}
@@ -304,7 +307,7 @@ func dcrm_reshare(msgprex string, initator string, groupid string,pubkey string,
 //return value is the backup for the dcrm sig
 func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, account string,mode string,sigs string,ch chan interface{}, id int) {
 	if id < 0 || id >= len(workers) {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("worker no found.")}
 		ch <- res
 		return
 	}
@@ -334,7 +337,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	///sku1
 	da := getSkU1FromLocalDb(dcrmpks[:])
 	if da == nil {
-	    common.Info("=====================ReShare_ec2,da is nil =====================","key",msgprex)
 	    take_reshare = false
 	    skU1 = nil
 	    w1 = nil
@@ -353,11 +355,11 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	if !take_reshare || skU1 == nil || w1 == nil {
 	    ////////test reshare///////////////////////
 	    ids = GetIds("ALL", groupid)
-	    common.Info("=============ReShare_ec2,cur node not take part in reshare==============","gid",groupid,"ids",ids,"key",msgprex)
+	    common.Debug("====================ReShare_ec2, The current node is not participating in the reshare =====================","gid",groupid,"ids",ids,"key",msgprex)
 	    
 	    _, tip, cherr := GetChannelValue(120, w.bc11)
 	    if cherr != nil {
-		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC11Timeout)}
+		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		    ch <- res
 		    return
 	    }
@@ -708,7 +710,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    // for u1
 	    u1NtildeH1H2 := keygen.DECDSA_Key_GenerateNtildeH1H2(NtildeLength)
 	    if u1NtildeH1H2 == nil {
-		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen ntilde h1 h2 fail.")}
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("generate ntilde h1 h2 fail.")}
 		    ch <- res
 		    return
 	    }
@@ -1818,7 +1820,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		}
 	}
-	common.Info("=====================ReShare_ec2===================","gen newsku1",newskU1,"key",msgprex)
 
 	res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	ch <- res

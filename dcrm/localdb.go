@@ -106,6 +106,7 @@ func GetPubKeyData(key []byte) (bool,interface{}) {
 
 func PutPubKeyData(key []byte,value []byte) error {
     if db == nil || key == nil || value == nil {
+	common.Error("==========================PutPubKeyData,param error.===============================")
 	return fmt.Errorf("put pubkey data to db fail")
     }
  
@@ -123,6 +124,7 @@ func PutPubKeyData(key []byte,value []byte) error {
 
 func DeletePubKeyData(key []byte) error {
     if key == nil || db == nil {
+	common.Error("==========================DeletePubKeyData,param error.===============================")
 	return fmt.Errorf("delete pubkey data from db fail.")
     }
 
@@ -140,6 +142,7 @@ func DeletePubKeyData(key []byte) error {
 
 func getSkU1FromLocalDb(key []byte) []byte {
     if key == nil || dbsk == nil {
+	common.Error("==========================getSkU1FromLocalDb,param error.===============================")
 	return nil
     }
 
@@ -160,6 +163,7 @@ func getSkU1FromLocalDb(key []byte) []byte {
 
 func putSkU1ToLocalDb(key []byte,value []byte)  error {
     if dbsk == nil || key == nil || value == nil {
+	common.Error("==========================putSkU1ToLocalDb,param error.===============================")
 	return fmt.Errorf("put sku1 data to db fail")
     }
 
@@ -181,6 +185,7 @@ func putSkU1ToLocalDb(key []byte,value []byte)  error {
 
 func deleteSkU1FromLocalDb(key []byte) error {
     if key == nil || dbsk == nil {
+	common.Error("==========================deleteSkU1FromLocalDb,param error.===============================")
 	return fmt.Errorf("delete sku1 from db fail,param error.")
     }
  

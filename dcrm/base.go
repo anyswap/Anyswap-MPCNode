@@ -73,7 +73,7 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	
-	go ec2.GenRandomSafePrime() 
+	go ec2.GenRandomSafePrime() //generate 4 big safe primes. 
 	
 	cur_enode = p2pdcrm.GetSelfID()
 	
@@ -83,19 +83,19 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	//bug
 	if err != nil {
-	    common.Info("======================dcrm.Start,open db fail======================","err",err,"dir",dir)
-		for i := 0; i < 80; i++ {
-			dbtmp2, err2 := ethdb.NewLDBDatabase(dir, cache, handles)
-			if err2 == nil && dbtmp2 != nil {
-				dbtmp = dbtmp2
-				err = err2
-				break
-			} else {
-			    common.Info("======================dcrm.Start,open db fail======================","i",i,"err",err2,"dir",dir)
-			}
-
-			time.Sleep(time.Duration(2) * time.Second)
+	    common.Error("======================dcrm.Start,open db fail======================","err",err,"dir",dir)
+	    for i := 0; i < 80; i++ {
+		dbtmp2, err2 := ethdb.NewLDBDatabase(dir, cache, handles)
+		if err2 == nil && dbtmp2 != nil {
+			dbtmp = dbtmp2
+			err = err2
+			break
+		} else {
+		    common.Error("======================dcrm.Start,open db fail======================","i",i,"err",err2,"dir",dir)
 		}
+
+		time.Sleep(time.Duration(2) * time.Second)
+	    }
 	}
 	if err != nil {
 	    db = nil
@@ -104,7 +104,7 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	}
 
 	if db == nil {
-	    common.Info("======================dcrm.Start,open db fail and gdcrm panic======================")
+	    common.Error("======================dcrm.Start,open db fail,stop starting gdcrm======================")
 	    os.Exit(1)
 	    return
 	}
@@ -115,13 +115,13 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	dbsktmp, err := ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
 	//bug
 	if err != nil {
-	    common.Info("======================dcrm.Start,open dbsk fail======================","err",err,"dir",GetSkU1Dir())
+	    common.Error("======================dcrm.Start,open dbsk fail======================","err",err,"dir",GetSkU1Dir())
 		for i := 0; i < 80; i++ {
 			dbsktmp, err = ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
 			if err == nil && dbsktmp != nil {
 				break
 			} else {
-			    common.Info("======================dcrm.Start,open dbsk fail======================","i",i,"err",err,"dir",GetSkU1Dir())
+			    common.Error("======================dcrm.Start,open dbsk fail======================","i",i,"err",err,"dir",GetSkU1Dir())
 			}
 
 			time.Sleep(time.Duration(2) * time.Second)
@@ -134,7 +134,7 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	}
 
 	if dbsk == nil {
-	    common.Info("======================dcrm.Start,open dbsk fail and gdcrm panic======================")
+	    common.Error("======================dcrm.Start,open dbsk fail,stop starting gdcrm======================")
 	    os.Exit(1)
 	    return
 	}
@@ -145,13 +145,13 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	predbtmp, err := ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
 	//bug
 	if err != nil {
-	    common.Info("======================dcrm.Start,open predb fail======================","err",err,"dir",GetPreDbDir())
+	    common.Error("======================dcrm.Start,open predb fail======================","err",err,"dir",GetPreDbDir())
 		for i := 0; i < 80; i++ {
 			predbtmp, err = ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
 			if err == nil && predbtmp != nil {
 				break
 			} else {
-			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreDbDir())
+			    common.Error("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreDbDir())
 			}
 
 			time.Sleep(time.Duration(2) * time.Second)
@@ -164,7 +164,7 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	}
 	   
 	if predb == nil {
-	    common.Info("======================dcrm.Start,open predb fail and gdcrm panic======================")
+	    common.Error("======================dcrm.Start,open predb fail,stop starting gdcrm======================")
 	    os.Exit(1)
 	    return
 	}
@@ -173,13 +173,13 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	prekeytmp, err := ethdb.NewLDBDatabase(GetPreKeyDir(), cache, handles)
 	//bug
 	if err != nil {
-	    common.Info("======================dcrm.Start,open prekey fail======================","err",err,"dir",GetPreKeyDir())
+	    common.Error("======================dcrm.Start,open prekey fail======================","err",err,"dir",GetPreKeyDir())
 		for i := 0; i < 80; i++ {
 			prekeytmp, err = ethdb.NewLDBDatabase(GetPreKeyDir(), cache, handles)
 			if err == nil && prekeytmp != nil {
 				break
 			} else {
-			    common.Info("======================dcrm.Start,open prekey fail======================","i",i,"err",err,"dir",GetPreKeyDir())
+			    common.Error("======================dcrm.Start,open prekey fail======================","i",i,"err",err,"dir",GetPreKeyDir())
 			}
 
 			time.Sleep(time.Duration(2) * time.Second)
@@ -192,7 +192,7 @@ func Start(waitmsg uint64,presignnum uint64,waitagree uint64) {
 	}
 	   
 	if prekey == nil {
-	    common.Info("======================dcrm.Start,open prekey fail and gdcrm panic======================")
+	    common.Error("======================dcrm.Start,open prekey fail,stop starting gdcrm======================")
 	    os.Exit(1)
 	    return
 	}
@@ -215,6 +215,15 @@ func InitGroupInfo(groupId string) {
 }
 
 //-------------------------------------------------------------
+
+//error type 1
+type Err struct {
+	Info string
+}
+
+func (e Err) Error() string {
+	return e.Info
+}
 
 type RpcDcrmRes struct {
 	Ret string
@@ -338,12 +347,14 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     tx := new(types.Transaction)
     raws := common.FromHex(raw)
     if err := rlp.DecodeBytes(raws, tx); err != nil {
+	common.Error("=========================CheckRaw,decode raw data error.=============================","err",err,"raw",raw)
 	    return "","","",nil,err
     }
 
     signer := types.NewEIP155Signer(big.NewInt(30400)) //
     from, err := types.Sender(signer, tx)
     if err != nil {
+	common.Error("=========================CheckRaw,get tx sender error.=============================","err",err,"raw",raw)
 	return "", "","",nil,err
     }
 
@@ -397,7 +408,8 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if !CheckGroupEnode(groupid) {
-	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
+	    common.Error("==============CheckRaw, reqaddr,check group enode id error:same enodeID in group============","groupid ",groupid)
+	    return "","","",nil,fmt.Errorf("same enodeID in group")
 	}
 	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
@@ -439,12 +451,13 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	nc,_ := GetGroup(groupid)
 	if nc < limit || nc > nodecnt {
-	    common.Info("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
+	    common.Error("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 
 	if !CheckGroupEnode(groupid) {
-	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
+	    common.Error("==============CheckRaw, sign,check group enode id error:same enodeID in group============","groupid ",groupid)
+	    return "","","",nil,fmt.Errorf("same enodeID in group")
 	}
 	
 	//check mode
@@ -476,7 +489,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
-    //******************//////////TODO
     pre := TxDataPreSignData{}
     err = json.Unmarshal(tx.Data(), &pre)
     if err == nil && pre.TxType == "PRESIGNDATA" {
@@ -491,7 +503,8 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,_ := GetPubKeyData(dcrmpks[:])
 	if !exsit {
-		return "","","",nil,fmt.Errorf("invalid pubkey")
+	    common.Error("=================================CheckRaw,presigndata,get pubkey data from db fail.===============================","pubkey",pubkey)
+		return "","","",nil,fmt.Errorf("get pubkey data from db fail.")
 	}
 
 	return "",from.Hex(),fmt.Sprintf("%v", Nonce),&pre,nil
@@ -501,7 +514,8 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     err = json.Unmarshal(tx.Data(), &rh)
     if err == nil && rh.TxType == "RESHARE" {
 	if !IsValidReShareAccept(from.Hex(),rh.GroupId) {
-	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
+	    common.Error("==============================CheckRaw,reshare,check reshare from fail==============================","from",from.Hex(),"gid",rh.GroupId)
+	    return "","","",nil,fmt.Errorf("check reshare from fail")
 	}
 
 	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.Account == "" || rh.Mode == "" || rh.TimeStamp == "" {
@@ -527,6 +541,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	nc,_ := GetGroup(rh.GroupId)
 	if nc < limit || nc > nodecnt {
+	    common.Error("==============CheckRaw,reshare,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",rh.GroupId)
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 	
@@ -545,12 +560,14 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	exsit,da := GetPubKeyData([]byte(acceptreq.Key))
 	if !exsit {
-	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw reqaddr accept data")
+	    common.Error("=========================CheckRaw,acceptreqaddr,get accept data from db fail============================","key",acceptreq.Key)
+	    return "","","",nil,fmt.Errorf("get accept data fail from db")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
 	if !ok || ac == nil {
-	    return "","","",nil,fmt.Errorf("decode accept data fail")
+	    common.Error("=========================CheckRaw,acceptreqaddr,get accept data from db error============================","key",acceptreq.Key)
+	    return "","","",nil,fmt.Errorf("get accept data from db error")
 	}
 
 	///////
@@ -559,7 +576,8 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 	
 	if !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
-	    return "","","",nil,fmt.Errorf("invalid accept account")
+	    common.Error("=========================CheckRaw,acceptreqaddr,Invalid approval account============================","key",acceptreq.Key,"from",from.Hex())
+	    return "","","",nil,fmt.Errorf("Invalid approval account")
 	}
 
 	return "",from.Hex(),"",&acceptreq,nil
@@ -588,12 +606,14 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	exsit,da := GetPubKeyData([]byte(acceptsig.Key))
 	if !exsit {
-	    return "","","",nil,fmt.Errorf("get accept result from db fail")
+	    common.Error("=========================CheckRaw,acceptsign,get accept data from db fail====================","key",acceptsig.Key)
+	    return "","","",nil,fmt.Errorf("get accept data from db fail")
 	}
 
 	ac,ok := da.(*AcceptSignData)
 	if !ok || ac == nil {
-	    return "","","",nil,fmt.Errorf("get accept result from db fail")
+	    common.Error("=========================CheckRaw,acceptsign,get accept data from db error====================","key",acceptsig.Key)
+	    return "","","",nil,fmt.Errorf("get accept data from db error")
 	}
 
 	if ac.Mode == "1" {
@@ -601,7 +621,8 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 	
 	if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
-	    return "","","",nil,fmt.Errorf("invalid accepter")
+	    common.Error("=========================CheckRaw,acceptsign,Invalid approval account============================","key",acceptsig.Key,"from",from.Hex())
+	    return "","","",nil,fmt.Errorf("Invalid approval account")
 	}
 	
 	return acceptsig.Key,from.Hex(),"",&acceptsig,nil
@@ -629,6 +650,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 	
 	if !IsValidReShareAccept(from.Hex(),ac.GroupId) {
+	    common.Error("==============================CheckRaw,accept reshare,check reshare from fail==============================","from",from.Hex(),"gid",rh.GroupId)
 	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
 	}
 
@@ -1087,7 +1109,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 				if strings.EqualFold(mm,node2) {
 				    reply,ok := ret[mms[k+1]]
 				    if ok && reply != nil {
-					common.Info("===================GetAllReplyFromGroup,it is sign=================","key",key,"from",mms[k+1],"Accept",reply.Accept,"raw",mdss)
+					common.Debug("===================GetAllReplyFromGroup,sign=================","key",key,"from",mms[k+1],"Accept",reply.Accept,"raw",mdss)
 					if reply.Accept == "true" {
 					    sta = "Agree"
 					} else {
@@ -1193,7 +1215,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 	    iter := w.msg_acceptreqaddrres.Front()
 	    if iter != nil {
 		mdss := iter.Value.(string)
-		common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_REQADDR ================")
+		common.Debug("===================== GetAllReplyFromGroup call CheckRaw,reqaddr ================")
 		key,_,_,_,_ := CheckRaw(mdss)
 		exsit,da := GetPubKeyData([]byte(key))
 		if exsit {
@@ -1255,6 +1277,23 @@ func GetReqAddrKeyByOtherKey(key string,rt RpcType) string {
     return ""
 }
 
+func CheckAcc(eid string, geter_acc string, sigs string) bool {
+
+	if eid == "" || geter_acc == "" || sigs == "" {
+	    return false
+	}
+
+	//sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
+	mms := strings.Split(sigs, common.Sep)
+	for _, mm := range mms {
+		if strings.EqualFold(geter_acc,mm) { //allow user login diffrent node
+		    return true
+		}
+	}
+	
+	return false
+}
+
 //-----------------------------------------------------------------------
 
 func GetChannelValue(t int, obj interface{}) (string, string, error) {
@@ -1314,14 +1353,7 @@ func GetChannelValue(t int, obj interface{}) (string, string, error) {
 	return "", "dcrm back-end internal error:unknown error.", fmt.Errorf("get value fail.")
 }
 
-//error type 1
-type Err struct {
-	Info string
-}
-
-func (e Err) Error() string {
-	return e.Info
-}
+//----------------------------------------------------------------
 
 type PubAccounts struct {
 	Group []AccountsList
@@ -1329,23 +1361,6 @@ type PubAccounts struct {
 type AccountsList struct {
 	GroupID  string
 	Accounts []PubKeyInfo
-}
-
-func CheckAcc(eid string, geter_acc string, sigs string) bool {
-
-	if eid == "" || geter_acc == "" || sigs == "" {
-	    return false
-	}
-
-	//sigs:  5:eid1:acc1:eid2:acc2:eid3:acc3:eid4:acc4:eid5:acc5
-	mms := strings.Split(sigs, common.Sep)
-	for _, mm := range mms {
-		if strings.EqualFold(geter_acc,mm) { //allow user login diffrent node
-		    return true
-		}
-	}
-	
-	return false
 }
 
 type PubKeyInfo struct {

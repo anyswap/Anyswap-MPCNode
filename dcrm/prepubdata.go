@@ -19,11 +19,13 @@ package dcrm
 
 import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	dberrors "github.com/syndtr/goleveldb/leveldb/errors"
 	"strings"
 	"math/big"
 	"github.com/fsn-dev/dcrm-walletService/ethdb"
 	"time"
 	"fmt"
+	"errors"
 	"sync"
 	"encoding/json"
 )
@@ -493,33 +495,61 @@ func SetPrePubDataUseStatus(pub string,key string,used bool ) {
 	}
 }
 
-func PutPreSignDataIntoDb(key string,val *PrePubData) error {
-    if val == nil || key == "" {
-	return fmt.Errorf("param error.")
-    }
-
-    if predb == nil {
-	return fmt.Errorf("db open fail.")
-    }
-
-    da, err := predb.Get([]byte(key))
-    if err != nil || da == nil {
-	datas := make([]*PrePubData,0)
-	datas = append(datas,val)
-	es,err := EncodePreSignDataValue(datas)
-	if err != nil {
-	    return err
-	}
-
-	err = predb.Put([]byte(key), []byte(es))
-	if err != nil {
-	    common.Errorf("=====================PutPreSignDataIntoDb,put pre-sign data into db fail.========================","pick key",val.Key,"key",key,"err",err)
-	    return err
-	}
-    }
-
-    return nil
+func IsNotFoundErr(err error) bool {
+    return errors.Is(err, dberrors.ErrNotFound)
 }
+
+func PutPreSignDataIntoDb(key string,val *PrePubData) error {
+ 
+     if predb == nil {
+	common.Error("=====================PutPreSignDataIntoDb,open db fail.========================")
+	return fmt.Errorf("open db fail.")
+     }
+ 
+    da,err := predb.Get([]byte(key))
+    if err != nil && !IsNotFoundErr(err) {
+	return err
+    }
+
+    if IsNotFoundErr(err) {
+ 	datas := make([]*PrePubData,0)
+ 	datas = append(datas,val)
+ 	es,err := EncodePreSignDataValue(datas)
+ 	if err != nil {
+	    common.Error("=====================PutPreSignDataIntoDb,encode pre-sign data fail.========================","pre-sign data key",val.Key,"key",key,"err",err)
+ 	    return err
+ 	}
+ 
+ 	err = predb.Put([]byte(key), []byte(es))
+ 	if err != nil {
+	    common.Error("=====================PutPreSignDataIntoDb,put pre-sign data into db fail.========================","pre-sign data key",val.Key,"key",key,"err",err)
+ 	    return err
+ 	}
+
+	return nil
+    }
+
+    ps,err := DecodePreSignDataValue(string(da))
+    if err != nil {
+	common.Error("=====================PutPreSignDataIntoDb,decode pre-sign data from db fail.========================","pre-sign data key",val.Key,"key",key,"err",err)
+	return err
+    }
+
+    ps.Data = append(ps.Data,val)
+    es,err := EncodePreSignDataValue(ps.Data)
+    if err != nil {
+	common.Error("=====================PutPreSignDataIntoDb,encode pre-sign data fail.========================","pick key",val.Key,"key",key,"err",err)
+	return err
+    }
+
+    err = predb.Put([]byte(key), []byte(es))
+    if err != nil {
+	common.Error("=================PutPreSignDataIntoDb, put pre-sign data to db fail. ===============","key",key,"pick key",val.Key,"err",err)
+	return err
+     }
+
+     return nil
+ }
 
 func DeletePreSignDataFromDb(pub string,key string) error {
     if pub == "" || key == "" {

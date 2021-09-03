@@ -53,6 +53,7 @@ var (
 	init_times = 0
 	recalc_times = 1 
 	KeyFile    string
+	signer = types.NewEIP155Signer(big.NewInt(30400))
 )
 
 type NodeReply struct {
@@ -208,8 +209,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	LdbPubKeyData = GetAllPubKeyDataFromDb()
 	GetAllPreSignFromDb()
 
-	go HandleRpcSign()
-
 	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
 }
 
@@ -360,7 +359,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,err
     }
 
-    signer := types.NewEIP155Signer(big.NewInt(30400)) //
     from, err := types.Sender(signer, tx)
     if err != nil {
 	return "", "","",nil,err

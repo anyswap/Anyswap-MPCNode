@@ -135,83 +135,16 @@ func GetSkU1FromLocalDb(key string) []byte {
 }
 
 func GetPubKeyDataValueFromDb(key string) []byte {
-	lock.Lock()
-	/*if db == nil {
-	    dir := GetDbDir()
-	    ////////
-	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	    //bug
-	    if err != nil {
-		    for i := 0; i < 100; i++ {
-			    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			    if err == nil {
-				    break
-			    }
-
-			    time.Sleep(time.Duration(1000000))
-		    }
-	    }
-	    if err != nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get, ===================","err",err,"dir",dir,"key",key)
-		lock.Unlock()
-		return nil
-	    } else {
-		db = dbtmp
-		da, err := db.Get([]byte(key))
-		if err != nil {
-	    common.Debug("===================GetPubKeyDataValueFromDb, db is nil and re-get success,but get data fail ===================","err",err,"dir",dir,"key",key)
-		    lock.Unlock()
-		    return nil
-		}
-
-		lock.Unlock()
-		return da
-	    }
-	}
-	*/
-
 	if db == nil {
-	    lock.Unlock()
 	    return nil
  	}
 
 	da, err := db.Get([]byte(key))
 	if err != nil {
 	    common.Info("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
-
-	    /*dir := GetDbDir()
-	    ////////
-	    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-	    if err != nil {
-		    for i := 0; i < 100; i++ {
-			    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-			    if err == nil {
-				    break
-			    }
-
-			    time.Sleep(time.Duration(1000000))
-		    }
-	    }
-	    if err != nil {
-		lock.Unlock()
-		return nil
-	    } else {
-		db = dbtmp
-		da, err := db.Get([]byte(key))
-		if err != nil {
-		    lock.Unlock()
-		    return nil
-		}
-
-		lock.Unlock()
-		return da
-	    }*/
-
-	    lock.Unlock()
 	    return nil
 	}
 
-	lock.Unlock()
 	return da
 }
 

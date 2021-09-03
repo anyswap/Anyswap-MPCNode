@@ -612,77 +612,80 @@ func Sign(raw string) (string, string, error) {
     common.Debug("=====================Sign================","key",key,"from",from,"raw",raw)
 
     rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
-    SignChan <- rsd
+    go HandleRpcSign(rsd)
+
     return key, "", nil
 }
 
-func HandleRpcSign() {
-	for {
-		rsd := <-SignChan
-	
-		dcrmpks, _ := hex.DecodeString(rsd.PubKey)
-		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-		common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit)
-		if exsit {
-			_,ok := da.(*PubKeyData)
-			common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok)
-			if ok {
-				pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
-				bret := false
-				pickhash := make([]*PickHashKey,0)
-				for _,vv := range rsd.MsgHash {
-					DtPreSign.Lock()
-					pickkey := PickPrePubData(pub)
-					if pickkey == "" {
-						bret = true
-						DtPreSign.Unlock()
-						break
-					}
+func HandleRpcSign(rsd *RpcSignData) {
+    if rsd == nil {
+	return
+    }
 
-					err := DeletePreSignDataFromDb(strings.ToLower(pub),pickkey)
-					if err != nil {
-					    common.Info("========================HandleRpcSign,delete pre-sign data form db fail.==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key,"err",err)
-					    bret = true
-					    DtPreSign.Unlock()
-					    break
-					}
+    dcrmpks, _ := hex.DecodeString(rsd.PubKey)
+    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+    if !exsit {
+	return
+    }
+    _,ok := da.(*PubKeyData)
+    if !ok {
+	return
+    }
+    common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key)
 
-					DtPreSign.Unlock()
+    pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
+    bret := false
+    pickhash := make([]*PickHashKey,0)
+    for _,vv := range rsd.MsgHash {
+	    DtPreSign.Lock()
+	    pickkey := PickPrePubData(pub)
+	    if pickkey == "" {
+		    bret = true
+		    DtPreSign.Unlock()
+		    break
+	    }
 
-					common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
-					ph := &PickHashKey{Hash:vv,PickKey:pickkey}
-					pickhash = append(pickhash,ph)
+	    err := DeletePreSignDataFromDb(strings.ToLower(pub),pickkey)
+	    if err != nil {
+		common.Info("========================HandleRpcSign,delete pre-sign data form db fail.==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key,"err",err)
+		bret = true
+		DtPreSign.Unlock()
+		break
+	    }
 
-					//check pre sigal
-					if GetTotalCount(pub) >= (PrePubDataCount*3/4) && GetTotalCount(pub) <= PrePubDataCount {
-						PutPreSigal(pub,false)
-					} else {
-						PutPreSigal(pub,true)
-					}
-					//
-				}
+	    DtPreSign.Unlock()
 
-				if bret {
-					continue
-				}
+	    common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
+	    ph := &PickHashKey{Hash:vv,PickKey:pickkey}
+	    pickhash = append(pickhash,ph)
 
-				send,err := CompressSignBrocastData(rsd.Raw,pickhash)
-				if err != nil {
-					common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
-					DtPreSign.Lock()
-					for _,vv := range pickhash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-					}
-					DtPreSign.Unlock()
+	    //check pre sigal
+	    if GetTotalCount(pub) >= (PrePubDataCount*3/4) && GetTotalCount(pub) <= PrePubDataCount {
+		    PutPreSigal(pub,false)
+	    } else {
+		    PutPreSigal(pub,true)
+	    }
+	    //
+    }
 
-					continue
-				}
+    if bret {
+	    return
+    }
 
-				SendMsgToDcrmGroup(send,rsd.GroupId)
-				SetUpMsgList(send,cur_enode)
-			}
-		}
-	}
+    send,err := CompressSignBrocastData(rsd.Raw,pickhash)
+    if err != nil {
+	    common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
+	    DtPreSign.Lock()
+	    for _,vv := range pickhash {
+		    SetPrePubDataUseStatus(pub,vv.PickKey,false)
+	    }
+	    DtPreSign.Unlock()
+
+	    return
+    }
+
+    SendMsgToDcrmGroup(send,rsd.GroupId)
+    SetUpMsgList(send,cur_enode)
 }
 
 func get_sign_hash(hash []string,keytype string) string {

@@ -319,13 +319,8 @@ func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
 
 //sign
 func (this *Service) AcceptSign(raw string) map[string]interface{} {
-	//fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
-	//common.Info("=============================AcceptSign============================","raw",raw)
-
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptSign(raw)
-	//common.Info("=============================AcceptSign,get result============================","ret",ret,"tip",tip,"err",err,"raw",raw)
-	//fmt.Printf("%v ==========call rpc AcceptSign from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
 		return map[string]interface{}{
@@ -346,11 +341,9 @@ func (this *Service) AcceptSign(raw string) map[string]interface{} {
 }
 
 func (this *Service) Sign(raw string) map[string]interface{} {
-	common.Info("===================Sign,get the sign cmd from rpc=====================","raw",raw)
 
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.Sign(raw)
-	//common.Info("===================Sign,get result=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		common.Info("===================Sign,return result to app=====================","key",key,"err",err,"raw",raw)
@@ -363,7 +356,6 @@ func (this *Service) Sign(raw string) map[string]interface{} {
 	}
 
 	data["result"] = key 
-	common.Info("===================Sign,return result to app=====================","key",key,"err",err,"raw",raw)
 	return map[string]interface{}{
 		"Status": "Success",
 		"Tip":    "",

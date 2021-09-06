@@ -942,6 +942,256 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
     }
 }
 
+func GetReqAddrRawValue(raw string) (string,string,string) {
+    if raw == "" {
+	return "","",""
+    }
+
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	return "","",""
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400))
+    from, err := types.Sender(signer,tx)
+    if err != nil {
+	return "","",""
+    }
+
+    var txtype string
+    var timestamp string
+    
+    req := TxDataReqAddr{}
+    err = json.Unmarshal(tx.Data(), &req)
+    if err == nil && req.TxType == "REQDCRMADDR" {
+	txtype = "REQDCRMADDR"
+	timestamp = req.TimeStamp
+    } else {
+	acceptreq := TxDataAcceptReqAddr{}
+	err = json.Unmarshal(tx.Data(), &acceptreq)
+	if err == nil && acceptreq.TxType == "ACCEPTREQADDR" {
+	    txtype = "ACCEPTREQADDR"
+	    timestamp = acceptreq.TimeStamp
+	} 
+    }
+
+    return from.Hex(),txtype,timestamp
+}
+
+func CheckReqAddrDulpRawReply(raw string,l *list.List) bool {
+    if l == nil || raw == "" {
+	return false
+    }
+   
+    from,txtype,timestamp := GetReqAddrRawValue(raw)
+
+    if from == "" || txtype == "" || timestamp == "" {
+	return false
+    }
+    
+    var next *list.Element
+    for e := l.Front(); e != nil; e = next {
+	next = e.Next()
+
+	if e.Value == nil {
+		continue
+	}
+
+	s := e.Value.(string)
+
+	if s == "" {
+		continue
+	}
+
+	if strings.EqualFold(raw,s) {
+	   return false 
+	}
+	
+	from2,txtype2,timestamp2 := GetReqAddrRawValue(s)
+	if strings.EqualFold(from,from2) && strings.EqualFold(txtype,txtype2) {
+	    t1,_ := new(big.Int).SetString(timestamp,10)
+	    t2,_ := new(big.Int).SetString(timestamp2,10)
+	    if t1.Cmp(t2) > 0 {
+		l.Remove(e)
+	    } else {
+		return false
+	    }
+	}
+    }
+
+    return true
+}
+
+func GetReshareRawValue(raw string) (string,string,string) {
+    if raw == "" {
+	return "","",""
+    }
+
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	return "","",""
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400))
+    from, err := types.Sender(signer,tx)
+    if err != nil {
+	return "","",""
+    }
+
+    var txtype string
+    var timestamp string
+    
+    rh := TxDataReShare{}
+    err = json.Unmarshal(tx.Data(), &rh)
+    if err == nil && rh.TxType == "RESHARE" {
+	txtype = "RESHARE"
+	timestamp = rh.TimeStamp
+    } else {
+	acceptrh := TxDataAcceptReShare{}
+	err = json.Unmarshal(tx.Data(), &acceptrh)
+	if err == nil && acceptrh.TxType == "ACCEPTRESHARE" {
+	    txtype = "ACCEPTRESHARE"
+	    timestamp = acceptrh.TimeStamp
+	} 
+    }
+
+    return from.Hex(),txtype,timestamp
+}
+
+func CheckReshareDulpRawReply(raw string,l *list.List) bool {
+    if l == nil || raw == "" {
+	return false
+    }
+   
+    from,txtype,timestamp := GetReshareRawValue(raw)
+
+    if from == "" || txtype == "" || timestamp == "" {
+	return false
+    }
+    
+    var next *list.Element
+    for e := l.Front(); e != nil; e = next {
+	next = e.Next()
+
+	if e.Value == nil {
+		continue
+	}
+
+	s := e.Value.(string)
+
+	if s == "" {
+		continue
+	}
+
+	if strings.EqualFold(raw,s) {
+	    return false 
+	}
+	
+	from2,txtype2,timestamp2 := GetReshareRawValue(s)
+	if strings.EqualFold(from,from2) && strings.EqualFold(txtype,txtype2) {
+	    t1,_ := new(big.Int).SetString(timestamp,10)
+	    t2,_ := new(big.Int).SetString(timestamp2,10)
+	    if t1.Cmp(t2) > 0 {
+		l.Remove(e)
+	    } else {
+		return false
+	    }
+	}
+    }
+
+    return true
+}
+
+func GetSignRawValue(raw string) (string,string,string) {
+    if raw == "" {
+	return "","",""
+    }
+
+    tx := new(types.Transaction)
+    raws := common.FromHex(raw)
+    if err := rlp.DecodeBytes(raws, tx); err != nil {
+	return "","",""
+    }
+
+    signer := types.NewEIP155Signer(big.NewInt(30400))
+    from, err := types.Sender(signer,tx)
+    if err != nil {
+	return "","",""
+    }
+
+    var txtype string
+    var timestamp string
+    
+    sig := TxDataSign{}
+    err = json.Unmarshal(tx.Data(), &sig)
+    if err == nil && sig.TxType == "SIGN" {
+	txtype = "SIGN"
+	timestamp = sig.TimeStamp
+    } else {
+	pre := TxDataPreSignData{}
+	err = json.Unmarshal(tx.Data(), &pre)
+	if err == nil && pre.TxType == "PRESIGNDATA" {
+	    txtype = "PRESIGNDATA"
+	    //timestamp = pre.TimeStamp
+	} else {
+	    acceptsig := TxDataAcceptSign{}
+	    err = json.Unmarshal(tx.Data(), &acceptsig)
+	    if err == nil && acceptsig.TxType == "ACCEPTSIGN" {
+		txtype = "ACCEPTSIGN"
+		timestamp = acceptsig.TimeStamp
+	    }
+	}
+    }
+
+    return from.Hex(),txtype,timestamp
+}
+
+func CheckSignDulpRawReply(raw string,l *list.List) bool {
+    if l == nil || raw == "" {
+	return false
+    }
+   
+    from,txtype,timestamp := GetSignRawValue(raw)
+
+    if from == "" || txtype == "" || timestamp == "" {
+	return false
+    }
+    
+    var next *list.Element
+    for e := l.Front(); e != nil; e = next {
+	next = e.Next()
+
+	if e.Value == nil {
+		continue
+	}
+
+	s := e.Value.(string)
+
+	if s == "" {
+		continue
+	}
+
+	if strings.EqualFold(raw,s) {
+	   return false 
+	}
+	
+	from2,txtype2,timestamp2 := GetSignRawValue(s)
+	if strings.EqualFold(from,from2) && strings.EqualFold(txtype,txtype2) {
+	    t1,_ := new(big.Int).SetString(timestamp,10)
+	    t2,_ := new(big.Int).SetString(timestamp2,10)
+	    if t1.Cmp(t2) > 0 {
+		l.Remove(e)
+	    } else {
+		return false
+	    }
+	}
+    }
+
+    return true
+}
+
 func DisAcceptMsg(raw string,workid int) {
     if raw == "" || workid < 0 || workid >= len(workers) {
 	return
@@ -952,7 +1202,6 @@ func DisAcceptMsg(raw string,workid int) {
 	return
     }
 
-    common.Debug("=====================DisAcceptMsg call CheckRaw================","raw ",raw)
     key,from,_,txdata,err := CheckRaw(raw)
     common.Debug("=====================DisAcceptMsg=================","key",key,"err",err)
     if err != nil {
@@ -963,6 +1212,10 @@ func DisAcceptMsg(raw string,workid int) {
     if ok {
 	if Find(w.msg_acceptreqaddrres,raw) {
 		return
+	}
+
+	if !CheckReqAddrDulpRawReply(raw,w.msg_acceptreqaddrres) {
+	    return
 	}
 
 	w.msg_acceptreqaddrres.PushBack(raw)
@@ -1021,6 +1274,10 @@ func DisAcceptMsg(raw string,workid int) {
 	    return
 	}
 
+	if !CheckSignDulpRawReply(raw,w.msg_acceptsignres) {
+	    return
+	}
+
 	    common.Debug("======================DisAcceptMsg,the msg is sign tx,and put it into list.===========================","key",key,"from",from,"sig",sig2)
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
@@ -1051,6 +1308,10 @@ func DisAcceptMsg(raw string,workid int) {
 	    return
 	}
 
+	if !CheckReshareDulpRawReply(raw,w.msg_acceptreshareres) {
+	    return
+	}
+
 	w.msg_acceptreshareres.PushBack(raw)
 	if w.msg_acceptreshareres.Len() >= w.NodeCnt {
 	    if !CheckReply(w.msg_acceptreshareres,Rpc_RESHARE,key) {
@@ -1076,6 +1337,10 @@ func DisAcceptMsg(raw string,workid int) {
     if ok {
 	if Find(w.msg_acceptreqaddrres,raw) {
 		return
+	}
+
+	if !CheckReqAddrDulpRawReply(raw,w.msg_acceptreqaddrres) {
+	    return
 	}
 
 	w.msg_acceptreqaddrres.PushBack(raw)
@@ -1134,7 +1399,11 @@ func DisAcceptMsg(raw string,workid int) {
 	    return
 	}
 
-	    common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and put it into list.===========================","sig key",acceptsig.Key,"from",from,"accept sig",acceptsig)
+	if !CheckSignDulpRawReply(raw,w.msg_acceptsignres) {
+	    return
+	}
+
+	common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and put it into list.===========================","sig key",acceptsig.Key,"from",from,"accept sig",acceptsig)
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,acceptsig.Key) {
@@ -1161,6 +1430,10 @@ func DisAcceptMsg(raw string,workid int) {
     acceptreshare,ok := txdata.(*TxDataAcceptReShare)
     if ok {
 	if Find(w.msg_acceptreshareres, raw) {
+	    return
+	}
+
+	if !CheckReshareDulpRawReply(raw,w.msg_acceptreshareres) {
 	    return
 	}
 

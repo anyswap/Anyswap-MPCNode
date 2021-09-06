@@ -36,7 +36,7 @@ import (
 
 func GetReShareNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "RESHARE"))).Hex()
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyDataValueFromDb2(key)
 	///////
 	if !exsit {
 		return "0", "", nil
@@ -118,7 +118,7 @@ func RpcAcceptReShare(raw string) (string, string, error) {
 	return "Failure","check raw fail,it is not *TxDataAcceptReShare",fmt.Errorf("check raw fail,it is not *TxDataAcceptReShare")
     }
 
-    exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+    exsit,da := GetReShareInfoData([]byte(acceptrh.Key))
     if exsit {
 	ac,ok := da.(*AcceptReShareData)
 	if ok && ac != nil {
@@ -142,7 +142,7 @@ type ReShareStatus struct {
 }
 
 func GetReShareStatus(key string) (string, string, error) {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyDataValueFromDb2(key)
 	///////
 	if !exsit || da == nil  {
 		return "", "dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus")
@@ -171,11 +171,19 @@ type ReShareCurNodeInfo struct {
 
 func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
     var ret []*ReShareCurNodeInfo
+    data := make(chan *ReShareCurNodeInfo,1000)
+
     var wg sync.WaitGroup
-    LdbPubKeyData.RLock()
-    for k, v := range LdbPubKeyData.Map {
+    iter := reshareinfodb.NewIterator()
+    for iter.Next() {
+	key2 := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported: "panic: JSON decoder out of sync - data changing underfoot?"
+	exsit,da := GetReShareInfoData(key2) 
+	if !exsit || da == nil {
+	    continue
+	}
+	
 	wg.Add(1)
-	go func(key string,value interface{}) {
+	go func(key string,value interface{},ch chan *ReShareCurNodeInfo) {
 	    defer wg.Done()
 
 	    vv,ok := value.(*AcceptReShareData)
@@ -193,12 +201,19 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 	    }
 
 	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
-	    ret = append(ret, los)
+	    ch <-los
 	    common.Debug("================GetCurNodeReShareInfo success return============================","key",key)
-	}(k,v)
+	}(string(key2),da,data)
     }
-    LdbPubKeyData.RUnlock()
+    iter.Release()
     wg.Wait()
+
+    l := len(data)
+    for i:=0;i<l;i++ {
+	info := <-data
+	ret = append(ret,info)
+    }
+
     return ret, "", nil
 }
 
@@ -961,7 +976,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	    wid := -1
 	    var allreply []NodeReply
-	    exsit,da2 := GetValueFromPubKeyData(msgprex)
+	    exsit,da2 := GetReShareInfoData([]byte(msgprex))
 	    if exsit {
 		acr,ok := da2.(*AcceptReShareData)
 		if ok {
@@ -1761,7 +1776,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	wid := -1
 	var allreply []NodeReply
-	exsit,da2 := GetValueFromPubKeyData(msgprex)
+	exsit,da2 := GetReShareInfoData([]byte(msgprex))
 	if exsit {
 	    acr,ok := da2.(*AcceptReShareData)
 	    if ok {

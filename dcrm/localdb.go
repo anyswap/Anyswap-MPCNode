@@ -22,6 +22,7 @@ import (
     "github.com/fsn-dev/dcrm-walletService/ethdb"
     "time"
     "sync"
+    "fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
@@ -35,6 +36,10 @@ var (
 	lock                     sync.Mutex
 	db *ethdb.LDBDatabase
 	dbsk *ethdb.LDBDatabase
+
+	reqaddrinfodb *ethdb.LDBDatabase
+	signinfodb *ethdb.LDBDatabase
+	reshareinfodb *ethdb.LDBDatabase
 )
 
 func makeDatabaseHandles() int {
@@ -165,7 +170,7 @@ func SavePubKeyDataToDb() {
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
 			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
+				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",string(kd.Key))
 			    dir := GetDbDir()
 			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -246,139 +251,36 @@ func SaveSkU1ToDb() {
 }
 
 func GetAllPubKeyDataFromDb() *common.SafeMap {
-	kd := common.NewSafeMap(10)
-	if db != nil {
-	    common.Debug("========================GetAllPubKeyDataFromDb,db is not nil =================================")
-	    iter := db.NewIterator()
-	    for iter.Next() {
-		key := string(iter.Key())
-		value := string(iter.Value())
+    kd := common.NewSafeMap(10)
+    if db != nil {
+	var wg sync.WaitGroup
+	iter := db.NewIterator()
+	for iter.Next() {
+	    key := string(iter.Key())
+	    value := string(iter.Value())
 
-		ss, err := UnCompress(value)
+	    wg.Add(1)
+	    go func(key2 string,value2 string) {
+		defer wg.Done()
+		ss, err := UnCompress(value2)
 		if err == nil {
 		    pubs3, err := Decode2(ss, "PubKeyData")
 		    if err == nil {
 			pd,ok := pubs3.(*PubKeyData)
 			if ok {
-			    kd.WriteMap(key, pd)
-			    continue
+			    kd.WriteMap(key2, pd)
+			    return
 			}
 		    }
-		    
-		    pubs, err := Decode2(ss, "AcceptReqAddrData")
-		    if err == nil {
-			pd,ok := pubs.(*AcceptReqAddrData)
-			if ok {
-			    kd.WriteMap(key, pd)
-
-				////////ec3////
-				/*common.Debug("==================GetAllPubKeyDataFromDb at ec3==============","key",key,"pubkey",pd.PubKey,"initiator",pd.Initiator,"pd.Status",pd.Status)
-			       if strings.EqualFold(pd.Initiator,cur_enode) && pd.Status == "Success" {
-					go func() {
-						PutPreSigal(pd.PubKey,true)
-
-						for {
-							if NeedPreSign(pd.PubKey) && GetPreSigal(pd.PubKey) {
-								//one,_ := new(big.Int).SetString("1",0)
-								//PreSignNonce = new(big.Int).Add(PreSignNonce,one)
-								tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-								nonce := Keccak256Hash([]byte(strings.ToLower(pd.PubKey + pd.GroupId + tt))).Hex()
-								index := 0
-								ids := GetIds2("ECDSA", pd.GroupId)
-								for kk, id := range ids {
-									enodes := GetEnodesByUid(id, "ECDSA", pd.GroupId)
-									if IsCurNode(enodes, cur_enode) {
-										if kk >= 2 {
-											index = kk - 2
-										} else {
-											index = kk
-										}
-										break
-									}
-
-								}
-								tmp := ids[index:index+3]
-								ps := &PreSign{Pub:pd.PubKey,Gid:pd.GroupId,Nonce:nonce,Index:index}
-
-								val,err := Encode2(ps)
-								if err != nil {
-									common.Debug("=====================GetAllPubKeyDataFromDb at ec3, at start========================","err",err)
-									time.Sleep(time.Duration(10000000))
-								    continue 
-								}
-								
-								for _, id := range tmp {
-									enodes := GetEnodesByUid(id, "ECDSA", pd.GroupId)
-									common.Debug("===============GetAllPubKeyDataFromDb at ec3, at start ,get enodes===============","enodes",enodes,"index",index)
-									if IsCurNode(enodes, cur_enode) {
-										common.Debug("===============GetAllPubKeyDataFromDb at ec3, at start ,get cur enodes===============","enodes",enodes)
-										continue
-									}
-									SendMsgToPeer(enodes, val)
-								}
-
-								rch := make(chan interface{}, 1)
-								SetUpMsgList3(val,cur_enode,rch)
-								_, _,cherr := GetChannelValue(waitall+10,rch)
-								if cherr != nil {
-									common.Debug("=====================GetAllPubKeyDataFromDb at ec3, at start ========================","cherr",cherr)
-								}
-
-								common.Debug("===================generate pre-sign data at start===============","current total number of the data ",GetTotalCount(pd.PubKey),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pd.PubKey)),"pubkey",pd.PubKey)
-							} 
-
-							time.Sleep(time.Duration(1000000))
-						}
-					}()
-			       }*/
-				////////////
-
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-			    continue
-			}
-		    }
-		    
-		    /*pubs2, err := Decode2(ss, "AcceptLockOutData")
-		    if err == nil {
-			pd,ok := pubs2.(*AcceptLockOutData)
-			if ok {
-			    kd.WriteMap(key, pd)
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptLockOutData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-			    continue
-			}
-		    }
-
-		    pubs4, err := Decode2(ss, "AcceptSignData")
-		    if err == nil {
-			pd,ok := pubs4.(*AcceptSignData)
-			if ok {
-			    kd.WriteMap(key, pd)
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-			    continue
-			}
-		    }
-		    
-		    pubs5, err := Decode2(ss, "AcceptReShareData")
-		    if err == nil {
-			pd,ok := pubs5.(*AcceptReShareData)
-			if ok {
-			    kd.WriteMap(key, pd)
-			    //fmt.Printf("%v ==============GetAllPubKeyDataFromDb,success read AcceptReqAddrData. key = %v,pd = %v ===============\n", common.CurrentTime(), key,pd)
-			    continue
-			}
-		    }*/
-		    
-		    continue
 		}
-
-		kd.WriteMap(key, []byte(value))
-	    }
-	    
-	    iter.Release()
-    //	db.Close()
+	    }(key,value)
 	}
+	
+	iter.Release()
+	wg.Wait()
+    }
 
-	return kd
+    return kd
 }
 
 func GetValueFromPubKeyData(key string) (bool,interface{}) {
@@ -448,6 +350,64 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
     return exsit,datmp
 }
 
+func GetPubKeyDataValueFromDb2(key string) (bool,interface{}) {
+    if key == "" {
+	common.Debug("========================GetPubKeyDataValueFromDb2, param err=======================","key",key)
+	return false,nil
+    }
+
+    da := GetPubKeyDataValueFromDb(key)
+    if da == nil {
+	common.Debug("========================GetPubKeyDataValueFromDb2, get value from local db fail =======================","key",key)
+	return false,nil
+    }
+
+    ss, err := UnCompress(string(da))
+    if err != nil {
+	common.Debug("========================GetPubKeyDataValueFromDb2, uncompress err=======================","err",err,"key",key)
+	return true,da
+    }
+
+    pubs3, err := Decode2(ss, "PubKeyData")
+    if err == nil {
+	common.Debug("========================GetPubKeyDataValueFromDb2, get PubKeyData success=======================","key",key)
+	pd,ok := pubs3.(*PubKeyData)
+	if ok && pd != nil && pd.Key != "" && pd.Save != "" {
+	    return true,pd
+	}
+    }
+    
+    pubs4, err := Decode2(ss, "AcceptSignData")
+    if err == nil {
+	common.Debug("========================GetPubKeyDataValueFromDb2, get AcceptSignData success=======================","key",key)
+	pd,ok := pubs4.(*AcceptSignData)
+	if ok && pd != nil && pd.Keytype != "" {
+	    return true,pd
+	}
+    }
+    
+    pubs5, err := Decode2(ss, "AcceptReShareData")
+    if err == nil {
+	common.Debug("========================GetPubKeyDataValueFromDb2, get AcceptReShareData success=======================","key",key)
+	pd,ok := pubs5.(*AcceptReShareData)
+	if ok && pd != nil && pd.TSGroupId != "" {
+	    return true,pd
+	}
+    }
+    
+    pubs, err := Decode2(ss, "AcceptReqAddrData")
+    if err == nil {
+	common.Debug("========================GetPubKeyDataValueFromDb2, get AcceptReqAddrData success=======================","key",key)
+	pd,ok := pubs.(*AcceptReqAddrData)
+	if ok && pd != nil && pd.Account != "" {
+	    return true,pd
+	}
+    }
+    
+    common.Debug("========================GetPubKeyDataValueFromDb2, get []byte success=======================","key",key)
+    return true,da
+}
+
 func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
     if key == "" {
 	return false,nil
@@ -478,6 +438,199 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
     }
 
     return true,pd 
+}
+
+func GetReqAddrInfoData(key []byte) (bool,interface{}) {
+    if key == nil || reqaddrinfodb == nil {
+	    common.Error("========================GetReqAddrInfoData, param err=======================","key",string(key))
+	return false,nil
+    }
+	
+    da, err := reqaddrinfodb.Get(key)
+    if da == nil || err != nil {
+	common.Error("========================GetReqAddrInfoData, get reqaddr info from local db fail =======================","key",string(key))
+	return false,nil
+    }
+ 
+    ss, err := UnCompress(string(da))
+    if err != nil {
+	common.Error("========================GetReqAddrInfoData, uncompress err=======================","err",err,"key",string(key))
+	return true,da
+    }
+ 
+    pubs, err := Decode2(ss, "AcceptReqAddrData")
+    if err == nil {
+	pd,ok := pubs.(*AcceptReqAddrData)
+	if ok {
+	    return true,pd
+ 	}
+    }
+    
+    return false,nil
+}
+
+//----------------------------------------------------------------
+
+func PutReqAddrInfoData(key []byte,value []byte) error {
+    if reqaddrinfodb == nil || key == nil || value == nil {
+	return fmt.Errorf("put reqaddr info to db fail")
+    }
+ 
+    err := reqaddrinfodb.Put(key,value)
+    if err == nil {
+	common.Debug("===============PutReqAddrInfoData, put reqaddr info into db success.=================","key",string(key))
+	return nil	
+    }
+	
+    common.Error("===============PutReqAddrInfoData, put reqaddr info into db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//----------------------------------------------------------------
+
+func DeleteReqAddrInfoData(key []byte) error {
+    if key == nil || reqaddrinfodb == nil {
+	return fmt.Errorf("delete reqaddr info from db fail.")
+    }
+ 
+    err := reqaddrinfodb.Delete(key)
+    if err == nil {
+	common.Debug("===============DeleteReqAddrInfoData, del reqaddr info from db success.=================","key",string(key))
+	return nil
+    }
+ 
+    common.Error("===============DeleteReqAddrInfoData, delete reqaddr info from db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//--------------------------------------------------------------
+
+func GetSignInfoData(key []byte) (bool,interface{}) {
+    if key == nil || signinfodb == nil {
+	    common.Error("========================GetSignInfoData, param err=======================","key",string(key))
+	return false,nil
+    }
+	
+    da, err := signinfodb.Get(key)
+    if da == nil || err != nil {
+	common.Error("========================GetSignInfoData, get sign info from local db fail =======================","key",string(key))
+	return false,nil
+    }
+ 
+    ss, err := UnCompress(string(da))
+    if err != nil {
+	common.Error("========================GetSignInfoData, uncompress err=======================","err",err,"key",string(key))
+	return true,da
+    }
+ 
+    pubs, err := Decode2(ss, "AcceptSignData")
+    if err == nil {
+	pd,ok := pubs.(*AcceptSignData)
+	if ok && pd.Keytype != "" {
+	    return true,pd
+ 	}
+    }
+    
+    return false,nil
+}
+
+//-------------------------------------------------------
+
+func PutSignInfoData(key []byte,value []byte) error {
+    if signinfodb == nil || key == nil || value == nil {
+	return fmt.Errorf("put sign info to db fail")
+    }
+ 
+    err := signinfodb.Put(key,value)
+    if err == nil {
+	common.Debug("===============PutSignInfoData, put sign info into db success.=================","key",string(key))
+	return nil	
+    }
+	
+    common.Error("===============PutSignInfoData, put sign info into db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//-----------------------------------------------------------
+
+func DeleteSignInfoData(key []byte) error {
+    if key == nil || signinfodb == nil {
+	return fmt.Errorf("delete sign info from db fail.")
+    }
+ 
+    err := signinfodb.Delete(key)
+    if err == nil {
+	common.Debug("===============DeleteSignInfoData, del sign info from db success.=================","key",string(key))
+	return nil
+    }
+ 
+    common.Error("===============DeleteSignInfoData, delete sign info from db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//------------------------------------------------------
+
+func GetReShareInfoData(key []byte) (bool,interface{}) {
+    if key == nil || reshareinfodb == nil {
+	    common.Error("========================GetReShareInfoData, param err=======================","key",string(key))
+	return false,nil
+    }
+	
+    da, err := reshareinfodb.Get(key)
+    if da == nil || err != nil {
+	common.Error("========================GetReShareInfoData, get reshare info from local db fail =======================","key",string(key))
+	return false,nil
+    }
+ 
+    ss, err := UnCompress(string(da))
+    if err != nil {
+	common.Error("========================GetReShareInfoData, uncompress err=======================","err",err,"key",string(key))
+	return true,da
+    }
+ 
+    pubs, err := Decode2(ss, "AcceptReShareData")
+    if err == nil {
+	pd,ok := pubs.(*AcceptReShareData)
+	if ok && pd.TSGroupId != "" {
+	    return true,pd
+ 	}
+    }
+    
+    return false,nil
+}
+
+//-------------------------------------------------------
+
+func PutReShareInfoData(key []byte,value []byte) error {
+    if reshareinfodb == nil || key == nil || value == nil {
+	return fmt.Errorf("put reshare info to db fail")
+    }
+ 
+    err := reshareinfodb.Put(key,value)
+    if err == nil {
+	common.Debug("===============PutReShareInfoData, put reshare info into db success.=================","key",string(key))
+	return nil	
+    }
+	
+    common.Error("===============PutReShareInfoData, put reshare info into db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//-------------------------------------------------------
+
+func DeleteReShareInfoData(key []byte) error {
+    if key == nil || reshareinfodb == nil {
+	return fmt.Errorf("delete reshare info from db fail.")
+    }
+ 
+    err := reshareinfodb.Delete(key)
+    if err == nil {
+	common.Debug("===============DeleteReShareInfoData, del reshare info from db success.=================","key",string(key))
+	return nil
+    }
+ 
+    common.Error("===============DeleteReShareInfoData, delete reshare info from db fail.=================","key",string(key),"err",err)
+    return err
 }
 
 func GetGroupDir() string { //TODO
@@ -520,5 +673,186 @@ func GetGAccsDir() string {
 	dir := common.DefaultDataDir()
 	dir += "/dcrmdata/dcrmdb/gaccs" + cur_enode
 	return dir
+}
+
+func GetReqAddrInfoDir() string {
+         dir := common.DefaultDataDir()
+         dir += "/dcrmdata/dcrmreqaddrinfo" + cur_enode
+         return dir
+} 
+
+
+func GetDcrmReqAddrInfoDb() *ethdb.LDBDatabase {
+    dir := GetReqAddrInfoDir()
+    reqaddrinfodb, err := ethdb.NewLDBDatabase(dir, cache, handles)
+    if err != nil {
+	common.Error("======================dcrm.Start,open reqaddrinfodb fail======================","err",err,"dir",dir)
+	return nil
+    }
+
+    return reqaddrinfodb
+}
+
+//--------------------------------------------------------------
+
+func GetSignInfoDir() string {
+         dir := common.DefaultDataDir()
+         dir += "/dcrmdata/dcrmsigninfo" + cur_enode
+         return dir
+} 
+
+func GetDcrmSignInfoDb() *ethdb.LDBDatabase {
+    dir := GetSignInfoDir()
+    signinfodb, err := ethdb.NewLDBDatabase(dir, cache, handles)
+    if err != nil {
+	common.Error("======================dcrm.Start,open signinfodb fail======================","err",err,"dir",dir)
+	return nil
+    }
+
+    return signinfodb
+}
+
+//--------------------------------------------------------------
+
+func GetReShareInfoDir() string {
+         dir := common.DefaultDataDir()
+         dir += "/dcrmdata/dcrmreshareinfo" + cur_enode
+         return dir
+} 
+
+func GetDcrmReShareInfoDb() *ethdb.LDBDatabase {
+    dir := GetReShareInfoDir()
+    reshareinfodb, err := ethdb.NewLDBDatabase(dir, cache, handles)
+    if err != nil {
+	common.Error("======================dcrm.Start,open reshareinfodb fail======================","err",err,"dir",dir)
+	return nil
+    }
+
+    return reshareinfodb
+}
+
+//-----------------------------------------------------------
+
+func CleanUpAllReqAddrInfo() {
+    if reqaddrinfodb == nil {
+	return
+    }
+
+    iter := reqaddrinfodb.NewIterator()
+    for iter.Next() {
+	key := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported: "panic: JSON decoder out of sync - data changing underfoot?"
+	if len(key) == 0 {
+	    continue
+	}
+
+	exsit,da := GetReqAddrInfoData(key) 
+	if !exsit || da == nil {
+	    continue
+	}
+	    
+	vv,ok := da.(*AcceptReqAddrData)
+	if vv == nil || !ok {
+	    continue
+	}
+
+	vv.Status = "Timeout"
+	
+	e, err := Encode2(vv)
+	if err != nil {
+	    continue
+	}
+
+	es, err := Compress([]byte(e))
+	if err != nil {
+	    continue
+	}
+	
+	DeleteReqAddrInfoData(key)
+	kdtmp := KeyData{Key: key, Data: es}
+	PubKeyDataChan <- kdtmp
+    }
+    iter.Release()
+}
+
+func CleanUpAllSignInfo() {
+    if signinfodb == nil {
+	return
+    }
+
+    iter := signinfodb.NewIterator()
+    for iter.Next() {
+	key := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported: "panic: JSON decoder out of sync - data changing underfoot?"
+	if len(key) == 0 {
+	    continue
+	}
+
+	exsit,da := GetSignInfoData(key) 
+	if !exsit || da == nil {
+	    continue
+	}
+	    
+	vv,ok := da.(*AcceptSignData)
+	if vv == nil || !ok {
+	    continue
+	}
+
+	vv.Status = "Timeout"
+	
+	e, err := Encode2(vv)
+	if err != nil {
+	    continue
+	}
+
+	es, err := Compress([]byte(e))
+	if err != nil {
+	    continue
+	}
+	
+	DeleteSignInfoData(key)
+	kdtmp := KeyData{Key: key, Data: es}
+	PubKeyDataChan <- kdtmp
+    }
+    iter.Release()
+}
+	
+func CleanUpAllReshareInfo() {
+    if reshareinfodb == nil {
+	return
+    }
+
+    iter := reshareinfodb.NewIterator()
+    for iter.Next() {
+	key := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported: "panic: JSON decoder out of sync - data changing underfoot?"
+	if len(key) == 0 {
+	    continue
+	}
+
+	exsit,da := GetReShareInfoData(key) 
+	if !exsit || da == nil {
+	    continue
+	}
+	    
+	vv,ok := da.(*AcceptReShareData)
+	if vv == nil || !ok {
+	    continue
+	}
+
+	vv.Status = "Timeout"
+	
+	e, err := Encode2(vv)
+	if err != nil {
+	    continue
+	}
+
+	es, err := Compress([]byte(e))
+	if err != nil {
+	    continue
+	}
+	
+	DeleteReShareInfoData(key)
+	kdtmp := KeyData{Key: key, Data: es}
+	PubKeyDataChan <- kdtmp
+    }
+    iter.Release()
 }
 

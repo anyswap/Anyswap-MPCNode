@@ -356,7 +356,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 
     /////reshare only
     if rt == Rpc_RESHARE {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetReShareInfoData([]byte(key))
 	if !exsit {
 	    return false
 	}
@@ -410,7 +410,10 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	return false
     }
 
-    exsit,da := GetValueFromPubKeyData(k)
+    exsit,da := GetReqAddrInfoData([]byte(k))
+    if !exsit || da == nil {
+	exsit,da = GetPubKeyDataValueFromDb2(k)
+    }
     if !exsit {
 	return false
     }
@@ -502,7 +505,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 
     if rt == Rpc_SIGN {
     common.Debug("===================== CheckReply,get raw reply finish================","key",key)
-	exsit,data := GetValueFromPubKeyData(key)
+	exsit,data := GetSignInfoData([]byte(key))
 	if !exsit {
     common.Debug("===================== CheckReply,get raw reply finish and get value by key fail================","key",key)
 	    return false
@@ -687,13 +690,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    }
 		    //
 
-			///////
-		    exsit,da3 := GetValueFromPubKeyData(pd.Key)
+		    exsit,da3 := GetPubKeyDataValueFromDb2(pd.Key)
 		    ac,ok := da3.(*AcceptReqAddrData)
 		    if ok {
 			HandleC1Data(ac,w.sid,workid)
 		    }
-			///////
 
 		    var ch1 = make(chan interface{}, 1)
 		    pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
@@ -766,7 +767,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    if exsit {
 			    pd,ok := da.(*PubKeyData)
 			    if ok {
-				exsit,da2 := GetValueFromPubKeyData(pd.Key)
+				exsit,da2 := GetPubKeyDataValueFromDb2(pd.Key)
 				if exsit {
 					ac,ok := da2.(*AcceptReqAddrData)
 					if ok {
@@ -841,7 +842,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
     //reshare only
     if ac == nil {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetReShareInfoData([]byte(key))
 	if !exsit {
 	    return
 	}
@@ -1225,7 +1226,7 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreqaddrres <- true
-	    exsit,da := GetValueFromPubKeyData(key)
+	    exsit,da := GetReqAddrInfoData([]byte(key))
 	    if !exsit {
 		return
 	    }
@@ -1288,7 +1289,7 @@ func DisAcceptMsg(raw string,workid int) {
 
 	    //common.Info("=====================DisAcceptMsg,check reply success and will set timeout channel===================","key",key,"from",from)
 	    w.bacceptsignres <- true
-	    exsit,da := GetValueFromPubKeyData(key)
+	    exsit,da := GetSignInfoData([]byte(key))
 	    if !exsit {
 		return
 	    }
@@ -1319,7 +1320,7 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreshareres <- true
-	    exsit,da := GetValueFromPubKeyData(key)
+	    exsit,da := GetReShareInfoData([]byte(key))
 	    if !exsit {
 		return
 	    }
@@ -1350,7 +1351,7 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreqaddrres <- true
-	    exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+	    exsit,da := GetReqAddrInfoData([]byte(acceptreq.Key))
 	    if !exsit {
 		return
 	    }
@@ -1411,9 +1412,9 @@ func DisAcceptMsg(raw string,workid int) {
 		return
 	    }
 
-	    common.Info("======================DisAcceptMsg,the msg is accept sign tx,and check reply success and will set timeout channel.===========================","sig key",acceptsig.Key,"from",from)
+	    common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and check reply success and will set timeout channel.===========================","sig key",acceptsig.Key,"from",from)
 	    w.bacceptsignres <- true
-	    exsit,da := GetValueFromPubKeyData(acceptsig.Key)
+	    exsit,da := GetSignInfoData([]byte(acceptsig.Key))
 	    if !exsit {
 		return
 	    }
@@ -1444,7 +1445,7 @@ func DisAcceptMsg(raw string,workid int) {
 	    }
 
 	    w.bacceptreshareres <- true
-	    exsit,da := GetValueFromPubKeyData(acceptreshare.Key)
+	    exsit,da := GetReShareInfoData([]byte(acceptreshare.Key))
 	    if !exsit {
 		return
 	    }
@@ -1477,8 +1478,8 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     
     req,ok := txdata.(*TxDataReqAddr)
     if ok {
-	common.Info("===============InitAcceptData, check reqaddr raw success==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",req)
-	exsit,_ := GetValueFromPubKeyData(key)
+	common.Debug("===============InitAcceptData, get reqaddr cmd data==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",req)
+	exsit,_ := GetReqAddrInfoData([]byte(key))
 	if !exsit {
 	    cur_nonce, _, _ := GetReqAddrNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
@@ -1489,7 +1490,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 		if err == nil {
 		    ars := GetAllReplyFromGroup(workid,req.GroupId,Rpc_REQADDR,sender)
 		    sigs,err := GetGroupSigsDataByRaw(raw) 
-		    common.Info("=================InitAcceptData================","get group sigs ",sigs,"err ",err,"key ",key)
+		    common.Debug("=================InitAcceptData================","get group sigs ",sigs,"err ",err,"key ",key)
 		    if err != nil {
 			res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 			ch <- res
@@ -1522,7 +1523,6 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 			    }
 			}
 
-			/////////////
 			if req.Mode == "0" { // self-group
 				////
 				var reply bool
@@ -1530,7 +1530,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 				timeout := make(chan bool, 1)
 				go func(wid int) {
 					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := 10 * time.Minute
+					agreeWaitTime := 2 * time.Minute
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 					if wid < 0 || wid >= len(workers) || workers[wid] == nil {
 						ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)	
@@ -2056,7 +2056,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     /*sig,ok := txdata.(*TxDataSign)
     if ok {
 	common.Debug("===============InitAcceptData, it is sign txdata and check sign raw success==================","key ",key,"from ",from,"nonce ",nonce)
-	exsit,_ := GetValueFromPubKeyData(key)
+	exsit,_ := GetSignInfoData([]byte(key))
 	if !exsit {
 	    cur_nonce, _, _ := GetSignNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
@@ -2628,7 +2628,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("get reqaddr accept data fail from db when no find worker.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+	exsit,da := GetReqAddrInfoData([]byte(acceptreq.Key))
 	if !exsit {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get reqaddr accept data fail from db", Err: fmt.Errorf("get reqaddr accept data fail from db in init accept data")}
 	    ch <- res
@@ -2741,7 +2741,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if ok {
-	common.Info("===============InitAcceptData, it is acceptsign and check accept sign raw success=====================","key ",acceptsig.Key,"from ",from,"accept",acceptsig.Accept,"raw",raw)
+	common.Debug("===============InitAcceptData, it is acceptsign and check accept sign raw success=====================","key ",acceptsig.Key,"from ",from,"accept",acceptsig.Accept,"raw",raw)
 	w, err := FindWorker(acceptsig.Key)
 	if err != nil || w == nil {
 		common.Info("===============InitAcceptData, it is acceptsign and no find worker=====================","key ",acceptsig.Key,"from ",from)
@@ -2752,7 +2752,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("get sign accept data fail from db when no find worker.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptsig.Key)
+	exsit,da := GetSignInfoData([]byte(acceptsig.Key))
 	if !exsit {
 		common.Info("===============InitAcceptData, it is acceptsign and get sign accept data fail from db=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get sign accept data fail from db in init accept data", Err: fmt.Errorf("get sign accept data fail from db in init accept data")}
@@ -2786,7 +2786,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	id,_ := GetWorkerId(w)
 	DisAcceptMsg(raw,id)
 	reqaddrkey := GetReqAddrKeyByOtherKey(acceptsig.Key,Rpc_SIGN)
-	exsit,da = GetValueFromPubKeyData(reqaddrkey)
+	exsit,da = GetPubKeyDataValueFromDb2(reqaddrkey)
 	if !exsit {
 		common.Debug("===============InitAcceptData, it is acceptsign and get reqaddr sigs data fail=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
@@ -2836,7 +2836,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	    return fmt.Errorf("get reshare accept data fail from db whern no find worker.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptrh.Key)
+	exsit,da := GetReShareInfoData([]byte(acceptrh.Key))
 	if !exsit {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get reshare accept data fail from db in init accept data", Err: fmt.Errorf("get reshare accept data fail from db in init accept data")}
 	    ch <- res

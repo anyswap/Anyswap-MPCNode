@@ -49,8 +49,7 @@ var (
 
 func GetSignNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
-	exsit,da := GetValueFromPubKeyData(key)
-	///////
+	exsit,da := GetPubKeyDataValueFromDb2(key)
 	if !exsit {
 	    return "0", "", nil
 	}
@@ -159,7 +158,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 	   ////////////////////////
 
 	common.Debug("===============InitAcceptData2, it is sign txdata and check sign raw success==================","key ",key,"from ",from,"nonce ",nonce)
-	exsit,_ := GetValueFromPubKeyData(key)
+	exsit,_ := GetSignInfoData([]byte(key))
 	if !exsit {
 	    cur_nonce, _, _ := GetSignNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
@@ -298,7 +297,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				    return fmt.Errorf("get reqaddr key fail") 
 				}
 
-				exsit,da := GetValueFromPubKeyData(reqaddrkey)
+				exsit,da := GetPubKeyDataValueFromDb2(reqaddrkey)
 				if !exsit {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
@@ -570,7 +569,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
 	return "Failure","check raw fail,it is not *TxDataAcceptSign",fmt.Errorf("check raw fail,it is not *TxDataAcceptSign")
     }
 
-    exsit,da := GetValueFromPubKeyData(acceptsig.Key)
+    exsit,da := GetSignInfoData([]byte(acceptsig.Key))
     if exsit {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
@@ -718,8 +717,7 @@ type SignStatus struct {
 }
 
 func GetSignStatus(key string) (string, string, error) {
-	exsit,da := GetValueFromPubKeyData(key)
-	///////
+	exsit,da := GetPubKeyDataValueFromDb2(key)
 	if !exsit || da == nil {
 		common.Info("=================GetSignStatus,get sign accept data fail from db================","key",key)
 		return "", "dcrm back-end internal error:get sign accept data fail from db when GetSignStatus", fmt.Errorf("dcrm back-end internal error:get sign accept data fail from db when GetSignStatus")
@@ -753,11 +751,19 @@ type SignCurNodeInfo struct {
 
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	var ret []*SignCurNodeInfo
+	data := make(chan *SignCurNodeInfo,1000)
+
 	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
+	iter := signinfodb.NewIterator()
+	for iter.Next() {
+	    key2 := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported: "panic: JSON decoder out of sync - data changing underfoot?"
+	    exsit,val := GetSignInfoData(key2)
+	    if !exsit || val == nil {
+		continue
+	    }
+
 	    wg.Add(1)
-	    go func(key string,value interface{}) {
+	    go func(key string,value interface{},ch chan *SignCurNodeInfo) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptSignData)
@@ -777,22 +783,21 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		if !CheckAccept(vv.PubKey,vv.Mode,geter_acc) {
 			return
 		}
-
-		/////bug:no find worker
-		w, err := FindWorker(key)
-		if w == nil || err != nil {
-			//LdbPubKeyData.DeleteMap(key)
-			return
-		}
-		////////
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
-		ret = append(ret, los)
+		ch <-los
 		common.Debug("================GetCurNodeSignInfo success return=======================","key",key)
-	    }(k,v)
+	    }(string(key2),val,data)
 	}
-	LdbPubKeyData.RUnlock()
+	iter.Release()
 	wg.Wait()
+
+	l := len(data)
+	for i:=0;i<l;i++ {
+	    info := <-data
+	    ret = append(ret,info)
+	}
+
 	return ret, "", nil
 }
 

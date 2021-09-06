@@ -159,7 +159,7 @@ func RpcAcceptReqAddr(raw string) (string, string, error) {
 	return "Failure","check raw fail,it is not *TxDataAcceptReqAddr",fmt.Errorf("check raw fail,it is not *TxDataAcceptReqAddr")
     }
 
-    exsit,da := GetValueFromPubKeyData(acceptreq.Key)
+    exsit,da := GetReqAddrInfoData([]byte(acceptreq.Key))
     if exsit {
 	ac,ok := da.(*AcceptReqAddrData)
 	if ok && ac != nil {
@@ -183,7 +183,7 @@ type ReqAddrStatus struct {
 }
 
 func GetReqAddrStatus(key string) (string, string, error) {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetPubKeyDataValueFromDb2(key)
 	///////
 	if !exsit || da == nil {
 		common.Debug("=====================GetReqAddrStatus,no exist key======================","key",key)
@@ -222,11 +222,23 @@ type ReqAddrReply struct {
 
 func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	var ret []*ReqAddrReply
+	data := make(chan *ReqAddrReply,1000)
+
 	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
+	iter := reqaddrinfodb.NewIterator()
+	for iter.Next() {
+	    key2 := []byte(string(iter.Key())) //must be deep copy, Otherwise, an error will be reported: "panic: JSON decoder out of sync - data changing underfoot?"
+	    if len(key2) == 0 {
+		continue
+	    }
+
+	    exsit,da := GetReqAddrInfoData(key2) 
+	    if !exsit || da == nil {
+		continue
+	    }
+	    
 	    wg.Add(1)
-	    go func(key string,value interface{}) {
+	    go func(key string,value interface{},ch chan *ReqAddrReply) {
 		defer wg.Done()
 
 		vv,ok := value.(*AcceptReqAddrData)
@@ -252,12 +264,19 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		}
 
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
-		ret = append(ret, los)
+		ch <- los
 		common.Debug("================GetCurNodeReqAddrInfo success return================","key",key)
-	    }(k,v)
+	    }(string(key2),da,data)
 	}
-	LdbPubKeyData.RUnlock()
+	iter.Release()
 	wg.Wait()
+
+	l := len(data)
+	for i:=0;i<l;i++ {
+	    info := <-data
+	    ret = append(ret,info)
+	}
+
 	return ret, "", nil
 }
 

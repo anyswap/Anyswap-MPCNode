@@ -24,6 +24,7 @@ import (
     "sync"
     "fmt"
     "github.com/fsn-dev/dcrm-walletService/p2p/discover"
+    "encoding/hex"
 )
 
 var (
@@ -40,6 +41,7 @@ var (
 	reqaddrinfodb *ethdb.LDBDatabase
 	signinfodb *ethdb.LDBDatabase
 	reshareinfodb *ethdb.LDBDatabase
+	accountsdb *ethdb.LDBDatabase
 )
 
 func makeDatabaseHandles() int {
@@ -146,7 +148,7 @@ func GetPubKeyDataValueFromDb(key string) []byte {
 
 	da, err := db.Get([]byte(key))
 	if err != nil {
-	    common.Info("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
+	    common.Error("===================GetPubKeyDataValueFromDb,get data fail===================","err",err,"key",key)
 	    return nil
 	}
 
@@ -165,12 +167,12 @@ func SavePubKeyDataToDb() {
 		    if kd.Data == "CLEAN" {
 			err := db.Delete(kd.Key)
 			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
+				common.Error("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
 			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",string(kd.Key))
+				common.Error("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",string(kd.Key))
 			    dir := GetDbDir()
 			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -185,19 +187,19 @@ func SavePubKeyDataToDb() {
 				    }
 			    }
 			    if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
+				common.Error("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
 			    } else {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
+					common.Error("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
 				}
 			    }
 
 			}
 		    }
 		} else {
-			common.Debug("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+			common.Error("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
 		}
 
 		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
@@ -291,16 +293,15 @@ func GetValueFromPubKeyData(key string) (bool,interface{}) {
 
     datmp, exsit := LdbPubKeyData.ReadMap(key)
     if !exsit {
-	    common.Info("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
 	da := GetPubKeyDataValueFromDb(key)
 	if da == nil {
-	    common.Info("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
+	    common.Debug("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
 	    return false,nil
 	}
 
 	ss, err := UnCompress(string(da))
 	if err != nil {
-	    common.Info("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
+	    common.Error("========================GetValueFromPubKeyData,uncompress err=======================","err",err,"key",key)
 	    return true,da
 	}
 
@@ -364,7 +365,7 @@ func GetPubKeyDataValueFromDb2(key string) (bool,interface{}) {
 
     ss, err := UnCompress(string(da))
     if err != nil {
-	common.Debug("========================GetPubKeyDataValueFromDb2, uncompress err=======================","err",err,"key",key)
+	common.Error("========================GetPubKeyDataValueFromDb2, uncompress err=======================","err",err,"key",key)
 	return true,da
     }
 
@@ -421,24 +422,26 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
     ss, err := UnCompress(string(da))
     if err != nil {
-	common.Debug("========================GetPubKeyDataFromLocalDb, uncompress err=======================","err",err,"key",key)
+	common.Error("========================GetPubKeyDataFromLocalDb, uncompress err=======================","err",err,"key",key)
 	return false,nil
     }
 
     pubs, err := Decode2(ss, "PubKeyData")
     if err != nil {
-	common.Debug("========================GetPubKeyDataFromLocalDb, decode err=======================","err",err,"key",key)
+	common.Error("========================GetPubKeyDataFromLocalDb, decode err=======================","err",err,"key",key)
 	return false,nil
     }
 
     pd,ok := pubs.(*PubKeyData)
     if !ok {
-	common.Debug("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================")
+	common.Error("========================GetPubKeyDataFromLocalDb, it is not pubkey data ========================")
 	return false,nil
     }
 
     return true,pd 
 }
+
+//-----------------------------------------------------------------------------------
 
 func GetReqAddrInfoData(key []byte) (bool,interface{}) {
     if key == nil || reqaddrinfodb == nil {
@@ -681,7 +684,6 @@ func GetReqAddrInfoDir() string {
          return dir
 } 
 
-
 func GetDcrmReqAddrInfoDb() *ethdb.LDBDatabase {
     dir := GetReqAddrInfoDir()
     reqaddrinfodb, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -855,4 +857,119 @@ func CleanUpAllReshareInfo() {
     }
     iter.Release()
 }
+
+//----------------------------------------------------------
+
+func GetAccountsDir() string {
+         dir := common.DefaultDataDir()
+         dir += "/dcrmdata/dcrmaccounts" + cur_enode
+         return dir
+} 
+
+func AccountLoaded() bool {
+    dir := GetAccountsDir()
+    return common.FileExist(dir)
+}
+
+func GetDcrmAccountsDirDb() *ethdb.LDBDatabase {
+    dir := GetAccountsDir()
+    accountsdb, err := ethdb.NewLDBDatabase(dir, cache, handles)
+    if err != nil {
+	common.Error("======================dcrm.Start,open accountsdb fail======================","err",err,"dir",dir)
+	return nil
+    }
+
+    return accountsdb
+}
+
+func CopyAllAccountsFromDb() {
+    if db == nil {
+	return
+    }
+
+    iter := db.NewIterator()
+    for iter.Next() {
+	key := string(iter.Key())
+	value := string(iter.Value())
+
+	ss, err := UnCompress(value)
+	if err != nil {
+	    continue
+	}
+
+	pubs, err := Decode2(ss, "PubKeyData")
+	if err != nil {
+	    continue
+	}
+
+	pd,ok := pubs.(*PubKeyData)
+	if !ok {
+	    continue
+	}
+
+	if pd.Pub == "" {
+	    continue
+	}
+
+	pubkey := hex.EncodeToString([]byte(pd.Pub))
+
+	//key: ys (marshal(pkx,pky)) 
+	//key: []byte(hash256(tolower(dcrmaddr))) 
+	//value: []byte(pubkey)
+	PutAccountDataToDb([]byte(key),[]byte(pubkey))
+    }
+    
+    iter.Release()
+}
+
+func GetAccountFromDb(key []byte) (bool,interface{}) {
+    if key == nil || accountsdb == nil {
+	    common.Error("========================GetAccountFromDb, param err=======================","key",string(key))
+	return false,nil
+    }
+	
+    da, err := accountsdb.Get(key)
+    if da == nil || err != nil {
+	common.Error("========================GetAccountFromDb, get account from local db fail =======================","key",string(key))
+	return false,nil
+    }
+ 
+    return true,string(da) 
+}
+
+//----------------------------------------------------------------
+
+func PutAccountDataToDb(key []byte,value []byte) error {
+    if accountsdb == nil || key == nil || value == nil {
+	return fmt.Errorf("put account data to db fail")
+    }
+ 
+    err := accountsdb.Put(key,value)
+    if err == nil {
+	common.Debug("===============PutAccountDataToDb, put account data into db success.=================","key",string(key))
+	return nil	
+    }
+	
+    common.Error("===============PutAccountDataToDb, put account data into db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//----------------------------------------------------------------
+
+func DeleteAccountDataFromDb(key []byte) error {
+    if key == nil || accountsdb == nil {
+	return fmt.Errorf("delete account data from db fail.")
+    }
+ 
+    err := accountsdb.Delete(key)
+    if err == nil {
+	common.Debug("===============DeleteAccountDataFromDb, del account data from db success.=================","key",string(key))
+	return nil
+    }
+ 
+    common.Error("===============DeleteAccountDataFromDb, delete account data from db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+
 

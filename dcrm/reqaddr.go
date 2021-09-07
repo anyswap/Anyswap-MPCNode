@@ -390,6 +390,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			PubKeyDataChan <- kd
 			/////
 			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			PutAccountDataToDb(sedpk[:],[]byte(pubkeyhex))
 			////
 
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
@@ -407,6 +408,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			PubKeyDataChan <- kd
 			/////
 			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			PutAccountDataToDb(sedpk[:],[]byte(pubkeyhex))
 			////
 			sk := KeyData{Key: sedpk[:], Data: sedsku1}
 			SkU1Chan <- sk
@@ -549,6 +551,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		PubKeyDataChan <- kd
 		/////
 		LdbPubKeyData.WriteMap(string(ys), pubs)
+		PutAccountDataToDb(ys,[]byte(pubkeyhex))
 		////
 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
@@ -564,6 +567,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		PubKeyDataChan <- kd
 		/////
 		LdbPubKeyData.WriteMap(string(ys), pubs)
+		PutAccountDataToDb(ys,[]byte(pubkeyhex))
 		////
 
 		for _, ct := range coins.Cointypes {

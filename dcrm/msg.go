@@ -227,7 +227,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
-	    common.Debug("=================GetRawReply,the list item is TxDataSign=================","key",keytmp,"from",from,"sig",sig)
+	    common.Debug("=================GetRawReply,item is sign cmd data=================","key",keytmp,"from",from,"sig",sig)
 	    reply := &RawReply{From:from,Accept:"true",TimeStamp:sig.TimeStamp}
 	    tmp,ok := ret[from]
 	    if !ok {
@@ -304,7 +304,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Info("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
+	    common.Debug("=================GetRawReply,item is sign accept data================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -434,7 +434,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	mms := strings.Split(ac.Sigs, common.Sep)
 	count := (len(mms) - 1)/2
 	if count <= 0 {
-	    common.Debug("===================== CheckReply,reqaddr================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret",ret)
+	    common.Error("===================== CheckReply,reqaddr sigs data error.================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret",ret)
 	    return false
 	}
 
@@ -449,7 +449,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	    }
 
 	    if !found {
-		common.Debug("===================== CheckReply,reqaddr, return false.====================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key)
+		common.Error("===================== CheckReply, Not found.====================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key)
 		return false
 	    }
 	}
@@ -504,16 +504,15 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
     }
 
     if rt == Rpc_SIGN {
-    common.Debug("===================== CheckReply,get raw reply finish================","key",key)
 	exsit,data := GetSignInfoData([]byte(key))
 	if !exsit {
-    common.Debug("===================== CheckReply,get raw reply finish and get value by key fail================","key",key)
+	    common.Error("===================== CheckReply,get sign data by key fail from local db================","key",key)
 	    return false
 	}
 
 	sig,ok := data.(*AcceptSignData)
 	if !ok || sig == nil {
-    common.Debug("===================== CheckReply,get raw reply finish and get accept sign data by key fail================","key",key)
+	    common.Error("===================== CheckReply,get sign data by key error from local db================","key",key)
 	    return false
 	}
 
@@ -545,7 +544,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	    }
 
 	    if !foundeid {
-	    common.Debug("===================== CheckReply,get raw reply finish and find eid fail================","key",key)
+		common.Debug("===================== CheckReply,find eid fail================","key",key)
 		return false
 	    }
 	}
@@ -1468,9 +1467,8 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     }
 
     key,from,nonce,txdata,err := CheckRaw(raw)
-    common.Info("=====================InitAcceptData,get result from call CheckRaw ================","key",key,"from",from,"err",err,"raw",raw)
     if err != nil {
-	common.Info("===============InitAcceptData,check raw error===================","err ",err)
+	common.Error("===============InitAcceptData,check raw data error===================","err ",err)
 	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 	ch <- res
 	return err
@@ -1478,7 +1476,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
     
     req,ok := txdata.(*TxDataReqAddr)
     if ok {
-	common.Debug("===============InitAcceptData, get reqaddr cmd data==================","raw ",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",req)
+	common.Info("===============InitAcceptData, get reqaddr cmd data==================","raw data",raw,"key ",key,"from ",from,"nonce ",nonce,"txdata ",req)
 	exsit,_ := GetReqAddrInfoData([]byte(key))
 	if !exsit {
 	    cur_nonce, _, _ := GetReqAddrNonce(from)
@@ -2618,7 +2616,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
     if ok {
-	//common.Info("===============InitAcceptData, check accept reqaddr raw success======================","raw ",raw,"key ",acceptreq.Key,"from ",from,"txdata ",acceptreq)
+	common.Info("===============InitAcceptData, get reqaddr accept data and check success======================","raw ",raw,"key ",acceptreq.Key,"from ",from,"txdata ",acceptreq)
 	w, err := FindWorker(acceptreq.Key)
 	if err != nil || w == nil {
 	    c1data := acceptreq.Key + "-" + from
@@ -2741,10 +2739,10 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if ok {
-	common.Debug("===============InitAcceptData, it is acceptsign and check accept sign raw success=====================","key ",acceptsig.Key,"from ",from,"accept",acceptsig.Accept,"raw",raw)
+	common.Info("============================InitAcceptData, get sign accept data and check success=====================","key ",acceptsig.Key,"from ",from,"accept",acceptsig.Accept,"raw data",raw)
 	w, err := FindWorker(acceptsig.Key)
 	if err != nil || w == nil {
-		common.Info("===============InitAcceptData, it is acceptsign and no find worker=====================","key ",acceptsig.Key,"from ",from)
+		common.Error("===============InitAcceptData, it is acceptsign and no find worker=====================","key ",acceptsig.Key,"from ",from)
 	    c1data := acceptsig.Key + "-" + from
 	    C1Data.WriteMap(strings.ToLower(c1data),raw)
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "get sign accept data fail from db when no find worker.", Err: fmt.Errorf("get sign accept data fail from db when no find worker")}
@@ -2754,7 +2752,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 	exsit,da := GetSignInfoData([]byte(acceptsig.Key))
 	if !exsit {
-		common.Info("===============InitAcceptData, it is acceptsign and get sign accept data fail from db=====================","key ",acceptsig.Key,"from ",from)
+		common.Error("===============InitAcceptData, get sign accept data fail from db=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:get sign accept data fail from db in init accept data", Err: fmt.Errorf("get sign accept data fail from db in init accept data")}
 	    ch <- res
 	    return fmt.Errorf("get sign accept data fail from db in init accept data.")
@@ -2762,14 +2760,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 	ac,ok := da.(*AcceptSignData)
 	if !ok || ac == nil {
-		common.Info("===============InitAcceptData, it is acceptsign and decode accept data fail=====================","key ",acceptsig.Key,"from ",from)
+		common.Error("===============InitAcceptData, decode accept data fail=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret:"Failure", Tip: "dcrm back-end internal error:decode accept data fail", Err: fmt.Errorf("decode accept data fail")}
 	    ch <- res
 	    return fmt.Errorf("decode accept data fail")
 	}
 
 	if ac.Deal == "true" || ac.Status == "Success" || ac.Status == "Failure" || ac.Status == "Timeout" {
-		common.Info("===============InitAcceptData, it is acceptsign and sign has handled before=====================","key ",acceptsig.Key,"from ",from)
+		common.Error("===============InitAcceptData, sign has handled before=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret:"", Tip: "sign has handled before", Err: fmt.Errorf("sign has handled before")}
 	    ch <- res
 	    return fmt.Errorf("sign has handled before")
@@ -2788,14 +2786,14 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 	reqaddrkey := GetReqAddrKeyByOtherKey(acceptsig.Key,Rpc_SIGN)
 	exsit,da = GetPubKeyDataValueFromDb2(reqaddrkey)
 	if !exsit {
-		common.Debug("===============InitAcceptData, it is acceptsign and get reqaddr sigs data fail=====================","key ",acceptsig.Key,"from ",from)
+		common.Error("===============InitAcceptData, get reqaddr sigs data fail=====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
 	    ch <- res
 	    return fmt.Errorf("get reqaddr sigs data fail") 
 	}
 	acceptreqdata,ok := da.(*AcceptReqAddrData)
 	if !ok || acceptreqdata == nil {
-		common.Debug("===============InitAcceptData, it is acceptsign and get reqaddr sigs data fail 2222222222 =====================","key ",acceptsig.Key,"from ",from)
+		common.Error("===============InitAcceptData, get reqaddr sigs data error. =====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
 	    ch <- res
 	    return fmt.Errorf("get reqaddr sigs data fail") 
@@ -2805,13 +2803,13 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
 	ars := GetAllReplyFromGroup(id,ac.GroupId,Rpc_SIGN,ac.Initiator)
 	if ac.Deal == "true" || ac.Status == "Success" || ac.Status == "Failure" || ac.Status == "Timeout" {
-		common.Info("===============InitAcceptData, it is acceptsign and sign has handled before 222222222=====================","key ",acceptsig.Key,"from ",from)
+		common.Info("===============InitAcceptData, it is acceptsign and sign has handled before =====================","key ",acceptsig.Key,"from ",from)
 	    res := RpcDcrmRes{Ret:"", Tip: "sign has handled before", Err: fmt.Errorf("sign has handled before")}
 	    ch <- res
 	    return fmt.Errorf("sign has handled before")
 	}
 
-	common.Debug("=======================InitAcceptData,333333333333333333333333,set sign status =============================","status",status,"key",acceptsig.Key)
+	common.Debug("=======================InitAcceptData,set sign status by sign accept data=============================","status",status,"key",acceptsig.Key)
 	tip, err := AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.MsgHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: tip, Err: err}

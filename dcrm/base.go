@@ -69,8 +69,9 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	
 	InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
+	accloaded := AccountLoaded()
 	
-	common.Info("======================dcrm.Start======================","cache",cache,"handles",handles,"cur enode",cur_enode)
+	common.Info("======================dcrm.Start======================","accounts loaded",accloaded,"cache",cache,"handles",handles,"cur enode",cur_enode)
 	
 	dir := GetDbDir()
 	dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -211,6 +212,12 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	    return
         }
 
+        accountsdb = GetDcrmAccountsDirDb()
+        if accountsdb == nil {
+	    common.Error("======================Start,open accountsdb fail=====================")
+	    return
+        }
+
 	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
 	
 	PrePubDataCount = int(presignnum)
@@ -222,9 +229,10 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	GetAllPreSignHashPairFromDb()
 	go UpdatePreSignHashPairForDb()
 	
-	go func() {
-	    LdbPubKeyData = GetAllPubKeyDataFromDb()
-	}()
+	//do this must after openning accounts db success,but get accloaded must before it
+	if !accloaded {
+	    go CopyAllAccountsFromDb()
+	}
 
 	GetAllPreSignFromDb()
 	CleanUpAllReqAddrInfo()
@@ -1797,80 +1805,77 @@ type PubKeyInfo struct {
 }
 
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
-	gp  := common.NewSafeMap(10)
-	//gp := make(map[string][]PubKeyInfo)
-	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
-	    wg.Add(1)
-	    go func(key string,value interface{}) {
-		defer wg.Done()
+    if accountsdb == nil {
+	return nil,"",fmt.Errorf("get accounts fail.")
+    }
 
-		vv,ok := value.(*AcceptReqAddrData)
-		if vv == nil || !ok {
-		    return
-		}
+    gp  := common.NewSafeMap(10)
+    var wg sync.WaitGroup
 
-		if vv.Mode == "1" {
-			if !strings.EqualFold(vv.Account,geter_acc) {
-			    return
-			}
-		}
-
-		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
-		    return
-		}
-
-		dcrmpks, _ := hex.DecodeString(vv.PubKey)
-		exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
-		if !exsit || data2 == nil {
-		    return
-		}
-
-		pd,ok := data2.(*PubKeyData)
-		if !ok || pd == nil {
-		    return
-		}
-
-		pubkeyhex := hex.EncodeToString([]byte(pd.Pub))
-		gid := pd.GroupId
-		md := pd.Mode
-		limit := pd.LimitNum
-		if mode == md {
-			al, exsit := gp.ReadMap(strings.ToLower(gid))
-			if exsit && al != nil {
-			    al2,ok := al.([]PubKeyInfo)
-			    if ok && al2 != nil {
-				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
-				al2 = append(al2, tmp)
-				//gp[gid] = al
-				gp.WriteMap(strings.ToLower(gid),al2)
-			    }
-			} else {
-				a := make([]PubKeyInfo, 0)
-				tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
-				a = append(a, tmp)
-				gp.WriteMap(strings.ToLower(gid),a)
-				//gp[gid] = a
-			}
-		}
-	    }(k,v)
-	}
-	LdbPubKeyData.RUnlock()
-	wg.Wait()
+    iter := accountsdb.NewIterator()
+    for iter.Next() {
+	k := string(iter.Key())
+	v := string(iter.Value())
 	
-	als := make([]AccountsList, 0)
-	key,value := gp.ListMap()
-	for j :=0;j < len(key);j++ {
-	    v,ok := value[j].([]PubKeyInfo)
-	    if ok {
-		alNew := AccountsList{GroupID: key[j], Accounts: v}
-		als = append(als, alNew)
-	    }
-	}
+	wg.Add(1)
+	go func(key string,value interface{}) {
+	    defer wg.Done()
 
-	pa := &PubAccounts{Group: als}
-	return pa, "", nil
+	    pubkey,ok := value.(string)
+	    if !ok || pubkey == "" {
+		return
+	    }
+
+	    dcrmpks, _ := hex.DecodeString(pubkey)
+	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+	    if !exsit || data2 == nil {
+		return
+	    }
+
+	    pd,ok := data2.(*PubKeyData)
+	    if !ok || pd == nil {
+		return
+	    }
+
+	    pubkeyhex := hex.EncodeToString([]byte(pd.Pub))
+	    gid := pd.GroupId
+	    md := pd.Mode
+	    limit := pd.LimitNum
+	    if mode == md {
+		    al, exsit := gp.ReadMap(strings.ToLower(gid))
+		    if exsit && al != nil {
+			al2,ok := al.([]PubKeyInfo)
+			if ok && al2 != nil {
+			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
+			    al2 = append(al2, tmp)
+			    //gp[gid] = al
+			    gp.WriteMap(strings.ToLower(gid),al2)
+			}
+		    } else {
+			    a := make([]PubKeyInfo, 0)
+			    tmp := PubKeyInfo{PubKey:pubkeyhex,ThresHold:limit,TimeStamp:pd.KeyGenTime}
+			    a = append(a, tmp)
+			    gp.WriteMap(strings.ToLower(gid),a)
+			    //gp[gid] = a
+		    }
+	    }
+	}(k,v)
+    }
+    iter.Release()
+    wg.Wait()
+    
+    als := make([]AccountsList, 0)
+    key,value := gp.ListMap()
+    for j :=0;j < len(key);j++ {
+	v,ok := value[j].([]PubKeyInfo)
+	if ok {
+	    alNew := AccountsList{GroupID: key[j], Accounts: v}
+	    als = append(als, alNew)
+	}
+    }
+
+    pa := &PubAccounts{Group: als}
+    return pa, "", nil
 }
 
 func IsCurNode(enodes string, cur string) bool {

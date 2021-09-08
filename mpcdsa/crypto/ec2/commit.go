@@ -33,6 +33,9 @@ type Commitment struct {
 func (commitment *Commitment) Commit(secrets ...*big.Int) *Commitment {
 	// Generate the random num
 	rnd := random.GetRandomInt(256)
+	if rnd == nil {
+	    return nil
+	}
 
 	// First, hash with the keccak256
 	sha3256 := sha3.New256()

@@ -1369,7 +1369,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	}
 
 	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk := keygen.DECDSA_Key_RoundOne(w.ThresHold, PaillierKeyLength)
-	if u1PaillierPk == nil || u1PaillierSk == nil {
+	if commitU1G == nil || u1PaillierPk == nil || u1PaillierSk == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen paillier key pair fail")}
 		ch <- res
 		return nil, nil, nil, nil, nil, nil, false

@@ -56,7 +56,7 @@ func GetRandomIntFromZn(n *big.Int) *big.Int {
 	for {
 		rndNumZn = GetRandomInt(n.BitLen())
 		if rndNumZn == nil {
-			return nil
+			continue
 		}
 
 		if rndNumZn.Cmp(n) < 0 && rndNumZn.Cmp(zero) >= 0 {

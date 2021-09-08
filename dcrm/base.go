@@ -245,7 +245,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 func InitDev(keyfile string) {
 	cur_enode = discover.GetLocalID().String()
 
-	go SavePubKeyDataToDb()
 	go SaveSkU1ToDb()
 	go ec2.GenRandomSafePrime()
 }

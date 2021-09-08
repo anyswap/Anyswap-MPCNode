@@ -170,8 +170,7 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 
 	if ac2.Status != "Pending" {
 	    DeleteReqAddrInfoData([]byte(key))
-	    kdtmp := KeyData{Key: []byte(key), Data: es}
-	    PubKeyDataChan <- kdtmp
+	    PutValueToDb([]byte(key),[]byte(es))
 	} else {
 	    err = PutReqAddrInfoData([]byte(key),[]byte(es))
 	    if err != nil {
@@ -270,8 +269,7 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 		return "dcrm back-end internal error:compress accept data fail", err
 	}
 
-	kdtmp := KeyData{Key: []byte(key), Data: es}
-	PubKeyDataChan <- kdtmp
+	PutValueToDb([]byte(key),[]byte(es))
 
 	return "", nil
 }
@@ -428,8 +426,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 
 	if ac2.Status != "Pending" {
 	    DeleteSignInfoData([]byte(key))
-	    kdtmp := KeyData{Key: []byte(key), Data: es}
-	    PubKeyDataChan <- kdtmp
+	    PutValueToDb([]byte(key),[]byte(es))
 	} else {
 	    err = PutSignInfoData([]byte(key),[]byte(es))
 	    if err != nil {
@@ -489,8 +486,7 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 		return err
 	}
 
-	kdtmp := KeyData{Key: []byte(key), Data: ss}
-	PubKeyDataChan <- kdtmp
+	PutValueToDb([]byte(key),[]byte(ss))
 
 	return nil
 }
@@ -634,8 +630,7 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
 
 	if ac2.Status != "Pending" {
 	    DeleteReShareInfoData([]byte(key))
-	    kdtmp := KeyData{Key: []byte(key), Data: es}
-	    PubKeyDataChan <- kdtmp
+	    PutValueToDb([]byte(key),[]byte(es))
 	} else {
 	    err = PutReShareInfoData([]byte(key),[]byte(es))
 	    if err != nil {

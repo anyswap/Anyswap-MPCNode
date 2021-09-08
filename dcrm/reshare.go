@@ -49,9 +49,8 @@ func GetReShareNonce(account string) (string, string, error) {
 }
 
 func SetReShareNonce(account string,nonce string) (string, error) {
-	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "RESHARE"))).Hex()
-	kd := KeyData{Key: []byte(key2), Data: nonce}
-	PubKeyDataChan <- kd
+	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "RESHARE"))).Hex()
+	PutValueToDb([]byte(key),[]byte(nonce))
 
 	return "", nil
 }
@@ -933,13 +932,11 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    }
 		    //
 
-		    kd := KeyData{Key: []byte(daa.Key), Data: "CLEAN"}
-		    PubKeyDataChan <- kd
+		    DeleteValueFromDb([]byte(daa.Key))
 		}
 	    }
 	    
-	    kd := KeyData{Key: dcrmpks[:], Data: ss1}
-	    PubKeyDataChan <- kd
+	    PutValueToDb(dcrmpks[:],[]byte(ss1))
 	    for _, ct := range coins.Cointypes {
 		    if strings.EqualFold(ct, "ALL") {
 			    continue
@@ -955,8 +952,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    }
 
 		    key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-		    kd = KeyData{Key: []byte(key), Data: ss1}
-		    PubKeyDataChan <- kd
+		    PutValueToDb([]byte(key),[]byte(ss1))
 	    }
 	    
 	    _,err = SetReqAddrNonce(account,nonce)
@@ -993,8 +989,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    fr := sigs2[2*j+2]
 		    exsit,da := GetValueFromDb(strings.ToLower(fr))
 		    if !exsit {
-			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: rk}
-			PubKeyDataChan <- kdtmp
+			PutValueToDb([]byte(strings.ToLower(fr)),[]byte(rk))
 		    } else {
 			//
 			found := false
@@ -1009,16 +1004,14 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 			if !found {
 			    da2 := string(da.([]byte)) + ":" + rk
-			    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
-			    PubKeyDataChan <- kdtmp
+			    PutValueToDb([]byte(strings.ToLower(fr)),[]byte(da2))
 			}
 		    }
 		}
 	    } else {
 		exsit,da := GetValueFromDb(strings.ToLower(account))
 		if !exsit {
-		    kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: rk}
-		    PubKeyDataChan <- kdtmp
+		    PutValueToDb([]byte(strings.ToLower(account)),[]byte(rk))
 		} else {
 		    //
 		    found := false
@@ -1033,8 +1026,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		    if !found {
 			da2 := string(da.([]byte)) + ":" + rk
-			kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
-			PubKeyDataChan <- kdtmp
+			PutValueToDb([]byte(strings.ToLower(account)),[]byte(da2))
 		    }
 
 		}
@@ -1722,13 +1714,11 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		}
 		//
 
-		kd := KeyData{Key: []byte(daa.Key), Data: "CLEAN"}
-		PubKeyDataChan <- kd
+		DeleteValueFromDb([]byte(daa.Key))
 	    }
 	}
 	
-	kd := KeyData{Key: dcrmpks[:], Data: ss1}
-	PubKeyDataChan <- kd
+	PutValueToDb(dcrmpks[:],[]byte(ss1))
 	
 	for _, ct := range coins.Cointypes {
 		if strings.EqualFold(ct, "ALL") {
@@ -1745,8 +1735,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		}
 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
-		kd = KeyData{Key: []byte(key), Data: ss1}
-		PubKeyDataChan <- kd
+		PutValueToDb([]byte(key),[]byte(ss1))
 	}
 	
 	_,err = SetReqAddrNonce(account,nonce)
@@ -1783,8 +1772,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		fr := sigs2[2*j+2]
 		exsit,da := GetValueFromDb(strings.ToLower(fr))
 		if !exsit {
-		    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: rk}
-		    PubKeyDataChan <- kdtmp
+		    PutValueToDb([]byte(strings.ToLower(fr)),[]byte(rk))
 		} else {
 		    //
 		    found := false
@@ -1799,16 +1787,14 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		    if !found {
 			da2 := string(da.([]byte)) + ":" + rk
-			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
-			PubKeyDataChan <- kdtmp
+			PutValueToDb([]byte(strings.ToLower(fr)),[]byte(da2))
 		    }
 		}
 	    }
 	} else {
 	    exsit,da := GetValueFromDb(strings.ToLower(account))
 	    if !exsit {
-		kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: rk}
-		PubKeyDataChan <- kdtmp
+		PutValueToDb([]byte(strings.ToLower(account)),[]byte(rk))
 	    } else {
 		//
 		found := false
@@ -1823,8 +1809,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		if !found {
 		    da2 := string(da.([]byte)) + ":" + rk
-		    kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
-		    PubKeyDataChan <- kdtmp
+		    PutValueToDb([]byte(strings.ToLower(account)),[]byte(da2))
 		}
 	    }
 	}

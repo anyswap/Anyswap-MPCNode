@@ -75,10 +75,6 @@ func GetLockOutNonce(account string) (string, string, error) {
 }
 
 func SetLockOutNonce(account string,nonce string) (string, error) {
-	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "LOCKOUT"))).Hex()
-	kd := KeyData{Key: []byte(key2), Data: nonce}
-	PubKeyDataChan <- kd
-
 	return "", nil
 }
 

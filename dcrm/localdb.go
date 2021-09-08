@@ -28,7 +28,6 @@ import (
 )
 
 var (
-	PubKeyDataChan = make(chan KeyData, 2000)
 	SkU1Chan = make(chan KeyData, 2000)
 	cache = (75*1024)/1000 
 	handles = makeDatabaseHandles()
@@ -141,54 +140,8 @@ func GetSkU1FromLocalDb(key string) []byte {
 }
 
 type KeyData struct {
-	Key  []byte
-	Data string
-}
-
-func SavePubKeyDataToDb() {
-	for {
-		kd := <-PubKeyDataChan
-		if db != nil {
-		    if kd.Data == "CLEAN" {
-			err := db.Delete(kd.Key)
-			if err != nil {
-				common.Error("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
-			}
-		    } else {
-			err := db.Put(kd.Key, []byte(kd.Data))
-			if err != nil {
-				common.Error("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",string(kd.Key))
-			    dir := GetDbDir()
-			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
-			    //bug
-			    if err != nil {
-				    for i := 0; i < 100; i++ {
-					    dbtmp, err = ethdb.NewLDBDatabase(dir, cache, handles)
-					    if err == nil {
-						    break
-					    }
-
-					    time.Sleep(time.Duration(1000000))
-				    }
-			    }
-			    if err != nil {
-				common.Error("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
-			    } else {
-				db = dbtmp
-				err = db.Put(kd.Key, []byte(kd.Data))
-				if err != nil {
-					common.Error("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
-				}
-			    }
-
-			}
-		    }
-		} else {
-			common.Error("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
-		}
-
-		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
-	    }
+    Key []byte
+    Data string
 }
 
 func SaveSkU1ToDb() {
@@ -270,6 +223,8 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
     return kd
 }
 
+//---------------------------------------------------------------------------------------
+
 //db:
 //--------compress--------------
 // reqaddr key:AcceptReqAddrData
@@ -341,7 +296,39 @@ func GetValueFromDb(key string) (bool,interface{}) {
     return true,da
 }
 
-//-----------------------------------------------------------------------------------
+func PutValueToDb(key []byte,value []byte) error {
+    if db == nil || key == nil || value == nil {
+	return fmt.Errorf("put pubkey data to db fail")
+    }
+ 
+    err := db.Put(key,value)
+    if err == nil {
+	common.Debug("===============PutValueToDb, put pubkey data into db success.=================","key",string(key))
+	return nil	
+    }
+	
+    common.Error("===============PutValueToDb, put pubkey data into db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//----------------------------------------------------------------------------------------------
+
+func DeleteValueFromDb(key []byte) error {
+    if key == nil || db == nil {
+	return fmt.Errorf("delete pubkey data from db fail.")
+    }
+ 
+    err := db.Delete(key)
+    if err == nil {
+	common.Debug("===============DeleteValueFromDb, del pubkey data from db success.=================","key",string(key))
+	return nil
+    }
+ 
+    common.Error("===============DeleteValueFromDb, delete pubkey data from db fail.=================","key",string(key),"err",err)
+    return err
+}
+
+//-----------------------------------------------------------------------------------------------
 
 func GetReqAddrInfoData(key []byte) (bool,interface{}) {
     if key == nil || reqaddrinfodb == nil {
@@ -670,8 +657,7 @@ func CleanUpAllReqAddrInfo() {
 	}
 	
 	DeleteReqAddrInfoData(key)
-	kdtmp := KeyData{Key: key, Data: es}
-	PubKeyDataChan <- kdtmp
+	PutValueToDb(key,[]byte(es))
     }
     iter.Release()
 }
@@ -711,8 +697,7 @@ func CleanUpAllSignInfo() {
 	}
 	
 	DeleteSignInfoData(key)
-	kdtmp := KeyData{Key: key, Data: es}
-	PubKeyDataChan <- kdtmp
+	PutValueToDb(key,[]byte(es))
     }
     iter.Release()
 }
@@ -752,8 +737,7 @@ func CleanUpAllReshareInfo() {
 	}
 	
 	DeleteReShareInfoData(key)
-	kdtmp := KeyData{Key: key, Data: es}
-	PubKeyDataChan <- kdtmp
+	PutValueToDb(key,[]byte(es))
     }
     iter.Release()
 }

@@ -40,6 +40,9 @@ var (
 	signinfodb *ethdb.LDBDatabase
 	reshareinfodb *ethdb.LDBDatabase
 	accountsdb *ethdb.LDBDatabase
+
+	predb *ethdb.LDBDatabase
+	prekey *ethdb.LDBDatabase
 )
 
 func makeDatabaseHandles() int {
@@ -849,5 +852,33 @@ func DeleteAccountDataFromDb(key []byte) error {
     return err
 }
 
+//-------------------------------------------------------------------
+
+func GetPreKeyDir() string {
+         dir := common.DefaultDataDir()
+         dir += "/dcrmdata/dcrmprekey" + cur_enode
+         return dir
+} 
+
+func GetDcrmPreKeyDb() *ethdb.LDBDatabase {
+    dir := GetPreKeyDir()
+    prekey, err := ethdb.NewLDBDatabase(dir, cache, handles)
+    if err != nil {
+	common.Error("======================dcrm.Start,open prekey fail======================","err",err,"dir",dir)
+	return nil
+    }
+
+    return prekey
+}
+
+//-------------------------------------------------------------------
+
+func GetPreDbDir() string {
+	dir := common.DefaultDataDir()
+	dir += "/dcrmdata/dcrmpredb_new" + cur_enode
+	return dir
+}
+
+//--------------------------------------------------------------------
 
 

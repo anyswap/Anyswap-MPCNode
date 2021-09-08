@@ -139,21 +139,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 
 	//
 	predbtmp, err := ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
-	//bug
-	if err != nil {
-	    common.Info("======================dcrm.Start,open predb fail======================","err",err,"dir",GetPreDbDir())
-		for i := 0; i < 80; i++ {
-			predbtmp, err = ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
-			if err == nil && predbtmp != nil {
-				break
-			} else {
-			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreDbDir())
-			}
-
-			//time.Sleep(time.Duration(1000000))
-			time.Sleep(time.Duration(2) * time.Second)
-		}
-	}
 	if err != nil {
 	    predb = nil
 	} else {
@@ -162,34 +147,6 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	   
 	if predb == nil {
 	    common.Info("======================dcrm.Start,open predb fail and gdcrm panic======================")
-	    os.Exit(1)
-	    return
-	}
-
-	//////////////////
-	pairdbtmp, err := ethdb.NewLDBDatabase(GetPreSignHashPairDbDir(), cache, handles)
-	//bug
-	if err != nil {
-	    common.Info("======================dcrm.Start,open pairdb fail======================","err",err,"dir",GetPreSignHashPairDbDir())
-		for i := 0; i < 80; i++ {
-			pairdbtmp, err = ethdb.NewLDBDatabase(GetPreSignHashPairDbDir(), cache, handles)
-			if err == nil && pairdbtmp != nil {
-				break
-			} else {
-			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreSignHashPairDbDir())
-			}
-
-			time.Sleep(time.Duration(2) * time.Second)
-		}
-	}
-	if err != nil {
-	    presignhashpairdb = nil
-	} else {
-	    presignhashpairdb = pairdbtmp
-	}
-	   
-	if presignhashpairdb == nil {
-	    common.Info("======================dcrm.Start,open presignhashpairdb fail and gdcrm panic======================")
 	    os.Exit(1)
 	    return
 	}
@@ -218,6 +175,12 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	    return
         }
 
+	prekey = GetDcrmPreKeyDb()
+	if prekey == nil {
+	    common.Error("======================Start,open prekey fail=====================")
+	    return
+	}
+
 	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
 	
 	PrePubDataCount = int(presignnum)
@@ -226,15 +189,11 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
 	
-	GetAllPreSignHashPairFromDb()
-	go UpdatePreSignHashPairForDb()
-	
 	//do this must after openning accounts db success,but get accloaded must before it
 	if !accloaded {
 	    go CopyAllAccountsFromDb()
 	}
 
-	GetAllPreSignFromDb()
 	CleanUpAllReqAddrInfo()
 	CleanUpAllSignInfo()
 	CleanUpAllReshareInfo()
@@ -871,13 +830,6 @@ func GetAddr(pubkey string,cointype string) (string,string,error) {
 func Encode2(obj interface{}) (string, error) {
     switch ch := obj.(type) {
 	case *SendMsg:
-		/*ch := obj.(*SendMsg)
-		ret,err := json.Marshal(ch)
-		if err != nil {
-		    return "",err
-		}
-		return string(ret),nil*/
-
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
 
@@ -886,35 +838,8 @@ func Encode2(obj interface{}) (string, error) {
 			return "", err1
 		}
 		return buff.String(), nil
-	case *SignBrocastData:
-
-		/*var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil*/
-
-		ch2 := obj.(*SignBrocastData)
-		ret,err := json.Marshal(ch2)
-		if err != nil {
-		    return "",err
-		}
-		return string(ret),nil
 
 	case *PubKeyData:
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil
-	case *PrePubData:
 
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
@@ -930,16 +855,6 @@ func Encode2(obj interface{}) (string, error) {
 		    return "",err
 		}
 		return string(ret),nil
-		/*ch := obj.(*AcceptReqAddrData)
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil*/
 	case *AcceptSignData:
 
 		var buff bytes.Buffer
@@ -960,33 +875,6 @@ func Encode2(obj interface{}) (string, error) {
 		    return "", err1
 		}
 		return buff.String(), nil
-	case *SignData:
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil
-	case *PreSign:
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil
-	case *PreSignDataValue:
-		ch2 := obj.(*PreSignDataValue)
-		ret,err := json.Marshal(ch2)
-		if err != nil {
-		    return "",err
-		}
-		return string(ret),nil
 	default:
 		return "", fmt.Errorf("encode obj fail.")
 	}
@@ -995,14 +883,6 @@ func Encode2(obj interface{}) (string, error) {
 func Decode2(s string, datatype string) (interface{}, error) {
 
 	if datatype == "SendMsg" {
-		/*var m SendMsg
-		err := json.Unmarshal([]byte(s), &m)
-		if err != nil {
-		    fmt.Println("================Decode2,json Unmarshal err =%v===================",err)
-		    return nil,err
-		}
-
-		return &m,nil*/
 		var data bytes.Buffer
 		data.Write([]byte(s))
 
@@ -1015,29 +895,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		}
 
 		return &res, nil
-	}
-
-	if datatype == "SignBrocastData" {
-		/*var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res SignBrocastData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil*/
-
-		var m SignBrocastData 
-		err := json.Unmarshal([]byte(s), &m)
-		if err != nil {
-		    return nil,err
-		}
-
-		return &m,nil
 	}
 
 	if datatype == "PubKeyData" {
@@ -1055,21 +912,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		return &res, nil
 	}
 
-	if datatype == "PrePubData" {
-		var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res PrePubData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	}
-
 	if datatype == "AcceptReqAddrData" {
 		var m AcceptReqAddrData
 		err := json.Unmarshal([]byte(s), &m)
@@ -1078,18 +920,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		}
 
 		return &m,nil
-		/*var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res AcceptReqAddrData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil*/
 	}
 
 	if datatype == "AcceptSignData" {
@@ -1122,50 +952,8 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		return &res, nil
 	}
 
-	if datatype == "SignData" {
-		var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res SignData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	}
-
-	if datatype == "PreSign" {
-		var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res PreSign
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	}
-
-	if datatype == "PreSignDataValue" {
-		var m PreSignDataValue 
-		err := json.Unmarshal([]byte(s), &m)
-		if err != nil {
-		    return nil,err
-		}
-
-		return &m,nil
-	}
-
 	return nil, fmt.Errorf("decode obj fail.")
 }
-
-///////
 
 func Compress(c []byte) (string, error) {
 	if c == nil {

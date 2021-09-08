@@ -63,8 +63,8 @@ func SetSignNonce(account string,nonce string) (string, error) {
 	return "", nil
 }
 
-func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) error {
-    if sbd == nil || workid < 0 || sender == "" || sbd.Raw == "" || sbd.PickHash == nil {
+func DoSign(sbd *SignPickData,workid int,sender string,ch chan interface{}) error {
+    if sbd == nil || workid < 0 || sender == "" || sbd.Raw == "" || sbd.PickData == nil {
 	res := RpcDcrmRes{Ret: "", Tip: "param error.", Err: fmt.Errorf("param error.")}
 	ch <- res
 	return fmt.Errorf("param error.")
@@ -81,45 +81,6 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
     
     sig,ok := txdata.(*TxDataSign)
     if ok {
-	    pub := Keccak256Hash([]byte(strings.ToLower(sig.PubKey + ":" + sig.GroupId))).Hex()
-	   if !strings.EqualFold(sender,cur_enode) {
-		   DtPreSign.Lock()
-		/////check pre-sign data
-		for _,vv := range sbd.PickHash {
-		    common.Debug("===============DoSign,check pickkey===================","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key)
-		   err = PickPrePubDataByKey(pub,vv.PickKey)
-		   if err != nil {
-			common.Error("===============DoSign,pick pre-sign data by key fail.===================","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key,"err",err)
-			res := RpcDcrmRes{Ret: "", Tip: "pick pre-sign data by key fail", Err: errors.New("pick pre-sign data by key fail")}
-			ch <- res
-			DtPreSign.Unlock()
-			return errors.New("pick pre-sign data by key fail")
-		   }
-
-		    err = DeletePreSignDataFromDb(strings.ToLower(pub),vv.PickKey)
-		    if err != nil {
-			common.Error("===============DoSign,delete pre-sign data from db fail.===================","txhash",vv.Hash,"pickkey",vv.PickKey,"key",key,"err",err)
-			res := RpcDcrmRes{Ret: "", Tip: "delete pre-sign data from db fail", Err: errors.New("delete pre-sign data from db fail")}
-			ch <- res
-			DtPreSign.Unlock()
-			return errors.New("delete pre-sign data from db fail")
-		    }
-		}
-		///////
-		DtPreSign.Unlock()
-	   }
-
-	    for _,val := range sbd.PickHash {
-		pre := GetPrePubDataBak(pub,val.PickKey)
-		if pre == nil {
-		    common.Error("===============DoSign,get pre-sign data from bak list fail.===================","txhash",val.Hash,"pick key",val.PickKey,"key",key,"pub",pub)
-		    res := RpcDcrmRes{Ret: "", Tip: "get pre-sign data fail", Err: errors.New("get pre-sign data fail")}
-		    ch <- res
-		    return errors.New("get pre-sign data fail")
-		}
-	    }
-	   ////////////////////////
-
 	exsit,_ := GetSignInfoData([]byte(key))
 	if !exsit {
 	    cur_nonce, _, _ := GetSignNonce(from)
@@ -242,12 +203,6 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 				DisAcceptMsg(sbd.Raw,workid)
 				reqaddrkey := GetReqAddrKeyByOtherKey(key,Rpc_SIGN)
 				if reqaddrkey == "" {
-					DtPreSign.Lock()
-					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-					}
-					DtPreSign.Unlock()
-
 				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get req addr key fail", Err: fmt.Errorf("get reqaddr key fail")}
 				    ch <- res
 				    return fmt.Errorf("get reqaddr key fail") 
@@ -255,12 +210,6 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 
 				exsit,da := GetValueFromDb(reqaddrkey)
 				if !exsit {
-					DtPreSign.Lock()
-					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-					}
-					DtPreSign.Unlock()
-
 				    common.Debug("===============DoSign, get req addr key by other key fail ===================","key ",key)
 				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
 				    ch <- res
@@ -269,12 +218,6 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 
 				acceptreqdata,ok := da.(*AcceptReqAddrData)
 				if !ok || acceptreqdata == nil {
-					DtPreSign.Lock()
-					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-					}
-					DtPreSign.Unlock()
-
 				    common.Debug("===============DoSign, get req addr key by other key error ===================","key ",key)
 				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get reqaddr sigs data fail", Err: fmt.Errorf("get reqaddr sigs data fail")}
 				    ch <- res
@@ -348,12 +291,6 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 						}
 					}
 
-					DtPreSign.Lock()
-					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-					}
-					DtPreSign.Unlock()
-
 					res := RpcDcrmRes{Ret:"", Tip: tip, Err: fmt.Errorf("don't accept sign.")}
 					ch <- res
 					return fmt.Errorf("don't accept sign.")
@@ -366,12 +303,6 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 				ars := GetAllReplyFromGroup(w.id,sig.GroupId,Rpc_SIGN,sender)
 				_,err = AcceptSign(sender,from,sig.PubKey,sig.MsgHash,sig.Keytype,sig.GroupId,nonce,sig.ThresHold,sig.Mode,"false", "true", "Pending", "", "","", ars,workid)
 				if err != nil {
-					DtPreSign.Lock()
-					for _,vv := range sbd.PickHash {
-						SetPrePubDataUseStatus(pub,vv.PickKey,false)
-					}
-					DtPreSign.Unlock()
-
 				    res := RpcDcrmRes{Ret:"", Tip: err.Error(), Err:err}
 				    ch <- res
 				    return err
@@ -379,18 +310,10 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 			}
 
 			rch := make(chan interface{}, 1)
-			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,sbd.PickHash,rch)
+			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,sbd.PickData,rch)
 			chret, tip, cherr := GetChannelValue(waitallgg20+20, rch)
 			common.Info("================== DoSign, sign finish.================","key",key,"get sign result",chret,"err",cherr)
 			if chret != "" {
-				//common.Debug("===================DoSign,DeletePrePubData,11111===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
-				DtPreSign.Lock()
-				for _,vv := range sbd.PickHash {
-					DeletePrePubDataBak(pub,vv.PickKey)
-				}
-				DtPreSign.Unlock()
-				//common.Debug("===================DoSign,DeletePrePubData,22222===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
-				
 				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
 				ch <- res
 				return nil
@@ -447,13 +370,6 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 						    tip = tip + " and accept sign data fail"
 						}
 					
-						/////bug
-						DtPreSign.Lock()
-						for _,vv := range sbd.PickHash {
-							DeletePrePubDataBak(pub,vv.PickKey)
-						}
-						DtPreSign.Unlock()
-
 						res := RpcDcrmRes{Ret: lohash, Tip: "", Err: nil}
 						ch <- res
 						return nil
@@ -469,22 +385,10 @@ func DoSign(sbd *SignBrocastData,workid int,sender string,ch chan interface{}) e
 			}
 
 			if cherr != nil {
-				DtPreSign.Lock()
-				for _,vv := range sbd.PickHash {
-					SetPrePubDataUseStatus(pub,vv.PickKey,false)
-				}
-				DtPreSign.Unlock()
-
 				res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 				ch <- res
 				return cherr
 			}
-
-			DtPreSign.Lock()
-			for _,vv := range sbd.PickHash {
-				SetPrePubDataUseStatus(pub,vv.PickKey,false)
-			}
-			DtPreSign.Unlock()
 
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("sign fail.")}
 			ch <- res
@@ -543,6 +447,7 @@ func RpcAcceptSign(raw string) (string, string, error) {
 type TxDataSign struct {
     TxType string
     PubKey string
+    InputCode string
     MsgHash []string
     MsgContext []string
     Keytype string
@@ -550,6 +455,15 @@ type TxDataSign struct {
     ThresHold string
     Mode string
     TimeStamp string
+}
+
+type RpcSignData struct {
+    Raw string
+    PubKey string
+    InputCode string
+    GroupId string
+    MsgHash []string
+    Key string
 }
 
 func Sign(raw string) (string, string, error) {
@@ -590,57 +504,60 @@ func HandleRpcSign(rsd *RpcSignData) {
 
     pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
     bret := false
+    pickdata := make([]*PickHashData,0)
     pickhash := make([]*PickHashKey,0)
     for _,vv := range rsd.MsgHash {
-	    DtPreSign.Lock()
-	    pickkey := PickPrePubData(pub)
-	    if pickkey == "" {
-		    bret = true
-		    DtPreSign.Unlock()
-		    break
-	    }
+	pick := PickPreSignData(rsd.PubKey,rsd.InputCode,rsd.GroupId)
+	if pick == nil {
+	    bret = true
+	    break
+	}
 
-	    err := DeletePreSignDataFromDb(strings.ToLower(pub),pickkey)
-	    if err != nil {
-		common.Error("========================HandleRpcSign,delete pre-sign data form db fail.==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key,"err",err)
-		bret = true
-		DtPreSign.Unlock()
-		break
-	    }
+	common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pick.Key,"key",rsd.Key)
+	ph := &PickHashKey{Hash:vv,PickKey:pick.Key}
+	pickhash = append(pickhash,ph)
+	phd := &PickHashData{Hash:vv,Pre:pick}
+	pickdata = append(pickdata,phd)
 
-	    DtPreSign.Unlock()
-
-	    common.Info("========================HandleRpcSign,choose pickkey==================","txhash",vv,"pickkey",pickkey,"key",rsd.Key)
-	    ph := &PickHashKey{Hash:vv,PickKey:pickkey}
-	    pickhash = append(pickhash,ph)
-
-	    //check pre sigal
-	    if GetTotalCount(pub) >= (PrePubDataCount*3/4) && GetTotalCount(pub) <= PrePubDataCount {
-		    PutPreSigal(pub,false)
-	    } else {
-		    PutPreSigal(pub,true)
-	    }
-	    //
+	//check pre sigal
+	if GetTotalCount(rsd.PubKey,"",rsd.GroupId) >= (PrePubDataCount*3/4) && GetTotalCount(rsd.PubKey,"",rsd.GroupId) <= PrePubDataCount {
+		PutPreSigal(pub,false)
+	} else {
+		PutPreSigal(pub,true)
+	}
     }
 
     if bret {
-	    return
+	return
     }
 
+    m := make(map[string]string)
     send,err := CompressSignBrocastData(rsd.Raw,pickhash)
+    if err == nil {
+	m["ComSignBrocastData"] = send
+    }
+    m["Type"] = "ComSignBrocastData"
+    val,err := json.Marshal(m)
     if err != nil {
-	    common.Error("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
-	    DtPreSign.Lock()
-	    for _,vv := range pickhash {
-		    SetPrePubDataUseStatus(pub,vv.PickKey,false)
-	    }
-	    DtPreSign.Unlock()
-
-	    return
+	common.Errorf("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
+	return
     }
 
-    SendMsgToDcrmGroup(send,rsd.GroupId)
-    SetUpMsgList(send,cur_enode)
+    SendMsgToDcrmGroup(string(val),rsd.GroupId)
+
+    m2 := make(map[string]string)
+    selfsend,err := CompressSignData(rsd.Raw,pickdata)
+    if err == nil {
+	m2["ComSignData"] = selfsend
+    }
+    m2["Type"] = "ComSignData"
+    val2,err := json.Marshal(m2)
+    if err != nil {
+	common.Errorf("=========================HandleRpcSign,compress hash data.======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
+	return
+    }
+
+    SetUpMsgList(string(val2),cur_enode)
 }
 
 func get_sign_hash(hash []string,keytype string) string {
@@ -757,7 +674,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	return ret, "", nil
 }
 
-func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickhash []*PickHashKey ,ch chan interface{}) {
+func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickdata []*PickHashData,ch chan interface{}) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,da := GetValueFromDb(string(dcrmpks[:]))
 	if !exsit {
@@ -815,7 +732,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	    result = ret
 	    cherrtmp = cherr
 	} else {
-	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickhash,rch)
+	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickdata,rch)
 	    ret, tip, cherr := GetChannelValue(waitall,rch)
 	    common.Info("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
 	    if cherr != nil {
@@ -893,6 +810,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 type SignData struct {
     MsgPrex string
     Key string
+    InputCodeT string
     Save string
     Sku1 *big.Int
     Txhash string
@@ -904,47 +822,59 @@ type SignData struct {
     Cointype string
     Pkx *big.Int
     Pky *big.Int
-    PickKey string
+    Pre *PreSignData
 }
 
 func (sd *SignData) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		MsgPrex string `json:"MsgPrex"`
-		Key string `json:"Key"`
-		Save string `json:"Save"`
-		Sku1 string `json:"Sku1"`
-		Txhash string `json:"Txhash"`
-		GroupId string `json:"GroupId"`
-		NodeCnt string `json:"NodeCnt"`
-		ThresHold string `json:"ThresHold"`
-		DcrmFrom string `json:"DcrmFrom"`
-		Keytype string `json:"Keytype"`
-		Cointype string `json:"Cointype"`
-		Pkx string `json:"Pkx"`
-		Pky string `json:"Pky"`
-		PickKey string `json:"PickKey"`
-	}{
-		MsgPrex: sd.MsgPrex,
-		Key: sd.Key,
-		Save: sd.Save,
-		Sku1: fmt.Sprintf("%v",sd.Sku1),
-		Txhash: sd.Txhash,
-		GroupId: sd.GroupId,
-		NodeCnt: strconv.Itoa(sd.NodeCnt),
-		ThresHold: strconv.Itoa(sd.ThresHold),
-		DcrmFrom: sd.DcrmFrom,
-		Keytype: sd.Keytype,
-		Cointype: sd.Cointype,
-		Pkx: fmt.Sprintf("%v",sd.Pkx),
-		Pky: fmt.Sprintf("%v",sd.Pky),
-		PickKey: sd.PickKey,
-	})
+    if sd.Pre == nil {
+	return nil,errors.New("get pre-sign data fail.")
+    }
+
+    s,err := sd.Pre.MarshalJSON()
+    if err != nil {
+	return nil,err
+    }
+
+    return json.Marshal(struct {
+	    MsgPrex string `json:"MsgPrex"`
+	    Key string `json:"Key"`
+	    InputCodeT string `json:"InputCodeT"`
+	    Save string `json:"Save"`
+	    Sku1 string `json:"Sku1"`
+	    Txhash string `json:"Txhash"`
+	    GroupId string `json:"GroupId"`
+	    NodeCnt string `json:"NodeCnt"`
+	    ThresHold string `json:"ThresHold"`
+	    DcrmFrom string `json:"DcrmFrom"`
+	    Keytype string `json:"Keytype"`
+	    Cointype string `json:"Cointype"`
+	    Pkx string `json:"Pkx"`
+	    Pky string `json:"Pky"`
+	    Pre string `json:"Pre"`
+    }{
+	    MsgPrex: sd.MsgPrex,
+	    Key: sd.Key,
+	    InputCodeT: sd.InputCodeT,
+	    Save: sd.Save,
+	    Sku1: fmt.Sprintf("%v",sd.Sku1),
+	    Txhash: sd.Txhash,
+	    GroupId: sd.GroupId,
+	    NodeCnt: strconv.Itoa(sd.NodeCnt),
+	    ThresHold: strconv.Itoa(sd.ThresHold),
+	    DcrmFrom: sd.DcrmFrom,
+	    Keytype: sd.Keytype,
+	    Cointype: sd.Cointype,
+	    Pkx: fmt.Sprintf("%v",sd.Pkx),
+	    Pky: fmt.Sprintf("%v",sd.Pky),
+	    Pre: string(s),
+    })
 }
 
 func (sd *SignData) UnmarshalJSON(raw []byte) error {
 	var si struct {
 		MsgPrex string `json:"MsgPrex"`
 		Key string `json:"Key"`
+		InputCodeT string `json:"InputCodeT"`
 		Save string `json:"Save"`
 		Sku1 string `json:"Sku1"`
 		Txhash string `json:"Txhash"`
@@ -956,7 +886,7 @@ func (sd *SignData) UnmarshalJSON(raw []byte) error {
 		Cointype string `json:"Cointype"`
 		Pkx string `json:"Pkx"`
 		Pky string `json:"Pky"`
-		PickKey string `json:"PickKey"`
+		Pre string `json:"Pre"`
 	}
 	if err := json.Unmarshal(raw, &si); err != nil {
 		return err
@@ -964,6 +894,7 @@ func (sd *SignData) UnmarshalJSON(raw []byte) error {
 
 	sd.MsgPrex = si.MsgPrex
 	sd.Key = si.Key
+	sd.InputCodeT = si.InputCodeT
 	sd.Save = si.Save
 	sd.Sku1,_ = new(big.Int).SetString(si.Sku1,10)
 	sd.Txhash = si.Txhash
@@ -975,11 +906,17 @@ func (sd *SignData) UnmarshalJSON(raw []byte) error {
 	sd.Cointype = si.Cointype
 	sd.Pkx,_ = new(big.Int).SetString(si.Pkx,10)
 	sd.Pky,_ = new(big.Int).SetString(si.Pky,10)
-	sd.PickKey = si.PickKey
+	pre := &PreSignData{}
+	err := pre.UnmarshalJSON([]byte(si.Pre))
+	if err != nil {
+	    return err
+	}
+
+	sd.Pre = pre
 	return nil
 }
 
-func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, pickhash []*PickHashKey,ch chan interface{}) string {
+func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpkx *big.Int, dcrmpky *big.Int, keytype string, pickdata []*PickHashData,ch chan interface{}) string {
 
     	tmp := make([]string,0)
 	for _,v := range txhash {
@@ -993,7 +930,7 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
-		common.Debug("==========dcrm_sign,no find worker===========","key",msgprex,"err",err)
+		common.Debug("==========sign_ec,worker was not found.===========","key",msgprex,"err",err)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker.")}
 		ch <- res
 		return ""
@@ -1007,31 +944,22 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 	    go func(vv string) {
 		defer wg.Done()
 
-		//get pickkey
-		pickkey := ""
-		for _,val := range pickhash {
-			if strings.EqualFold(val.Hash,("0x" + vv)) || strings.EqualFold(val.Hash,vv) {
-				pickkey = val.PickKey
-				break
-			}
+		//get pick
+		var pick *PreSignData
+		for _,val := range pickdata {
+		    if strings.EqualFold(val.Hash,("0x" + vv)) || strings.EqualFold(val.Hash,vv) {
+			    pick = val.Pre
+			    break
+		    }
+ 		}
+		if pick == nil {
+		    return
 		}
-		if pickkey == "" {
-			return
-		}
-		//
 
-		//tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 		key := Keccak256Hash([]byte(strings.ToLower(msgprex + "-" + vv))).Hex()
-		sd := &SignData{MsgPrex:msgprex,Key:key,Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky,PickKey:pickkey}
-		common.Info("======================sign_ec=================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pickkey)
 
-		/*val,err := Encode2(sd)
-		if err != nil {
-		    common.Info("======================sign_ec, encode error==================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pickkey,"err",err)
-		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:marshal sign data error", Err: err}
-		    //ch <- res
-		    return 
-		}*/
+		sd := &SignData{MsgPrex:msgprex,Key:key,InputCodeT:"",Save:save,Sku1:sku1,Txhash:vv,GroupId:w.groupid,NodeCnt:w.NodeCnt,ThresHold:w.ThresHold,DcrmFrom:w.DcrmFrom,Keytype:keytype,Cointype:"",Pkx:dcrmpkx,Pky:dcrmpky,Pre:pick}
+		
 		m := make(map[string]string)
 		sdjson,err := sd.MarshalJSON()
 		if err == nil {
@@ -1040,22 +968,17 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 		m["Type"] = "SignData"
 		val,err := json.Marshal(m)
 		if err != nil {
-		    common.Info("======================sign_ec, encode error==================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pickkey,"err",err)
+		    common.Error("======================sign_ec, marshal SignData to json fail.==================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pick.Key,"err",err)
 		    return 
 		}
 		
-		common.Debug("======================sign_ec, encode success=================","vv",vv,"msgprex",msgprex,"key",key)
 		rch := make(chan interface{}, 1)
 		SetUpMsgList3(string(val),cur_enode,rch)
-		_, _,cherr := GetChannelValue(waitall,rch)
+		_, _,cherr := GetChannelValue(ch_t,rch)
 		if cherr != nil {
-
-		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
-		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
-		    //ch <- res
+		    common.Error("======================sign_ec, sign error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
 		    return 
 		}
-		common.Info("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key)
 	    }(v)
 	}
 	wg.Wait()
@@ -3228,7 +3151,7 @@ func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
 
 //msgprex = hash
 //return value is the backup for the dcrm sig
-func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch chan interface{},id int)  *PrePubData {
+func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch chan interface{},id int)  *PreSignData {
 	if id < 0 || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res
@@ -3356,13 +3279,13 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 		return nil
 	}
 	//common.Info("=====================PreSign_ec3, calc r finish=================","key",msgprex)
-	ret := &PrePubData{Key:msgprex,K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Used:false}
+	ret := &PreSignData{Key:msgprex,K1:u1K,R:r,Ry:deltaGammaGy,Sigma1:sigma1,Gid:w.groupid,Used:false,Index:-1}
 	return ret
 }
 
 //msgprex = hash
 //return value is the backup for the dcrm sig
-func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky *big.Int, ch chan interface{}, id int,pre *PrePubData) string {
+func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky *big.Int, ch chan interface{}, id int,pre *PreSignData) string {
 	if id < 0 || id >= len(workers) {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
 		ch <- res

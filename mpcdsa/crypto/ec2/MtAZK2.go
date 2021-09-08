@@ -105,7 +105,7 @@ func MtAZK2Prove(x *big.Int, y *big.Int, r *big.Int, c1 *big.Int, publicKey *Pub
 
 //func (mtAZK2Proof *MtAZK2Proof) MtAZK2Verify(c1 *big.Int, c2 *big.Int, publicKey *paillier.PublicKey, zkFactProof *paillier.ZkFactProof) bool {
 func (mtAZK2Proof *MtAZK2Proof) MtAZK2Verify(c1 *big.Int, c2 *big.Int, publicKey *PublicKey, zkFactProof *ZkFactProof) bool {
-	if mtAZK2Proof.S1 == nil || s256.S256().N3() == nil { //bug:lockin/lockout fail will crash
+	if mtAZK2Proof.S1 == nil || s256.S256().N3() == nil {
 		return false
 	}
 

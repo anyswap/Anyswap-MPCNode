@@ -93,11 +93,6 @@ func main() {
 	case "ACCEPTREQADDR":
 		// req condominium account
 		acceptReqAddr()
-	case "LOCKOUT":
-		lockOut()
-	case "ACCEPTLOCKOUT":
-		// approve condominium account lockout
-		acceptLockOut()
 	case "SIGN":
 		// test sign
 		sign()
@@ -124,7 +119,7 @@ func main() {
 			fmt.Printf("pubkey = %v, get dcrm addr failed. %v\n", pubkey,err)
 	    }
 	default:
-		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR\n", *cmd)
+		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR\n", *cmd)
 	}
 }
 
@@ -132,12 +127,12 @@ func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
 	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR")
+	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
 	toAddr = flag.String("to", "0x0520e8e5E08169c4dbc1580Dc9bF56638532773A", "To address")
-	value = flag.String("value", "10000000000000000", "lockout value")
+	value = flag.String("value", "10000000000000000", "value")
 	coin = flag.String("coin", "FSN", "Coin type")
 	netcfg = flag.String("netcfg", "mainnet", "chain config") //mainnet or testnet
 	fromAddr = flag.String("from", "", "From address")
@@ -408,129 +403,6 @@ func acceptReqAddr() {
 	}
 }
 
-func lockOut() {
-	// get lockout nonce
-	lockoutNonce, err := client.Call("dcrm_getLockOutNonce", keyWrapper.Address.String())
-	if err != nil {
-		panic(err)
-	}
-	nonceStr, err := getJSONResult(lockoutNonce)
-	if err != nil {
-		panic(err)
-	}
-	nonce, _ := strconv.ParseUint(nonceStr, 0, 64)
-	fmt.Printf("dcrm_getLockOutNonce = %s\nNonce = %d\n", lockoutNonce, nonce)
-	// build tx data
-	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
-	txdata := lockoutData{
-		TxType:    *cmd,
-		DcrmAddr:  *fromAddr,
-		DcrmTo:    *toAddr,
-		Value:     *value,
-		Cointype:  *coin,
-		GroupID:   *gid,
-		ThresHold: *ts,
-		Mode:      *mode,
-		TimeStamp: timestamp,
-		Memo:      *memo,
-	}
-	playload, _ := json.Marshal(txdata)
-	// sign tx
-	rawTX, err := signTX(signer, keyWrapper.PrivateKey, nonce, playload)
-	if err != nil {
-		panic(err)
-	}
-	// send rawTx
-	reqKeyID, err := client.Call("dcrm_lockOut", rawTX)
-	if err != nil {
-		panic(err)
-	}
-	// get keyID from result
-	keyID, err := getJSONResult(reqKeyID)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("\ndcrm_lockOut keyID = %s\n\n", keyID)
-	fmt.Printf("\nWaiting for stats result...\n")
-	// traverse key from reqAddr failed by keyID
-	time.Sleep(time.Duration(30) * time.Second)
-	fmt.Printf("\n\nUser=%s\n", keyWrapper.Address.String())
-	var statusJSON lockoutStatus
-	reqStatus, err := client.Call("dcrm_getLockOutStatus", keyID)
-	if err != nil {
-		fmt.Println("\ndcrm_getLockOutStatus rpc error:", err)
-		return
-	}
-	statusJSONStr, err := getJSONResult(reqStatus)
-	if err != nil {
-		fmt.Printf("\tdcrm_getLockOutStatus=NotStart\tkeyID=%s ", keyID)
-		fmt.Println("\tRequest not complete:", err)
-		return
-	}
-	if err := json.Unmarshal([]byte(statusJSONStr), &statusJSON); err != nil {
-		fmt.Println("\tUnmarshal statusJSONStr fail:", err)
-		return
-	}
-	if statusJSON.Status != "Success" {
-		fmt.Printf("\tdcrm_getLockOutStatus=%s\tkeyID=%s  ", statusJSON.Status, keyID)
-	} else {
-		fmt.Printf("\tSuccess\tOutTXhash=%s", statusJSON.OutTxHash)
-	}
-}
-func acceptLockOut() {
-	// get approve list of condominium account
-	reqListRep, err := client.Call("dcrm_getCurNodeLockOutInfo", keyWrapper.Address.String())
-	if err != nil {
-		panic(err)
-	}
-	reqListJSON, _ := getJSONData(reqListRep)
-	fmt.Printf("dcrm_getCurNodeLockOutInfo = %s\n", reqListJSON)
-
-	var keyList []lockoutCurNodeInfo
-	if err := json.Unmarshal(reqListJSON, &keyList); err != nil {
-		fmt.Println("Unmarshal lockoutCurNodeInfo fail:", err)
-		return
-	}
-	// gen key list which not approve, auto accept replace input by arg -key
-	for i := 0; i < len(keyList); i++ {
-		// build tx data
-		var keyStr string
-		if *key != "" {
-			i = len(keyList)
-			keyStr = *key
-		} else {
-			keyStr = keyList[i].Key
-		}
-		timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
-		data := acceptData{
-			TxType:    *cmd,
-			Key:       keyStr,
-			Accept:    *accept,
-			TimeStamp: timestamp,
-		}
-		playload, err := json.Marshal(data)
-		if err != nil {
-			fmt.Println("error:", err)
-		}
-		// sign tx
-		rawTX, err := signTX(signer, keyWrapper.PrivateKey, 0, playload)
-		if err != nil {
-			panic(err)
-		}
-		// send rawTx
-		acceptLockOutRep, err := client.Call("dcrm_acceptLockOut", rawTX)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("\ndcrm_acceptLockOut = %s\n\n", acceptLockOutRep)
-		// get result
-		acceptRet, err := getJSONResult(acceptLockOutRep)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("\ndcrm_acceptLockOut result: key[%d]\t%s = %s\n\n", i+1, keyStr, acceptRet)
-	}
-}
 func sign() {
 	//if *msghash == "" {
 	//	*msghash = common.ToHex(crypto.Keccak256([]byte(*memo)))
@@ -1005,18 +877,6 @@ type acceptSignData struct {
 	MsgContext []string `json:"MsgContext"`
 	TimeStamp  string   `json:"TimeStamp"`
 }
-type lockoutData struct {
-	TxType    string `json:"TxType"`
-	DcrmAddr  string `json:"DcrmAddr"`
-	DcrmTo    string `json:"DcrmTo"`
-	Value     string `json:"Value"`
-	Cointype  string `json:"Cointype"`
-	GroupID   string `json:"GroupId"`
-	ThresHold string `json:"ThresHold"`
-	Mode      string `json:"Mode"`
-	TimeStamp string `json:"TimeStamp"`
-	Memo      string `json:"Memo"`
-}
 type signData struct {
 	TxType     string `json:"TxType"`
 	PubKey     string `json:"PubKey"`
@@ -1052,14 +912,6 @@ type reqAddrStatus struct {
 	AllReply  interface{} `json:"AllReply"`
 	TimeStamp string      `json:"TimeStamp"`
 }
-type lockoutStatus struct {
-	Status    string      `json:"Status"`
-	OutTxHash string      `json:"OutTxHash"`
-	Tip       string      `json:"Tip"`
-	Error     string      `json:"Error"`
-	AllReply  interface{} `json:"AllReply"`
-	TimeStamp string      `json:"TimeStamp"`
-}
 type signStatus struct {
 	Status    string      `json:"Status"`
 	Rsv       []string      `json:"Rsv"`
@@ -1075,19 +927,6 @@ type reqAddrCurNodeInfo struct {
 	Key       string `json:"Key"`
 	Mode      string `json:"Mode"`
 	Nonce     string `json:"Nonce"`
-	ThresHold string `json:"ThresHold"`
-	TimeStamp string `json:"TimeStamp"`
-}
-type lockoutCurNodeInfo struct {
-	Account   string `json:"Account"`
-	GroupID   string `json:"GroupId"`
-	Key       string `json:"Key"`
-	Nonce     string `json:"Nonce"`
-	Mode      string `json:"Mode"`
-	DcrmFrom  string `json:"DcrmFrom"`
-	DcrmTo    string `json:"DcrmTo"`
-	Value     string `json:"Value"`
-	CoinType  string `json:"CoinType"`
 	ThresHold string `json:"ThresHold"`
 	TimeStamp string `json:"TimeStamp"`
 }

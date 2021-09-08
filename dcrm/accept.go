@@ -184,96 +184,6 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	return "", nil
 }
 
-type TxDataAcceptLockOut struct {
-    TxType string
-    Key string
-    DcrmTo string
-    Value string
-    Cointype string
-    Mode string
-    Accept string
-    TimeStamp string
-}
-
-func AcceptLockOut(initiator string,account string, groupid string, nonce string, dcrmfrom string, threshold string, deal string, accept string, status string, outhash string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-	exsit,da := GetValueFromDb(key)
-	///////
-	if !exsit {
-		common.Debug("=====================AcceptLockOut,no exist key=======================","key",key)
-		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
-	}
-
-	ac,ok := da.(*AcceptLockOutData)
-
-	if !ok {
-		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
-	}
-
-	in := ac.Initiator
-	if initiator != "" {
-	    in = initiator
-	}
-
-	de := ac.Deal
-	if deal != "" {
-	    de = deal
-	}
-
-	acp := ac.Accept
-	if accept != "" {
-		acp = accept
-	}
-
-	ah := ac.OutTxHash
-	if outhash != "" {
-		ah = outhash
-	}
-
-	ttip := ac.Tip
-	if tip != "" {
-		ttip = tip
-	}
-
-	eif := ac.Error
-	if errinfo != "" {
-		eif = errinfo
-	}
-
-	sts := ac.Status
-	if status != "" {
-		sts = status
-	}
-
-	arl := ac.AllReply
-	if allreply != nil {
-		arl = allreply
-	}
-
-	wid := ac.WorkId
-	if workid >= 0 {
-		wid = workid
-	}
-
-	ac2 := &AcceptLockOutData{Initiator:in,Account: ac.Account, GroupId: ac.GroupId, Nonce: ac.Nonce, PubKey:ac.PubKey, DcrmTo: ac.DcrmTo, Value: ac.Value, Cointype: ac.Cointype, LimitNum: ac.LimitNum, Mode: ac.Mode, TimeStamp: ac.TimeStamp, Deal: de, Accept: acp, Status: sts, OutTxHash: ah, Tip: ttip, Error: eif, AllReply: arl, WorkId: wid}
-
-	e, err := Encode2(ac2)
-	if err != nil {
-		common.Debug("=====================AcceptLockOut,encode fail=======================","err",err,"key",key)
-		return "dcrm back-end internal error:encode accept data fail", err
-	}
-
-	es, err := Compress([]byte(e))
-	if err != nil {
-		common.Debug("=====================AcceptLockOut,compress fail=======================","err",err,"key",key)
-		return "dcrm back-end internal error:compress accept data fail", err
-	}
-
-	PutValueToDb([]byte(key),[]byte(es))
-
-	return "", nil
-}
-
 type AcceptSignData struct {
         Initiator string //enode
 	Account   string
@@ -361,7 +271,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	ac,ok := da.(*AcceptSignData)
 
 	if !ok {
-		common.Info("=====================AcceptLockOut, accept data error=======================","key",key)
+		common.Info("=====================AcceptSign, accept data error=======================","key",key)
 		return "dcrm back-end internal error:get accept data fail from db", fmt.Errorf("dcrm back-end internal error:get accept data fail from db")
 	}
 
@@ -437,58 +347,6 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 
 	common.Debug("=====================AcceptSign,finish.========================","key",key)
 	return "", nil
-}
-
-type AcceptLockOutData struct {
-        Initiator string //enode
-	Account   string
-	GroupId   string
-	Nonce     string
-	PubKey  string
-	DcrmTo    string
-	Value     string
-	Cointype  string
-	LimitNum  string
-	Mode      string
-	TimeStamp string
-
-	Deal   string 
-	Accept string
-
-	Status    string
-	OutTxHash string
-	Tip       string
-	Error     string
-
-	AllReply []NodeReply
-	WorkId   int
-}
-
-func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
-	if ac == nil {
-		return fmt.Errorf("no accept data.")
-	}
-
-	dcrmaddr,_,err := GetAddr(ac.PubKey,ac.Cointype)
-	if err != nil {
-		return fmt.Errorf("get dcrm addr fail")
-	}
-
-	key := Keccak256Hash([]byte(strings.ToLower(ac.Account + ":" + ac.GroupId + ":" + ac.Nonce + ":" + dcrmaddr + ":" + ac.LimitNum))).Hex()
-
-	alos, err := Encode2(ac)
-	if err != nil {
-		return err
-	}
-
-	ss, err := Compress([]byte(alos))
-	if err != nil {
-		return err
-	}
-
-	PutValueToDb([]byte(key),[]byte(ss))
-
-	return nil
 }
 
 type AcceptReShareData struct {

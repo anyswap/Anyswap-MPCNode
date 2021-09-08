@@ -65,10 +65,8 @@ type RPCReqWorker struct {
 	retres           *list.List
 	//
 	msg_acceptreqaddrres      *list.List
-	msg_acceptlockoutres      *list.List
 	msg_acceptreshareres      *list.List
 	msg_acceptsignres      *list.List
-	msg_sendlockoutres      *list.List
 	msg_sendreshareres      *list.List
 	msg_sendsignres      *list.List
 	msg_c1      *list.List
@@ -98,10 +96,8 @@ type RPCReqWorker struct {
 	sku1 *list.List
 
 	bacceptreqaddrres chan bool
-	bacceptlockoutres chan bool
 	bacceptreshareres chan bool
 	bacceptsignres chan bool
-	bsendlockoutres   chan bool
 	bsendreshareres   chan bool
 	bsendsignres   chan bool
 	bgaccs            chan bool
@@ -158,8 +154,6 @@ type RPCReqWorker struct {
 
 	acceptReqAddrChan     chan string
 	acceptWaitReqAddrChan chan string
-	acceptLockOutChan     chan string
-	acceptWaitLockOutChan chan string
 	acceptReShareChan     chan string
 	acceptWaitReShareChan chan string
 	acceptSignChan     chan string
@@ -269,10 +263,8 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		msg_ss1:                   list.New(),
 		msg_paillierkey:                   list.New(),
 		msg_acceptreqaddrres:      list.New(),
-		msg_acceptlockoutres:      list.New(),
 		msg_acceptreshareres:      list.New(),
 		msg_acceptsignres:      list.New(),
-		msg_sendlockoutres:        list.New(),
 		msg_sendreshareres:        list.New(),
 		msg_sendsignres:        list.New(),
 
@@ -283,10 +275,8 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		sku1: list.New(),
 
 		bacceptreqaddrres: make(chan bool, 1),
-		bacceptlockoutres: make(chan bool, 1),
 		bacceptreshareres: make(chan bool, 1),
 		bacceptsignres: make(chan bool, 1),
-		bsendlockoutres:   make(chan bool, 1),
 		bsendreshareres:   make(chan bool, 1),
 		bsendsignres:   make(chan bool, 1),
 		bgaccs:            make(chan bool, 1),
@@ -345,8 +335,6 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		acceptReqAddrChan:     make(chan string, 1),
 		acceptWaitReqAddrChan: make(chan string, 1),
 
-		acceptLockOutChan:     make(chan string, 1),
-		acceptWaitLockOutChan: make(chan string, 1),
 		acceptReShareChan:     make(chan string, 1),
 		acceptWaitReShareChan: make(chan string, 1),
 		acceptSignChan:     make(chan string, 1),
@@ -367,11 +355,6 @@ func (w *RPCReqWorker) Clear() {
 
 	var next *list.Element
 
-	for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
-		next = e.Next()
-		w.msg_acceptlockoutres.Remove(e)
-	}
-
 	for e := w.msg_acceptreshareres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptreshareres.Remove(e)
@@ -380,11 +363,6 @@ func (w *RPCReqWorker) Clear() {
 	for e := w.msg_acceptsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptsignres.Remove(e)
-	}
-
-	for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
-		next = e.Next()
-		w.msg_sendlockoutres.Remove(e)
 	}
 
 	for e := w.msg_sendreshareres.Front(); e != nil; e = next {
@@ -545,17 +523,11 @@ func (w *RPCReqWorker) Clear() {
 	if len(w.bmtazk1proof) == 1 {
 		<-w.bmtazk1proof
 	}
-	if len(w.bacceptlockoutres) == 1 {
-		<-w.bacceptlockoutres
-	}
 	if len(w.bacceptreshareres) == 1 {
 		<-w.bacceptreshareres
 	}
 	if len(w.bacceptsignres) == 1 {
 		<-w.bacceptsignres
-	}
-	if len(w.bsendlockoutres) == 1 {
-		<-w.bsendlockoutres
 	}
 	if len(w.bsendreshareres) == 1 {
 		<-w.bsendreshareres
@@ -716,12 +688,6 @@ func (w *RPCReqWorker) Clear() {
 	}
 	if len(w.acceptReqAddrChan) == 1 {
 		<-w.acceptReqAddrChan
-	}
-	if len(w.acceptWaitLockOutChan) == 1 {
-		<-w.acceptWaitLockOutChan
-	}
-	if len(w.acceptLockOutChan) == 1 {
-		<-w.acceptLockOutChan
 	}
 	if len(w.acceptReShareChan) == 1 {
 		<-w.acceptReShareChan
@@ -739,11 +705,6 @@ func (w *RPCReqWorker) Clear2() {
 	
 	var next *list.Element
 
-	for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
-		next = e.Next()
-		w.msg_acceptlockoutres.Remove(e)
-	}
-
 	for e := w.msg_acceptreshareres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptreshareres.Remove(e)
@@ -752,11 +713,6 @@ func (w *RPCReqWorker) Clear2() {
 	for e := w.msg_acceptsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptsignres.Remove(e)
-	}
-
-	for e := w.msg_sendlockoutres.Front(); e != nil; e = next {
-		next = e.Next()
-		w.msg_sendlockoutres.Remove(e)
 	}
 
 	for e := w.msg_sendreshareres.Front(); e != nil; e = next {
@@ -917,17 +873,11 @@ func (w *RPCReqWorker) Clear2() {
 	if len(w.bmtazk1proof) == 1 {
 		<-w.bmtazk1proof
 	}
-	if len(w.bacceptlockoutres) == 1 {
-		<-w.bacceptlockoutres
-	}
 	if len(w.bacceptreshareres) == 1 {
 		<-w.bacceptreshareres
 	}
 	if len(w.bacceptsignres) == 1 {
 		<-w.bacceptsignres
-	}
-	if len(w.bsendlockoutres) == 1 {
-		<-w.bsendlockoutres
 	}
 	if len(w.bsendreshareres) == 1 {
 		<-w.bsendreshareres
@@ -1088,12 +1038,6 @@ func (w *RPCReqWorker) Clear2() {
 	}
 	if len(w.acceptReqAddrChan) == 1 {
 		<-w.acceptReqAddrChan
-	}
-	if len(w.acceptWaitLockOutChan) == 1 {
-		<-w.acceptWaitLockOutChan
-	}
-	if len(w.acceptLockOutChan) == 1 {
-		<-w.acceptLockOutChan
 	}
 	if len(w.acceptReShareChan) == 1 {
 		<-w.acceptReShareChan

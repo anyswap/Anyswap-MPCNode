@@ -49,7 +49,7 @@ var (
 
 func GetSignNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
-	exsit,da := GetPubKeyDataValueFromDb2(key)
+	exsit,da := GetValueFromDb(key)
 	if !exsit {
 	    return "0", "", nil
 	}
@@ -64,7 +64,6 @@ func SetSignNonce(account string,nonce string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key, []byte(nonce))
 	return "", nil
 }
 
@@ -262,7 +261,7 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				    return fmt.Errorf("get reqaddr key fail") 
 				}
 
-				exsit,da := GetPubKeyDataValueFromDb2(reqaddrkey)
+				exsit,da := GetValueFromDb(reqaddrkey)
 				if !exsit {
 					DtPreSign.Lock()
 					for _,vv := range sbd.PickHash {
@@ -589,7 +588,7 @@ func HandleRpcSign(rsd *RpcSignData) {
     }
 
     dcrmpks, _ := hex.DecodeString(rsd.PubKey)
-    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+    exsit,da := GetValueFromDb(string(dcrmpks[:]))
     if !exsit {
 	return
     }
@@ -684,7 +683,7 @@ type SignStatus struct {
 }
 
 func GetSignStatus(key string) (string, string, error) {
-	exsit,da := GetPubKeyDataValueFromDb2(key)
+	exsit,da := GetValueFromDb(key)
 	if !exsit || da == nil {
 		common.Error("=================GetSignStatus,get sign accept data fail from db================","key",key)
 		return "", "dcrm back-end internal error:get sign accept data fail from db when GetSignStatus", fmt.Errorf("dcrm back-end internal error:get sign accept data fail from db when GetSignStatus")
@@ -770,12 +769,7 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 
 func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickhash []*PickHashKey ,ch chan interface{}) {
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-	if !exsit {
-	    time.Sleep(time.Duration(5000000000))
-	    exsit,da = GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-	}
-	///////
+	exsit,da := GetValueFromDb(string(dcrmpks[:]))
 	if !exsit {
 	    common.Debug("============================sign,not exist sign data===========================","pubkey",pubkey,"key",wsid)
 	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sign data from db fail", Err: fmt.Errorf("get sign data from db fail")}
@@ -3229,7 +3223,7 @@ func GetPaillierPk2(cointype string,w *RPCReqWorker,uid *big.Int) *ec2.PublicKey
 	}
 
 	key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetValueFromDb(key)
 	if !exsit {
 	    return nil 
 	}
@@ -3302,7 +3296,7 @@ func GetRealByUid(cointype string,w *RPCReqWorker,uid *big.Int) int {
     }
 
     key := Keccak256Hash([]byte(strings.ToLower(w.DcrmFrom))).Hex()
-    exsit,da := GetValueFromPubKeyData(key)
+    exsit,da := GetValueFromDb(key)
     if !exsit {
 	return -1
     }
@@ -3328,7 +3322,7 @@ func GetRealByUid2(keytype string,w *RPCReqWorker,uid *big.Int) int {
     }
 
     dcrmpks, _ := hex.DecodeString(w.DcrmFrom)
-    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+    exsit,da := GetValueFromDb(string(dcrmpks[:]))
     if !exsit {
 	return -1
     }

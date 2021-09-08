@@ -289,7 +289,7 @@ func GetPubKeyData(key string, account string, cointype string) (string, string,
 		return "", "dcrm back-end internal error:parameter error in func GetPubKeyData", fmt.Errorf("get pubkey data param error.")
 	}
 
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetValueFromDb(key)
 	///////
 	if !exsit {
 		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
@@ -349,11 +349,11 @@ func CheckAccept(pubkey string,mode string,account string) bool {
     }
 
     dcrmpks, _ := hex.DecodeString(pubkey)
-    exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+    exsit,da := GetValueFromDb(string(dcrmpks[:]))
     if exsit {
 	pd,ok := da.(*PubKeyData)
 	if ok {
-	    exsit,da2 := GetValueFromPubKeyData(pd.Key)
+	    exsit,da2 := GetValueFromDb(pd.Key)
 	    if exsit {
 		ac,ok := da2.(*AcceptReqAddrData)
 		if ok {
@@ -498,7 +498,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	//check mode
 	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-	exsit,da := GetValueFromPubKeyData(key2)
+	exsit,da := GetValueFromDb(key2)
 	if !exsit {
 		return "","","",nil,fmt.Errorf("dcrm back-end internal error:get data from db fail in lockout")
 	}
@@ -518,7 +518,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if pubs.Key != "" {
-	    exsit,da = GetValueFromPubKeyData(pubs.Key)
+	    exsit,da = GetValueFromDb(pubs.Key)
 	    if !exsit {
 		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
 	    }
@@ -601,7 +601,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	
 	//check mode
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
+	exsit,da := GetValueFromDb(string(dcrmpks[:]))
 	if !exsit {
 	    return "","","",nil,fmt.Errorf("get data from db fail in func sign")
 	}
@@ -628,7 +628,6 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
-    //******************//////////TODO
     pre := TxDataPreSignData{}
     err = json.Unmarshal(tx.Data(), &pre)
     if err == nil && pre.TxType == "PRESIGNDATA" {
@@ -637,23 +636,22 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	Nonce := tx.Nonce()
 
 	if from.Hex() == "" || pubkey == "" || subgids == nil {
-		return "","","",nil,fmt.Errorf("param error from raw data.")
+	    return "","","",nil,fmt.Errorf("param error from raw data.")
 	}
 
 	dcrmpks, _ := hex.DecodeString(pubkey)
-	exsit,_ := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+	exsit,da := GetValueFromDb(string(dcrmpks[:]))
 	if !exsit {
-	    time.Sleep(time.Duration(5000000000))
-	    exsit,_ = GetPubKeyDataFromLocalDb(string(dcrmpks[:])) //try again
+	    return "","","",nil,fmt.Errorf("invalid pubkey")
 	}
-	if !exsit {
-		return "","","",nil,fmt.Errorf("invalid pubkey")
+
+	_,ok := da.(*PubKeyData)
+	if !ok {
+	    return "","","",nil,fmt.Errorf("invalid pubkey")
 	}
 
 	return "",from.Hex(),fmt.Sprintf("%v", Nonce),&pre,nil
     }
-
-    //************************/////////////
 
     rh := TxDataReShare{}
     err = json.Unmarshal(tx.Data(), &rh)
@@ -731,7 +729,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
 	}
 
-	exsit,da := GetValueFromPubKeyData(acceptlo.Key)
+	exsit,da := GetValueFromDb(acceptlo.Key)
 	if !exsit {
 	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw lockout accept data")
 	}
@@ -1451,7 +1449,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		    common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_LOCKOUT ================")
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
-		    exsit,da := GetValueFromPubKeyData(key2)
+		    exsit,da := GetValueFromDb(key2)
 		    if exsit {
 			ac,ok := da.(*AcceptReqAddrData)
 			if ok && ac != nil {
@@ -1498,7 +1496,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		    mdss := iter.Value.(string)
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
-		    exsit,da := GetPubKeyDataValueFromDb2(key2)
+		    exsit,da := GetValueFromDb(key2)
 		    if exsit {
 			ac,ok := da.(*AcceptReqAddrData)
 			if ok && ac != nil {
@@ -1619,7 +1617,7 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		key,_,_,_,_ := CheckRaw(mdss)
 		exsit,da := GetReqAddrInfoData([]byte(key))
 		if !exsit || da == nil {
-		    exsit,da = GetPubKeyDataValueFromDb2(key)
+		    exsit,da = GetValueFromDb(key)
 		}
 		if exsit {
 		    ac,ok := da.(*AcceptReqAddrData)
@@ -1661,12 +1659,12 @@ func GetReqAddrKeyByOtherKey(key string,rt RpcType) string {
     }
 
     if rt == Rpc_LOCKOUT {
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetValueFromDb(key)
 	if exsit {
 	    ad,ok := da.(*AcceptLockOutData)
 	    if ok && ad != nil {
 		dcrmpks, _ := hex.DecodeString(ad.PubKey)
-		exsit,da2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+		exsit,da2 := GetValueFromDb(string(dcrmpks[:]))
 		if exsit && da2 != nil {
 		    pd,ok := da2.(*PubKeyData)
 		    if ok && pd != nil {
@@ -1680,13 +1678,13 @@ func GetReqAddrKeyByOtherKey(key string,rt RpcType) string {
     if rt == Rpc_SIGN {
 	exsit,da := GetSignInfoData([]byte(key))
 	if !exsit {
-	    exsit,da = GetPubKeyDataValueFromDb2(key)
+	    exsit,da = GetValueFromDb(key)
 	}
 	if exsit {
 	    ad,ok := da.(*AcceptSignData)
 	    if ok && ad != nil {
 		dcrmpks, _ := hex.DecodeString(ad.PubKey)
-		exsit,da2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+		exsit,da2 := GetValueFromDb(string(dcrmpks[:]))
 		if exsit && da2 != nil {
 		    pd,ok := da2.(*PubKeyData)
 		    if ok && pd != nil {
@@ -1826,7 +1824,7 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	    }
 
 	    dcrmpks, _ := hex.DecodeString(pubkey)
-	    exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
+	    exsit,data2 := GetValueFromDb(string(dcrmpks[:]))
 	    if !exsit || data2 == nil {
 		return
 	    }

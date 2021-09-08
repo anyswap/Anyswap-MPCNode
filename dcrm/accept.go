@@ -82,7 +82,7 @@ type TxDataAcceptReqAddr struct {
 
 func AcceptReqAddr(initiator string,account string, cointype string, groupid string, nonce string, threshold string, mode string, deal string, accept string, status string, pubkey string, tip string, errinfo string, allreply []NodeReply, workid int,sigs string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + groupid + ":" + nonce + ":" + threshold + ":" + mode))).Hex()
-	exsit,da := GetPubKeyDataValueFromDb2(key)
+	exsit,da := GetValueFromDb(key)
 	if exsit {
 		ac,ok := da.(*AcceptReqAddrData)
 		if ok {
@@ -198,7 +198,7 @@ type TxDataAcceptLockOut struct {
 
 func AcceptLockOut(initiator string,account string, groupid string, nonce string, dcrmfrom string, threshold string, deal string, accept string, status string, outhash string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + nonce + ":" + dcrmfrom + ":" + threshold))).Hex()
-	exsit,da := GetValueFromPubKeyData(key)
+	exsit,da := GetValueFromDb(key)
 	///////
 	if !exsit {
 		common.Debug("=====================AcceptLockOut,no exist key=======================","key",key)
@@ -273,7 +273,6 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 	kdtmp := KeyData{Key: []byte(key), Data: es}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, ac2)
 	return "", nil
 }
 
@@ -344,7 +343,7 @@ type TxDataAcceptSign struct {
 
 func AcceptSign(initiator string,account string, pubkey string,msghash []string,keytype string,groupid string, nonce string,threshold string,mode string, deal string, accept string, status string, rsv string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + nonce + ":" + pubkey + ":" + get_sign_hash(msghash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
-	exsit,da := GetPubKeyDataValueFromDb2(key)
+	exsit,da := GetValueFromDb(key)
 	if exsit {
 		ac,ok := da.(*AcceptSignData)
 		if ok {
@@ -493,7 +492,6 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 	kdtmp := KeyData{Key: []byte(key), Data: ss}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, ac)
 	return nil
 }
 
@@ -552,7 +550,7 @@ type TxDataAcceptReShare struct {
 
 func AcceptReShare(initiator string,account string, groupid string, tsgroupid string,pubkey string, threshold string,mode string,deal string, accept string, status string, newsk string, tip string, errinfo string, allreply []NodeReply, workid int) (string, error) {
     key := Keccak256Hash([]byte(strings.ToLower(account + ":" + groupid + ":" + tsgroupid + ":" + pubkey + ":" + threshold + ":" + mode))).Hex()
-	exsit,da := GetPubKeyDataValueFromDb2(key)
+	exsit,da := GetValueFromDb(key)
 	if exsit {
 		ac,ok := da.(*AcceptReShareData)
 		if ok {

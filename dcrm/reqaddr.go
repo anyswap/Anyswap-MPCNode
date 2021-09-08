@@ -58,26 +58,13 @@ type PubKeyData struct {
 }
 
 func GetReqAddrNonce(account string) (string, string, error) {
-	key2 := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
-	var da []byte
-	datmp, exsit := LdbPubKeyData.ReadMap(key2)
+	key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
+	exsit,da := GetValueFromDb(key)
 	if !exsit {
-		da2 := GetPubKeyDataValueFromDb(key2)
-		if da2 == nil {
-			exsit = false
-		} else {
-			exsit = true
-			da = da2
-		}
-	} else {
-		da = datmp.([]byte)
-	}
-	///////
-	if !exsit {
-		return "0", "", nil
+	    return "0", "", nil
 	}
 
-	nonce, _ := new(big.Int).SetString(string(da), 10)
+	nonce, _ := new(big.Int).SetString(string(da.([]byte)), 10)
 	one, _ := new(big.Int).SetString("1", 10)
 	nonce = new(big.Int).Add(nonce, one)
 
@@ -88,7 +75,6 @@ func SetReqAddrNonce(account string, nonce string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key, []byte(nonce))
 	return "", nil
 }
 
@@ -183,7 +169,7 @@ type ReqAddrStatus struct {
 }
 
 func GetReqAddrStatus(key string) (string, string, error) {
-	exsit,da := GetPubKeyDataValueFromDb2(key)
+	exsit,da := GetValueFromDb(key)
 	///////
 	if !exsit || da == nil {
 		common.Debug("=====================GetReqAddrStatus,no exist key======================","key",key)
@@ -389,16 +375,12 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
 			PutAccountDataToDb(sedpk[:],[]byte(pubkeyhex))
 			////
 
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
-			/////
-			LdbPubKeyData.WriteMap(key, pubs)
-			////
 			sk := KeyData{Key: sedpk[:], Data: sedsku1}
 			SkU1Chan <- sk
 			sk = KeyData{Key: []byte(key), Data: sedsku1}
@@ -406,10 +388,8 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		} else {
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
-			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
 			PutAccountDataToDb(sedpk[:],[]byte(pubkeyhex))
-			////
+			
 			sk := KeyData{Key: sedpk[:], Data: sedsku1}
 			SkU1Chan <- sk
 
@@ -430,9 +410,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 				kd = KeyData{Key: []byte(key), Data: ss}
 				PubKeyDataChan <- kd
-				/////
-				LdbPubKeyData.WriteMap(key, pubs)
-				////
+				
 				sk = KeyData{Key: []byte(key), Data: sedsku1}
 				SkU1Chan <- sk
 			}
@@ -549,26 +527,18 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
-		/////
-		LdbPubKeyData.WriteMap(string(ys), pubs)
 		PutAccountDataToDb(ys,[]byte(pubkeyhex))
-		////
 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		kd = KeyData{Key: []byte(key), Data: ss}
 		PubKeyDataChan <- kd
-		/////
-		LdbPubKeyData.WriteMap(key, pubs)
-		////
+		
 		sk = KeyData{Key: []byte(key), Data: sku1}
 		SkU1Chan <- sk
 	} else {
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
-		/////
-		LdbPubKeyData.WriteMap(string(ys), pubs)
 		PutAccountDataToDb(ys,[]byte(pubkeyhex))
-		////
 
 		for _, ct := range coins.Cointypes {
 			if strings.EqualFold(ct, "ALL") {
@@ -587,9 +557,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
-			/////
-			LdbPubKeyData.WriteMap(key, pubs)
-			////
+			
 			sk = KeyData{Key: []byte(key), Data: sku1}
 			SkU1Chan <- sk
 		}

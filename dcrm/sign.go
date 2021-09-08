@@ -519,15 +519,23 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 }
 
 func RpcAcceptSign(raw string) (string, string, error) {
-    _,from,_,txdata,err := CheckRaw(raw)
+    key,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
 	common.Error("=====================RpcAcceptSign,call CheckRaw finish================","raw",raw,"from",from,"err",err)
 	return "Failure",err.Error(),err
     }
 
+    if key == "" || from == "" || txdata == nil {
+	return "Failure","check accept raw data fail",fmt.Errorf("check accept raw data fail")
+    }
+
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if !ok {
 	return "Failure","check raw fail,it is not *TxDataAcceptSign",fmt.Errorf("check raw fail,it is not *TxDataAcceptSign")
+    }
+
+    if acceptsig.Key == "" || acceptsig.Accept == "" {
+	return "Failure","check sign accept raw data fail",fmt.Errorf("check sign accept raw data fail")
     }
 
     exsit,da := GetSignInfoData([]byte(acceptsig.Key))

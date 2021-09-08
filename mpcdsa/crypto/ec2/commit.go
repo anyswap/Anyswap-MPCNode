@@ -21,6 +21,7 @@ import (
 
 	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 )
 
 type Commitment struct {
@@ -79,11 +80,16 @@ func (commitment *Commitment) Verify() bool {
 
 	computeDigestBigInt := new(big.Int).SetBytes(computeDigest)
 
-	if computeDigestBigInt.Cmp(C) == 0 {
-		return true
-	} else {
-		return false
+	if computeDigestBigInt.Cmp(C) != 0 {
+	    return false 
 	}
+
+	// Check whether the point is on the curve 
+	if !checkCommitmentGammaGOnCurve(D[1:]) {
+	    return false 
+	}
+
+	return true
 }
 
 func (commitment *Commitment) DeCommit() (bool, []*big.Int) {
@@ -94,3 +100,21 @@ func (commitment *Commitment) DeCommit() (bool, []*big.Int) {
 	}
 
 }
+
+func checkCommitmentGammaGOnCurve(secrets []*big.Int) bool {
+    if len(secrets) == 0 || (len(secrets) % 2) != 0 {
+	return false
+    }
+
+    l := (len(secrets) / 2)
+    for i:=0;i<l;i++ {
+	x := secrets[2*i]
+	y := secrets[2*i+1]
+	if x == nil || y == nil || !secp256k1.S256().IsOnCurve(x,y) {
+	    return false
+	}
+    }
+
+    return true
+}
+

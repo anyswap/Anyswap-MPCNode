@@ -188,7 +188,9 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	recalc_times = int(trytimes)
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
-	
+
+	go HandleRpcSign()
+
 	//do this must after openning accounts db success,but get accloaded must before it
 	if !accloaded {
 	    go CopyAllAccountsFromDb()

@@ -44,17 +44,32 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 )
 
-func GetSignNonce(account string) (string, string, error) {
-	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
-	exsit,da := GetValueFromDb(key)
-	if !exsit {
-	    return "0", "", nil
-	}
+var (
+	SignChan = make(chan *RpcSignData, 10000)
+	mutex sync.Mutex
+)
 
-	nonce, _ := new(big.Int).SetString(string(da.([]byte)), 10)
-	one, _ := new(big.Int).SetString("1", 10)
-	nonce = new(big.Int).Add(nonce, one)
-	return fmt.Sprintf("%v", nonce), "", nil
+func GetSignNonce(account string) (string, string, error) {
+    mutex.Lock()
+    defer mutex.Unlock()
+    if account == "" {
+	return "","",fmt.Errorf("invalid account.")
+    }
+
+    key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
+    exsit,da := GetValueFromDb(key)
+    if !exsit {
+	fmt.Printf("================GetSignNonce,key was not found. account = %v===================\n",account)
+	nonce := "0"
+	PutValueToDb([]byte(key),[]byte(nonce))
+	return "0", "", nil
+    }
+
+    nonce, _ := new(big.Int).SetString(string(da.([]byte)), 10)
+    one, _ := new(big.Int).SetString("1", 10)
+    nonce = new(big.Int).Add(nonce, one)
+    PutValueToDb([]byte(key),[]byte(fmt.Sprintf("%v", nonce)))
+    return fmt.Sprintf("%v", nonce), "", nil
 }
 
 func SetSignNonce(account string,nonce string) (string, error) {
@@ -83,13 +98,13 @@ func DoSign(sbd *SignPickData,workid int,sender string,ch chan interface{}) erro
     if ok {
 	exsit,_ := GetSignInfoData([]byte(key))
 	if !exsit {
-	    cur_nonce, _, _ := GetSignNonce(from)
+	    //cur_nonce, _, _ := GetSignNonce(from)
 	    //cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 	    //new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
 	    //if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		//_, err := SetSignNonce(from,nonce)
-		_, err := SetSignNonce(from,cur_nonce) //bug
-		if err == nil {
+		//_, err := SetSignNonce(from,cur_nonce) //bug
+		//if err == nil {
 		    ars := GetAllReplyFromGroup(workid,sig.GroupId,Rpc_SIGN,sender)
 		    ac := &AcceptSignData{Initiator:sender,Account: from, GroupId: sig.GroupId, Nonce: nonce, PubKey: sig.PubKey, MsgHash: sig.MsgHash, MsgContext: sig.MsgContext, Keytype: sig.Keytype, LimitNum: sig.ThresHold, Mode: sig.Mode, TimeStamp: sig.TimeStamp, Deal: "false", Accept: "false", Status: "Pending", Rsv: "", Tip: "", Error: "", AllReply: ars, WorkId:workid}
 		    err = SaveAcceptSignData(ac)
@@ -131,7 +146,8 @@ func DoSign(sbd *SignPickData,workid int,sender string,ch chan interface{}) erro
 				timeout := make(chan bool, 1)
 				go func(wid int) {
 					cur_enode = discover.GetLocalID().String() //GetSelfEnode()
-					agreeWaitTime := time.Duration(AgreeWait) * time.Minute
+					//agreeWaitTime := time.Duration(AgreeWait) * time.Minute
+					agreeWaitTime := time.Duration(AgreeWait) * time.Second
 					agreeWaitTimeOut := time.NewTicker(agreeWaitTime)
 
 					wtmp2 := workers[wid]
@@ -396,9 +412,9 @@ func DoSign(sbd *SignPickData,workid int,sender string,ch chan interface{}) erro
 		    } else {
 			common.Debug("===============DoSign, get sign cmd raw data,but save fail==================","key ",key,"from ",from)
 		    }
-		} else {
-			common.Debug("===============DoSign, get sign cmd raw data,but set nonce fail==================","key ",key,"from ",from)
-		}
+		//} else {
+		//	common.Debug("===============DoSign, get sign cmd raw data,but set nonce fail==================","key ",key,"from ",from)
+		//}
 	    //}
 	} else {
 		common.Info("===============DoSign, get sign cmd raw data,but has handled before==================","key ",key,"from ",from)
@@ -480,13 +496,26 @@ func Sign(raw string) (string, string, error) {
 
     common.Debug("=====================Sign================","key",key,"from",from,"raw",raw)
 
-    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
-    go HandleRpcSign(rsd)
+    if sig.Keytype == "ED25519" {
+	SendMsgToDcrmGroup(raw, sig.GroupId)
+	SetUpMsgList(raw,cur_enode)
+    } else {
+	rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
+	SignChan <- rsd
+    }
 
     return key, "", nil
 }
 
-func HandleRpcSign(rsd *RpcSignData) {
+func HandleRpcSign() {
+    for {
+	rsd := <-SignChan
+	common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key)
+	HandleRpcSign2(rsd)
+    }
+}
+
+func HandleRpcSign2(rsd *RpcSignData) {
     if rsd == nil {
 	return
     }
@@ -500,7 +529,7 @@ func HandleRpcSign(rsd *RpcSignData) {
     if !ok {
 	return
     }
-    common.Debug("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key)
+    common.Debug("=========================HandleRpcSign,check pubkey success.======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key)
 
     pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
     bret := false
@@ -509,6 +538,7 @@ func HandleRpcSign(rsd *RpcSignData) {
     for _,vv := range rsd.MsgHash {
 	pick := PickPreSignData(rsd.PubKey,rsd.InputCode,rsd.GroupId)
 	if pick == nil {
+	    common.Info("========================HandleRpcSign,pick presign data fail.==================","txhash",vv,"key",rsd.Key)
 	    bret = true
 	    break
 	}
@@ -531,6 +561,7 @@ func HandleRpcSign(rsd *RpcSignData) {
 	return
     }
 
+    common.Debug("========================HandleRpcSign,pick presign data success.==================","key",rsd.Key)
     m := make(map[string]string)
     send,err := CompressSignBrocastData(rsd.Raw,pickhash)
     if err == nil {

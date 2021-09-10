@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -49,6 +50,7 @@ const (
 
 var (
 	keyfile  *string
+	n  *string
 	passwd   *string
 	url      *string
 	cmd      *string
@@ -95,7 +97,21 @@ func main() {
 		acceptReqAddr()
 	case "SIGN":
 		// test sign
-		sign()
+		loop,err := strconv.ParseUint(*n, 0, 64)
+		if err != nil {
+		    fmt.Printf("==========================test sign fail, --n param error, n = %v,err = %v=======================\n",*n,err)
+		    return
+		}
+
+		var wg sync.WaitGroup
+		for i:=0;i<int(loop);i++ {
+		    wg.Add(1)
+		    go func() {
+			defer wg.Done()
+			sign()
+		    }()
+		}
+		wg.Wait()
 	case "PRESIGNDATA":
 		// test pre sign data
 		preGenSignData()
@@ -125,6 +141,7 @@ func main() {
 
 func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
+	n = flag.String("n", "100", "sign loop count")
 	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
 	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR")
@@ -451,6 +468,7 @@ func signMsgHash(hashs []string, contexts []string,loopCount int) (rsv []string)
 	}
 	nonce, _ := strconv.ParseUint(nonceStr, 0, 64)
 	fmt.Printf("dcrm_getSignNonce = %s\nNonce = %d\n", signNonce, nonce)
+
 	// build tx data
 	timestamp := strconv.FormatInt((time.Now().UnixNano() / 1e6), 10)
 	txdata := signData{
@@ -481,6 +499,7 @@ func signMsgHash(hashs []string, contexts []string,loopCount int) (rsv []string)
 		panic(err)
 	}
 	fmt.Printf("\ndcrm_sign keyID = %s\n\n", keyID)
+
 	for i, j := loopCount, 1; i != 0; j++ {
 		fmt.Printf("\nWaiting for stats result (loop %v)...\n", j)
 		if i > 0 {

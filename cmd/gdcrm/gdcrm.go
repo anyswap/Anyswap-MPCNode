@@ -145,7 +145,7 @@ func init() {
 		cli.Uint64Flag{Name: "waitmsg", Value: 120, Usage: "the time to wait p2p msg", Destination: &waitmsg},
 		cli.Uint64Flag{Name: "trytimes", Value: 1, Usage: "the times to try key-gen/sign", Destination: &trytimes},
 		cli.Uint64Flag{Name: "presignnum", Value: 2000, Usage: "the total of pre-sign data", Destination: &presignnum},
-		cli.Uint64Flag{Name: "waitagree", Value: 2, Usage: "the time to wait for agree from all nodes", Destination: &waitagree},
+		cli.Uint64Flag{Name: "waitagree", Value: 240, Usage: "the time to wait for agree from all nodes", Destination: &waitagree},
 	}
 }
 

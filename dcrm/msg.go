@@ -537,6 +537,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return false
 	}
 
+	common.Debug("====================================RecvMsg.Run================================","get msg",res)
 	msgdata, errdec := DecryptMsg(res) //for SendMsgToPeer
 	if errdec == nil {
 		res = msgdata
@@ -619,11 +620,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    err = PutPreSignData(ps.Pub,ps.InputCode,ps.Gid,ps.Index,pre)
 		    if err != nil {
+			common.Debug("================================PreSign at RecvMsg.Run, put pre-sign data to local db fail=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"err",err)
 			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 			ch <- res
 			return false
 		    }
 
+		    common.Debug("================================PreSign at RecvMsg.Run, put pre-sign data to local db success=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index)
 		    res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 		    ch <- res
 		    return true
@@ -707,6 +710,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	    if msgmap["Type"] == "ComSignBrocastData" {
 		signbrocast,err := UnCompressSignBrocastData(msgmap["ComSignBrocastData"])
 		if err == nil {
+		    common.Debug("===================================RecvMsg.Run,get sign cmd data and uncompress sign brocast data success=========================","get msg",signbrocast.Raw)
 		    _,_,_,txdata,err := CheckRaw(signbrocast.Raw)
 		    if err == nil {
 			sig,ok := txdata.(*TxDataSign)
@@ -715,6 +719,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    for _,vv := range signbrocast.PickHash {
 				pre := GetPreSignData(sig.PubKey,sig.InputCode,sig.GroupId,vv.PickKey)
 				if pre == nil {
+				    common.Error("=====================================RecvMsg.Run,get pre-sign data fail======================","pubkey",sig.PubKey,"groupid",sig.GroupId,"pick key",vv.PickKey)
 				    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre-sign data fail", Err: fmt.Errorf("get pre-sign data fail.")}
 				    ch <- res
 				    return false
@@ -733,7 +738,11 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 			    return false
 			}
+		    } else {
+			common.Error("=================================RecvMsg.Run,get sign cmd raw data and check fail============================","signbrocast.Raw",signbrocast.Raw,"raw",res,"err",err)
 		    }
+		} else {
+			common.Error("=================================RecvMsg.Run,get sign cmd raw data and uncompress sign brocast data fail============================","signbrocast.Raw",signbrocast.Raw,"raw",res,"err",err)
 		}
 	    }
 
@@ -754,7 +763,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if errtmp == nil {
 	    return true
 	}
-	common.Debug("================RecvMsg.Run, Unsupported raw data type.=================","res",res,"err",errtmp)
+	common.Debug("================RecvMsg.Run, Unsupported raw data type.=================","raw",res,"err",errtmp)
 
 	return false 
 }

@@ -39,7 +39,7 @@ import (
 
 var (
 	C1Data  = common.NewSafeMap(10)
-	ch_t                     = 300 
+	ch_t                     = 120 
 	WaitMsgTimeGG20                     = 100
 	waitall                     = ch_t * recalc_times
 	waitallgg20                     = WaitMsgTimeGG20 * recalc_times
@@ -516,11 +516,52 @@ type RecvMsg struct {
 	sender string
 }
 
-type SendMsg struct {
-	MsgType string
-	Nonce   string
-	WorkId  int
-	Msg     string
+func SynchronizePreSignData(msgprex string,wid int,success bool) bool {
+    w := workers[wid]
+    if w == nil {
+	return false
+    }
+
+    msg := "success"
+    if !success {
+	msg = "fail"
+    }
+
+    //key-enode:SyncPreSign:success
+    mp := []string{msgprex, cur_enode}
+    enode := strings.Join(mp, "-")
+    s0 := "SyncPreSign"
+    ss := enode + common.Sep + s0 + common.Sep + msg 
+    SendMsgToDcrmGroup(ss,w.groupid)
+    DisMsg(ss)
+
+    common.Debug("========================SynchronizePreSignData,start get channel============================","msgprex",msgprex,"msg",msg,"ss",ss)
+    _, _, err := GetChannelValue(ch_t, w.bsyncpresign)
+    if err != nil {
+	common.Debug("========================SynchronizePreSignData,end get channel============================","msgprex",msgprex,"msg",msg,"ss",ss,"err",err)
+	return false
+    }
+    
+    iter := w.msg_syncpresign.Front()
+    for iter != nil {
+	val := iter.Value.(string)
+	if val == "" {
+	    return false
+	}
+
+	m := strings.Split(val,common.Sep)
+	if len(m) < 3 {
+	    return false
+	}
+
+	if strings.EqualFold(m[2],"fail") {
+	    return false
+	}
+
+	iter = iter.Next()
+    }
+
+    return true
 }
 
 func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
@@ -565,6 +606,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    gcnt, _ := GetGroup(w.groupid)
 		    w.NodeCnt = gcnt //TODO
 		    w.ThresHold = gcnt
+		    common.Debug("============================PreSign at RecvMsg.Run,get presign data==========================","pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"nonce",ps.Nonce)
 
 		    dcrmpks, _ := hex.DecodeString(ps.Pub)
 		    exsit,da := GetValueFromDb(string(dcrmpks[:]))
@@ -608,9 +650,15 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    var ch1 = make(chan interface{}, 1)
 		    pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
 		    if pre == nil {
+			if !SynchronizePreSignData(w.sid,w.id,false) {
 			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 			    ch <- res
 			    return false
+			}
+
+			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			ch <- res
+			return false
 		    }
 
 		    pre.Key = w.sid
@@ -620,7 +668,28 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    err = PutPreSignData(ps.Pub,ps.InputCode,ps.Gid,ps.Index,pre)
 		    if err != nil {
-			common.Debug("================================PreSign at RecvMsg.Run, put pre-sign data to local db fail=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"err",err)
+			if !SynchronizePreSignData(w.sid,w.id,false) {
+			    common.Info("================================PreSign at RecvMsg.Run, put pre-sign data to local db fail=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"err",err)
+			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			    ch <- res
+			    return false
+			}
+
+			common.Info("================================PreSign at RecvMsg.Run, put pre-sign data to local db fail=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"err",err)
+			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+			ch <- res
+			return false
+		    }
+
+		    if !SynchronizePreSignData(w.sid,w.id,true) {
+			err = DeletePreSignData(ps.Pub,ps.InputCode,ps.Gid,pre.Key)
+			if err == nil {
+			    common.Debug("================================PreSign at RecvMsg.Run, delete pre-sign data from local db success=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index)
+			} else {
+			    //.........
+			    common.Info("================================PreSign at RecvMsg.Run, delete pre-sign data from local db fail=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"err",err)
+			}
+			
 			res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 			ch <- res
 			return false
@@ -2158,7 +2227,7 @@ func DisMsg(msg string) {
 	if err != nil || w == nil {
 	    mmtmp := mm[0:2]
 	    ss := strings.Join(mmtmp, common.Sep)
-	    common.Debug("===============DisMsg,no find worker,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
+	    common.Debug("===============DisMsg,worker was not found,so save the msg (c1 or accept res) to C1Data map=============","ss",strings.ToLower(ss),"msg",msg,"key",prexs[0])
 	    C1Data.WriteMap(strings.ToLower(ss),msg)
 
 	    return
@@ -2166,6 +2235,21 @@ func DisMsg(msg string) {
 
 	msgCode := mm[1]
 	switch msgCode {
+	case "SyncPreSign":
+		if w.msg_syncpresign.Len() >= w.ThresHold {
+		    common.Debug("=============================DisMsg===============================","w.ThresHold",w.ThresHold,"w.msg_syncpresign.Len()",w.msg_syncpresign.Len(),"msgprex",prexs[0],"msg",msg)
+			return
+		}
+		if Find(w.msg_syncpresign,msg) {
+		    common.Debug("=============================DisMsg,found msg.===============================","w.ThresHold",w.ThresHold,"w.msg_syncpresign.Len()",w.msg_syncpresign.Len(),"msgprex",prexs[0],"msg",msg)
+			return
+		}
+
+		w.msg_syncpresign.PushBack(msg)
+		if w.msg_syncpresign.Len() == w.ThresHold {
+			common.Debug("=============================DisMsg,set channel.===============================","w.ThresHold",w.ThresHold,"w.msg_syncpresign.Len()",w.msg_syncpresign.Len(),"msgprex",prexs[0],"msg",msg)
+			w.bsyncpresign <- true
+		}
 	case "SendSignRes":
 		///bug
 		if w.msg_sendsignres.Len() >= w.ThresHold {

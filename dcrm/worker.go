@@ -69,6 +69,7 @@ type RPCReqWorker struct {
 	msg_acceptsignres      *list.List
 	msg_sendreshareres      *list.List
 	msg_sendsignres      *list.List
+	msg_syncpresign      *list.List
 	msg_c1      *list.List
 	msg_kc      *list.List
 	msg_mkg      *list.List
@@ -100,6 +101,7 @@ type RPCReqWorker struct {
 	bacceptsignres chan bool
 	bsendreshareres   chan bool
 	bsendsignres   chan bool
+	bsyncpresign   chan bool
 	bgaccs            chan bool
 	bc1               chan bool
 	bmkg              chan bool
@@ -267,6 +269,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		msg_acceptsignres:      list.New(),
 		msg_sendreshareres:        list.New(),
 		msg_sendsignres:        list.New(),
+		msg_syncpresign:        list.New(),
 
 		rsv:  list.New(),
 		pkx:  list.New(),
@@ -279,6 +282,7 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		bacceptsignres: make(chan bool, 1),
 		bsendreshareres:   make(chan bool, 1),
 		bsendsignres:   make(chan bool, 1),
+		bsyncpresign:   make(chan bool, 1),
 		bgaccs:            make(chan bool, 1),
 		bc1:               make(chan bool, 1),
 		bnoreciv:          make(chan bool, 1),
@@ -373,6 +377,11 @@ func (w *RPCReqWorker) Clear() {
 	for e := w.msg_sendsignres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_sendsignres.Remove(e)
+	}
+
+	for e := w.msg_syncpresign.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_syncpresign.Remove(e)
 	}
 
 	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
@@ -534,6 +543,9 @@ func (w *RPCReqWorker) Clear() {
 	}
 	if len(w.bsendsignres) == 1 {
 		<-w.bsendsignres
+	}
+	if len(w.bsyncpresign) == 1 {
+		<-w.bsyncpresign
 	}
 	if len(w.bacceptreqaddrres) == 1 {
 		<-w.bacceptreqaddrres
@@ -725,6 +737,11 @@ func (w *RPCReqWorker) Clear2() {
 		w.msg_sendsignres.Remove(e)
 	}
 
+	for e := w.msg_syncpresign.Front(); e != nil; e = next {
+		next = e.Next()
+		w.msg_syncpresign.Remove(e)
+	}
+
 	for e := w.msg_acceptreqaddrres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptreqaddrres.Remove(e)
@@ -884,6 +901,9 @@ func (w *RPCReqWorker) Clear2() {
 	}
 	if len(w.bsendsignres) == 1 {
 		<-w.bsendsignres
+	}
+	if len(w.bsyncpresign) == 1 {
+		<-w.bsyncpresign
 	}
 	if len(w.bacceptreqaddrres) == 1 {
 		<-w.bacceptreqaddrres

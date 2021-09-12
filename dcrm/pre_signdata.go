@@ -432,7 +432,6 @@ func BinarySearchVacancy(pubkey string,inputcode string,gid string,start int,end
 	    return -1
 	}
 	_,err = predb.Get([]byte(key))
-	//common.Debug("======================BinarySearchVacancy,get data from db by key==========================","pubkey",pubkey,"gid",gid,"index",start,"err",err)
 	if IsNotFoundErr(err) {
 	    return start
 	}
@@ -501,14 +500,12 @@ func PutPreSignData(pubkey string,inputcode string,gid string,index int,val *Pre
 	return fmt.Errorf("put pre-sign data fail,param error.") 
     }
 
-    common.Debug("======================PutPreSignData==========================","pubkey",pubkey,"gid",gid,"index",index,"datakey",val.Key)
     key,err := GetPreSignKey(pubkey,inputcode,gid,index)
     if err != nil {
 	return err
     }
 
     _,err = predb.Get([]byte(key))
-    //common.Debug("======================PutPreSignData,get data from db by key==========================","pubkey",pubkey,"gid",gid,"index",index,"err",err)
     if IsNotFoundErr(err) {
 	value,err := val.MarshalJSON()
 	if err != nil {
@@ -521,7 +518,7 @@ func PutPreSignData(pubkey string,inputcode string,gid string,index int,val *Pre
 	    common.Error("====================PutPreSignData,put pre-sign data to db fail ======================","pubkey",pubkey,"gid",gid,"index",index,"datakey",val.Key,"err",err)
 	}
 
-	common.Debug("====================PutPreSignData,put pre-sign data to db success ======================","pubkey",pubkey,"gid",gid,"index",index,"datakey",val.Key)
+	//common.Debug("====================PutPreSignData,put pre-sign data to db success ======================","pubkey",pubkey,"gid",gid,"index",index,"datakey",val.Key)
  	return err
     }
     
@@ -538,7 +535,7 @@ func PutPreSignData(pubkey string,inputcode string,gid string,index int,val *Pre
 	    return nil //force update fail,but still return nil
 	}
 
-	common.Debug("====================PutPreSignData,force update,put pre-sign data to db success ======================","pubkey",pubkey,"gid",gid,"index",index,"datakey",val.Key)
+	//common.Debug("====================PutPreSignData,force update,put pre-sign data to db success ======================","pubkey",pubkey,"gid",gid,"index",index,"datakey",val.Key)
 	return nil
     }
 
@@ -564,7 +561,6 @@ func BinarySearchPreSignData(pubkey string,inputcode string,gid string,datakey s
 	    return -1,nil
 	}
 	da,err := predb.Get([]byte(key))
-	//common.Debug("======================BinarySearchPreSignData,get data from db by key==========================","pubkey",pubkey,"gid",gid,"index",start,"datakey",datakey,"err",err)
 	if da != nil && err == nil {
 	    psd := &PreSignData{}
 	    if err = psd.UnmarshalJSON(da);err == nil {
@@ -616,7 +612,6 @@ func DeletePreSignData(pubkey string,inputcode string,gid string,datakey string)
 	common.Error("======================DeletePreSignData,delete pre-sign data from db fail.==========================","pubkey",pubkey,"gid",gid,"index",index,"datakey",datakey,"err",err)
     }
 
-    common.Debug("======================DeletePreSignData,delete pre-sign data from db success.==========================","pubkey",pubkey,"gid",gid,"index",index,"datakey",datakey)
     return err
 }
 
@@ -639,7 +634,6 @@ func BinarySearchPick(pubkey string,inputcode string,gid string,start int,end in
 	    return -1,nil
 	}
 	da, err := predb.Get([]byte(key))
-	//common.Debug("======================BinarySearchPick,get data from db by key==========================","pubkey",pubkey,"gid",gid,"index",start,"err",err)
 	if da != nil && err == nil {
 	    psd := &PreSignData{}
 	    if err = psd.UnmarshalJSON(da);err == nil {
@@ -735,7 +729,6 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 			    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
 			    nonce := Keccak256Hash([]byte(strings.ToLower(pub + tt + strconv.Itoa(index)))).Hex()
 			    ps := &PreSign{Pub:pre.PubKey,Gid:gg,Nonce:nonce,Index:index}
-			    //common.Debug("===================ExcutePreSignData,pre-generation of sign data===============","pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
 
 			    m := make(map[string]string)
 			    psjson,err := ps.MarshalJSON()
@@ -913,7 +906,6 @@ func NeedPreSignForBip32(pubkey string,inputcode string,gid string) (int,bool) {
 	case ret := <-idx:
 	    return ret,true
 	case <-getIndexTimeOut.C:
-	    //common.Debug("=====================NeedPreSignForBip32,get index timeout.==========================","pubkey",pubkey,"inputcode",inputcode,"gid",gid)
 	    return -1,false
     }
 

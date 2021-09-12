@@ -180,7 +180,6 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
  	}
 
 
-	common.Debug("=====================AcceptReqAddr,write map success====================","status",ac2.Status,"key",key)
 	return "", nil
 }
 
@@ -345,7 +344,6 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	    }
  	}
 
-	common.Debug("=====================AcceptSign,finish.========================","key",key)
 	return "", nil
 }
 

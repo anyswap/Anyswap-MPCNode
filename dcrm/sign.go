@@ -421,7 +421,7 @@ func DoSign(sbd *SignPickData,workid int,sender string,ch chan interface{}) erro
 	}
     }
 
-    common.Debug("===============DoSign, Unsupported raw data type so return fail ==================","key ",key,"from ",from,"nonce ",nonce)
+    //common.Debug("===============DoSign, Unsupported raw data type so return fail ==================","key ",key,"from ",from,"nonce ",nonce)
     res := RpcDcrmRes{Ret: "", Tip: "Unsupported raw data type.", Err: fmt.Errorf("Unsupported raw data type")}
     ch <- res
     return fmt.Errorf("Unsupported raw data type")
@@ -529,7 +529,6 @@ func HandleRpcSign2(rsd *RpcSignData) {
     if !ok {
 	return
     }
-    common.Debug("=========================HandleRpcSign,check pubkey success.======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key)
 
     pub := Keccak256Hash([]byte(strings.ToLower(rsd.PubKey + ":" + rsd.GroupId))).Hex()
     bret := false
@@ -675,7 +674,6 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		    return
 		}
 
-		common.Debug("================GetCurNodeSignInfo======================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -690,7 +688,6 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ch <-los
-		common.Debug("================GetCurNodeSignInfo success return=======================","key",key)
 	    }(string(key2),val,data)
 	}
 	iter.Release()
@@ -813,7 +810,6 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 		SendMsgToDcrmGroup(ss, w.groupid)
 		///////////////
 
-		common.Debug("================sign,success sign and call AcceptSign==============","key",wsid)
 		tip,reply := AcceptSign("",account,pubkey,unsignhash,keytype,w.groupid,nonce,w.limitnum,mode,"true", "true", "Success", result,"","",nil,w.id)
 		if reply != nil {
 			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update sign status error.")}
@@ -1027,7 +1023,6 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 
 	ret += "NULL"
 	tmps := strings.Split(ret, ":")
-	common.Debug("======================sign_ec=====================","return result",ret,"len(tmps)",len(tmps),"len(tmp)",len(tmp),"key",msgprex)
 	if len(tmps) == (len(tmp) + 1) {
 	    res := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
 	    ch <- res
@@ -1117,9 +1112,7 @@ func DECDSASignRoundOne(msgprex string, w *RPCReqWorker, idSign sortableIDSSlice
 
 	// 1. Receive Broadcast
 	//	commitU1GammaG.C, commitU2GammaG.C, commitU3GammaG.C
-	common.Debug("===================send C11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bc11)
-	common.Debug("===================finish get C11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC11Timeout)}
 		ch <- res
@@ -1243,9 +1236,7 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RPCRe
 
 	// 2.4 Receive Broadcast c_k, zk(k)
 	// u1KCipher, u2KCipher, u3KCipher
-	common.Debug("===================send KC finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bkc)
-	common.Debug("===================finish get KC, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetKCTimeout)}
 		ch <- res
@@ -1962,9 +1953,7 @@ func DECDSASignRoundFive(msgprex string, cointype string, delta1 *big.Int, idSig
 
 	// 1. Receive Broadcast
 	// delta: delta1, delta2, delta3
-	common.Debug("===================send DELTA1 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bdelta1)
-	common.Debug("===================finish get DELTA1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all delta timeout.")}
 		ch <- res
@@ -2113,9 +2102,7 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 
 	// 1. Receive Broadcast
 	// commitU1GammaG.D, commitU2GammaG.D, commitU3GammaG.D
-	common.Debug("===================send D11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bd11_1)
-	common.Debug("===================finish get D11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all d11 fail.")}
 		ch <- res
@@ -2393,9 +2380,7 @@ func DECDSASignRoundSeven(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
-	common.Debug("===================send CommitBigVAB finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigvab)
-	common.Debug("===================finish get CommitBigVAB, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigVAB timeout.")}
 		ch <- res
@@ -2474,9 +2459,7 @@ func DECDSASignRoundEight(msgprex string, r *big.Int, deltaGammaGy *big.Int, us1
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
-	common.Debug("===================send ZKABPROOF finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkabproof)
-	common.Debug("===================finish get ZKABPROOF, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all ZKABPROOF timeout.")}
 		ch <- res
@@ -2716,9 +2699,7 @@ func DECDSASignRoundNine(msgprex string, cointype string, w *RPCReqWorker, idSig
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
-	common.Debug("===================send CommitBigUT finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigut)
-	common.Debug("===================finish get CommitBigUT, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigUT timeout.")}
 		ch <- res
@@ -2778,9 +2759,7 @@ func DECDSASignRoundTen(msgprex string, commitBigUT1 *ec2.Commitment, w *RPCReqW
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
-	common.Debug("===================send CommitBigUTD11 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(ch_t, w.bcommitbigutd11)
-	common.Debug("===================finish get CommitBigUTD11, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	if cherr != nil {
 		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all CommitBigUTD11 fail.")}
 		ch <- res
@@ -3219,91 +3198,75 @@ func PreSign_ec3(msgprex string, save string, sku1 *big.Int, cointype string, ch
 	if u1K == nil || u1Gamma == nil || commitU1GammaG == nil {
 		return nil 
 	}
-	common.Debug("===================,PreSign_ec3,round one finish=================","key",msgprex)
 
 	ukc, ukc2, ukc3 := DECDSASignPaillierEncrypt(cointype, save, w, idSign, u1K, ch)
 	if ukc == nil || ukc2 == nil || ukc3 == nil {
 		return nil
 	}
-	common.Debug("===================PreSign_ec3,paillier encrypt finish=================","key",msgprex)
 
 	zk1proof, zkfactproof := DECDSASignRoundTwo(msgprex, cointype, save, w, idSign, ch, u1K, ukc2, ukc3)
 	if zk1proof == nil || zkfactproof == nil {
 		return nil
 	}
-	common.Debug("===================PreSign_ec3,round two finish================","key",msgprex)
 
 	if !DECDSASignRoundThree(msgprex, cointype, save, w, idSign, ch, ukc) {
 		return nil
 	}
-	common.Debug("===================PreSign_ec3,round three finish================","key",msgprex)
 
 	if !DECDSASignVerifyZKNtilde(msgprex, cointype, save, w, idSign, ch, ukc, ukc3, zk1proof, zkfactproof) {
 		return nil
 	}
-	common.Debug("===================PreSign_ec3,verify zk ntilde finish==================","key",msgprex)
 
 	betaU1Star, betaU1, vU1Star, vU1 := signing.GetRandomBetaV(PaillierKeyLength, w.ThresHold)
-	common.Debug("===================PreSign_ec3,get random betaU1Star/vU1Star finish================","key",msgprex)
 
 	mkg, mkg_mtazk2, mkw, mkw_mtazk2, status := DECDSASignRoundFour(msgprex, cointype, save, w, idSign, ukc, ukc3, zkfactproof, u1Gamma, w1, betaU1Star, vU1Star,ch)
 	if !status {
 		return nil
 	}
-	common.Debug("===================PreSign_ec3,round four finish================","key",msgprex)
 
 	if !DECDSASignVerifyZKGammaW(msgprex,cointype, save, w, idSign, ukc, ukc3, zkfactproof, mkg, mkg_mtazk2, mkw, mkw_mtazk2, ch) {
 		return nil
 	} 
-	common.Debug("===================PreSign_ec3,verify zk gamma/w finish===================","key",msgprex)
 
 	u1PaillierSk := GetSelfPrivKey(cointype, idSign, w, save, ch)
 	if u1PaillierSk == nil {
 		return nil
 	}
-	common.Debug("===================PreSign_ec3,get self privkey finish====================","key",msgprex)
 
 	alpha1 := DecryptCkGamma(cointype, idSign, w, u1PaillierSk, mkg, ch)
 	if alpha1 == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3,decrypt paillier(k)XGamma finish=================","key",msgprex)
 
 	uu1 := DecryptCkW(cointype, idSign, w, u1PaillierSk, mkw, ch)
 	if uu1 == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3, decrypt paillier(k)Xw1 finish=================","key",msgprex)
 
 	delta1 := CalcDelta(alpha1, betaU1, ch, w.ThresHold)
 	if delta1 == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3, calc delta finish=================","key",msgprex)
 
 	sigma1 := CalcSigma(uu1, vU1, ch, w.ThresHold)
 	if sigma1 == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3, calc sigma finish=================","key",msgprex)
 
 	deltaSum := DECDSASignRoundFive(msgprex, cointype, delta1, idSign, w, ch)
 	if deltaSum == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3, round five finish=================","key",msgprex)
 
 	u1GammaZKProof := DECDSASignRoundSix(msgprex, u1Gamma, commitU1GammaG, w, ch)
 	if u1GammaZKProof == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3, round six finish=================","key",msgprex)
 
 	ug := DECDSASignVerifyCommitment(cointype, w, idSign, commitU1GammaG, u1GammaZKProof, ch)
 	if ug == nil {
 		return nil
 	}
-	common.Debug("=====================PreSign_ec3, verify commitment finish=================","key",msgprex)
 
 	r, deltaGammaGy := Calc_r(cointype, w, idSign, ug, deltaSum, ch)
 	if r == nil || deltaGammaGy == nil {
@@ -3388,13 +3351,11 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	if ss1s == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec3,round eleven finish=================","key",msgprex)
 
 	s := Calc_s(msgprex,cointype, w, idSign, ss1s, ch)
 	if s == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec3,calc s finish=================","key",msgprex)
 
 	// 3. justify the s
 	bb := false
@@ -3410,7 +3371,6 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 		ch <- res
 		return ""
 	}
-	common.Debug("=====================Sign_ec3,justify s finish=================","key",msgprex)
 
 	// **[End-Test]  verify signature with MtA
 	signature := new(ECDSASignature)
@@ -3471,7 +3431,6 @@ func Sign_ec3(msgprex string, message string, cointype string, pkx *big.Int, pky
 	res := RpcDcrmRes{Ret: signature2, Err: nil}
 	ch <- res
 
-	common.Debug("=================Sign_ec3, rsv pass==============","key",msgprex)
 	//*******************!!!Distributed ECDSA Sign End!!!**********************************
 
 	return ""

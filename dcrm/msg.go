@@ -184,7 +184,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	}
 
 	raw := s 
-	keytmp,from,_,txdata,err := CheckRaw(raw)
+	_,from,_,txdata,err := CheckRaw(raw)
 	if err != nil {
 	    continue
 	}
@@ -209,7 +209,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	sig,ok := txdata.(*TxDataSign)
 	if ok {
-	    common.Debug("=================GetRawReply,item is sign cmd data=================","key",keytmp,"from",from,"sig",sig)
+	    //common.Debug("=================GetRawReply,item is sign cmd data=================","key",keytmp,"from",from,"sig",sig)
 	    reply := &RawReply{From:from,Accept:"true",TimeStamp:sig.TimeStamp}
 	    tmp,ok := ret[from]
 	    if !ok {
@@ -265,7 +265,7 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Debug("=================GetRawReply,item is sign accept data================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
+	    //common.Debug("=================GetRawReply,item is sign accept data================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -402,7 +402,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	for j:=0;j<count;j++ {
 	    found := false
 	    for _,v := range ret {
-		    common.Debug("===================== CheckReply,reqaddr================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret.v",v,"v.From",v.From,"mms[2j+2]",mms[2*j+2])
+		    //common.Debug("===================== CheckReply,reqaddr================","ac.Sigs",ac.Sigs,"count",count,"k",k,"key",key,"ret.v",v,"v.From",v.From,"mms[2j+2]",mms[2*j+2])
 		if strings.EqualFold(v.From,mms[2*j+2]) { //allow user login diffrent node
 		    found = true
 		    break
@@ -442,7 +442,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    foundeid = true
 		    found := false
 		    for _,vv := range ret {
-			    common.Debug("===================== CheckReply, mms[kk+1] must in ret map===============","key",key,"ret[...]",vv.From,"mms[kk+1]",mms[kk+1],"ac.Sigs",ac.Sigs)
+			    //common.Debug("===================== CheckReply, mms[kk+1] must in ret map===============","key",key,"ret[...]",vv.From,"mms[kk+1]",mms[kk+1],"ac.Sigs",ac.Sigs)
 			if strings.EqualFold(vv.From,mms[kk+1]) { //allow user login diffrent node
 			    found = true
 			    break
@@ -450,7 +450,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 		    }
 
 		    if !found {
-			common.Debug("===================== CheckReply,mms[kk+1] no find in ret map and return fail==================","key",key,"mms[kk+1]",mms[kk+1])
+			//common.Debug("===================== CheckReply,mms[kk+1] no find in ret map and return fail==================","key",key,"mms[kk+1]",mms[kk+1])
 			return false
 		    }
 
@@ -459,7 +459,7 @@ func CheckReply(l *list.List,rt RpcType,key string) bool {
 	    }
 
 	    if !foundeid {
-		common.Debug("===================== CheckReply,find eid fail================","key",key)
+		//common.Debug("===================== CheckReply,find eid fail================","key",key)
 		return false
 	    }
 	}
@@ -631,7 +631,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    dcrmpks, _ := hex.DecodeString(ps.Pub)
 		    exsit,da := GetValueFromDb(string(dcrmpks[:]))
 		    if !exsit {
-			common.Debug("============================PreSign at RecvMsg.Run,not exist presign data===========================","pubkey",ps.Pub)
+			//common.Debug("============================PreSign at RecvMsg.Run,not exist presign data===========================","pubkey",ps.Pub)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
 			ch <- res
 			return false
@@ -639,7 +639,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    pd,ok := da.(*PubKeyData)
 		    if !ok {
-			common.Debug("============================PreSign at RecvMsg.Run,presign data error==========================","pubkey",ps.Pub)
+			//common.Debug("============================PreSign at RecvMsg.Run,presign data error==========================","pubkey",ps.Pub)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
 			ch <- res
 			return false
@@ -759,7 +759,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    var ch1 = make(chan interface{}, 1)
 		    for i:=0;i < recalc_times;i++ {
-			common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
+			//common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
 			if len(ch1) != 0 {
 			    <-ch1
 			}
@@ -852,7 +852,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 	if errtmp == nil {
 	    return true
 	}
-	common.Debug("================RecvMsg.Run, Unsupported raw data type.=================","raw",res,"err",errtmp)
+	//common.Debug("================RecvMsg.Run, Unsupported raw data type.=================","raw",res,"err",errtmp)
 
 	return false 
 }
@@ -907,7 +907,6 @@ func HandleC1Data(ac *AcceptReqAddrData,key string,workid int) {
 	for _, node := range nodes {
 	    node2 := ParseNode(node)
 		c1data := key + "-" + node2 + common.Sep + "SS1"
-		//common.Debug("===============HandleC1Data====================","c1data",c1data)
 		c1, exist := C1Data.ReadMap(strings.ToLower(c1data))
 		if exist {
 		common.Info("===============HandleC1Data,exsit c1data in C1Data map for ss1====================","c1data",c1data)
@@ -1222,7 +1221,7 @@ func DisAcceptMsg(raw string,workid int) {
     }
 
     key,from,_,txdata,err := CheckRaw(raw)
-    common.Debug("=====================DisAcceptMsg=================","key",key,"err",err)
+    //common.Debug("=====================DisAcceptMsg=================","key",key,"err",err)
     if err != nil {
 	return
     }
@@ -1260,7 +1259,7 @@ func DisAcceptMsg(raw string,workid int) {
     
     sig2,ok := txdata.(*TxDataSign)
     if ok {
-	    common.Debug("======================DisAcceptMsg, get the msg and it is sign tx===========================","key",key,"from",from,"raw",raw)
+	    //common.Debug("======================DisAcceptMsg, get the msg and it is sign tx===========================","key",key,"from",from,"raw",raw)
 	if Find(w.msg_acceptsignres, raw) {
 	    common.Info("======================DisAcceptMsg,the msg is sign tx,and already in list.===========================","key",key,"from",from)
 	    return
@@ -1368,7 +1367,7 @@ func DisAcceptMsg(raw string,workid int) {
 	    return
 	}
 
-	common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and put it into list.===========================","sig key",acceptsig.Key,"from",from,"accept sig",acceptsig)
+	//common.Debug("======================DisAcceptMsg,the msg is accept sign tx,and put it into list.===========================","sig key",acceptsig.Key,"from",from,"accept sig",acceptsig)
 	w.msg_acceptsignres.PushBack(raw)
 	if w.msg_acceptsignres.Len() >= w.ThresHold {
 	    if !CheckReply(w.msg_acceptsignres,Rpc_SIGN,acceptsig.Key) {
@@ -1447,13 +1446,13 @@ func DoReq(raw string,workid int,sender string,ch chan interface{}) error {
 	    cur_nonce, _, _ := GetReqAddrNonce(from)
 	    cur_nonce_num, _ := new(big.Int).SetString(cur_nonce, 10)
 	    new_nonce_num, _ := new(big.Int).SetString(nonce, 10)
-	    common.Debug("===============DoReq============","reqaddr cur_nonce_num ",cur_nonce_num,"reqaddr new_nonce_num ",new_nonce_num,"key ",key)
+	    //common.Debug("===============DoReq============","reqaddr cur_nonce_num ",cur_nonce_num,"reqaddr new_nonce_num ",new_nonce_num,"key ",key)
 	    if new_nonce_num.Cmp(cur_nonce_num) >= 0 {
 		_, err := SetReqAddrNonce(from,nonce)
 		if err == nil {
 		    ars := GetAllReplyFromGroup(workid,req.GroupId,Rpc_REQADDR,sender)
 		    sigs,err := GetGroupSigsDataByRaw(raw) 
-		    common.Debug("=================DoReq================","get group sigs ",sigs,"err ",err,"key ",key)
+		    //common.Debug("=================DoReq================","get group sigs ",sigs,"err ",err,"key ",key)
 		    if err != nil {
 			res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 			ch <- res
@@ -1578,7 +1577,7 @@ func DoReq(raw string,workid int,sender string,ch chan interface{}) error {
 
 				<-timeout
 
-				common.Debug("================== DoReq======================","the terminal accept req addr result ",reply,"key ",key)
+				//common.Debug("================== DoReq======================","the terminal accept req addr result ",reply,"key ",key)
 
 				ars := GetAllReplyFromGroup(w.id,req.GroupId,Rpc_REQADDR,sender)
 				if !reply {
@@ -2009,7 +2008,7 @@ func DoReq(raw string,workid int,sender string,ch chan interface{}) error {
 	    return fmt.Errorf("sign has handled before")
 	}
 
-	common.Debug("=======================DoReq,set sign status by sign accept data=============================","status",status,"key",acceptsig.Key)
+	//common.Debug("=======================DoReq,set sign status by sign accept data=============================","status",status,"key",acceptsig.Key)
 	tip, err := AcceptSign(ac.Initiator,ac.Account, ac.PubKey, ac.MsgHash, ac.Keytype, ac.GroupId, ac.Nonce,ac.LimitNum,ac.Mode,"false", accept, status, "", "", "", ars, ac.WorkId)
 	if err != nil {
 	    res := RpcDcrmRes{Ret:"Failure", Tip: tip, Err: err}
@@ -2073,7 +2072,7 @@ func DoReq(raw string,workid int,sender string,ch chan interface{}) error {
 	return nil
     }
 	
-    common.Debug("===============DoReq, Unsupported raw data type and return fail ==================","key ",key,"from ",from,"nonce ",nonce)
+    //common.Debug("===============DoReq, Unsupported raw data type and return fail ==================","key ",key,"from ",from,"nonce ",nonce)
     res := RpcDcrmRes{Ret: "", Tip: "Unsupported raw data type.", Err: fmt.Errorf("Unsupported raw data type")}
     ch <- res
     return fmt.Errorf("Unsupported raw data type")
@@ -2309,7 +2308,6 @@ func DisMsg(msg string) {
 		}
 
 		w.msg_c1.PushBack(msg)
-		common.Debug("======================DisMsg, after pushback================","w.msg_c1 len",w.msg_c1.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 		if w.msg_c1.Len() == w.NodeCnt {
 			common.Debug("======================DisMsg, Get All C1==================","w.msg_c1 len",w.msg_c1.Len(),"w.NodeCnt",w.NodeCnt,"key",prexs[0])
 			w.bc1 <- true
@@ -2397,7 +2395,6 @@ func DisMsg(msg string) {
 			return
 		}
 
-		common.Debug("=====================Get C11====================","msg",msg,"key",prexs[0])
 		w.msg_c11.PushBack(msg)
 		if w.msg_c11.Len() == w.ThresHold {
 			common.Debug("=====================Get All C11====================","key",prexs[0])

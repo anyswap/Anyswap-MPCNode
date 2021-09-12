@@ -67,7 +67,6 @@ func makeDatabaseHandles() int {
 func GetSkU1FromLocalDb(key string) []byte {
 	lock.Lock()
 	if dbsk == nil {
-	    common.Debug("=====================GetSkU1FromLocalDb, dbsk is nil =====================")
 	    dir := GetSkU1Dir()
 	    ////////
 	    dbsktmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
@@ -261,7 +260,6 @@ func GetValueFromDb(key string) (bool,interface{}) {
 
     pubs3, err := Decode2(ss, "PubKeyData")
     if err == nil {
-	common.Debug("========================GetValueFromDb, get PubKeyData success=======================","key",key)
 	pd,ok := pubs3.(*PubKeyData)
 	if ok && pd != nil && pd.Key != "" && pd.Save != "" {
 	    return true,pd
@@ -270,7 +268,6 @@ func GetValueFromDb(key string) (bool,interface{}) {
     
     pubs4, err := Decode2(ss, "AcceptSignData")
     if err == nil {
-	common.Debug("========================GetValueFromDb, get AcceptSignData success=======================","key",key)
 	pd,ok := pubs4.(*AcceptSignData)
 	if ok && pd != nil && pd.Keytype != "" {
 	    return true,pd
@@ -279,7 +276,6 @@ func GetValueFromDb(key string) (bool,interface{}) {
     
     pubs5, err := Decode2(ss, "AcceptReShareData")
     if err == nil {
-	common.Debug("========================GetValueFromDb, get AcceptReShareData success=======================","key",key)
 	pd,ok := pubs5.(*AcceptReShareData)
 	if ok && pd != nil && pd.TSGroupId != "" {
 	    return true,pd
@@ -288,14 +284,12 @@ func GetValueFromDb(key string) (bool,interface{}) {
     
     pubs, err := Decode2(ss, "AcceptReqAddrData")
     if err == nil {
-	common.Debug("========================GetValueFromDb, get AcceptReqAddrData success=======================","key",key)
 	pd,ok := pubs.(*AcceptReqAddrData)
 	if ok && pd != nil && pd.Account != "" {
 	    return true,pd
 	}
     }
     
-    common.Debug("========================GetValueFromDb, get []byte success=======================","key",key)
     return true,da
 }
 

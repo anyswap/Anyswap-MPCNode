@@ -1169,7 +1169,6 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 	    iter := w.msg_acceptreqaddrres.Front()
 	    if iter != nil {
 		mdss := iter.Value.(string)
-		common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_REQADDR ================")
 		key,_,_,_,_ := CheckRaw(mdss)
 		exsit,da := GetReqAddrInfoData([]byte(key))
 		if !exsit || da == nil {

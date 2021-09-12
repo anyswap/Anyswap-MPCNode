@@ -535,33 +535,53 @@ func SynchronizePreSignData(msgprex string,wid int,success bool) bool {
     SendMsgToDcrmGroup(ss,w.groupid)
     DisMsg(ss)
 
-    common.Debug("========================SynchronizePreSignData,start get channel============================","msgprex",msgprex,"msg",msg,"ss",ss)
-    _, _, err := GetChannelValue(ch_t, w.bsyncpresign)
-    if err != nil {
-	common.Debug("========================SynchronizePreSignData,end get channel============================","msgprex",msgprex,"msg",msg,"ss",ss,"err",err)
-	return false
-    }
-    
-    iter := w.msg_syncpresign.Front()
-    for iter != nil {
-	val := iter.Value.(string)
-	if val == "" {
-	    return false
+    reply := false
+    timeout := make(chan bool, 1)
+    go func() {
+	syncWaitTime := 20 * time.Second
+	syncWaitTimeOut := time.NewTicker(syncWaitTime)
+	
+	for {
+	    select {
+	    case <-w.bsyncpresign:
+		iter := w.msg_syncpresign.Front()
+		for iter != nil {
+		    val := iter.Value.(string)
+		    if val == "" {
+			reply = false
+			timeout <-false
+			return
+		    }
+
+		    m := strings.Split(val,common.Sep)
+		    if len(m) < 3 {
+			reply = false
+			timeout <-false
+			return
+		    }
+
+		    if strings.EqualFold(m[2],"fail") {
+			reply = false
+			timeout <-false
+			return
+		    }
+
+		    iter = iter.Next()
+		}
+
+		reply = true 
+		timeout <-false
+		return
+	    case <-syncWaitTimeOut.C:
+		reply = false
+		timeout <-true
+		return
+	    }
 	}
+    }()
 
-	m := strings.Split(val,common.Sep)
-	if len(m) < 3 {
-	    return false
-	}
-
-	if strings.EqualFold(m[2],"fail") {
-	    return false
-	}
-
-	iter = iter.Next()
-    }
-
-    return true
+    <-timeout
+    return reply
 }
 
 func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
@@ -666,7 +686,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    pre.Used = false
 		    pre.Index = ps.Index
 
-		    err = PutPreSignData(ps.Pub,ps.InputCode,ps.Gid,ps.Index,pre)
+		    err = PutPreSignData(ps.Pub,ps.InputCode,ps.Gid,ps.Index,pre,true)
 		    if err != nil {
 			if !SynchronizePreSignData(w.sid,w.id,false) {
 			    common.Info("================================PreSign at RecvMsg.Run, put pre-sign data to local db fail=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"err",err)

@@ -200,6 +200,8 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	CleanUpAllSignInfo()
 	CleanUpAllReshareInfo()
 
+	AutoPreGenSignData()
+
 	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
 }
 

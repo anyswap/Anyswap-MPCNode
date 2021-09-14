@@ -32,6 +32,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/cryptoCoins/coins"
+	"sort"
 )
 
 func GetReShareNonce(account string) (string, string, error) {
@@ -169,6 +170,24 @@ type ReShareCurNodeInfo struct {
 	TimeStamp string
 }
 
+type ReShareCurNodeInfoSort struct {
+	Info []*ReShareCurNodeInfo
+}
+
+func (r *ReShareCurNodeInfoSort) Len() int {
+	return len(r.Info)
+}
+
+func (r *ReShareCurNodeInfoSort) Less(i, j int) bool {
+	itime,_ := new(big.Int).SetString(r.Info[i].TimeStamp,10)
+	jtime,_ := new(big.Int).SetString(r.Info[j].TimeStamp,10)
+	return itime.Cmp(jtime) >= 0
+}
+
+func (r *ReShareCurNodeInfoSort) Swap(i, j int) {
+    r.Info[i],r.Info[j] = r.Info[j],r.Info[i]
+}
+
 func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
     var ret []*ReShareCurNodeInfo
     var wg sync.WaitGroup
@@ -199,7 +218,11 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
     }
     LdbPubKeyData.RUnlock()
     wg.Wait()
-    return ret, "", nil
+    
+    reshareinfosort := ReShareCurNodeInfoSort{Info:ret}
+    sort.Sort(&reshareinfosort)
+
+    return reshareinfosort.Info, "", nil
 }
 
 type TxDataReShare struct {

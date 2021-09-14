@@ -36,6 +36,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"sort"
 )
 
 var (
@@ -220,6 +221,24 @@ type ReqAddrReply struct {
 	TimeStamp string
 }
 
+type ReqAddrCurNodeInfoSort struct {
+	Info []*ReqAddrReply
+}
+
+func (r *ReqAddrCurNodeInfoSort) Len() int {
+	return len(r.Info)
+}
+
+func (r *ReqAddrCurNodeInfoSort) Less(i, j int) bool {
+	itime,_ := new(big.Int).SetString(r.Info[i].TimeStamp,10)
+	jtime,_ := new(big.Int).SetString(r.Info[j].TimeStamp,10)
+	return itime.Cmp(jtime) >= 0
+}
+
+func (r *ReqAddrCurNodeInfoSort) Swap(i, j int) {
+    r.Info[i],r.Info[j] = r.Info[j],r.Info[i]
+}
+
 func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	var ret []*ReqAddrReply
 	var wg sync.WaitGroup
@@ -258,7 +277,11 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 	}
 	LdbPubKeyData.RUnlock()
 	wg.Wait()
-	return ret, "", nil
+	
+	reqaddrinfosort := ReqAddrCurNodeInfoSort{Info:ret}
+	sort.Sort(&reqaddrinfosort)
+
+	return reqaddrinfosort.Info, "", nil
 }
 
 //ec2

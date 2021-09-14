@@ -652,6 +652,24 @@ type SignCurNodeInfo struct {
 	TimeStamp string
 }
 
+type SignCurNodeInfoSort struct {
+	Info []*SignCurNodeInfo
+}
+
+func (s *SignCurNodeInfoSort) Len() int {
+	return len(s.Info)
+}
+
+func (s *SignCurNodeInfoSort) Less(i, j int) bool {
+	itime,_ := new(big.Int).SetString(s.Info[i].TimeStamp,10)
+	jtime,_ := new(big.Int).SetString(s.Info[j].TimeStamp,10)
+	return itime.Cmp(jtime) >= 0
+}
+
+func (s *SignCurNodeInfoSort) Swap(i, j int) {
+    s.Info[i],s.Info[j] = s.Info[j],s.Info[i]
+}
+
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	var ret []*SignCurNodeInfo
 	data := make(chan *SignCurNodeInfo,1000)
@@ -699,7 +717,10 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	    ret = append(ret,info)
 	}
 
-	return ret, "", nil
+	signinfosort := SignCurNodeInfoSort{Info:ret}
+	sort.Sort(&signinfosort)
+
+	return signinfosort.Info, "", nil
 }
 
 func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickdata []*PickHashData,ch chan interface{}) {

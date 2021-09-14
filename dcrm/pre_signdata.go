@@ -719,7 +719,7 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 		return
 	    }
 
-	    common.Info("===================ExcutePreSignData, before starting pre-generation of sign data ===============","current total number of the data ",GetTotalCount(pre.PubKey,"",gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,"",gg)),"pubkey",pre.PubKey,"sub-groupid",gg)
+	    common.Info("================================ExcutePreSignData,before pre-generation of sign data ==================================","current total number of the data ",GetTotalCount(pre.PubKey,"",gg),"pubkey",pre.PubKey,"sub-groupid",gg)
 	    for {
 		    b := GetPreSigal(pub)
 		    if b {
@@ -768,11 +768,11 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 			    <-timeout
 
 			    if !reply {
-				common.Error("=====================ExcutePreSignData, failed to pre-generate sign data.========================","pubkey",pre.PubKey,"Index",index)
+				common.Error("=====================ExcutePreSignData, failed to pre-generate sign data.========================","pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
 				continue
 			    }
 			    
-			    common.Info("===================ExcutePreSignData,after pre-generation of sign data===============","current total number of the data ",GetTotalCount(pre.PubKey,"",gg),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pre.PubKey,"",gg)),"pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
+			    common.Info("================================ExcutePreSignData,after pre-generation of sign data==================================","current total number of the data ",GetTotalCount(pre.PubKey,"",gg),"pubkey",pre.PubKey,"sub-groupid",gg,"Index",index)
 			}
 		    }
 

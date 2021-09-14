@@ -35,6 +35,7 @@ import (
 	"github.com/fsn-dev/cryptoCoins/coins/types"
 	"github.com/fsn-dev/cryptoCoins/tools/rlp"
 	"encoding/json"
+	"runtime/debug"
 )
 
 var (
@@ -1211,6 +1212,13 @@ func CheckSignDulpRawReply(raw string,l *list.List) bool {
 }
 
 func DisAcceptMsg(raw string,workid int) {
+    defer func() {
+        if r := recover(); r != nil {
+	    fmt.Errorf("DisAcceptMsg Runtime error: %v\n%v", r, string(debug.Stack()))
+	    return
+        }
+    }()
+
     if raw == "" || workid < 0 || workid >= len(workers) {
 	return
     }

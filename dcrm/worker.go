@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"runtime/debug"
 )
 
 var (
@@ -219,23 +220,30 @@ func (d *ReqDispatcher) dispatch() {
 }
 
 func FindWorker(sid string) (*RPCReqWorker, error) {
-	if sid == "" {
-		return nil, fmt.Errorf("input worker id error.")
+    defer func() {
+        if r := recover(); r != nil {
+	    fmt.Errorf("FindWorker Runtime error: %v\n%v", r, string(debug.Stack()))
+	    return
+        }
+    }()
+
+    if sid == "" {
+	return nil, fmt.Errorf("input worker id error.")
+    }
+
+    for i := 0; i < RPCMaxWorker; i++ {
+	w := workers[i]
+
+	if w.sid == "" {
+		continue
 	}
 
-	for i := 0; i < RPCMaxWorker; i++ {
-		w := workers[i]
-
-		if w.sid == "" {
-			continue
-		}
-
-		if strings.EqualFold(w.sid, sid) {
-			return w, nil
-		}
+	if strings.EqualFold(w.sid, sid) {
+		return w, nil
 	}
+    }
 
-	return nil, fmt.Errorf("no find worker.")
+    return nil, fmt.Errorf("no find worker.")
 }
 
 func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {

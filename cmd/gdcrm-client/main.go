@@ -129,7 +129,7 @@ func main() {
 			wg.Wait()
 		    }()
 
-		    time.Sleep(time.Duration(3) * time.Second)
+		    time.Sleep(time.Duration(1) * time.Second)
 		}
 		outwg.Wait()
 	case "PRESIGNDATA":
@@ -506,7 +506,7 @@ func PrintTime(t time.Time,key string,status string,loopcount int) {
     str += "status = "
     str += status
     str += ",  "
-    str += "retry count(get every 5 seconds) = "
+    str += "retry count(get every 3 seconds) = "
     str += strconv.Itoa(loopcount)
     str += ",  "
     str += "time spent = "
@@ -575,7 +575,7 @@ func signMsgHash(hashs []string, contexts []string,loopCount int) (rsv []string)
 			i--
 		}
 		// traverse key from reqAddr failed by keyID
-		time.Sleep(time.Duration(5) * time.Second)
+		time.Sleep(time.Duration(3) * time.Second)
 		fmt.Printf("\n\nUser=%s", keyWrapper.Address.String())
 		var statusJSON signStatus
 		reqStatus, err := client.Call("dcrm_getSignStatus", keyID)

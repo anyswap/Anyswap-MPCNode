@@ -2161,7 +2161,19 @@ func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortabl
 		mmm := strings.Split(vv, common.Sep)
 		prex2 := mmm[0]
 		prexs2 := strings.Split(prex2, "-")
-		dlen, _ := strconv.Atoi(mmm[2])
+		if len(mmm) < 3 { /////bug:crash in signing
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get zkuproof fail.")}
+			ch <- res
+			return nil
+		}
+
+		dlen, err := strconv.Atoi(mmm[2])
+		if err != nil || len(mmm) < (5+dlen) {
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get zkuproof fail.")}
+			ch <- res
+			return nil
+		}
+
 		e := new(big.Int).SetBytes([]byte(mmm[3+dlen]))
 		s := new(big.Int).SetBytes([]byte(mmm[4+dlen]))
 		zkuf := &ec2.ZkUProof{E: e, S: s}

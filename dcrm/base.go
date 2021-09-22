@@ -172,7 +172,7 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
 	
-	LdbPubKeyData = GetAllPubKeyDataFromDb()
+	//LdbPubKeyData = GetAllPubKeyDataFromDb()
 	GetAllPreSignFromDb()
 
 	go HandleRpcSign()
@@ -1748,37 +1748,41 @@ type PubKeyInfo struct {
 func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 	gp  := common.NewSafeMap(10)
 	//gp := make(map[string][]PubKeyInfo)
-	var wg sync.WaitGroup
-	LdbPubKeyData.RLock()
-	for k, v := range LdbPubKeyData.Map {
-	    wg.Add(1)
-	    go func(key string,value interface{}) {
-		defer wg.Done()
+	timeout := make(chan bool,1)
 
-		vv,ok := value.(*AcceptReqAddrData)
-		if vv == nil || !ok {
-		    return
+	go func() {
+	    iter := db.NewIterator()
+	    for iter.Next() {
+		key := string(iter.Key())
+		ok,value := GetValueFromPubKeyData(key)
+		if !ok {
+		    continue
+		}
+
+		vv,ok2 := value.(*AcceptReqAddrData)
+		if vv == nil || !ok2 {
+		   continue 
 		}
 
 		if vv.Mode == "1" {
 			if !strings.EqualFold(vv.Account,geter_acc) {
-			    return
+			    continue
 			}
 		}
 
 		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
-		    return
+		    continue
 		}
 
 		dcrmpks, _ := hex.DecodeString(vv.PubKey)
 		exsit,data2 := GetValueFromPubKeyData(string(dcrmpks[:]))
 		if !exsit || data2 == nil {
-		    return
+		    continue
 		}
 
 		pd,ok := data2.(*PubKeyData)
 		if !ok || pd == nil {
-		    return
+		    continue
 		}
 
 		pubkeyhex := hex.EncodeToString([]byte(pd.Pub))
@@ -1803,11 +1807,13 @@ func GetAccounts(geter_acc, mode string) (interface{}, string, error) {
 				//gp[gid] = a
 			}
 		}
-	    }(k,v)
-	}
-	LdbPubKeyData.RUnlock()
-	wg.Wait()
-	
+	    }
+
+	    timeout <-true
+	}()
+
+	<-timeout
+
 	als := make([]AccountsList, 0)
 	key,value := gp.ListMap()
 	for j :=0;j < len(key);j++ {

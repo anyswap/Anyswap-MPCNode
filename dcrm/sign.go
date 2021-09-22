@@ -65,7 +65,7 @@ func SetSignNonce(account string,nonce string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "Sign"))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key, []byte(nonce))
+	//LdbPubKeyData.WriteMap(key, []byte(nonce))
 	return "", nil
 }
 

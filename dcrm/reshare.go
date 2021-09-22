@@ -52,7 +52,7 @@ func SetReShareNonce(account string,nonce string) (string, error) {
 	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "RESHARE"))).Hex()
 	kd := KeyData{Key: []byte(key2), Data: nonce}
 	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key2, []byte(nonce))
+	//LdbPubKeyData.WriteMap(key2, []byte(nonce))
 
 	return "", nil
 }
@@ -928,7 +928,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    kd := KeyData{Key: dcrmpks[:], Data: ss1}
 	    PubKeyDataChan <- kd
 	    /////
-	    LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
+	    //LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
 	    ////
 	    for _, ct := range coins.Cointypes {
 		    if strings.EqualFold(ct, "ALL") {
@@ -948,7 +948,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    kd = KeyData{Key: []byte(key), Data: ss1}
 		    PubKeyDataChan <- kd
 		    /////
-		    LdbPubKeyData.WriteMap(key, pubs)
+		    //LdbPubKeyData.WriteMap(key, pubs)
 		    ////
 	    }
 	    
@@ -988,7 +988,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    if !exsit {
 			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: rk}
 			PubKeyDataChan <- kdtmp
-			LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(rk))
+			//LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(rk))
 		    } else {
 			//
 			found := false
@@ -1005,7 +1005,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    da2 := string(da.([]byte)) + ":" + rk
 			    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
 			    PubKeyDataChan <- kdtmp
-			    LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
+			    //LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
 			}
 		    }
 		}
@@ -1014,7 +1014,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		if !exsit {
 		    kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: rk}
 		    PubKeyDataChan <- kdtmp
-		    LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(rk))
+		    //LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(rk))
 		} else {
 		    //
 		    found := false
@@ -1031,7 +1031,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			da2 := string(da.([]byte)) + ":" + rk
 			kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
 			PubKeyDataChan <- kdtmp
-			LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
+			//LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
 		    }
 
 		}
@@ -1728,7 +1728,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	kd := KeyData{Key: dcrmpks[:], Data: ss1}
 	PubKeyDataChan <- kd
 	/////
-	LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
+	//LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
 	////
 	for _, ct := range coins.Cointypes {
 		if strings.EqualFold(ct, "ALL") {
@@ -1748,7 +1748,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		kd = KeyData{Key: []byte(key), Data: ss1}
 		PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(key, pubs)
+		//LdbPubKeyData.WriteMap(key, pubs)
 		////
 	}
 	
@@ -1788,7 +1788,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		if !exsit {
 		    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: rk}
 		    PubKeyDataChan <- kdtmp
-		    LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(rk))
+		    //LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(rk))
 		} else {
 		    //
 		    found := false
@@ -1805,7 +1805,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			da2 := string(da.([]byte)) + ":" + rk
 			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
 			PubKeyDataChan <- kdtmp
-			LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
+			//LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
 		    }
 		}
 	    }
@@ -1814,7 +1814,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    if !exsit {
 		kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: rk}
 		PubKeyDataChan <- kdtmp
-		LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(rk))
+		//LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(rk))
 	    } else {
 		//
 		found := false
@@ -1831,7 +1831,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    da2 := string(da.([]byte)) + ":" + rk
 		    kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
 		    PubKeyDataChan <- kdtmp
-		    LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
+		    //LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
 		}
 
 		}

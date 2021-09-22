@@ -112,7 +112,12 @@ func AcceptReqAddr(initiator string,account string, cointype string, groupid str
 	kdtmp := KeyData{Key: []byte(key), Data: es}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, ac2)
+	if ac2.Status != "Pending" {
+	    LdbPubKeyData.DeleteMap(key)
+	} else {
+	    LdbPubKeyData.WriteMap(key, ac2)
+	}
+
 	common.Debug("=====================AcceptReqAddr,write map success====================","status",ac2.Status,"key",key)
 	return "", nil
 }
@@ -205,7 +210,7 @@ func AcceptLockOut(initiator string,account string, groupid string, nonce string
 	kdtmp := KeyData{Key: []byte(key), Data: es}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, ac2)
+	//LdbPubKeyData.WriteMap(key, ac2)
 	return "", nil
 }
 
@@ -306,13 +311,17 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 	}
 	////////////////
 
-	LdbPubKeyData.WriteMap(key, ac2)
+	if ac2.Status != "Pending" {
+	    LdbPubKeyData.DeleteMap(key)
+	} else {
+	    LdbPubKeyData.WriteMap(key, ac2)
+	}
+
 	go func() {
 	    kdtmp := KeyData{Key: []byte(key), Data: es}
 	    PubKeyDataChan <- kdtmp
 	}()
 
-	common.Debug("=====================AcceptSign,finish.========================","key",key)
 	return "", nil
 }
 
@@ -415,7 +424,7 @@ func SaveAcceptLockOutData(ac *AcceptLockOutData) error {
 	kdtmp := KeyData{Key: []byte(key), Data: ss}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, ac)
+	//LdbPubKeyData.WriteMap(key, ac)
 	return nil
 }
 
@@ -666,7 +675,12 @@ func AcceptReShare(initiator string,account string, groupid string, tsgroupid st
 	kdtmp := KeyData{Key: []byte(key), Data: es}
 	PubKeyDataChan <- kdtmp
 
-	LdbPubKeyData.WriteMap(key, ac2)
+	if ac2.Status != "Pending" {
+	    LdbPubKeyData.DeleteMap(key)
+	} else {
+	    LdbPubKeyData.WriteMap(key, ac2)
+	}
+
 	return "", nil
 }
 

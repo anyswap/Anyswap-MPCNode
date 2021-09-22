@@ -88,7 +88,7 @@ func SetReqAddrNonce(account string, nonce string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-	LdbPubKeyData.WriteMap(key, []byte(nonce))
+	//LdbPubKeyData.WriteMap(key, []byte(nonce))
 	return "", nil
 }
 
@@ -370,14 +370,14 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			//LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
 			////
 
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(key, pubs)
+			//LdbPubKeyData.WriteMap(key, pubs)
 			////
 			sk := KeyData{Key: sedpk[:], Data: sedsku1}
 			SkU1Chan <- sk
@@ -387,7 +387,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
+			//LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
 			////
 			sk := KeyData{Key: sedpk[:], Data: sedsku1}
 			SkU1Chan <- sk
@@ -410,7 +410,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				kd = KeyData{Key: []byte(key), Data: ss}
 				PubKeyDataChan <- kd
 				/////
-				LdbPubKeyData.WriteMap(key, pubs)
+				//LdbPubKeyData.WriteMap(key, pubs)
 				////
 				sk = KeyData{Key: []byte(key), Data: sedsku1}
 				SkU1Chan <- sk
@@ -529,14 +529,14 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(string(ys), pubs)
+		//LdbPubKeyData.WriteMap(string(ys), pubs)
 		////
 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		kd = KeyData{Key: []byte(key), Data: ss}
 		PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(key, pubs)
+		//LdbPubKeyData.WriteMap(key, pubs)
 		////
 		sk = KeyData{Key: []byte(key), Data: sku1}
 		SkU1Chan <- sk
@@ -544,7 +544,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
 		/////
-		LdbPubKeyData.WriteMap(string(ys), pubs)
+		//LdbPubKeyData.WriteMap(string(ys), pubs)
 		////
 
 		for _, ct := range coins.Cointypes {
@@ -565,7 +565,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
 			/////
-			LdbPubKeyData.WriteMap(key, pubs)
+			//LdbPubKeyData.WriteMap(key, pubs)
 			////
 			sk = KeyData{Key: []byte(key), Data: sku1}
 			SkU1Chan <- sk

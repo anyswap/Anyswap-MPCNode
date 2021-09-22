@@ -231,8 +231,9 @@ func SavePubKeyDataToDb() {
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
+			common.Info("=================SavePubKeyDataToDb, db is not nil ===============","key",kd.Key,"err",err)
 			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
+			    common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
 			    dir := GetDbDir()
 			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -448,68 +449,80 @@ func GetAllPubKeyDataFromDb() *common.SafeMap {
 	return kd
 }
 
+//db:
+//--------compress--------------
+// reqaddr key:AcceptReqAddrData
+// sign key:AcceptSignData
+// reshare key:AcceptReshareData
+// pubkey bytes:PubKeyData
+// dcrmaddr1:PubKeyData
+// dcrmaddrn:PubKeyData
+//--------no compress------------
+// account:reqaddr nonce
+// account+sign:sign nonce
+// account+reshare:reshare nonce
+// tolower(account1):   pubkey1:pubkey2:.....
+// tolower(accountn):   pubkey1:pubkey2:.....
+func GetValueFromDb(key string) (bool,interface{}) {
+    if key == "" || db == nil {
+	return false,nil
+    }
+
+    da, err := db.Get([]byte(key))
+    if err != nil || da == nil {
+	common.Debug("===================GetValueFromDb,get data fail===================","err",err,"key",key)
+	return false,nil
+    }
+
+    ss, err := UnCompress(string(da))
+    if err != nil {
+	common.Error("========================GetValueFromDb, uncompress err=======================","err",err,"key",key)
+	return true,da
+    }
+
+    pubs3, err := Decode2(ss, "PubKeyData")
+    if err == nil {
+	pd,ok := pubs3.(*PubKeyData)
+	if ok && pd != nil && pd.Key != "" && pd.Save != "" {
+	    return true,pd
+	}
+    }
+    
+    pubs4, err := Decode2(ss, "AcceptSignData")
+    if err == nil {
+	pd,ok := pubs4.(*AcceptSignData)
+	if ok && pd != nil && pd.Keytype != "" {
+	    return true,pd
+	}
+    }
+    
+    pubs5, err := Decode2(ss, "AcceptReShareData")
+    if err == nil {
+	pd,ok := pubs5.(*AcceptReShareData)
+	if ok && pd != nil && pd.TSGroupId != "" {
+	    return true,pd
+	}
+    }
+    
+    pubs, err := Decode2(ss, "AcceptReqAddrData")
+    if err == nil {
+	pd,ok := pubs.(*AcceptReqAddrData)
+	if ok && pd != nil && pd.Account != "" {
+	    return true,pd
+	}
+    }
+    
+    return true,da
+}
+
 func GetValueFromPubKeyData(key string) (bool,interface{}) {
     if key == "" {
-	    common.Debug("========================GetValueFromPubKeyData, param err=======================","key",key)
 	return false,nil
     }
 
     datmp, exsit := LdbPubKeyData.ReadMap(key)
     if !exsit {
-	    common.Info("========================GetValueFromPubKeyData, get value from memory fail =======================","key",key)
-	da := GetPubKeyDataValueFromDb(key)
-	if da == nil {
-	    common.Info("========================GetValueFromPubKeyData, get value from local db fail =======================","key",key)
-	    return false,nil
-	}
-
-	ss, err := UnCompress(string(da))
-	if err != nil {
-	    common.Info("========================GetValueFromPubKeyData, uncompress err=======================","err",err,"key",key)
-	    return true,da
-	}
-
-	pubs3, err := Decode2(ss, "PubKeyData")
-	if err == nil {
-	    pd,ok := pubs3.(*PubKeyData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	pubs, err := Decode2(ss, "AcceptReqAddrData")
-	if err == nil {
-	    pd,ok := pubs.(*AcceptReqAddrData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	pubs2, err := Decode2(ss, "AcceptLockOutData")
-	if err == nil {
-	    pd,ok := pubs2.(*AcceptLockOutData)
-	    if ok {
-		return true,pd
-	    }
-	}
-
-	pubs4, err := Decode2(ss, "AcceptSignData")
-	if err == nil {
-	    pd,ok := pubs4.(*AcceptSignData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	pubs5, err := Decode2(ss, "AcceptReShareData")
-	if err == nil {
-	    pd,ok := pubs5.(*AcceptReShareData)
-	    if ok {
-		return true,pd
-	    }
-	}
-	
-	return true,da
+	return GetValueFromDb(key)
     }
 
     return exsit,datmp

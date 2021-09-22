@@ -80,7 +80,6 @@ type RPCReqWorker struct {
 	msg_share1      *list.List
 	msg_zkfact      *list.List
 	msg_zku      *list.List
-	msg_checkpubkeystatus      *list.List
 	msg_mtazk1proof      *list.List
 	msg_c11      *list.List
 	msg_d11_1      *list.List
@@ -114,7 +113,6 @@ type RPCReqWorker struct {
 	bshare1           chan bool
 	bzkfact           chan bool
 	bzku              chan bool
-	bcheckpubkeystatus              chan bool
 	bmtazk1proof      chan bool
 	bkc               chan bool
 	bcommitbigvab     chan bool
@@ -254,7 +252,6 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		msg_share1:                list.New(),
 		msg_zkfact:                list.New(),
 		msg_zku:                   list.New(),
-		msg_checkpubkeystatus:                   list.New(),
 		msg_mtazk1proof:           list.New(),
 		msg_c1:                    list.New(),
 		msg_d1_1:                  list.New(),
@@ -310,7 +307,6 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 		bshare1:           make(chan bool, 1),
 		bzkfact:           make(chan bool, 1),
 		bzku:              make(chan bool, 1),
-		bcheckpubkeystatus:              make(chan bool, 1),
 		bmtazk1proof:      make(chan bool, 1),
 		bdelta1:           make(chan bool, 1),
 		bd11_1:            make(chan bool, 1),
@@ -451,11 +447,6 @@ func (w *RPCReqWorker) Clear() {
 		w.msg_zku.Remove(e)
 	}
 
-	for e := w.msg_checkpubkeystatus.Front(); e != nil; e = next {
-		next = e.Next()
-		w.msg_checkpubkeystatus.Remove(e)
-	}
-
 	for e := w.msg_mtazk1proof.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_mtazk1proof.Remove(e)
@@ -550,9 +541,6 @@ func (w *RPCReqWorker) Clear() {
 	}
 	if len(w.bzku) == 1 {
 		<-w.bzku
-	}
-	if len(w.bcheckpubkeystatus) == 1 {
-		<-w.bcheckpubkeystatus
 	}
 	if len(w.bmtazk1proof) == 1 {
 		<-w.bmtazk1proof
@@ -831,11 +819,6 @@ func (w *RPCReqWorker) Clear2() {
 		w.msg_zku.Remove(e)
 	}
 
-	for e := w.msg_checkpubkeystatus.Front(); e != nil; e = next {
-		next = e.Next()
-		w.msg_checkpubkeystatus.Remove(e)
-	}
-
 	for e := w.msg_mtazk1proof.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_mtazk1proof.Remove(e)
@@ -930,9 +913,6 @@ func (w *RPCReqWorker) Clear2() {
 	}
 	if len(w.bzku) == 1 {
 		<-w.bzku
-	}
-	if len(w.bcheckpubkeystatus) == 1 {
-		<-w.bcheckpubkeystatus
 	}
 	if len(w.bmtazk1proof) == 1 {
 		<-w.bmtazk1proof

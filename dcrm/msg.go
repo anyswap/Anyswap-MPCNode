@@ -788,13 +788,16 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 				
 				DtPreSign.Lock()
 				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
-				PutPreSign(pub,pre)
 		
-				es,err := Encode2(pre)
+				_,err := Encode2(pre)
 				common.Debug("========================PreSign at RecvMsg.Run finish,ecode pre-sign data.=================","err",err,"pick key",pre.Key)
 				if err == nil {
-				    kd := UpdataPreSignData{Key: []byte(strings.ToLower(pub)), Del:false,Data: es}
-				    PrePubKeyDataChan <- kd
+				    err = PutPreSignDataIntoDb(strings.ToLower(pub),pre)
+				    if err == nil {
+					PutPreSign(pub,pre)
+				    } else {
+					common.Info("========================PreSign at RecvMsg.Run,put pre-sign data into db fail.=================","err",err,"pick key",pre.Key)
+				    }
 				}
 				
 				DtPreSign.Unlock()

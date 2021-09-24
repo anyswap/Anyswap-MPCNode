@@ -3152,6 +3152,12 @@ func HandleNoReciv(key string,reqer string,ower string,datatype string,wid int) 
 //msg: key-enode:C1:X1:X2...:Xn
 //msg: key-enode1:NoReciv:enode2:C1
 func DisMsg(msg string) {
+	defer func() {
+	    if r := recover(); r != nil {
+		fmt.Errorf("DisMsg Runtime error: %v\n%v", r, string(debug.Stack()))
+		return
+	    }
+	}()
 
 	if msg == "" {
 	    return

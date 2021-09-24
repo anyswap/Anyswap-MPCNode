@@ -39,6 +39,15 @@ import (
 	"github.com/btcsuite/btcutil"
 	"encoding/hex"
 	"github.com/btcsuite/btcd/btcec"
+	
+	"log"
+	"os"
+	"github.com/fsn-dev/dcrm-walletService/ethdb"
+	"os/user"
+	"runtime"
+	"path/filepath"
+	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 )
 
 const (
@@ -49,6 +58,7 @@ const (
 
 var (
 	keyfile  *string
+	datadir  *string
 	passwd   *string
 	url      *string
 	cmd      *string
@@ -77,6 +87,9 @@ var (
 	keyWrapper *keystore.Key
 	signer     types.EIP155Signer
 	client     *ethrpc.EthRPC
+    
+	predb *ethdb.LDBDatabase
+	presignhashpairdb *ethdb.LDBDatabase
 )
 
 func main() {
@@ -104,6 +117,12 @@ func main() {
 	case "PRESIGNDATA":
 		// test pre sign data
 		preGenSignData()
+	case "DELPRESIGNDATA":
+		// test pre sign data
+		delPreSignData()
+	case "GETPRESIGNDATA":
+		// test pre sign data
+		getPreSignData()
 	case "ACCEPTSIGN":
 		// approve condominium account sign
 		acceptSign()
@@ -124,15 +143,16 @@ func main() {
 			fmt.Printf("pubkey = %v, get dcrm addr failed. %v\n", pubkey,err)
 	    }
 	default:
-		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR\n", *cmd)
+		fmt.Printf("\nCMD('%v') not support\nSupport cmd: EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|DELPRESIGNDATA|GETPRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR\n", *cmd)
 	}
 }
 
 func init() {
 	keyfile = flag.String("keystore", "", "Keystore file")
+	datadir = flag.String("datadir", "", "data path")
 	passwd = flag.String("passwd", "111111", "Password")
 	url = flag.String("url", "http://127.0.0.1:9011", "Set node RPC URL")
-	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR")
+	cmd = flag.String("cmd", "", "EnodeSig|SetGroup|REQDCRMADDR|ACCEPTREQADDR|LOCKOUT|ACCEPTLOCKOUT|SIGN|PRESIGNDATA|DELPRESIGNDATA|GETPRESIGNDATA|ACCEPTSIGN|RESHARE|ACCEPTRESHARE|CREATECONTRACT|GETDCRMADDR")
 	gid = flag.String("gid", "", "groupID")
 	ts = flag.String("ts", "2/3", "Threshold")
 	mode = flag.String("mode", "1", "Mode:private=1/managed=0")
@@ -568,6 +588,235 @@ func preGenSignData() {
 		panic(err)
 	}
 }
+
+//------------------------------------------------------------------
+
+func DefaultDataDir(datadir string) string {
+        if datadir != "" {
+                return datadir
+        }
+        // Try to place the data folder in the user's home dir
+        home := homeDir()
+        if home != "" {
+                if runtime.GOOS == "darwin" {
+                        return filepath.Join(home, "Library", "dcrm-walletservice")
+                } else if runtime.GOOS == "windows" {
+                        return filepath.Join(home, "AppData", "Roaming", "dcrm-walletservice")
+                } else {
+                        return filepath.Join(home, ".dcrm-walletservice")
+                }
+        }
+        // As we cannot guess a stable location, return empty and handle later
+        return ""
+}
+
+func homeDir() string {
+        if home := os.Getenv("HOME"); home != "" {
+                return home
+        }
+        if usr, err := user.Current(); err == nil {
+                return usr.HomeDir
+        }
+        return ""
+}
+
+func GetPreDbDir(eid string,datadir string) string {
+        dir := DefaultDataDir(datadir)
+        dir += "/dcrmdata/dcrmpredb" + eid
+
+        return dir
+}
+
+type PrePubData struct {
+	Key string
+	K1 *big.Int
+	R *big.Int
+	Ry *big.Int
+	Sigma1 *big.Int
+	Gid string
+	Used bool //useless? TODO
+}
+
+type PreSignDataValue struct {
+    Data []*PrePubData
+}
+
+func Decode(s string, datatype string) (interface{}, error) {
+
+	if datatype == "PreSignDataValue" {
+		var m PreSignDataValue 
+		err := json.Unmarshal([]byte(s), &m)
+		if err != nil {
+		    return nil,err
+		}
+
+		return &m,nil
+	}
+
+	return nil, fmt.Errorf("decode obj fail.")
+}
+
+func DecodePreSignDataValue(s string) (*PreSignDataValue,error) {
+	if s == "" {
+		return nil,fmt.Errorf("pre-sign data error")
+	}
+
+	ret,err := Decode(s,"PreSignDataValue")
+	if err != nil {
+		return nil,err
+	}
+
+	return ret.(*PreSignDataValue),nil
+}
+
+type DcrmHash [32]byte
+
+func (h DcrmHash) Hex() string { return hexutil.Encode(h[:]) }
+
+// Keccak256Hash calculates and returns the Keccak256 hash of the input data,
+// converting it to an internal Hash data structure.
+func Keccak256Hash(data ...[]byte) (h DcrmHash) {
+	d := sha3.NewKeccak256()
+	for _, b := range data {
+	    _,err := d.Write(b)
+	    if err != nil {
+		return h 
+	    }
+	}
+	d.Sum(h[:0])
+	return h
+}
+
+func delPreSignData() {
+	enodeRep, err := client.Call("dcrm_getEnode")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("getEnode = %s\n\n", enodeRep)
+	var enodeJSON dataEnode
+	enodeData, _ := getJSONData(enodeRep)
+	if err := json.Unmarshal(enodeData, &enodeJSON); err != nil {
+		panic(err)
+	}
+	fmt.Printf("enode = %s\n", enodeJSON.Enode)
+	// get pubkey from enode
+	if *enode != "" {
+		enodeJSON.Enode = *enode
+	}
+	s := strings.Split(enodeJSON.Enode, "@")
+	enodePubkey := strings.Split(s[0], "//")
+	fmt.Printf("enodePubkey = %s\n", enodePubkey[1])
+	
+	if *pubkey == "" || *gid == "" {
+	    log.Fatal("Please provide pubkey,group id")
+	}
+
+	dir := GetPreDbDir(enodePubkey[1],*datadir)
+	fmt.Printf("==========================delPreSignData,dir = %v ================================\n",dir)
+	predbtmp, err := ethdb.NewLDBDatabase(dir, 76, 512)
+	if err != nil {
+	    predb = nil
+	} else {
+	    predb = predbtmp
+	}
+	   
+	if predb == nil {
+	    fmt.Printf("==========================delPreSignData,open db fail,dir = %v,pubkey = %v,gid = %v,cur_enode = %v ================================\n",dir,*pubkey,*gid,enodePubkey[1])
+	    os.Exit(1)
+	    return
+	}
+
+	fmt.Printf("================================delPreSignData,pubkey = %v,gid = %v ======================\n",*pubkey,*gid)
+
+	pub := strings.ToLower(Keccak256Hash([]byte(strings.ToLower(*pubkey + ":" + *gid))).Hex())
+	iter := predb.NewIterator()
+	for iter.Next() {
+	    key := string(iter.Key())
+
+	    fmt.Printf("================================delPreSignData, key = %v,pub = %v ======================\n",key,pub)
+	    if strings.EqualFold(pub,key) {
+		err = predb.Delete([]byte(key))
+		if err != nil {
+		    fmt.Printf("==========================delPreSignData, delete presign data fail,dir = %v,pubkey = %v,gid = %v,cur_enode = %v,err = %v======================\n",dir,*pubkey,*gid,enodePubkey[1],err)
+		} else {
+		    fmt.Printf("============================delPreSignData, delete presign data success,dir = %v,pubkey = %v,gid = %v,cur_enode = %v===================\n",dir,*pubkey,*gid,enodePubkey[1])
+		}
+
+		break
+	    }
+	}
+	
+	iter.Release()
+}
+
+func getPreSignData() {
+	enodeRep, err := client.Call("dcrm_getEnode")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("getEnode = %s\n\n", enodeRep)
+	var enodeJSON dataEnode
+	enodeData, _ := getJSONData(enodeRep)
+	if err := json.Unmarshal(enodeData, &enodeJSON); err != nil {
+		panic(err)
+	}
+	fmt.Printf("enode = %s\n", enodeJSON.Enode)
+	// get pubkey from enode
+	if *enode != "" {
+		enodeJSON.Enode = *enode
+	}
+	s := strings.Split(enodeJSON.Enode, "@")
+	enodePubkey := strings.Split(s[0], "//")
+	fmt.Printf("enodePubkey = %s\n", enodePubkey[1])
+	
+	if *pubkey == "" || *gid == "" {
+	    log.Fatal("Please provide pubkey,group id")
+	}
+
+	dir := GetPreDbDir(enodePubkey[1],*datadir)
+	fmt.Printf("==========================getPreSignData,dir = %v ================================\n",dir)
+	predbtmp, err := ethdb.NewLDBDatabase(dir, 76, 512)
+	if err != nil {
+	    predb = nil
+	} else {
+	    predb = predbtmp
+	}
+	   
+	if predb == nil {
+	    fmt.Printf("==========================getPreSignData,open db fail,dir = %v,pubkey = %v,gid = %v,cur_enode = %v ================================\n",dir,*pubkey,*gid,enodePubkey[1])
+	    os.Exit(1)
+	    return
+	}
+
+	fmt.Printf("================================getPreSignData,pubkey = %v,gid = %v ======================\n",*pubkey,*gid)
+
+	pub := strings.ToLower(Keccak256Hash([]byte(strings.ToLower(*pubkey + ":" + *gid))).Hex())
+	iter := predb.NewIterator()
+	for iter.Next() {
+	    key := string(iter.Key())
+	    value := string(iter.Value())
+
+	    fmt.Printf("================================getPreSignData, key = %v,pub = %v ======================\n",key,pub)
+	    if strings.EqualFold(pub,key) {
+		ps, err := DecodePreSignDataValue(value)
+		if err != nil {
+		    fmt.Printf("============================getPreSignData,decode pre-sign data value error,err = %v===========================\n") 
+		    break
+		}
+
+		fmt.Printf("==================================getPreSignData,decode pre-sign data value success, data count = %v==========================\n",len(ps.Data)) 
+
+		for _,v := range ps.Data {
+		    fmt.Printf("===================================getPreSignData,pub = %v, pre-sign data key = %v==========================\n",key,v.Key) 
+		}
+	
+		break
+	    }
+	}
+	
+	iter.Release()
+}
+
 func signMsgHash(hashs []string, contexts []string,loopCount int) (rsv []string) {
 	// get sign nonce
 	signNonce, err := client.Call("dcrm_getSignNonce", keyWrapper.Address.String())

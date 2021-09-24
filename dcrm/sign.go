@@ -77,9 +77,10 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
     }
 
     key,from,nonce,txdata,err := CheckRaw(sbd.Raw)
-    common.Info("=====================InitAcceptData2,get result from call CheckRaw ================","key",key,"from",from,"err",err,"raw",sbd.Raw,"tx data",txdata)
+    common.Info("=====================InitAcceptData2,get sign command data ================","key",key,"from",from,"raw",sbd.Raw,"tx data",txdata)
+
     if err != nil {
-	common.Debug("===============InitAcceptData2,check raw===================","err ",err,"key",key,"from",from,"raw",sbd.Raw)
+	common.Error("===============InitAcceptData2,get sign command data and check data fail===================","err ",err,"key",key,"from",from,"raw",sbd.Raw)
 	res := RpcDcrmRes{Ret: "", Tip: err.Error(), Err: err}
 	ch <- res
 	return err
@@ -360,19 +361,17 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 				}
 			}
 
-			common.Info("===============InitAcceptData2,begin to sign=================","sig.MsgHash ",sig.MsgHash,"sig.Mode ",sig.Mode,"key ",key)
+			common.Info("===============InitAcceptData2,begin to sign=================","unsign txhash",sig.MsgHash,"key ",key)
 			rch := make(chan interface{}, 1)
 			sign(w.sid, from,sig.PubKey,sig.MsgHash,sig.Keytype,nonce,sig.Mode,sbd.PickHash,rch)
 			chret, tip, cherr := GetChannelValue(waitallgg20+20, rch)
-			common.Info("================== InitAcceptData2,finish sig.================","return sign result ",chret,"err ",cherr,"key ",key)
+			common.Info("================== InitAcceptData2,sign finish.================","return sign result ",chret,"key ",key,"err",cherr)
 			if chret != "" {
-				//common.Debug("===================InitAcceptData2,DeletePrePubData,11111===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				DtPreSign.Lock()
 				for _,vv := range sbd.PickHash {
 					DeletePrePubDataBak(pub,vv.PickKey)
 				}
 				DtPreSign.Unlock()
-				//common.Debug("===================InitAcceptData2,DeletePrePubData,22222===============","current total number of the data ",GetTotalCount(sig.PubKey),"key",key)
 				
 				res := RpcDcrmRes{Ret: chret, Tip: "", Err: nil}
 				ch <- res
@@ -492,10 +491,9 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 }
 
 func RpcAcceptSign(raw string) (string, string, error) {
-    common.Debug("=====================RpcAcceptSign call CheckRaw ================","raw",raw)
     _,from,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================RpcAcceptSign,call CheckRaw finish================","raw",raw,"err",err)
+	common.Error("=====================RpcAcceptSign,get sign accept data and check data fail================","raw",raw,"from",from,"err",err)
 	return "Failure",err.Error(),err
     }
 
@@ -508,7 +506,6 @@ func RpcAcceptSign(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptSignData)
 	if ok && ac != nil {
-	    common.Info("=====================RpcAcceptSign,call CheckRaw finish ================","key",acceptsig.Key,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -784,7 +781,7 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 	} else {
 	    sign_ec(wsid,unsignhash,save,sku1,dcrmpkx,dcrmpky,keytype,pickhash,rch)
 	    ret, tip, cherr := GetChannelValue(waitall,rch)
-	    common.Info("=================sign,call sign_ec finish.==============","return result",ret,"err",cherr,"key",wsid)
+	    common.Info("=================sign,call sign_ec finish.==============","return result",ret,"sign key",wsid,"err",cherr)
 	    if cherr != nil {
 		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: cherr}
 		    ch <- res
@@ -840,14 +837,12 @@ func sign(wsid string,account string,pubkey string,unsignhash []string,keytype s
 			return
 		}
 
-		common.Info("================sign,the terminal sign res is success==============","key",wsid)
 		res := RpcDcrmRes{Ret: result, Tip: tip, Err: err}
 		ch <- res
 		return
 	}
 
 	if cherrtmp != nil {
-		common.Info("================sign,the terminal sign res is failure================","err",cherrtmp,"key",wsid)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:sign fail", Err: cherrtmp}
 		ch <- res
 		return
@@ -922,29 +917,22 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 
 		val,err := Encode2(sd)
 		if err != nil {
-		    common.Info("======================sign_ec, encode error==================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pickkey,"err",err)
-		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:marshal sign data error", Err: err}
-		    //ch <- res
+		    common.Error("======================sign_ec, encode error==================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pickkey,"err",err)
 		    return 
 		}
 		
-		common.Debug("======================sign_ec, encode success=================","vv",vv,"msgprex",msgprex,"key",key)
 		rch := make(chan interface{}, 1)
 		SetUpMsgList3(val,cur_enode,rch)
 		_, _,cherr := GetChannelValue(waitall,rch)
 		if cherr != nil {
-
-		    common.Info("======================sign_ec, get finish error====================","vv",vv,"msgprex",msgprex,"key",key,"cherr",cherr)
-		    //res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error: sign fail", Err: cherr}
-		    //ch <- res
+		    common.Error("======================sign_ec, get sign finish error====================","unsign txhash",vv,"msgprex",msgprex,"key",key,"pick key",pickkey,"cherr",cherr)
 		    return 
 		}
-		common.Info("======================sign_ec, get finish success===================","vv",vv,"msgprex",msgprex,"key",key)
 	    }(v)
 	}
 	wg.Wait()
 
-	common.Info("======================sign_ec, all sign finish===================","msgprex",msgprex,"w.rsv",w.rsv)
+	common.Info("======================sign_ec, all txhash sign finish===================","msgprex",msgprex)
 
 	var ret string
 	iter := w.rsv.Front()
@@ -957,8 +945,8 @@ func sign_ec(msgprex string, txhash []string, save string, sku1 *big.Int, dcrmpk
 
 	ret += "NULL"
 	tmps := strings.Split(ret, ":")
-	common.Debug("======================sign_ec=====================","return result",ret,"len(tmps)",len(tmps),"len(tmp)",len(tmp),"key",msgprex)
 	if len(tmps) == (len(tmp) + 1) {
+	    common.Info("======================sign_ec,the sign terminal result is success.=====================","return result",ret,"sign key",msgprex)
 	    res := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
 	    ch <- res
 	    return ""
@@ -2858,9 +2846,7 @@ func DECDSASignRoundEleven(msgprex string, cointype string, w *RPCReqWorker, idS
 
 	// 1. Receive Broadcast
 	// s: s1, s2, s3
-	common.Info("===================send SS1 finish, ", "prex = ", msgprex, "", "====================")
 	_, tip, cherr := GetChannelValue(WaitMsgTimeGG20, w.bss1)
-	common.Info("===================finish get SS1, ", "err = ", cherr, "prex = ", msgprex, "", "====================")
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {

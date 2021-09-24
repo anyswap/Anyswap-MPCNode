@@ -305,7 +305,6 @@ func GetRawReply(l *list.List) map[string]*RawReply {
 	
 	acceptsig,ok := txdata.(*TxDataAcceptSign)
 	if ok {
-	    common.Info("=================GetRawReply,the list item is TxDataAcceptSign================","key",keytmp,"from",from,"accept",acceptsig.Accept,"raw",raw)
 	    accept := "false"
 	    if acceptsig.Accept == "AGREE" {
 		    accept = "true"
@@ -686,10 +685,8 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    //w.Clear2()
 		    //Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
 		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
-		    common.Info("===============RecvMsg.Run, ec3 sign finish ===================","WaitMsgTimeGG20",WaitMsgTimeGG20)
 		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
 		    if ret != "" && cherr == nil {
-
 			ww, err2 := FindWorker(sd.MsgPrex)
 			if err2 != nil || ww == nil {
 			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
@@ -697,7 +694,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			    return false
 			}
 
-			common.Info("===============RecvMsg.Run, ec3 sign success ===================","i",i,"get ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
+			common.Info("===============RecvMsg.Run, sign success ===================","get result",ret,"msgprex",sd.MsgPrex,"key",sd.Key,"tx hash",sd.Txhash,"pick key",sd.PickKey)
 
 			ww.rsv.PushBack(ret)
 			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
@@ -705,8 +702,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return true 
 		    }
 		    
-		    common.Info("===============RecvMsg.Run,ec3 sign fail===================","ret",ret,"cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key)
-		    //time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
+		    common.Info("===============RecvMsg.Run,sign fail===================","cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key,"tx hash",sd.Txhash,"pick key",sd.PickKey)
 		}	
 		
 		res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
@@ -1411,7 +1407,6 @@ func DisAcceptMsg(raw string,workid int) {
 		return
 	    }
 
-	    common.Info("======================DisAcceptMsg,the msg is accept sign tx,and check reply success and will set timeout channel.===========================","sig key",acceptsig.Key,"from",from)
 	    w.bacceptsignres <- true
 	    exsit,da := GetValueFromPubKeyData(acceptsig.Key)
 	    if !exsit {
@@ -2741,7 +2736,7 @@ func InitAcceptData(raw string,workid int,sender string,ch chan interface{}) err
 
     acceptsig,ok := txdata.(*TxDataAcceptSign)
     if ok {
-	common.Info("===============InitAcceptData, it is acceptsign and check accept sign raw success=====================","key ",acceptsig.Key,"from ",from,"accept",acceptsig.Accept,"raw",raw)
+	common.Info("===============InitAcceptData, get sign accept data=====================","key ",acceptsig.Key,"from ",from,"accept",acceptsig.Accept,"raw",raw)
 	w, err := FindWorker(acceptsig.Key)
 	if err != nil || w == nil {
 		common.Info("===============InitAcceptData, it is acceptsign and no find worker=====================","key ",acceptsig.Key,"from ",from)

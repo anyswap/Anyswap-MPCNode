@@ -227,13 +227,12 @@ func SavePubKeyDataToDb() {
 		    if kd.Data == "CLEAN" {
 			err := db.Delete(kd.Key)
 			if err != nil {
-				common.Info("=================SavePubKeyDataToDb, db is not nil and delete fail ===============","key",kd.Key)
+				common.Error("=================SavePubKeyDataToDb, delete data from local db fail ===============","key",kd.Key,"err",err)
 			}
 		    } else {
 			err := db.Put(kd.Key, []byte(kd.Data))
-			common.Info("=================SavePubKeyDataToDb, db is not nil ===============","key",kd.Key,"err",err)
 			if err != nil {
-			    common.Info("=================SavePubKeyDataToDb, db is not nil and save fail ===============","key",kd.Key)
+			    common.Error("=================SavePubKeyDataToDb,save data to local db fail ===============","key",kd.Key,"err",err)
 			    dir := GetDbDir()
 			    dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 			    //bug
@@ -248,19 +247,19 @@ func SavePubKeyDataToDb() {
 				    }
 			    }
 			    if err != nil {
-				common.Debug("=================SavePubKeyDataToDb, re-get db fail and save fail ===============","key",kd.Key)
+				common.Error("=================SavePubKeyDataToDb, re-get db fail and save data to local db fail ===============","key",kd.Key,"err",err)
 			    } else {
 				db = dbtmp
 				err = db.Put(kd.Key, []byte(kd.Data))
 				if err != nil {
-					common.Debug("=================SavePubKeyDataToDb, re-get db success and save fail ===============","key",kd.Key)
+					common.Error("=================SavePubKeyDataToDb, re-get db success and save data to local db fail ===============","key",kd.Key,"err",err)
 				}
 			    }
 
 			}
 		    }
 		} else {
-			common.Debug("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
+			common.Error("=================SavePubKeyDataToDb, save to db fail ,db is nil ===============","key",kd.Key)
 		}
 
 		time.Sleep(time.Duration(1000000)) //na, 1 s = 10e9 na
@@ -476,7 +475,6 @@ func GetValueFromDb(key string) (bool,interface{}) {
 
     ss, err := UnCompress(string(da))
     if err != nil {
-	common.Error("========================GetValueFromDb, uncompress err=======================","err",err,"key",key)
 	return true,da
     }
 

@@ -1457,7 +1457,6 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 				if strings.EqualFold(mm,node2) {
 				    reply,ok := ret[mms[k+1]]
 				    if ok && reply != nil {
-					common.Info("===================GetAllReplyFromGroup,it is sign=================","key",key,"from",mms[k+1],"Accept",reply.Accept,"raw",mdss)
 					if reply.Accept == "true" {
 					    sta = "Agree"
 					} else {

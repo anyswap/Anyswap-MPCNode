@@ -63,7 +63,7 @@ type NodeReply struct {
     Initiator string // "1"/"0"
 }
 
-func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
+func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64,sync_presign string) {
 	cryptocoinsconfig.Init()
 	coins.Init()
 	
@@ -188,6 +188,11 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	recalc_times = int(trytimes)
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
+	if sync_presign == "true" {
+	    syncpresign = true
+	} else {
+	    syncpresign = false
+	}
 
 	go HandleRpcSign()
 

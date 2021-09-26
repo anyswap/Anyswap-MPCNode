@@ -45,6 +45,8 @@ var (
 	waitall                     = ch_t * recalc_times
 	waitallgg20                     = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = 2
+
+	syncpresign = true 
 	
 	//callback
 	GetGroup               func(string) (int, string)
@@ -671,7 +673,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    var ch1 = make(chan interface{}, 1)
 		    pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
 		    if pre == nil {
-			if !SynchronizePreSignData(w.sid,w.id,false) {
+			if syncpresign && !SynchronizePreSignData(w.sid,w.id,false) {
 			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 			    ch <- res
 			    return false
@@ -689,7 +691,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    err = PutPreSignData(ps.Pub,ps.InputCode,ps.Gid,ps.Index,pre,true)
 		    if err != nil {
-			if !SynchronizePreSignData(w.sid,w.id,false) {
+			if syncpresign && !SynchronizePreSignData(w.sid,w.id,false) {
 			    common.Info("================================PreSign at RecvMsg.Run, put pre-sign data to local db fail=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index,"err",err)
 			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
 			    ch <- res
@@ -702,7 +704,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			return false
 		    }
 
-		    if !SynchronizePreSignData(w.sid,w.id,true) {
+		    if syncpresign && !SynchronizePreSignData(w.sid,w.id,true) {
 			err = DeletePreSignData(ps.Pub,ps.InputCode,ps.Gid,pre.Key)
 			if err == nil {
 			    common.Debug("================================PreSign at RecvMsg.Run, delete pre-sign data from local db success=====================","pick key",pre.Key,"pubkey",ps.Pub,"gid",ps.Gid,"index",ps.Index)

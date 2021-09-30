@@ -731,7 +731,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		    }
 		    ///////
 		    if !exsit {
-			common.Debug("============================PreSign at RecvMsg.Run,not exist presign data===========================","pubkey",ps.Pub)
+			common.Debug("============================PreSign at RecvMsg.Run,not exist presign data===========================","pubkey",ps.Pub,"gid",ps.Gid)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
 			ch <- res
 			return false
@@ -739,7 +739,7 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 
 		    pd,ok := da.(*PubKeyData)
 		    if !ok {
-			common.Debug("============================PreSign at RecvMsg.Run,presign data error==========================","pubkey",ps.Pub)
+			common.Debug("============================PreSign at RecvMsg.Run,presign data error==========================","pubkey",ps.Pub,"gid",ps.Gid)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get presign data from db fail", Err: fmt.Errorf("get presign data from db fail")}
 			ch <- res
 			return false
@@ -772,33 +772,31 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			var ch1 = make(chan interface{}, 1)
 			pre := PreSign_ec3(w.sid,save,sku1,"ECDSA",ch1,workid)
 			if pre == nil {
-				res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("presign fail")}
+				common.Info("============================PreSign at RecvMsg.Run, failed to generate the presign data this time ==========================","pubkey",ps.Pub,"gid",ps.Gid,"presign data key",w.sid,"err","return result is nil")
+				res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: fmt.Errorf("return result is nil")}
 				ch <- res
 				return false
 			}
 
-			//if NeedPreSign(ps.Pub) {
-				pre.Key = w.sid
-				pre.Gid = w.groupid
-				pre.Used = false
-				
-				DtPreSign.Lock()
-				pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
-		
-				_,err := Encode2(pre)
-				common.Debug("========================PreSign at RecvMsg.Run finish,ecode pre-sign data.=================","err",err,"pick key",pre.Key)
-				if err == nil {
-				    err = PutPreSignDataIntoDb(strings.ToLower(pub),pre)
-				    if err == nil {
-					PutPreSign(pub,pre)
-				    } else {
-					common.Info("========================PreSign at RecvMsg.Run,put pre-sign data into db fail.=================","err",err,"pick key",pre.Key)
-				    }
-				}
-				
-				DtPreSign.Unlock()
-			//}
+			pre.Key = w.sid
+			pre.Gid = w.groupid
+			pre.Used = false
+			
+			DtPreSign.Lock()
+			pub := Keccak256Hash([]byte(strings.ToLower(ps.Pub + ":" + ps.Gid))).Hex()
+			err := PutPreSignDataIntoDb(strings.ToLower(pub),pre)
+			if err != nil {
+			    common.Info("============================PreSign at RecvMsg.Run, failed to generate the presign data this time,put pre-sign data to local db fail. ==========================","pubkey",ps.Pub,"gid",ps.Gid,"presign data key",w.sid,"err",err)
+			    DtPreSign.Unlock()
+			    res := RpcDcrmRes{Ret: "", Tip: "presign fail", Err: err}
+			    ch <- res
+			    return false
+			}
 
+			PutPreSign(pub,pre)
+			DtPreSign.Unlock()
+			
+			common.Info("============================PreSign at RecvMsg.Run, pre-generated sign data succeeded.==========================","pubkey",ps.Pub,"gid",ps.Gid,"presign data key",w.sid)
 			res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 			ch <- res
 			return true

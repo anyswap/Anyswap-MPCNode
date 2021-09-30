@@ -557,7 +557,7 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	go func(gg string) {
 	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
 	    PutPreSigal(pub,true)
-	    common.Info("===================before generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pub",pub,"pubkey",pre.PubKey,"sub-groupid",gg)
+	    common.Info("===================before generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"pub",pub,"pubkey",pre.PubKey,"groupid",gg)
 	    for {
 		    if NeedPreSign(pub) && GetPreSigal(pub) {
 			    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
@@ -566,7 +566,7 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 
 			    val,err := Encode2(ps)
 			    if err != nil {
-				common.Info("=====================ExcutePreSignData========================","pub",pub,"err",err)
+				common.Error("=====================ExcutePreSignData,encode pre-sign data error.========================","pub",pub,"pubkey",pre.PubKey,"gid",gg,"err",err)
 				time.Sleep(time.Duration(10000000))
 				continue 
 			    }
@@ -576,10 +576,10 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 			    SetUpMsgList3(val,cur_enode,rch)
 			    _, _,cherr := GetChannelValue(waitall+10,rch)
 			    if cherr != nil {
-				common.Info("=====================ExcutePreSignData in genkey fail========================","pub",pub,"cherr",cherr)
+				common.Error("=====================ExcutePreSignData, pre-sign fail========================","pub",pub,"pubkey",pre.PubKey,"gid",gg,"cherr",cherr)
 			    }
 
-			    common.Info("===================generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"the number of remaining pre-sign data",(PrePubDataCount-GetTotalCount(pub)),"pub",pub,"pubkey",pre.PubKey,"sub-groupid",gg)
+			    common.Info("===================generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"pub",pub,"pubkey",pre.PubKey,"groupid",gg)
 		    } 
 
 		    time.Sleep(time.Duration(1000000))

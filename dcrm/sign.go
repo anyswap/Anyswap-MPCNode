@@ -39,6 +39,7 @@ import (
 	"container/list"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
 	"errors"
+	"runtime/debug"
 )
 
 var (
@@ -680,13 +681,29 @@ type SignCurNodeInfo struct {
 }
 
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
+    defer func() {
+	if r := recover(); r != nil {
+	    fmt.Errorf("GetCurNodeSignInfo Runtime error: %v\n%v", r, string(debug.Stack()))
+	    return
+	}
+    }()
+
 	var ret []*SignCurNodeInfo
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
 	for k, v := range LdbPubKeyData.Map {
 	    wg.Add(1)
 	    go func(key string,value interface{}) {
-		defer wg.Done()
+		    defer func() {
+		        if r := recover();r != nil {
+			    fmt.Errorf("GetCurNodeSignInfo go Runtime error: %v\n%v", r, string(debug.Stack()))
+			}
+			wg.Done()
+		    }()
+
+		if value == nil || key == "" {
+			return
+		}
 
 		vv,ok := value.(*AcceptSignData)
 		if vv == nil || !ok {
@@ -707,6 +724,10 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		}
 		
 		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
+		if los == nil {
+			common.Error("=========================GetCurNodeSignInfo,current info is nil========================","key",key)
+			return
+		}
 		ret = append(ret, los)
 		common.Debug("================GetCurNodeSignInfo success return=======================","key",key)
 	    }(k,v)
@@ -1238,6 +1259,13 @@ func DECDSASignRoundThree(msgprex string, cointype string, save string, w *RPCRe
 }
 
 func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *RPCReqWorker, idSign sortableIDSSlice, ch chan interface{}, ukc map[string]*big.Int, ukc3 map[string]*ec2.PublicKey, zk1proof map[string]*ec2.MtAZK1Proof_nhh, zkfactproof map[string]*ec2.NtildeH1H2) bool {
+    defer func() {
+        if r := recover(); r != nil {
+	    fmt.Errorf("DECDSASignVerifyZKNtilde Runtime error: %v\n%v", r, string(debug.Stack()))
+	    return
+        }
+    }()
+
 	if msgprex == "" || cointype == "" || save == "" || w == nil || len(idSign) == 0 || len(ukc) == 0 || len(ukc3) == 0 || len(zk1proof) == 0 || len(zkfactproof) == 0 {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res
@@ -1255,7 +1283,15 @@ func DECDSASignVerifyZKNtilde(msgprex string, cointype string, save string, w *R
 	itmp := 0
 	iter := w.msg_mtazk1proof.Front()
 	for iter != nil {
+		if iter.Value == nil {
+			iter = iter.Next()
+			continue
+		}
 		mdss := iter.Value.(string)
+		if (itmp + 1) > (w.ThresHold-1) {
+			iter = iter.Next()
+			continue
+		}
 		mtazk1s[itmp] = mdss
 		iter = iter.Next()
 		itmp++
@@ -2065,6 +2101,13 @@ func DECDSASignRoundSix(msgprex string, u1Gamma *big.Int, commitU1GammaG *ec2.Co
 }
 
 func DECDSASignVerifyCommitment(cointype string, w *RPCReqWorker, idSign sortableIDSSlice, commitU1GammaG *ec2.Commitment, u1GammaZKProof *ec2.ZkUProof, ch chan interface{}) map[string][]*big.Int {
+    defer func() {
+	if r := recover(); r != nil {
+	    fmt.Errorf("DECDSASignVerifyCommitment Runtime error: %v\n%v", r, string(debug.Stack()))
+	    return
+	}
+    }()
+
 	if cointype == "" || w == nil || len(idSign) == 0 || commitU1GammaG == nil || u1GammaZKProof == nil {
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
 		ch <- res

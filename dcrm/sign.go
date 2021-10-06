@@ -734,7 +734,16 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	}
 	LdbPubKeyData.RUnlock()
 	wg.Wait()
-	return ret, "", nil
+	var tmp []*SignCurNodeInfo
+	for i:=0;i<len(ret);i++ {
+		if ret[i] == nil {
+			continue
+		}
+
+		tmp = append(tmp,ret[i])
+	}
+
+	return tmp, "", nil
 }
 
 func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickhash []*PickHashKey ,ch chan interface{}) {

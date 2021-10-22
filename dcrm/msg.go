@@ -633,88 +633,13 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 		return true
 	}
 
-	m, err2 := Decode2(res, "SignData")
-	if err2 == nil {
-	    sd,ok := m.(*SignData)
-	    if ok {
-		common.Debug("===============RecvMsg.Run,it is signdata===================","msgprex",sd.MsgPrex,"key",sd.Key)
-
-		ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
-		pubkeyhex := hex.EncodeToString(ys)
-		pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
-		pre := GetPrePubDataBak(pub,sd.PickKey)
-		if pre == nil {
-			    common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
-			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
-			    ch <- res2
-			    return false
-		}
-
-		w := workers[workid]
-		w.sid = sd.Key
-		w.groupid = sd.GroupId
-		
-		w.NodeCnt = sd.NodeCnt
-		w.ThresHold = sd.ThresHold
-		
-		w.DcrmFrom = sd.DcrmFrom
-
-		dcrmpks, _ := hex.DecodeString(pubkeyhex)
-		exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
-		if exsit {
-			pd,ok := da.(*PubKeyData)
-			if ok {
-			    exsit,da2 := GetValueFromPubKeyData(pd.Key)
-			    if exsit {
-				    ac,ok := da2.(*AcceptReqAddrData)
-				    if ok {
-					HandleC1Data(ac,sd.Key,workid)
-				    }
-			    }
-
-			}
-		}
-
-		var ch1 = make(chan interface{}, 1)
-		for i:=0;i < recalc_times;i++ {
-		    common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
-		    if len(ch1) != 0 {
-			<-ch1
-		    }
-
-		    //w.Clear2()
-		    //Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
-		    Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
-		    ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
-		    if ret != "" && cherr == nil {
-			ww, err2 := FindWorker(sd.MsgPrex)
-			if err2 != nil || ww == nil {
-			    res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
-			    ch <- res2
-			    return false
-			}
-
-			common.Info("===============RecvMsg.Run, sign success ===================","get result",ret,"msgprex",sd.MsgPrex,"key",sd.Key,"tx hash",sd.Txhash,"pick key",sd.PickKey)
-
-			ww.rsv.PushBack(ret)
-			res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
-			ch <- res2
-			return true 
-		    }
-		    
-		    common.Info("===============RecvMsg.Run,sign fail===================","cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key,"tx hash",sd.Txhash,"pick key",sd.PickKey)
-		}	
-		
-		res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
-		ch <- res2
-		return false 
-	    }
-	}
-	
-	m, err2 = Decode2(res, "PreSign")
-	if err2 == nil {
-	    ps,ok := m.(*PreSign)
-	    if ok {
+	msgmap := make(map[string]string)
+	err := json.Unmarshal([]byte(res), &msgmap)
+	if err == nil {
+	    // presign
+	    if msgmap["Type"] == "PreSign" {
+		ps := &PreSign{}
+		if err = ps.UnmarshalJSON([]byte(msgmap["PreSign"]));err == nil {
 		    w := workers[workid]
 		    w.sid = ps.Nonce 
 		    w.groupid = ps.Gid
@@ -800,6 +725,85 @@ func (self *RecvMsg) Run(workid int, ch chan interface{}) bool {
 			res := RpcDcrmRes{Ret: "success", Tip: "", Err: nil}
 			ch <- res
 			return true
+		}
+	    }
+
+	    // signdata
+	    if msgmap["Type"] == "SignData" {
+		sd := &SignData{}
+		if err = sd.UnmarshalJSON([]byte(msgmap["SignData"]));err == nil {
+		    common.Debug("===============RecvMsg.Run,it is signdata===================","msgprex",sd.MsgPrex,"key",sd.Key)
+
+		    ys := secp256k1.S256().Marshal(sd.Pkx, sd.Pky)
+		    pubkeyhex := hex.EncodeToString(ys)
+		    pub := Keccak256Hash([]byte(strings.ToLower(pubkeyhex + ":" + sd.GroupId))).Hex()
+		    pre := GetPrePubDataBak(pub,sd.PickKey)
+		    if pre == nil {
+				common.Info("===============RecvMsg.Run,it is signdata, get pre sign data fail===================","msgprex",sd.MsgPrex,"key",sd.Key,"pick key",sd.PickKey,"pub",pub)
+				res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pre sign data fail", Err: fmt.Errorf("get pre sign data fail")}
+				ch <- res2
+				return false
+		    }
+
+		    w := workers[workid]
+		    w.sid = sd.Key
+		    w.groupid = sd.GroupId
+		    
+		    w.NodeCnt = sd.NodeCnt
+		    w.ThresHold = sd.ThresHold
+		    
+		    w.DcrmFrom = sd.DcrmFrom
+
+		    dcrmpks, _ := hex.DecodeString(pubkeyhex)
+		    exsit,da := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
+		    if exsit {
+			    pd,ok := da.(*PubKeyData)
+			    if ok {
+				exsit,da2 := GetValueFromPubKeyData(pd.Key)
+				if exsit {
+					ac,ok := da2.(*AcceptReqAddrData)
+					if ok {
+					    HandleC1Data(ac,sd.Key,workid)
+					}
+				}
+
+			    }
+		    }
+
+		    var ch1 = make(chan interface{}, 1)
+		    for i:=0;i < recalc_times;i++ {
+			common.Debug("===============RecvMsg.Run,sign recalc===================","i",i,"msgprex",sd.MsgPrex,"key",sd.Key)
+			if len(ch1) != 0 {
+			    <-ch1
+			}
+
+			//w.Clear2()
+			//Sign_ec2(sd.Key, sd.Save, sd.Sku1, sd.Txhash, sd.Keytype, sd.Pkx, sd.Pky, ch1, workid)
+			Sign_ec3(sd.Key,sd.Txhash,sd.Keytype,sd.Pkx,sd.Pky,ch1,workid,pre)
+			ret, _, cherr := GetChannelValue(WaitMsgTimeGG20 + 10, ch1)
+			if ret != "" && cherr == nil {
+			    ww, err2 := FindWorker(sd.MsgPrex)
+			    if err2 != nil || ww == nil {
+				res2 := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker")}
+				ch <- res2
+				return false
+			    }
+
+			    common.Info("===============RecvMsg.Run, sign success ===================","get result",ret,"msgprex",sd.MsgPrex,"key",sd.Key,"tx hash",sd.Txhash,"pick key",sd.PickKey)
+
+			    ww.rsv.PushBack(ret)
+			    res2 := RpcDcrmRes{Ret: ret, Tip: "", Err: nil}
+			    ch <- res2
+			    return true 
+			}
+			
+			common.Info("===============RecvMsg.Run,sign fail===================","cherr",cherr,"msgprex",sd.MsgPrex,"key",sd.Key,"tx hash",sd.Txhash,"pick key",sd.PickKey)
+		    }	
+		    
+		    res2 := RpcDcrmRes{Ret: "", Tip: "sign fail", Err: fmt.Errorf("sign fail")}
+		    ch <- res2
+		    return false 
+		}
 	    }
 	}
 

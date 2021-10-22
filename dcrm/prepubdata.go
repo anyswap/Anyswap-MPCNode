@@ -27,6 +27,7 @@ import (
 	"sync"
 	dberrors "github.com/syndtr/goleveldb/leveldb/errors"
 	"errors"
+	"encoding/json"
 )
 
 var (
@@ -48,11 +49,43 @@ type RpcSignData struct {
 	Key string
 }
 
+//--------------------------------------------------------------------------
+
 type PreSign struct {
 	Pub string
 	Gid string
 	Nonce string
 }
+
+func (ps *PreSign) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Pub string `json:"Pub"`
+		Gid string `json:"Gid"`
+		Nonce string `json:"Nonce"`
+	}{
+		Pub: ps.Pub,
+		Gid: ps.Gid,
+		Nonce: ps.Nonce,
+	})
+}
+
+func (ps *PreSign) UnmarshalJSON(raw []byte) error {
+	var pre struct {
+		Pub string `json:"Pub"`
+		Gid string `json:"Gid"`
+		Nonce string `json:"Nonce"`
+	}
+	if err := json.Unmarshal(raw, &pre); err != nil {
+		return err
+	}
+
+	ps.Pub = pre.Pub
+	ps.Gid = pre.Gid
+	ps.Nonce = pre.Nonce
+	return nil
+}
+
+//-------------------------------------------------------------------
 
 type PrePubData struct {
 	Key string
@@ -571,16 +604,21 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 			    nonce := Keccak256Hash([]byte(strings.ToLower(pub + tt))).Hex()
 			    ps := &PreSign{Pub:pre.PubKey,Gid:gg,Nonce:nonce}
 
-			    val,err := Encode2(ps)
+			    m := make(map[string]string)
+			    psjson,err := ps.MarshalJSON()
+			    if err == nil {
+				m["PreSign"] = string(psjson) 
+			    }
+			    m["Type"] = "PreSign"
+			    val,err := json.Marshal(m)
 			    if err != nil {
-				common.Error("=====================ExcutePreSignData,encode pre-sign data error.========================","pub",pub,"pubkey",pre.PubKey,"gid",gg,"err",err)
 				time.Sleep(time.Duration(10000000))
 				continue 
 			    }
-			    SendMsgToDcrmGroup(val,gg)
+			    SendMsgToDcrmGroup(string(val),gg)
 
 			    rch := make(chan interface{}, 1)
-			    SetUpMsgList3(val,cur_enode,rch)
+			    SetUpMsgList3(string(val),cur_enode,rch)
 			    _, _,cherr := GetChannelValue(waitall+10,rch)
 			    if cherr != nil {
 				common.Error("=====================ExcutePreSignData, pre-sign fail========================","pub",pub,"pubkey",pre.PubKey,"gid",gg,"cherr",cherr)

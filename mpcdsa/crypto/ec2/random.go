@@ -21,45 +21,35 @@ import (
 	"time"
 
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"github.com/fsn-dev/dcrm-walletService/internal/common"
 )
 
 var (
-	SafePrime = make(chan *big.Int, 1000)
-	RndInt    = make(chan *big.Int, 1000)
+	SafePrime = make(chan *big.Int, 4)
 )
 
-func GenRandomSafePrime(length int) {
-	for {
-		if len(SafePrime) < 4 { /////TODO  tmp:1000-->4
-			rndInt := <-RndInt
-			p := random.GetSafeRandomPrimeInt2(length/2, rndInt)
-			if p != nil {
-				SafePrime <- p
-				time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-			}
-		}
+func GenRandomSafePrime() {
+     for {
+         if len(SafePrime) < 4 {
+             p := random.GetSafeRandomPrimeInt()
 
-		////TODO tmp:1000-->4
-		if len(SafePrime) == 4 {
-			break
-		}
-		//////
-	}
+	     //check p < 2^(L/2)
+	    two := big.NewInt(2)
+	    lhalf := big.NewInt(1024)
+	     m := new(big.Int).Exp(two,lhalf,nil)
+	     if p != nil && p.Cmp(m) < 0 {
+		common.Info("================================Success Generate Safe Random Prime.==============================")
+		SafePrime <-p
+	     }
+	     //
+         }
+	
+	if len(SafePrime) == 4 {
+		break
+ 	}
+	 
+	time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
+     }
 }
 
-func GenRandomInt(length int) {
 
-	for {
-		if len(RndInt) < 1000 {
-			////TODO tmp:1000-->4
-			if len(SafePrime) == 4 {
-				break
-			}
-			//////
-			p := random.GetSafeRandomInt(length / 2)
-			RndInt <- p
-
-			time.Sleep(time.Duration(1000000)) //1000 000 000 == 1s
-		}
-	}
-}

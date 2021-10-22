@@ -35,6 +35,7 @@ var (
 	lock                     sync.Mutex
 	db *ethdb.LDBDatabase
 	dbsk *ethdb.LDBDatabase
+	prekey  *ethdb.LDBDatabase
 )
 
 func makeDatabaseHandles() int {
@@ -557,6 +558,29 @@ func GetPubKeyDataFromLocalDb(key string) (bool,interface{}) {
 
     return true,pd 
 }
+
+//----------------------------------------------------------------------------------
+
+// GetPreKeyDir get public key group information database dir
+func GetPreKeyDir() string {
+	dir := common.DefaultDataDir()
+	dir += "/smpcdata/smpcprekey" + cur_enode
+	return dir
+}
+
+// GetSmpcPreKeyDb open public key group information database
+func GetSmpcPreKeyDb() *ethdb.LDBDatabase {
+	dir := GetPreKeyDir()
+	prekey, err := ethdb.NewLDBDatabase(dir, cache, handles)
+	if err != nil {
+		common.Error("======================GetSmpcPreKeyDb,open prekey fail======================", "err", err, "dir", dir)
+		return nil
+	}
+
+	return prekey
+}
+
+//----------------------------------------------------------------------------------
 
 func GetGroupDir() string { //TODO
 	dir := common.DefaultDataDir()

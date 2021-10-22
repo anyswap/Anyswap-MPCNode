@@ -164,6 +164,13 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	    return
 	}
 
+	prekey = GetSmpcPreKeyDb()
+	if prekey == nil {
+		common.Error("======================dcrm.Start,open prekey fail=====================")
+		os.Exit(1)
+		return
+	}
+
 	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
 	
 	PrePubDataCount = int(presignnum)
@@ -174,6 +181,8 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	
 	//LdbPubKeyData = GetAllPubKeyDataFromDb()
 	GetAllPreSignFromDb()
+
+	AutoPreGenSignData()
 
 	go HandleRpcSign()
 

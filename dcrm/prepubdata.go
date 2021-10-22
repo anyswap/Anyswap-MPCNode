@@ -557,6 +557,13 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	go func(gg string) {
 	    pub := Keccak256Hash([]byte(strings.ToLower(pre.PubKey + ":" + gg))).Hex()
 	    PutPreSigal(pub,true)
+
+	    err := SavePrekeyToDb(pre.PubKey,gg)
+	    if err != nil {
+		    common.Error("=========================ExcutePreSignData,save (pubkey,gid) to db fail.=======================", "pubkey", pre.PubKey, "gid", gg, "err", err)
+		    return
+	    }
+
 	    common.Info("===================before generate pre-sign data===============","current total number of the data ",GetTotalCount(pub),"pub",pub,"pubkey",pre.PubKey,"groupid",gg)
 	    for {
 		    if NeedPreSign(pub) && GetPreSigal(pub) {
@@ -586,6 +593,58 @@ func ExcutePreSignData(pre *TxDataPreSignData) {
 	    }
 	}(gid)
     }
+}
+
+// AutoPreGenSignData Automatically generate pre-sign data based on database that saving public key group information. 
+func AutoPreGenSignData() {
+	if prekey == nil {
+		return
+	}
+
+	iter := prekey.NewIterator()
+	for iter.Next() {
+		value := []byte(string(iter.Value()))
+		if len(value) == 0 {
+			continue
+		}
+
+		go func(val string) {
+			common.Debug("======================AutoPreGenSignData=========================", "val", val)
+			tmp := strings.Split(val, ":") // val = pubkey:gid
+			if len(tmp) < 2 || tmp[0] == "" || tmp[1] == "" {
+				return
+			}
+
+			subgid := make([]string, 0)
+			subgid = append(subgid, tmp[1])
+			pre := &TxDataPreSignData{TxType: "PRESIGNDATA", PubKey: tmp[0], SubGid: subgid}
+			ExcutePreSignData(pre)
+		}(string(value))
+	}
+
+	iter.Release()
+}
+
+// SavePrekeyToDb save pubkey gid information to the specified batabase
+func SavePrekeyToDb(pubkey string,gid string) error {
+	if prekey == nil {
+		return fmt.Errorf("db open fail")
+	}
+
+	pub := strings.ToLower(Keccak256Hash([]byte(strings.ToLower(pubkey + ":" + gid))).Hex())
+	val := pubkey + ":" + gid
+
+	_, err := prekey.Get([]byte(pub))
+	if IsNotFoundErr(err) {
+		common.Debug("==================SavePrekeyToDb, Not Found pub.=====================", "pub", pub, "pubkey", pubkey, "gid", gid)
+		err = prekey.Put([]byte(pub), []byte(val))
+		if err != nil {
+			common.Error("==================SavePrekeyToDb, put prekey to db fail.=====================", "pub", pub, "pubkey", pubkey, "gid", gid, "err", err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 type PreSignDataValue struct {

@@ -44,6 +44,10 @@ var (
 	reqdata_timeout = 60
 )
 
+const (
+	paillierBitsLen = 2048
+)
+
 type PubKeyData struct {
         Key string
 	Account  string
@@ -1434,6 +1438,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 			    found = true
 			    break
 			}
+			
 			iter = iter.Next()
 		    }
 
@@ -1446,6 +1451,29 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC1Timeout)}
 	    ch <- res
 	    return nil, nil, nil, nil, nil, nil, false
+	}
+
+	//check paillier.N bitlen
+	iter := w.msg_c1.Front()
+	for iter != nil {
+	    mdss := iter.Value.(string)
+	    ms := strings.Split(mdss, common.Sep)
+	    // key-enodeID:C1:com.C:pk.Len:pk.N:pk.G:pk.N2
+	    if len(ms) < 7 {
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("got c1 data error")}
+		ch <- res
+		return nil, nil, nil, nil, nil, nil, false
+	    }
+
+	    // paillier.N
+	    N := new(big.Int).SetBytes([]byte(ms[4]))
+	    if N.BitLen() < paillierBitsLen {
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("got paillier N with not enough bits")}
+		ch <- res
+		return nil, nil, nil, nil, nil, nil, false
+	    }
+
+	    iter = iter.Next()
 	}
 
 	return u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk, true
@@ -1989,6 +2017,30 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 	    ch <- res
 	    return nil, false
 	}
+
+	// check ntilde bitlen
+	iter := w.msg_zkfact.Front()
+	for iter != nil {
+	    mdss := iter.Value.(string)
+	    ms := strings.Split(mdss, common.Sep)
+	    // key-enodeID:NTILDEH1H2:ntilde:h1:h2
+	    if len(ms) < 5 {
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("got ntilde data error")}
+		ch <- res
+		return nil,false
+	    }
+
+	    // ntilde
+	    Ntilde := new(big.Int).SetBytes([]byte(ms[2]))
+	    if Ntilde.BitLen() < paillierBitsLen {
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("got ntilde with not enough bits")}
+		ch <- res
+		return nil,false
+	    }
+
+	    iter = iter.Next()
+	}
+
 
 	return u1NtildeH1H2, true
 }

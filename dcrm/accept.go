@@ -313,6 +313,7 @@ func AcceptSign(initiator string,account string, pubkey string,msghash []string,
 
 	if ac2.Status != "Pending" {
 	    LdbPubKeyData.DeleteMap(key)
+	    ReceivTime.DeleteMap(key)
 	} else {
 	    LdbPubKeyData.WriteMap(key, ac2)
 	}
@@ -445,7 +446,7 @@ type AcceptSignData struct {
 	Accept string
 
 	Status    string
-	Rsv string   //rsv1:rsv2:....:rsvn:NULL
+	Rsv string   // rsv1:rsv2:....:rsvn:NULL
 	Tip       string
 	Error     string
 

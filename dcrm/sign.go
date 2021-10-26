@@ -46,6 +46,7 @@ var (
 	signtodel = list.New()
 	delsign    sync.Mutex
 	count_to_del_sign = 10 
+	ReceivTime  = common.NewSafeMap(10)
 )
 
 func GetSignNonce(account string) (string, string, error) {
@@ -133,6 +134,8 @@ func InitAcceptData2(sbd *SignBrocastData,workid int,sender string,ch chan inter
 		    err = SaveAcceptSignData(ac)
 		    if err == nil {
 			common.Info("===============InitAcceptDatai2,save sign accept data finish===================","ars ",ars,"key ",key,"tx data",sig)
+			ReceivTime.WriteMap(key,sbd.TimeStamp)
+
 			w := workers[workid]
 			w.sid = key 
 			w.groupid = sig.GroupId 
@@ -543,7 +546,8 @@ func Sign(raw string) (string, string, error) {
 
     common.Debug("=====================Sign================","key",key,"from",from,"raw",raw)
 
-    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key}
+    tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
+    rsd := &RpcSignData{Raw:raw,PubKey:sig.PubKey,GroupId:sig.GroupId,MsgHash:sig.MsgHash,Key:key,TimeStamp:tt}
     SignChan <- rsd
     return key, "", nil
 }
@@ -598,7 +602,7 @@ func HandleRpcSign() {
 					continue
 				}
 
-				send,err := CompressSignBrocastData(rsd.Raw,pickhash)
+				send,err := CompressSignBrocastData(rsd.Raw,pickhash,rsd.TimeStamp)
 				if err != nil {
 					common.Info("=========================HandleRpcSign======================","rsd.Pubkey",rsd.PubKey,"key",rsd.Key,"exsit",exsit,"ok",ok,"bret",bret,"err",err)
 					DtPreSign.Lock()
@@ -680,6 +684,24 @@ type SignCurNodeInfo struct {
 	TimeStamp string
 }
 
+type SignCurNodeInfoSort struct {
+	Info []*SignCurNodeInfo
+}
+
+func (s *SignCurNodeInfoSort) Len() int {
+	return len(s.Info)
+}
+
+func (s *SignCurNodeInfoSort) Less(i, j int) bool {
+	itime,_ := new(big.Int).SetString(s.Info[i].TimeStamp,10)
+	jtime,_ := new(big.Int).SetString(s.Info[j].TimeStamp,10)
+	return itime.Cmp(jtime) <= 0
+}
+
+func (s *SignCurNodeInfoSort) Swap(i, j int) {
+    s.Info[i],s.Info[j] = s.Info[j],s.Info[i]
+}
+
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
     defer func() {
 	if r := recover(); r != nil {
@@ -722,8 +744,13 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		if !CheckAccept(vv.PubKey,vv.Mode,geter_acc) {
 			return
 		}
-		
-		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
+	
+		tt,exsit := ReceivTime.ReadMap(key)
+		if !exsit {
+		    return
+		}
+
+		los := &SignCurNodeInfo{Key: key, Account: vv.Account, PubKey:vv.PubKey, MsgHash:vv.MsgHash, MsgContext:vv.MsgContext, KeyType:vv.Keytype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: tt.(string)}
 		if los == nil {
 			common.Error("=========================GetCurNodeSignInfo,current info is nil========================","key",key)
 			return
@@ -743,7 +770,27 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 		tmp = append(tmp,ret[i])
 	}
 
-	return tmp, "", nil
+	signinfosort := SignCurNodeInfoSort{Info:tmp}
+	sort.Sort(&signinfosort)
+
+	var tmp2 []*SignCurNodeInfo
+	for i:=0;i<len(signinfosort.Info);i++ {
+	    key := (signinfosort.Info)[i].Key
+	    da,exsit := LdbPubKeyData.ReadMap(key)
+	    if !exsit {
+		continue
+	    }
+	    
+	    vv,ok := da.(*AcceptSignData)
+	    if vv == nil || !ok {
+		continue
+	    }
+	   
+	    (signinfosort.Info)[i].TimeStamp = vv.TimeStamp
+	    tmp2 = append(tmp2,(signinfosort.Info)[i])
+	}
+
+	return tmp2, "", nil
 }
 
 func sign(wsid string,account string,pubkey string,unsignhash []string,keytype string,nonce string,mode string,pickhash []*PickHashKey ,ch chan interface{}) {

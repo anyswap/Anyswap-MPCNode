@@ -47,6 +47,7 @@ type RpcSignData struct {
 	GroupId string
 	MsgHash []string
 	Key string
+	TimeStamp string
 }
 
 //--------------------------------------------------------------------------
@@ -508,14 +509,15 @@ func DeletePreSignDataFromDb(pub string,key string) error {
 type SignBrocastData struct {
 	Raw string
 	PickHash []*PickHashKey
+	TimeStamp string // receive time of the sign cmd at current node
 }
 
-func CompressSignBrocastData(raw string,pickhash []*PickHashKey) (string,error) {
-	if raw == "" || pickhash == nil {
+func CompressSignBrocastData(raw string,pickhash []*PickHashKey,timestamp string) (string,error) {
+	if raw == "" || pickhash == nil || timestamp == "" {
 		return "",fmt.Errorf("sign brocast data error")
 	}
 
-	s := &SignBrocastData{Raw:raw,PickHash:pickhash}
+	s := &SignBrocastData{Raw:raw,PickHash:pickhash,TimeStamp:timestamp}
 	send,err := Encode2(s)
 	if err != nil {
 		return "",err

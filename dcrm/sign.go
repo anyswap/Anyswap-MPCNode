@@ -790,6 +790,22 @@ func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
 	}
 	LdbPubKeyData.RUnlock()
 	wg.Wait()
+
+	// fixed bug:remove nil element from return value
+	if ret != nil && len(ret) > 0 {
+	    var tmp []*SignCurNodeInfo
+	    for _,v := range ret {
+		if v == nil {
+		    continue
+		}
+
+		tmp = append(tmp,v)
+	    }
+
+	    return tmp,"",nil
+	}
+	//
+
 	return ret, "", nil
 }
 

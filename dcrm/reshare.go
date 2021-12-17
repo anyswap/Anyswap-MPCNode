@@ -32,12 +32,12 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"github.com/fsn-dev/cryptoCoins/coins"
+	"github.com/fsn-dev/dcrm-walletService/log"
 )
 
 func GetReShareNonce(account string) (string, string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account + ":" + "RESHARE"))).Hex()
 	exsit,da := GetValueFromPubKeyData(key)
-	///////
 	if !exsit {
 		return "0", "", nil
 	}
@@ -52,7 +52,6 @@ func SetReShareNonce(account string,nonce string) (string, error) {
 	key2 := Keccak256Hash([]byte(strings.ToLower(account + ":" + "RESHARE"))).Hex()
 	kd := KeyData{Key: []byte(key2), Data: nonce}
 	PubKeyDataChan <- kd
-	//LdbPubKeyData.WriteMap(key2, []byte(nonce))
 
 	return "", nil
 }
@@ -87,42 +86,42 @@ func IsValidReShareAccept(from string,gid string) bool {
 }
 
 func ReShare(raw string) (string, string, error) {
-    common.Debug("=====================ReShare call CheckRaw ================","raw",raw)
+    hash := Keccak256Hash([]byte(raw)).Hex()
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================ReShare,CheckRaw ================","raw",raw,"err",err)
+	log.Error("[RESHARE] check raw data fail","raw data hash",hash,"err",err)
 	return "",err.Error(),err
     }
 
     rh,ok := txdata.(*TxDataReShare)
     if !ok {
-	return "","check raw fail,it is not *TxDataReShare",fmt.Errorf("check raw fail,it is not *TxDataReShare")
+	return "","check raw data fail",fmt.Errorf("check raw data fail")
     }
 
-    common.Debug("=====================ReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",rh.GroupId,"key",key)
+    log.Info("[RESHARE] broadcasting reshare cmd raw data to group","raw data hash",hash,"gid",rh.GroupId,"group nodes",getGroupNodes(rh.GroupId))
     SendMsgToDcrmGroup(raw, rh.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }
 
 func RpcAcceptReShare(raw string) (string, string, error) {
-    common.Debug("=====================RpcAcceptReShare call CheckRaw ================","raw",raw)
+    hash := Keccak256Hash([]byte(raw)).Hex()
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("=====================RpcAcceptReShare,CheckRaw ================","raw",raw,"err",err)
+	log.Error("[ACCEPT RESHARE] check accept raw data fail","raw data hash",hash,"err",err)
 	return "Failure",err.Error(),err
     }
 
     acceptrh,ok := txdata.(*TxDataAcceptReShare)
     if !ok {
-	return "Failure","check raw fail,it is not *TxDataAcceptReShare",fmt.Errorf("check raw fail,it is not *TxDataAcceptReShare")
+	return "Failure","check raw data fail",fmt.Errorf("check raw data fail")
     }
 
     exsit,da := GetValueFromPubKeyData(acceptrh.Key)
     if exsit {
 	ac,ok := da.(*AcceptReShareData)
 	if ok && ac != nil {
-	    common.Debug("=====================RpcAcceptReShare, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptrh.Key)
+	    log.Info("[ACCEPT RESHARE] broadcasting reshare accept raw data to group","raw data hash",hash,"gid",ac.GroupId,"group nodes",getGroupNodes(ac.GroupId))
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -143,19 +142,23 @@ type ReShareStatus struct {
 
 func GetReShareStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
-	///////
 	if !exsit || da == nil  {
-		return "", "dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data fail from db when GetReShareStatus")
+		return "", "", fmt.Errorf("No reshare result was found in the database","key",key)
 	}
 
 	ac,ok := da.(*AcceptReShareData)
 	if !ok {
-		return "", "dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus", fmt.Errorf("dcrm back-end internal error:get reshare accept data error from db when GetReShareStatus")
+		return "", "", fmt.Errorf("reshare result error")
 	}
 
 	los := &ReShareStatus{Status: ac.Status, Pubkey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
-	ret,_ := json.Marshal(los)
-	return string(ret), "",nil 
+	ret,err := json.Marshal(los)
+	if err != nil {
+	    log.Error("[RESHARE] get reshare result fail","err",err)
+	    return "","",err
+	}
+
+	return string(ret), "",nil
 }
 
 type ReShareCurNodeInfo struct {
@@ -183,7 +186,6 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 		return
 	    }
 
-	    common.Debug("================GetCurNodeReShareInfo====================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
 	    if vv.Deal == "true" || vv.Status == "Success" {
 		return
 	    }
@@ -194,9 +196,9 @@ func GetCurNodeReShareInfo() ([]*ReShareCurNodeInfo, string, error) {
 
 	    los := &ReShareCurNodeInfo{Key: key, PubKey:vv.PubKey, GroupId:vv.GroupId, TSGroupId:vv.TSGroupId,ThresHold: vv.LimitNum, Account:vv.Account, Mode:vv.Mode, TimeStamp: vv.TimeStamp}
 	    ret = append(ret, los)
-	    common.Debug("================GetCurNodeReShareInfo success return============================","key",key)
 	}(k,v)
     }
+    
     LdbPubKeyData.RUnlock()
     wg.Wait()
     return ret, "", nil
@@ -224,12 +226,11 @@ func reshare(wsid string, initator string, groupid string,pubkey string,account 
 	if ret != "" {
 		w, err := FindWorker(wsid)
 		if w == nil || err != nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("get worker error.")}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get worker error")}
 			ch <- res
 			return
 		}
 
-		///////TODO tmp
 		//sid-enode:SendReShareRes:Success:ret
 		//sid-enode:SendReShareRes:Fail:err
 		mp := []string{w.sid, cur_enode}
@@ -239,7 +240,6 @@ func reshare(wsid string, initator string, groupid string,pubkey string,account 
 		s2 := ret
 		ss := enode + common.Sep + s0 + common.Sep + s1 + common.Sep + s2
 		SendMsgToDcrmGroup(ss, groupid)
-		///////////////
 
 		tip, reply := AcceptReShare("",initator, groupid,w.groupid,pubkey, w.limitnum, mode,"true", "true", "Success", ret, "", "", nil, w.id)
 		if reply != nil {
@@ -248,14 +248,14 @@ func reshare(wsid string, initator string, groupid string,pubkey string,account 
 			return
 		}
 
-		common.Info("================reshare,the terminal res is success=================","key",wsid)
+		log.Info("[RESHARE] reshare successfully","key",wsid)
 		res := RpcDcrmRes{Ret: ret, Tip: tip, Err: err}
 		ch <- res
 		return
 	}
 
 	if cherr != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:reshare fail", Err: cherr}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: cherr}
 		ch <- res
 		return
 	}
@@ -268,7 +268,7 @@ func dcrm_reshare(msgprex string, initator string, groupid string,pubkey string,
 
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker.")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("not found worker")}
 		ch <- res
 		return
 	}
@@ -297,13 +297,14 @@ func dcrm_reshare(msgprex string, initator string, groupid string,pubkey string,
 //return value is the backup for the dcrm sig
 func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, account string,mode string,sigs string,ch chan interface{}, id int) {
 	if id < 0 || id >= len(workers) {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("not found worker.")}
 		ch <- res
 		return
 	}
+
 	w := workers[id]
 	if w.groupid == "" {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group ID fail")}
 		ch <- res
 		return
 	}
@@ -327,7 +328,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	///sku1
 	da := GetSkU1FromLocalDb(string(dcrmpks[:]))
 	if da == nil {
-	    common.Info("=====================ReShare_ec2,da is nil =====================","key",msgprex)
 	    take_reshare = false
 	    skU1 = nil
 	    w1 = nil
@@ -346,8 +346,8 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	if !take_reshare || skU1 == nil || w1 == nil {
 	    ////////test reshare///////////////////////
 	    ids = GetIds("ALL", groupid)
-	    common.Info("=============ReShare_ec2,cur node not take part in reshare==============","gid",groupid,"ids",ids,"key",msgprex)
-	    
+	    log.Info("[RESHARE] current node does not participate in reshare","gid",groupid,"key",msgprex)
+
 	    _, tip, cherr := GetChannelValue(120, w.bc11)
 	    suss := false
 	    if cherr != nil {
@@ -368,7 +368,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		suss = true
 	    }
 	    if !suss {
-		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ss1 timeout")}
+		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all s fail")}
 		    ch <- res
 		    return
 	    }
@@ -380,14 +380,14 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		suss = true
 	    }
 	    if !suss {
-		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get d11 timeout")}
+		    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all commitment datas fail")}
 		    ch <- res
 		    return
 	    }
 
 	    ss1s2 := make([]string, w.ThresHold)
 	    if w.msg_ss1.Len() != w.ThresHold {
-		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all ss1 fail.")}
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all s fail")}
 		    ch <- res
 		    return
 	    }
@@ -403,7 +403,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	    c11s := make([]string, w.ThresHold)
 	    if w.msg_c11.Len() != w.ThresHold {
-		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all c11 fail.")}
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all commitment datas fail")}
 		    ch <- res
 		    return
 	    }
@@ -422,7 +422,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    for _, v := range c11s {
 		    mm := strings.Split(v, common.Sep)
 		    if len(mm) < 3 {
-			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_c11 fail.")}
+			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get commitment data fail")}
 			    ch <- res
 			    return
 		    }
@@ -432,7 +432,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    for _, vv := range ss1s2 {
 			    mmm := strings.Split(vv, common.Sep)
 			    if len(mmm) < 3 {
-				    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 fail.")}
+				    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get commitment data fail")}
 				    ch <- res
 				    return
 			    }
@@ -446,7 +446,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 				    for j := 0; j < dlen; j++ {
 					    l++
 					    if len(mmm) < (3 + l) {
-						    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 fail.")}
+						    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get s fail")}
 						    ch <- res
 						    return 
 					    }
@@ -474,27 +474,27 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    en := strings.Split(string(enodes[8:]), "@")
 		    //bug
 		    if len(en) <= 0 || en[0] == "" {
-			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commitment data fail")}
 			    ch <- res
 			    return
 		    }
 
 		    _, exsit := udecom[en[0]]
 		    if !exsit {
-			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commitment data fail")}
 			    ch <- res
 			    return
 		    }
 		    //
 
 		    if udecom[en[0]] == nil {
-			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commitment data fail")}
 			    ch <- res
 			    return
 		    }
 
 		    if !keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) {
-			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commitment data")}
 			    ch <- res
 			    return
 		    }
@@ -537,7 +537,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    mm := strings.Split(v, common.Sep)
 		    dlen, _ := strconv.Atoi(mm[2])
 		    if len(mm) < (4 + dlen) {
-			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 data error")}
+			    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get s error")}
 			    ch <- res
 			    return 
 		    }
@@ -550,7 +550,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    l++
 			    var gg = make([]*big.Int, 0)
 			    if len(mm) < (4 + dlen + l) {
-				    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 data error")}
+				    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get s error")}
 				    ch <- res
 				    return
 			    }
@@ -558,7 +558,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    gg = append(gg, new(big.Int).SetBytes([]byte(mm[3+dlen+l])))
 			    l++
 			    if len(mm) < (4 + dlen + l) {
-				    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 data error")}
+				    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get s error")}
 				    ch <- res
 				    return
 			    }
@@ -622,7 +622,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    ys := secp256k1.S256().Marshal(pkx, pky)
 	    pubkeyhex := hex.EncodeToString(ys)
 	    if !strings.EqualFold(pubkey,pubkeyhex) {
-		common.Info("=====================ReShare_ec2, reshare fail,new pubkey != old pubkey====================","old pubkey",pubkey,"new pubkey",pubkeyhex,"key",msgprex)
+		log.Info("[RESHARE] reshare fail,new pubkey != old pubkey","key",msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("reshare fail,new pubkey != old pubkey")}
 		ch <- res
 		return 
@@ -689,7 +689,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    SkU1Chan <- sk
 	    }
 	    //
-	    
+
 	    ///////gen paillier key
 	    u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
 	    mp := []string{msgprex, cur_enode}
@@ -887,14 +887,14 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    pubs := &PubKeyData{Key:rk,Account:account, Pub: string(dcrmpks[:]), Save: sstmp, Nonce: nonce, GroupId: groupid, LimitNum: w.limitnum, Mode: mode,KeyGenTime:tt,RefReShareKeys:msgprex}
 	    epubs, err := Encode2(pubs)
 	    if err != nil {
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
+		    res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 		    ch <- res
 		    return
 	    }
 
 	    ss1, err := Compress([]byte(epubs))
 	    if err != nil {
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
+		    res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 		    ch <- res
 		    return
 	    }
@@ -905,7 +905,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		if ok {
 		    //check mode
 		    if daa.Mode != mode {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check mode fail", Err: fmt.Errorf("check mode fail")}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("check mode fail")}
 			ch <- res
 			return
 		    }
@@ -913,7 +913,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		    //check account
 		    if !strings.EqualFold(account, daa.Account) {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check account fail", Err: fmt.Errorf("check account fail")}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("check account fail")}
 			ch <- res
 			return
 		    }
@@ -927,9 +927,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    
 	    kd := KeyData{Key: dcrmpks[:], Data: ss1}
 	    PubKeyDataChan <- kd
-	    /////
-	    //LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
-	    ////
+	    
 	    for _, ct := range coins.Cointypes {
 		    if strings.EqualFold(ct, "ALL") {
 			    continue
@@ -947,14 +945,11 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		    kd = KeyData{Key: []byte(key), Data: ss1}
 		    PubKeyDataChan <- kd
-		    /////
-		    //LdbPubKeyData.WriteMap(key, pubs)
-		    ////
 	    }
-	    
+
 	    _,err = SetReqAddrNonce(account,nonce)
 	    if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set reqaddr nonce fail", Err: fmt.Errorf("set reqaddr nonce fail")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("set keygen nonce fail")}
 		ch <- res
 		return
 	    }
@@ -974,7 +969,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    ac := &AcceptReqAddrData{Initiator:cur_enode,Account: account, Cointype: "ALL", GroupId: groupid, Nonce: nonce, LimitNum: w.limitnum, Mode: mode, TimeStamp: tt, Deal: "true", Accept: "true", Status: "Success", PubKey: pubkey, Tip: "", Error: "", AllReply: allreply, WorkId: wid,Sigs:sigs}
 	    err = SaveAcceptReqAddrData(ac)
 	    if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:save reqaddr accept data fail", Err: fmt.Errorf("save reqaddr accept data fail")}
+		res := RpcDcrmRes{Ret: "", Tip: "save keygen accept data fail", Err: fmt.Errorf("save keygen accept data fail")}
 		ch <- res
 		return
 	    }
@@ -988,7 +983,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		    if !exsit {
 			kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: rk}
 			PubKeyDataChan <- kdtmp
-			//LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(rk))
 		    } else {
 			//
 			found := false
@@ -1005,7 +999,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			    da2 := string(da.([]byte)) + ":" + rk
 			    kdtmp := KeyData{Key: []byte(strings.ToLower(fr)), Data: da2}
 			    PubKeyDataChan <- kdtmp
-			    //LdbPubKeyData.WriteMap(strings.ToLower(fr), []byte(da2))
 			}
 		    }
 		}
@@ -1014,7 +1007,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		if !exsit {
 		    kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: rk}
 		    PubKeyDataChan <- kdtmp
-		    //LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(rk))
 		} else {
 		    //
 		    found := false
@@ -1031,15 +1023,11 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			da2 := string(da.([]byte)) + ":" + rk
 			kdtmp := KeyData{Key: []byte(strings.ToLower(account)), Data: da2}
 			PubKeyDataChan <- kdtmp
-			//LdbPubKeyData.WriteMap(strings.ToLower(account), []byte(da2))
 		    }
 
 		}
 	    }
-	    //AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
-	    /////////////////////
-	    common.Info("=====================ReShare_ec2====================","gen newsku1",newskU1,"key",msgprex)
-
+	    
 	    res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	    ch <- res
 	    return
@@ -1168,7 +1156,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    suss = true
 	}
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ss1 timeout")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get s timeout")}
 		ch <- res
 		return
 	}
@@ -1180,14 +1168,14 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    suss = true
 	}
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get d11 timeout")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get commitment data timeout")}
 		ch <- res
 		return 
 	}
 
 	ss1s2 := make([]string, w.ThresHold)
 	if w.msg_ss1.Len() != w.ThresHold {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all ss1 fail.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all s fail")}
 		ch <- res
 		return
 	}
@@ -1203,7 +1191,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 	c11s := make([]string, w.ThresHold)
 	if w.msg_c11.Len() != w.ThresHold {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all c11 fail.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all commitment datas fail")}
 		ch <- res
 		return
 	}
@@ -1222,7 +1210,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	for _, v := range c11s {
 		mm := strings.Split(v, common.Sep)
 		if len(mm) < 3 {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_c11 fail.")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get commitment data fail")}
 			ch <- res
 			return
 		}
@@ -1232,7 +1220,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		for _, vv := range ss1s2 {
 			mmm := strings.Split(vv, common.Sep)
 			if len(mmm) < 3 {
-				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 fail.")}
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get s fail")}
 				ch <- res
 				return
 			}
@@ -1246,7 +1234,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 				for j := 0; j < dlen; j++ {
 					l++
 					if len(mmm) < (3 + l) {
-						res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 fail.")}
+						res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get s fail")}
 						ch <- res
 						return
 					}
@@ -1274,27 +1262,27 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		en := strings.Split(string(enodes[8:]), "@")
 		//bug
 		if len(en) <= 0 || en[0] == "" {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail")}
 			ch <- res
 			return 
 		}
 
 		_, exsit := udecom[en[0]]
 		if !exsit {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail")}
 			ch <- res
 			return 
 		}
 		//
 
 		if udecom[en[0]] == nil {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail")}
 			ch <- res
 			return 
 		}
 
 		if !keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail.")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify commit fail")}
 			ch <- res
 			return 
 		}
@@ -1321,7 +1309,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		mm := strings.Split(v, common.Sep)
 		//bug
 		if len(mm) < 4 {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("fill ec2.ShareStruct map error.")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get vss share fail")}
 			ch <- res
 			return 
 		}
@@ -1337,7 +1325,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		mm := strings.Split(v, common.Sep)
 		dlen, _ := strconv.Atoi(mm[2])
 		if len(mm) < (4 + dlen) {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 data error")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get s fail")}
 			ch <- res
 			return 
 		}
@@ -1350,7 +1338,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			l++
 			var gg = make([]*big.Int, 0)
 			if len(mm) < (4 + dlen + l) {
-				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 data error")}
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get vss share fail")}
 				ch <- res
 				return 
 			}
@@ -1358,7 +1346,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 			gg = append(gg, new(big.Int).SetBytes([]byte(mm[3+dlen+l])))
 			l++
 			if len(mm) < (4 + dlen + l) {
-				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_ss1 data error")}
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get vss share fail")}
 				ch <- res
 				return 
 			}
@@ -1378,13 +1366,13 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		en := strings.Split(string(enodes[8:]), "@")
 		//bug
 		if len(en) == 0 || en[0] == "" || sstruct[en[0]] == nil || upg[en[0]] == nil {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error")}
 			ch <- res
 			return
 		}
 		//
 		if !keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify vss share fail")}
 			ch <- res
 			return 
 		}
@@ -1422,7 +1410,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	ys := secp256k1.S256().Marshal(pkx, pky)
 	pubkeyhex := hex.EncodeToString(ys)
 	if !strings.EqualFold(pubkey,pubkeyhex) {
-	    common.Info("=====================ReShare_ec2, reshare fail,new pubkey != old pubkey====================","old pubkey",pubkey,"new pubkey",pubkeyhex,"key",msgprex)
 	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("reshare fail,new pubkey != old pubkey")}
 	    ch <- res
 	    return 
@@ -1544,7 +1531,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	}
 	
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get NTILDEH1H2 fail")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get ntilde data fail")}
 		ch <- res
 		return
 	}
@@ -1560,7 +1547,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		en := strings.Split(string(enodes[8:]), "@")
 
 		if enodes == "" {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetEnodeByUIdFail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get enode error")}
 			ch <- res
 			return 
 		}
@@ -1687,14 +1674,14 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	pubs := &PubKeyData{Key:rk,Account:account, Pub: string(dcrmpks[:]), Save: sstmp, Nonce: nonce, GroupId: groupid, LimitNum: w.limitnum, Mode: mode,KeyGenTime:tt,RefReShareKeys:msgprex}
 	epubs, err := Encode2(pubs)
 	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
+		res := RpcDcrmRes{Ret: "", Tip: "encode PubKeyData fail", Err: err}
 		ch <- res
 		return
 	}
 
 	ss1, err := Compress([]byte(epubs))
 	if err != nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
+		res := RpcDcrmRes{Ret: "", Tip: "compress PubKeyData fail", Err: err}
 		ch <- res
 		return
 	}
@@ -1705,7 +1692,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	    if ok {
 		//check mode
 		if daa.Mode != mode {
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check mode fail", Err: fmt.Errorf("check mode fail")}
+		    res := RpcDcrmRes{Ret: "", Tip: "check mode fail", Err: fmt.Errorf("check mode fail")}
 		    ch <- res
 		    return
 		}
@@ -1713,7 +1700,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		//check account
 		if !strings.EqualFold(account, daa.Account) {
-		    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:check account fail", Err: fmt.Errorf("check account fail")}
+		    res := RpcDcrmRes{Ret: "", Tip: "check account fail", Err: fmt.Errorf("check account fail")}
 		    ch <- res
 		    return
 		}
@@ -1727,9 +1714,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	
 	kd := KeyData{Key: dcrmpks[:], Data: ss1}
 	PubKeyDataChan <- kd
-	/////
-	//LdbPubKeyData.WriteMap(string(dcrmpks[:]), pubs)
-	////
 	for _, ct := range coins.Cointypes {
 		if strings.EqualFold(ct, "ALL") {
 			continue
@@ -1747,14 +1731,11 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		kd = KeyData{Key: []byte(key), Data: ss1}
 		PubKeyDataChan <- kd
-		/////
-		//LdbPubKeyData.WriteMap(key, pubs)
-		////
 	}
 	
 	_,err = SetReqAddrNonce(account,nonce)
 	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:set reqaddr nonce fail", Err: fmt.Errorf("set reqaddr nonce fail")}
+	    res := RpcDcrmRes{Ret: "", Tip: "set keygen nonce fail", Err: fmt.Errorf("set keygen nonce fail")}
 	    ch <- res
 	    return
 	}
@@ -1774,7 +1755,7 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 	ac := &AcceptReqAddrData{Initiator:cur_enode,Account: account, Cointype: "ALL", GroupId: groupid, Nonce: nonce, LimitNum: w.limitnum, Mode: mode, TimeStamp: tt, Deal: "true", Accept: "true", Status: "Success", PubKey: pubkey, Tip: "", Error: "", AllReply: allreply, WorkId: wid,Sigs:sigs}
 	err = SaveAcceptReqAddrData(ac)
 	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:save reqaddr accept data fail", Err: fmt.Errorf("save reqaddr accept data fail")}
+	    res := RpcDcrmRes{Ret: "", Tip: "save accept data fail", Err: fmt.Errorf("save accept data fail")}
 	    ch <- res
 	    return
 	}
@@ -1836,9 +1817,6 @@ func ReShare_ec2(msgprex string, initator string, groupid string,pubkey string, 
 
 		}
 	}
-	//AcceptReqAddr("",account, "ALL", groupid, nonce, w.limitnum, mode, "true", "true", "Success", pubkey, "", "", nil, w.id,"")
-	/////////////////////
-	common.Info("=====================ReShare_ec2===================","gen newsku1",newskU1,"key",msgprex)
 
 	res := RpcDcrmRes{Ret: fmt.Sprintf("%v",newskU1), Err: nil}
 	ch <- res

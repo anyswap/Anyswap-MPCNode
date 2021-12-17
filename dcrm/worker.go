@@ -20,13 +20,11 @@ import (
 	"container/list"
 	"fmt"
 	"strings"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"runtime/debug"
 )
 
 var (
 	RPCReqQueueCache = make(chan RPCReq, RPCMaxQueue)
-	//rpc-req //dcrm node
 	RPCMaxWorker = 20000
 	RPCMaxQueue  = 20000
 	RPCReqQueue  chan RPCReq
@@ -363,9 +361,6 @@ func NewRPCReqWorker(workerPool chan chan RPCReq) *RPCReqWorker {
 }
 
 func (w *RPCReqWorker) Clear() {
-
-	common.Debug("======================RpcReqWorker.Clear======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
-
 	w.sid = ""
 	w.groupid = ""
 	w.limitnum = ""
@@ -374,7 +369,6 @@ func (w *RPCReqWorker) Clear() {
 	w.ThresHold = 5
 
 	var next *list.Element
-
 	for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptlockoutres.Remove(e)
@@ -743,10 +737,7 @@ func (w *RPCReqWorker) Clear() {
 }
 
 func (w *RPCReqWorker) Clear2() {
-	common.Debug("======================RpcReqWorker.Clear2======================","w.id",w.id,"w.groupid",w.groupid,"key",w.sid)
-	
 	var next *list.Element
-
 	for e := w.msg_acceptlockoutres.Front(); e != nil; e = next {
 		next = e.Next()
 		w.msg_acceptlockoutres.Remove(e)

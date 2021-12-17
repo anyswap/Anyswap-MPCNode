@@ -21,7 +21,7 @@ require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/docker/docker v1.13.1
 	github.com/eoscanada/eos-go v0.8.16
-	github.com/ethereum/go-ethereum v1.9.14 // indirect
+	github.com/ethereum/go-ethereum v1.9.14
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/fsn-dev/cryptoCoins v0.0.0-20200529023326-829372e1fe6e
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
@@ -66,7 +66,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/multiformats/go-multiaddr-dns v0.2.0 // indirect
-	github.com/onrik/ethrpc v1.0.0 // indirect
+	github.com/onrik/ethrpc v1.0.0
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/prometheus/client_golang v1.3.0 // indirect

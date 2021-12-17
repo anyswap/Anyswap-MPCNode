@@ -36,6 +36,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/log"
 )
 
 var (
@@ -92,7 +93,6 @@ func SetReqAddrNonce(account string, nonce string) (string, error) {
 	key := Keccak256Hash([]byte(strings.ToLower(account))).Hex()
 	kd := KeyData{Key: []byte(key), Data: nonce}
 	PubKeyDataChan <- kd
-	//LdbPubKeyData.WriteMap(key, []byte(nonce))
 	return "", nil
 }
 
@@ -131,43 +131,42 @@ func GetDcrmAddr(pubkey string) (string, string, error) {
 }
 
 func ReqDcrmAddr(raw string) (string, string, error) {
-
-    common.Debug("=====================ReqDcrmAddr call CheckRaw ================","raw ",raw)
+    hash := Keccak256Hash([]byte(raw)).Hex()
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("============ReqDcrmAddr==============","err ",err)
+	log.Error("[KEYGEN] check raw data fail","err",err,"raw data hash",hash)
 	return "",err.Error(),err
     }
 
     req,ok := txdata.(*TxDataReqAddr)
     if !ok {
-	return "","check raw fail,it is not *TxDataReqAddr",fmt.Errorf("check raw fail,it is not *TxDataReqAddr")
+	return "","check raw data fail",fmt.Errorf("check raw data fail")
     }
 
-    common.Info("============ReqDcrmAddr,SendMsgToDcrmGroup===============","raw ",raw,"gid ",req.GroupId,"key ",key)
+    log.Info("[KEYGEN] broadcasting keygen cmd raw data to group","raw data hash",hash,"gid",req.GroupId,"group nodes",getGroupNodes(req.GroupId))
     SendMsgToDcrmGroup(raw, req.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
 }
 
 func RpcAcceptReqAddr(raw string) (string, string, error) {
-    common.Debug("=====================RpcAcceptReqAddr call CheckRaw ================","raw",raw)
+    hash := Keccak256Hash([]byte(raw)).Hex()
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Info("=====================RpcAcceptReqAddr,CheckRaw ================","raw",raw,"err",err)
+	log.Error("[ACCEPT KEYGEN] check raw data fail","raw data hash",hash)
 	return "Failure",err.Error(),err
     }
 
     acceptreq,ok := txdata.(*TxDataAcceptReqAddr)
     if !ok {
-	return "Failure","check raw fail,it is not *TxDataAcceptReqAddr",fmt.Errorf("check raw fail,it is not *TxDataAcceptReqAddr")
+	return "Failure","check raw data fail",fmt.Errorf("check raw data fail")
     }
 
     exsit,da := GetValueFromPubKeyData(acceptreq.Key)
     if exsit {
 	ac,ok := da.(*AcceptReqAddrData)
 	if ok && ac != nil {
-	    common.Debug("=====================RpcAcceptReqAddr, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptreq.Key)
+	    log.Info("[ACCEPT KEYGEN] broadcasting keygen accept raw data to group","raw data hash",hash,"gid",ac.GroupId,"group nodes",getGroupNodes(ac.GroupId))
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -188,29 +187,23 @@ type ReqAddrStatus struct {
 
 func GetReqAddrStatus(key string) (string, string, error) {
 	exsit,da := GetValueFromPubKeyData(key)
-	///////
 	if !exsit || da == nil {
-		common.Debug("=====================GetReqAddrStatus,no exist key======================","key",key)
-		return "", "dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data fail from db when GetReqAddrStatus")
+		return "", "", fmt.Errorf("No keygen result was found in the database","key",key)
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
 	if !ok {
-		return "", "dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus", fmt.Errorf("dcrm back-end internal error:get reqaddr accept data error from db when GetReqAddrStatus")
+		return "", "", fmt.Errorf("No keygen result was found in the database")
 	}
 
 	los := &ReqAddrStatus{Status: ac.Status, PubKey: ac.PubKey, Tip: ac.Tip, Error: ac.Error, AllReply: ac.AllReply, TimeStamp: ac.TimeStamp}
-	ret, _ := json.Marshal(los)
+	ret, err := json.Marshal(los)
+	if err != nil {
+	    log.Error("[KEYGEN] get keygen result from db fail","key",key)
+	    return "","",err
+	}
+
 	return string(ret), "", nil
-}
-
-type EnAcc struct {
-	Enode    string
-	Accounts []string
-}
-
-type EnAccs struct {
-	EnodeAccounts []EnAcc
 }
 
 type ReqAddrReply struct {
@@ -238,7 +231,6 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		    return
 		}
 
-		common.Debug("================GetCurNodeReqAddrInfo, it is *AcceptReqAddrData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Mode",vv.Mode,"vv.Status",vv.Status,"key",key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -250,14 +242,13 @@ func GetCurNodeReqAddrInfo(geter_acc string) ([]*ReqAddrReply, string, error) {
 		if vv.Mode == "1" {
 		    return
 		}
-		
+
 		if vv.Mode == "0" && !CheckAcc(cur_enode,geter_acc,vv.Sigs) {
 		    return
 		}
 
 		los := &ReqAddrReply{Key: key, Account: vv.Account, Cointype: vv.Cointype, GroupId: vv.GroupId, Nonce: vv.Nonce, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		common.Debug("================GetCurNodeReqAddrInfo success return================","key",key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
@@ -271,7 +262,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	wk, err := FindWorker(msgprex)
 	if err != nil || wk == nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: err}
+		res := RpcDcrmRes{Ret: "", Tip: "get worker fail", Err: err}
 		ch <- res
 		return
 	}
@@ -290,7 +281,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		    if ok2 {
 			break
 		    }
-		    
+
 		    wk.Clear2()
 		    time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 		}
@@ -301,7 +292,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		itertmp := workers[id].edpk.Front()
 		if itertmp == nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edpk fail", Err: GetRetErr(ErrGetGenPubkeyFail)}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get pk fail")}
 			ch <- res
 			return
 		}
@@ -309,7 +300,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 		itertmp = workers[id].edsave.Front()
 		if itertmp == nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsave fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get pubkey data fail")}
 			ch <- res
 			return
 		}
@@ -317,40 +308,32 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		sedsave := itertmp.Value.(string)
 		itertmp = workers[id].edsku1.Front()
 		if itertmp == nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get workers[id].edsku1 fail", Err: GetRetErr(ErrGetGenSaveDataFail)}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get private share fail")}
 			ch <- res
 			return
 		}
 
 		sedsku1 := itertmp.Value.(string)
-		////////
 		tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-		//rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-
 		pubkeyhex := hex.EncodeToString(sedpk)
-		
 		pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(sedpk), Save: sedsave, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
 		epubs, err := Encode2(pubs)
 		if err != nil {
-			common.Debug("===============dcrm_genPubKey,encode fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ed pubkey", Err: err}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 			ch <- res
 			return
 		}
 
 		ss, err := Compress([]byte(epubs))
 		if err != nil {
-			common.Debug("===============dcrm_genPubKey,commpress fail=================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ed pubkey", Err: err}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 			ch <- res
 			return
 		}
 
-		common.Debug("===============dcrm_genPubKey,start call AcceptReqAddr to update success status=================","account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
 		tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id,"")
 		if reply != nil {
-			common.Debug("===============dcrm_genPubKey,update reqaddr status=================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",msgprex)
-			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
+			res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update keygen status error")}
 			ch <- res
 			return
 		}
@@ -358,31 +341,25 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		if !strings.EqualFold(cointype, "ALL") {
 			h := coins.NewCryptocoinHandler(cointype)
 			if h == nil {
-				res := RpcDcrmRes{Ret: "", Tip: "cointype is not supported", Err: fmt.Errorf("req addr fail,cointype is not supported.")}
+				res := RpcDcrmRes{Ret: "", Tip: "cointype is not supported", Err: fmt.Errorf("keygen fail,cointype is not supported")}
 				ch <- res
 				return
 			}
 
 			ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 			if err != nil {
-				res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkeyhex, Err: err}
+				res := RpcDcrmRes{Ret: "", Tip: "get dcrm addr fail from pubkey:" + pubkeyhex, Err: err}
 				ch <- res
 				return
 			}
 
-			//add for lockout
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
-			/////
-			//LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
-			////
 
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
-			/////
-			//LdbPubKeyData.WriteMap(key, pubs)
-			////
+			
 			sk := KeyData{Key: sedpk[:], Data: sedsku1}
 			SkU1Chan <- sk
 			sk = KeyData{Key: []byte(key), Data: sedsku1}
@@ -390,9 +367,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 		} else {
 			kd := KeyData{Key: sedpk[:], Data: ss}
 			PubKeyDataChan <- kd
-			/////
-			//LdbPubKeyData.WriteMap(string(sedpk[:]), pubs)
-			////
+			
 			sk := KeyData{Key: sedpk[:], Data: sedsku1}
 			SkU1Chan <- sk
 
@@ -413,9 +388,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 				key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 				kd = KeyData{Key: []byte(key), Data: ss}
 				PubKeyDataChan <- kd
-				/////
-				//LdbPubKeyData.WriteMap(key, pubs)
-				////
+				
 				sk = KeyData{Key: []byte(key), Data: sedsku1}
 				SkU1Chan <- sk
 			}
@@ -436,9 +409,8 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	    if ok {
 		break
 	    }
-	    
+
 	    wk.Clear2()
-	    //time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
 	}
 
 	if !ok {
@@ -447,7 +419,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	iter := workers[id].pkx.Front()
 	if iter == nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pkx fail in req ec2 pubkey", Err: GetRetErr(ErrGetGenPubkeyFail)}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: GetRetErr(ErrGetGenPubkeyFail)}
 		ch <- res
 		return
 	}
@@ -455,7 +427,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	pkx := new(big.Int).SetBytes([]byte(spkx))
 	iter = workers[id].pky.Front()
 	if iter == nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get pky fail in req ec2 pubkey", Err: GetRetErr(ErrGetGenPubkeyFail)}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: GetRetErr(ErrGetGenPubkeyFail)}
 		ch <- res
 		return
 	}
@@ -465,14 +437,15 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 
 	iter = workers[id].save.Front()
 	if iter == nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get save data fail in req ec2 pubkey", Err: GetRetErr(ErrGetGenSaveDataFail)}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: GetRetErr(ErrGetGenSaveDataFail)}
 		ch <- res
 		return
 	}
+	
 	save := iter.Value.(string)
 	iter = workers[id].sku1.Front()
 	if iter == nil {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get sku1 fail in req ec2 pubkey", Err: GetRetErr(ErrGetGenSaveDataFail)}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: GetRetErr(ErrGetGenSaveDataFail)}
 		ch <- res
 		return
 	}
@@ -484,33 +457,25 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	//
 
 	tt := fmt.Sprintf("%v",time.Now().UnixNano()/1e6)
-	rk := Keccak256Hash([]byte(strings.ToLower(account + ":" + cointype + ":" + wk.groupid + ":" + nonce + ":" + wk.limitnum + ":" + mode))).Hex()
-
 	pubkeyhex := hex.EncodeToString(ys)
-	
 	pubs := &PubKeyData{Key:msgprex,Account: account, Pub: string(ys), Save: save, Nonce: nonce, GroupId: wk.groupid, LimitNum: wk.limitnum, Mode: mode,KeyGenTime:tt}
 	epubs, err := Encode2(pubs)
 	if err != nil {
-		common.Debug("===============dcrm_genPubKey,encode fail===================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:encode PubKeyData fail in req ec2 pubkey", Err: err}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 		ch <- res
 		return
 	}
 
 	ss, err := Compress([]byte(epubs))
 	if err != nil {
-		common.Debug("===============dcrm_genPubKey,compress fail===================","err",err,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:compress PubKeyData fail in req ec2 pubkey", Err: err}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 		ch <- res
 		return
 	}
 
-	common.Debug("===============dcrm_genPubKey,start call AcceptReqAddr to update success status===================","account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
-
 	tip, reply := AcceptReqAddr("",account, cointype, wk.groupid, nonce, wk.limitnum, mode, "true", "true", "Success", pubkeyhex, "", "", nil, id,"")
 	if reply != nil {
-		common.Debug("===============dcrm_genPubKey,update reqaddr status===================","err",reply,"account",account,"pubkey",pubkeyhex,"nonce",nonce,"key",rk)
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update req addr status error.")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("update keygen status error")}
 		ch <- res
 		return
 	}
@@ -518,38 +483,30 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 	if !strings.EqualFold(cointype, "ALL") {
 		h := coins.NewCryptocoinHandler(cointype)
 		if h == nil {
-			res := RpcDcrmRes{Ret: "", Tip: "cointype is not supported", Err: fmt.Errorf("req addr fail,cointype is not supported.")}
+			res := RpcDcrmRes{Ret: "", Tip: "cointype is not supported", Err: fmt.Errorf("cointype is not supported.")}
 			ch <- res
 			return
 		}
 
 		ctaddr, err := h.PublicKeyToAddress(pubkeyhex)
 		if err != nil {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkeyhex, Err: err}
+			res := RpcDcrmRes{Ret: "", Tip: "get dcrm addr fail from pubkey:" + pubkeyhex, Err: err}
 			ch <- res
 			return
 		}
 
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
-		/////
-		//LdbPubKeyData.WriteMap(string(ys), pubs)
-		////
 
 		key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 		kd = KeyData{Key: []byte(key), Data: ss}
 		PubKeyDataChan <- kd
-		/////
-		//LdbPubKeyData.WriteMap(key, pubs)
-		////
+		
 		sk = KeyData{Key: []byte(key), Data: sku1}
 		SkU1Chan <- sk
 	} else {
 		kd := KeyData{Key: ys, Data: ss}
 		PubKeyDataChan <- kd
-		/////
-		//LdbPubKeyData.WriteMap(string(ys), pubs)
-		////
 
 		for _, ct := range coins.Cointypes {
 			if strings.EqualFold(ct, "ALL") {
@@ -568,9 +525,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 			key := Keccak256Hash([]byte(strings.ToLower(ctaddr))).Hex()
 			kd = KeyData{Key: []byte(key), Data: ss}
 			PubKeyDataChan <- kd
-			/////
-			//LdbPubKeyData.WriteMap(key, pubs)
-			////
+			
 			sk = KeyData{Key: []byte(key), Data: sku1}
 			SkU1Chan <- sk
 		}
@@ -584,7 +539,7 @@ func dcrm_genPubKey(msgprex string, account string, cointype string, ch chan int
 //msgprex = hash
 func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string) bool {
 	if id < 0 || id >= RPCMaxWorker || id >= len(workers) {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker id", Err: GetRetErr(ErrGetWorkerIdError)}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get worker ID fail")}
 		ch <- res
 		return false
 	}
@@ -592,14 +547,14 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	w := workers[id]
 	GroupId := w.groupid
 	if GroupId == "" {
-		res := RpcDcrmRes{Ret: "", Tip: "get group id fail", Err: fmt.Errorf("get group id fail.")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get group ID fail")}
 		ch <- res
 		return false
 	}
 
 	ns, _ := GetGroup(GroupId)
 	if ns != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:the group is not ready", Err: GetRetErr(ErrGroupNotReady)}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get node count error")}
 		ch <- res
 		return false
 	}
@@ -608,7 +563,10 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	var seed [32]byte
 
 	if _, err := io.ReadFull(rand, seed[:]); err != nil {
-		fmt.Println("Error: io.ReadFull(rand, seed)")
+		log.Error("[KEYGEN] failed to generate random number","err",err,"key",msgprex)
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("failed to generate random number")}
+		ch <- res
+		return false
 	}
 
 	// 1.2 privateKey' = SHA512(seed)
@@ -656,16 +614,17 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c11 timeout.")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all pk commitment datas fail")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edc11.Len() != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edc11 fail", Err: fmt.Errorf("get all ed c11 fail.")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get pk commitment data error")}
 		ch <- res
 		return false
 	}
+
 	var cpks = make(map[string][32]byte)
 	for _, id := range ids {
 		enodes := GetEnodesByUid(id, cointype, GroupId)
@@ -708,13 +667,13 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed zk timeout.")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all pk ZK datas fail")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edzk.Len() != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get w.msg_edzk fail", Err: fmt.Errorf("get all ed zk fail.")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get pk ZK data fail")}
 		ch <- res
 		return false
 	}
@@ -761,13 +720,13 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d11 timeout.")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all pk commitment datas fail")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edd11.Len() != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get msg_edd11 fail", Err: fmt.Errorf("get all ed d11 fail.")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get pk commitment data error")}
 		ch <- res
 		return false
 	}
@@ -821,8 +780,8 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		en := strings.Split(string(enodes[8:]), "@")
 		CPkFlag := ed.Verify(cpks[en[0]], dpks[en[0]])
 		if !CPkFlag {
-			fmt.Printf("Error: Commitment(PK) Not Pass at User: %v \n", en[0])
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:commitment check fail in req ed pubkey", Err: fmt.Errorf("Commitment(PK) Not Pass at User.")}
+			log.Error("[KEYGEN] verify pk commitment data fail","key",msgprex)
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("verify pk commitment data fail")}
 			ch <- res
 			return false
 		}
@@ -836,8 +795,8 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		copy(t[:], dpk[32:])
 		zkPkFlag := ed.Verify_zk(zks[en[0]], t)
 		if !zkPkFlag {
-			fmt.Printf("Error: ZeroKnowledge Proof (Pk) Not Pass at User: %v \n", en[0])
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:zeroknowledge check fail", Err: fmt.Errorf("ZeroKnowledge Proof (Pk) Not Pass.")}
+			log.Error("[KEYGEN] verify pk ZK data fail","key",msgprex)
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("verify pk ZK data fail")}
 			ch <- res
 			return false
 		}
@@ -854,18 +813,19 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		dpk := dpks[en[0]]
 		PkSet = append(PkSet[:], (dpk[32:])...)
 	}
+
 	h := sha512.New()
 	dpk := dpks[cur_enode]
 	_,err := h.Write(dpk[32:])
 	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write dpk fail in calcing SHA256(PkU1, {PkU2, PkU3}", Err: fmt.Errorf("write dpk fail in calcing SHA256(PkU1, {PkU2, PkU3}.")}
+	    res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 	    ch <- res
 	    return false
 	}
 
 	_,err = h.Write(PkSet)
 	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write pkset fail in calcing SHA256(PkU1, {PkU2, PkU3}", Err: fmt.Errorf("write pkset fail in calcing SHA256(PkU1, {PkU2, PkU3}.")}
+	    res := RpcDcrmRes{Ret: "", Tip: "", Err: err}
 	    ch <- res
 	    return false
 	}
@@ -894,7 +854,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		enodes := GetEnodesByUid(id, cointype, GroupId)
 
 		if enodes == "" {
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get enode by uid fail", Err: GetRetErr(ErrGetEnodeByUIdFail)}
+			res := RpcDcrmRes{Ret: "", Tip: "get enode by uid fail", Err: fmt.Errorf("get enode by uid fail")}
 			ch <- res
 			return false
 		}
@@ -925,13 +885,13 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed share1 fail.")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all vss shares fail")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edshare1.Len() != (w.NodeCnt-1) {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edshare1 fail", Err: fmt.Errorf("get all ed share1 fail.")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get vss share fail")}
 		ch <- res
 		return false
 	}
@@ -983,13 +943,13 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 	///////////////////////////////////
 
 	if !suss {
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed cfsb timeout.")}
+		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get all vss share fail")}
 		ch <- res
 		return false
 	}
 
 	if w.msg_edcfsb.Len() != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edcfsb fail", Err: fmt.Errorf("get all ed cfsb fail.")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("get vss share fail")}
 		ch <- res
 		return false
 	}
@@ -1035,8 +995,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		shareUFlag := ed.Verify_vss(edshares[en[0]], uids[cur_enode], cfsbs[en[0]])
 
 		if !shareUFlag {
-			fmt.Printf("Error: VSS Share Verification Not Pass at User: %v \n", en[0])
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:VSS Share verification fail", Err: fmt.Errorf("VSS Share Verification Not Pass.")}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("VSS Share Verification Not Pass")}
 			ch <- res
 			return false
 		}
@@ -1090,8 +1049,7 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 		t2 := cfsbs[en[0]]
 		tt := t2[0]
 		if !bytes.Equal(askBBytes[:], tt[:]) {
-			fmt.Printf("Error: VSS Coefficient Verification Not Pass at User: %v \n", en[0])
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:VSS Coefficient verification fail", Err: fmt.Errorf("VSS Coefficient Verification Not Pass.")}
+			res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("VSS Coefficient Verification Not Pass")}
 			ch <- res
 			return false
 		}
@@ -1162,196 +1120,19 @@ func KeyGenerate_ed(msgprex string, ch chan interface{}, id int, cointype string
 }
 
 func ReqDataFromGroup(msgprex string,wid int,datatype string,trytimes int,timeout int) bool {
-	return false //tmp code
-
-    /*w := workers[wid]
-    if w == nil {
 	return false
-    }
-
-    var l *list.List
-    var b chan bool
-    switch datatype {
-	case "AcceptReqAddrRes":
-	    l = w.msg_acceptreqaddrres
-	    b = w.bacceptreqaddrres
-	case "AcceptLockOutRes":
-	    l = w.msg_acceptlockoutres
-	    b = w.bacceptlockoutres
-	case "SendLockOutRes":
-	    l = w.msg_sendlockoutres
-	    b = w.bsendlockoutres
-	case "AcceptSignRes":
-	    l = w.msg_acceptsignres 
-	    b = w.bacceptsignres
-	case "SendSignRes":
-	    l = w.msg_sendsignres 
-	    b = w.bsendsignres
-	case "C1":
-	    l = w.msg_c1
-	    b = w.bc1
-	case "D1":
-	    l = w.msg_d1_1
-	    b = w.bd1_1
-	case "SHARE1":
-	    l = w.msg_share1
-	    b = w.bshare1
-	case "NTILDEH1H2":
-	    l = w.msg_zkfact
-	    b = w.bzkfact
-	case "ZKUPROOF":
-	    l = w.msg_zku
-	    b = w.bzku
-	case "MTAZK1PROOF":
-	    l = w.msg_mtazk1proof 
-	    b = w.bmtazk1proof
-	case "C11":
-	    l = w.msg_c11
-	    b = w.bc11
-	case "KC":
-	    l = w.msg_kc
-	    b = w.bkc
-	case "MKG":
-	    l = w.msg_mkg
-	    b = w.bmkg
-	case "MKW":
-	    l = w.msg_mkw
-	    b = w.bmkw
-	case "DELTA1":
-	    l = w.msg_delta1
-	    b = w.bdelta1
-	case "D11":
-	    l = w.msg_d11_1
-	    b = w.bd11_1
-	case "CommitBigVAB":
-	    l = w.msg_commitbigvab
-	    b = w.bcommitbigvab
-	case "ZKABPROOF":
-	    l = w.msg_zkabproof
-	    b = w.bzkabproof
-	case "CommitBigUT":
-	    l = w.msg_commitbigut
-	    b = w.bcommitbigut
-	case "CommitBigUTD11":
-	    l = w.msg_commitbigutd11
-	    b = w.bcommitbigutd11
-	case "S1":
-	    l = w.msg_s1
-	    b = w.bs1
-	case "SS1":
-	    l = w.msg_ss1
-	    b = w.bss1
-	case "PaillierKey":
-	    l = w.msg_paillierkey
-	    b = w.bpaillierkey
-	case "EDC11":
-	    l = w.msg_edc11
-	    b = w.bedc11
-	case "EDZK":
-	    l = w.msg_edzk
-	    b = w.bedzk
-	case "EDD11":
-	    l = w.msg_edd11
-	    b = w.bedd11
-	case "EDSHARE1":
-	    l = w.msg_edshare1
-	    b = w.bedshare1
-	case "EDCFSB":
-	    l = w.msg_edcfsb
-	    b = w.bedcfsb
-	case "EDC21":
-	    l = w.msg_edc21
-	    b = w.bedc21
-	case "EDZKR":
-	    l = w.msg_edzkr
-	    b = w.bedzkr
-	case "EDD21":
-	    l = w.msg_edd21 
-	    b = w.bedd21
-	case "EDC31":
-	    l = w.msg_edc31
-	    b = w.bedc31
-	case "EDD31":
-	    l = w.msg_edd31
-	    b = w.bedd31
-	case "EDS":
-	    l = w.msg_eds 
-	    b = w.beds
-    }
-
-    if l == nil {
-	return false
-    }
-   
-    suss := false
-    var wg sync.WaitGroup
-    _, enodes := GetGroup(w.groupid)
-    nodes := strings.Split(enodes, common.Sep2)
-    for _, node := range nodes {
-	    node2 := ParseNode(node)
-	    if strings.EqualFold(cur_enode,node2) {
-		continue
-	    }
-
-	    found := findmsg(l,node2)
-	    if !found {
-		wg.Add(1)
-		go func(key string,ll *list.List,ower string,dt string,bb chan bool,times int,tt int) {
-		    defer wg.Done()
-
-		    //fmt.Printf("%v===================ReqDataFromGroup, key = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,ower,dt,times,tt)
-		    i := 0
-		    for i = 0;i < times; i++ {
-			//fmt.Printf("%v===================ReqDataFromGroup, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
-			
-			if findmsg(ll,ower) {
-			    //fmt.Printf("%v===================ReqDataFromGroup, find msg success, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
-			    
-			    _, _, err := GetChannelValue(tt, bb) //wait 20 second     //by type
-			    if err == nil {
-				//fmt.Printf("%v===================ReqDataFromGroup, find msg success and get all data, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
-				suss = true
-				if len(b) == 0 {
-				    b <- true  //add for exiting other threads
-				}
-				break
-			    }
-			}
-
-			//fmt.Printf("%v===================ReqDataFromGroup, no find msg, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
-			
-			//enode1 no reciv enode2 c1 data
-			//key-enode1:NoReciv:enode2:C1
-			noreciv := key + "-" + cur_enode + common.Sep + "NoReciv" + common.Sep + ower + common.Sep + dt   //by type
-			SendMsgToDcrmGroup(noreciv, w.groupid)
-			_, _, err := GetChannelValue(tt, bb) //wait 20 second     //by type
-			if err == nil {
-			    //fmt.Printf("%v===================ReqDataFromGroup, no find msg and get all data, key = %v, round i = %v, ower = %v,datatype = %v,times = %v,timeout = %v ========================\n",common.CurrentTime(),key,i,ower,dt,times,tt)
-			    suss = true
-			    if len(b) == 0 {
-				b <- true  //add for exiting other threads
-			    }
-			    break
-			}
-		    }
-		}(msgprex,l,node2,datatype,b,trytimes,timeout)
-	    }
-    }
-    wg.Wait()
-    //fmt.Printf("%v===================ReqDataFromGroup, finish req data, key = %v, status = %v ========================\n",common.CurrentTime(),msgprex,suss)
-    return suss*/
 }
 
 func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) (*big.Int, *ec2.PolyStruct2, *ec2.PolyGStruct2, *ec2.Commitment, *ec2.PublicKey, *ec2.PrivateKey, bool) {
 	if w == nil || msgprex == "" {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("no find worker.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("No Found Worker")}
 		ch <- res
 		return nil, nil, nil, nil, nil, nil, false
 	}
 
 	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk := keygen.DECDSA_Key_RoundOne(w.ThresHold, PaillierKeyLength)
 	if u1PaillierPk == nil || u1PaillierSk == nil {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen paillier key pair fail")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("failed to generate paillier key")}
 		ch <- res
 		return nil, nil, nil, nil, nil, nil, false
 	}
@@ -1359,12 +1140,11 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	///bug groupid == nil ???
 	w, err := FindWorker(msgprex)
 	if err != nil || w.groupid == "" {
-	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+	    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group ID fail")}
 	    ch <- res
 	    return nil, nil, nil, nil, nil, nil, false
 	}
-	//////
-	
+
 	// 4. Broadcast
 	// commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
 	// u1PaillierPk, u2PaillierPk, u3PaillierPk, u4PaillierPk, u5PaillierPk
@@ -1380,7 +1160,6 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
 
-	////fix bug: get C1 timeout
 	_, enodestmp := GetGroup(w.groupid)
 	nodestmp := strings.Split(enodestmp, common.Sep2)
 	for _, node := range nodestmp {
@@ -1392,7 +1171,6 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 		go C1Data.DeleteMap(strings.ToLower(c1data))
 	    }
 	}
-	////
 
 	// 1. Receive Broadcast
 	// commitU1G.C, commitU2G.C, commitU3G.C, commitU4G.C, commitU5G.C
@@ -1413,7 +1191,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	    ///bug groupid == nil ???
 	    w, err := FindWorker(msgprex)
 	    if err != nil || w.groupid == "" {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group ID fail")}
 		ch <- res
 		return nil, nil, nil, nil, nil, nil, false
 	    }
@@ -1444,11 +1222,11 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 
 		    if !found {
 			c1data := msgprex + "-" + node2 + common.Sep + "C1"
-			common.Info("=================== DECDSAGenKeyRoundOne,get C1 timeout================","No Reciv The C1 Data",c1data,"from Node",node,"key",msgprex)
+			log.Error("[KEYGEN] Not Reciving The Paillier PubKey Data","data header",c1data,"from Node",node2,"key",msgprex)
 		    }
 	    }
 	    
-	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetC1Timeout)}
+	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("Not Reciving The Paillier PubKey Data")}
 	    ch <- res
 	    return nil, nil, nil, nil, nil, nil, false
 	}
@@ -1460,7 +1238,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 	    ms := strings.Split(mdss, common.Sep)
 	    // key-enodeID:C1:com.C:pk.Len:pk.N:pk.G:pk.N2
 	    if len(ms) < 7 {
-		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("got c1 data error")}
+		res := RpcDcrmRes{Ret: "", Tip: "", Err: fmt.Errorf("got paillier pubkey data error")}
 		ch <- res
 		return nil, nil, nil, nil, nil, nil, false
 	    }
@@ -1481,7 +1259,7 @@ func DECDSAGenKeyRoundOne(msgprex string, ch chan interface{}, w *RPCReqWorker) 
 
 func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1Poly *ec2.PolyStruct2, ids sortableIDSSlice) ([]*ec2.ShareStruct2, bool) {
 	if w == nil || cointype == "" || msgprex == "" || u1Poly == nil || len(ids) == 0 {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret:"", Err: fmt.Errorf("parameter error in the second round")}
 		ch <- res
 		return nil, false
 	}
@@ -1508,7 +1286,7 @@ func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, 
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 
 		if enodes == "" {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetEnodeByUIdFail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get node ID by UID fail")}
 			ch <- res
 			return nil, false
 		}
@@ -1537,7 +1315,7 @@ func DECDSAGenKeyRoundTwo(msgprex string, cointype string, ch chan interface{}, 
 
 func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1PolyG *ec2.PolyGStruct2, commitU1G *ec2.Commitment, ids sortableIDSSlice) bool {
 	if w == nil || cointype == "" || msgprex == "" || u1PolyG == nil || len(ids) == 0 || commitU1G == nil {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error in the third round")}
 		ch <- res
 		return false
 	}
@@ -1571,13 +1349,11 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 	ss = ss + "NULL"
 	SendMsgToDcrmGroup(ss, w.groupid)
 	DisMsg(ss)
-	
+
 	// 1. Receive Broadcast
 	// commitU1G.D, commitU2G.D, commitU3G.D, commitU4G.D, commitU5G.D
 	// u1PolyG, u2PolyG, u3PolyG, u4PolyG, u5PolyG
-	common.Debug("===================send D1 finish===============","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bd1_1)
-	common.Debug("===================finish get D1===============","key",msgprex,"err",cherr)
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
@@ -1612,7 +1388,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 
 		    if !found {
 			d1data := msgprex + "-" + node2 + common.Sep + "D1"
-			common.Debug("=================== DECDSAGenKeyRoundThree,get D1 timeout======================","No Reciv The D1 Data",d1data,"From Node",node,"key",msgprex)
+			log.Error("[KEYGEN] Not Reciving The u1 Commitment Data","data header",d1data,"from Node",node2,"key",msgprex)
 		    }
 	    }
 	    
@@ -1626,7 +1402,7 @@ func DECDSAGenKeyRoundThree(msgprex string, cointype string, ch chan interface{}
 
 func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, u1PolyG *ec2.PolyGStruct2, u1Shares []*ec2.ShareStruct2, ids sortableIDSSlice) (map[string]*ec2.ShareStruct2, []string, bool) {
 	if w == nil || cointype == "" || msgprex == "" || u1PolyG == nil || len(ids) == 0 {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error while validating VSS share data")}
 		ch <- res
 		return nil, nil, false
 	}
@@ -1669,7 +1445,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 		mm := strings.Split(v, common.Sep)
 		//bug
 		if len(mm) < 4 {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("fill ec2.ShareStruct map error.")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get vss share data fail")}
 			ch <- res
 			return nil, nil, false
 		}
@@ -1721,7 +1497,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 		}
 		dlen, _ := strconv.Atoi(mm[2])
 		if len(mm) < (4 + dlen) {
-			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d1_1 data error")}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get u1 commitment data error")}
 			ch <- res
 			return nil, nil, false
 		}
@@ -1734,7 +1510,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 			l++
 			var gg = make([]*big.Int, 0)
 			if len(mm) < (4 + dlen + l) {
-				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d1_1 data error")}
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get u1 commitment data error")}
 				ch <- res
 				return nil, nil, false
 			}
@@ -1742,7 +1518,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 			gg = append(gg, new(big.Int).SetBytes([]byte(mm[3+dlen+l])))
 			l++
 			if len(mm) < (4 + dlen + l) {
-				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get msg_d1_1 data error")}
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get u1 commitment data error")}
 				ch <- res
 				return nil, nil, false
 			}
@@ -1769,7 +1545,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 		}
 		//
 		if !keygen.DECDSA_Key_Verify_Share(sstruct[en[0]], upg[en[0]]) {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifySHARE1Fail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("verify vss share data fail in keygen")}
 			ch <- res
 			return nil, nil, false
 		}
@@ -1780,7 +1556,7 @@ func DECDSAGenKeyVerifyShareData(msgprex string, cointype string, ch chan interf
 
 func DECDSAGenKeyCalcPubKey(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, udecom map[string]*ec2.Commitment, ids sortableIDSSlice) (map[string][]*big.Int, bool) {
 	if w == nil || cointype == "" || msgprex == "" || len(udecom) == 0 || len(ids) == 0 {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error calculating public key")}
 		ch <- res
 		return nil, false
 	}
@@ -1812,17 +1588,17 @@ func DECDSAGenKeyCalcPubKey(msgprex string, cointype string, ch chan interface{}
 
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
-		pkx, pky = secp256k1.S256().Add(pkx, pky, (ug[en[0]])[0], (ug[en[0]])[1])
+		pkx,pky = secp256k1.S256().Add(pkx, pky, (ug[en[0]])[0], (ug[en[0]])[1])
 	}
+
 	w.pkx.PushBack(string(pkx.Bytes()))
 	w.pky.PushBack(string(pky.Bytes()))
-
 	return ug, true
 }
 
 func DECDSAGenKeyCalcPrivKey(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, sstruct map[string]*ec2.ShareStruct2, ids sortableIDSSlice) (*big.Int, bool) {
 	if w == nil || cointype == "" || msgprex == "" || len(sstruct) == 0 || len(ids) == 0 {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("error calculating private key" )}
 		ch <- res
 		return nil, false
 	}
@@ -1852,7 +1628,7 @@ func DECDSAGenKeyCalcPrivKey(msgprex string, cointype string, ch chan interface{
 
 func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, ds []string, commitU1G *ec2.Commitment, ids sortableIDSSlice) ([]string, map[string]*ec2.Commitment, bool) {
 	if w == nil || cointype == "" || msgprex == "" || len(ds) == 0 || len(ids) == 0 || commitU1G == nil {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error while validating u1 commitment data")}
 		ch <- res
 		return nil, nil, false
 	}
@@ -1861,7 +1637,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 	// for all nodes, construct the commitment by the receiving C and D
 	cs := make([]string, w.NodeCnt)
 	if w.msg_c1.Len() != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all u1 commitment data fail")}
 		ch <- res
 		return nil, nil, false
 	}
@@ -1879,7 +1655,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 	for _, v := range cs {
 		mm := strings.Split(v, common.Sep)
 		if len(mm) < 3 {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("invalid u1 commitment data")}
 			ch <- res
 			return nil, nil, false
 		}
@@ -1890,7 +1666,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 			mmm := strings.Split(vv, common.Sep)
 			//bug
 			if len(mmm) < 3 {
-				res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+				res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("invalid u1 commitment data")}
 				ch <- res
 				return nil, nil, false
 			}
@@ -1905,12 +1681,14 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 					l++
 					//bug
 					if len(mmm) < (3 + l) {
-						res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllC1Fail)}
+						res := RpcDcrmRes{Ret: "", Err:fmt.Errorf("invalid u1 commitment data")}
 						ch <- res
 						return nil, nil, false
 					}
+
 					gg = append(gg, new(big.Int).SetBytes([]byte(mmm[2+l])))
 				}
+
 				deCommit := &ec2.Commitment{C: new(big.Int).SetBytes([]byte(mm[2])), D: gg}
 				udecom[prexs[len(prexs)-1]] = deCommit
 				break
@@ -1925,12 +1703,12 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 		enodes := GetEnodesByUid(id, cointype, w.groupid)
 		en := strings.Split(string(enodes[8:]), "@")
 		if len(en) == 0 || en[0] == "" || udecom[en[0]] == nil {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrKeyGenVerifyCommitFail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("data error while verifying the u1 commitment data")}
 			ch <- res
 			return nil, nil, false
 		}
 		if !keygen.DECDSA_Key_Commitment_Verify(udecom[en[0]]) {
-			res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrKeyGenVerifyCommitFail)}
+			res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("data error verifying the u1 commitment data")}
 			ch <- res
 			return nil, nil, false
 		}
@@ -1941,7 +1719,7 @@ func DECDSAGenKeyVerifyCommitment(msgprex string, cointype string, ch chan inter
 
 func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker) (*ec2.NtildeH1H2, bool) {
 	if w == nil || msgprex == "" {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error generating ntilde data")}
 		ch <- res
 		return nil, false
 	}
@@ -1953,7 +1731,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 	// for u1
 	u1NtildeH1H2 := keygen.DECDSA_Key_GenerateNtildeH1H2(NtildeLength)
 	if u1NtildeH1H2 == nil {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("gen ntilde h1 h2 fail.")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("failed to generate ntilde data")}
 		ch <- res
 		return nil, false
 	}
@@ -1971,9 +1749,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 
 	// 1. Receive Broadcast zk
 	// u1zkFactProof, u2zkFactProof, u3zkFactProof, u4zkFactProof, u5zkFactProof
-	common.Debug("===================send NTILDEH1H2 finish===================","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzkfact)
-	common.Debug("===================finish get NTILDEH1H2===================","key",msgprex,"err",cherr)
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
@@ -2009,11 +1785,11 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 
 		    if !found {
 			zkfactdata := msgprex + "-" + node2 + common.Sep + "NTILDEH1H2"
-			common.Debug("=================== DECDSAGenKeyRoundFour,get NTILDEH1H2 timeout ==================","No Reciv The NTILDEH1H2 Data",zkfactdata,"From Node",node,"key",msgprex)
+			log.Error("[KEYGEN] Not Reciving The Ntilde Data","data header",zkfactdata,"From Node",node2,"key",msgprex)
 		    }
 	    }
 	    
-	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetZKFACTPROOFTimeout)}
+	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("failed to receive the ntilde data")}
 	    ch <- res
 	    return nil, false
 	}
@@ -2047,7 +1823,7 @@ func DECDSAGenKeyRoundFour(msgprex string, ch chan interface{}, w *RPCReqWorker)
 
 func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker, u1 *big.Int) bool {
 	if w == nil || msgprex == "" {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error in the five round")}
 		ch <- res
 		return false
 	}
@@ -2068,9 +1844,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker,
 
 	// 9. Receive Broadcast zk
 	// u1zkUProof, u2zkUProof, u3zkUProof, u4zkUProof, u5zkUProof
-	common.Debug("===================send ZKUPROOF finish=================","key",msgprex)
 	_, tip, cherr := GetChannelValue(ch_t, w.bzku)
-	common.Debug("===================finish get ZKUPROOF=================","key",msgprex,"err",cherr)
 	/////////////////////////request data from dcrm group
 	suss := false
 	if cherr != nil {
@@ -2106,11 +1880,11 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker,
 
 		    if !found {
 			zkudata := msgprex + "-" + node2 + common.Sep + "ZKUPROOF"
-			common.Debug("=================== DECDSAGenKeyRoundFive,get ZKUPROOF timeout=================","No Reciv The ZKUPROOF Data",zkudata,"From Node",node,"key",msgprex)
+			log.Error("[KEYGEN] Not Receiving The u1 Zero Knowledge Proof Data","data header",zkudata,"From Node",node2,"key",msgprex)
 		    }
 	    }
 	    
-	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: GetRetErr(ErrGetZKUPROOFTimeout)}
+	    res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("failed to receive the u1 zero knowledge proof data")}
 	    ch <- res
 	    return false
 	}
@@ -2120,7 +1894,7 @@ func DECDSAGenKeyRoundFive(msgprex string, ch chan interface{}, w *RPCReqWorker,
 
 func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{}, w *RPCReqWorker, ids sortableIDSSlice, ug map[string][]*big.Int) bool {
 	if w == nil || msgprex == "" || cointype == "" || len(ids) == 0 || len(ug) == 0 {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error while validating u1 zero knowledge proof data")}
 		ch <- res
 		return false
 	}
@@ -2128,10 +1902,11 @@ func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{},
 	// for all nodes, verify zk of u
 	zku := make([]string, w.NodeCnt)
 	if w.msg_zku.Len() != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllZKUPROOFFail)}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get all u1 zero knowledge proof datas fail")}
 		ch <- res
 		return false
 	}
+	
 	itmp := 0
 	iter := w.msg_zku.Front()
 	for iter != nil {
@@ -2153,7 +1928,7 @@ func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{},
 				s := new(big.Int).SetBytes([]byte(mm[3]))
 				zkUProof := &ec2.ZkUProof{E: e, S: s}
 				if !keygen.DECDSA_Key_ZkUVerify(ug[en[0]], zkUProof) {
-					res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrVerifyZKUPROOFFail)}
+					res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("failed to verify u1 zero knowledge proof data")}
 					ch <- res
 					return false
 				}
@@ -2168,7 +1943,7 @@ func DECDSAGenKeyVerifyZKU(msgprex string, cointype string, ch chan interface{},
 
 func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RPCReqWorker, ch chan interface{}, skU1 *big.Int, u1PaillierPk *ec2.PublicKey, u1PaillierSk *ec2.PrivateKey, cs []string, u1NtildeH1H2 *ec2.NtildeH1H2) bool {
 	if cointype == "" || len(ids) == 0 || w == nil || skU1 == nil || u1PaillierPk == nil || u1PaillierSk == nil || len(cs) == 0 || u1NtildeH1H2 == nil {
-		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("param error")}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("parameter error while save keygen data")}
 		ch <- res
 		return false
 	}
@@ -2210,7 +1985,7 @@ func DECDSAGenKeySaveData(cointype string, ids sortableIDSSlice, w *RPCReqWorker
 
 	zkfacts := make([]string, w.NodeCnt)
 	if w.msg_zkfact.Len() != w.NodeCnt {
-		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetAllZKFACTPROOFFail)}
+		res := RpcDcrmRes{Ret: "", Err:fmt.Errorf("get ntilde data fail")}
 		ch <- res
 		return false
 	}
@@ -2324,7 +2099,7 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 	////////////////////
 
 	if id < 0 || id >= RPCMaxWorker || id >= len(workers) {
-		res := RpcDcrmRes{Ret: "", Err: GetRetErr(ErrGetWorkerIdError)}
+		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get worker ID fail")}
 		ch <- res
 		return false
 	}
@@ -2334,7 +2109,7 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 		///bug groupid == nil ???
 		w, err := FindWorker(msgprex)
 		if err != nil || w.groupid == "" {
-		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group id fail.")}
+		    res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("get group ID fail")}
 		    ch <- res
 		    return false
 		}
@@ -2351,68 +2126,56 @@ func KeyGenerate_DECDSA(msgprex string, ch chan interface{}, id int, cointype st
 	ids := GetIds(cointype, w.groupid)
 
 	//*******************!!!Distributed ECDSA Start!!!**********************************
-
 	u1, u1Poly, u1PolyG, commitU1G, u1PaillierPk, u1PaillierSk, status := DECDSAGenKeyRoundOne(msgprex, ch, w)
 	if !status {
 		return status
 	}
-	common.Debug("================generate key,round one finish================","key",msgprex)
 
 	u1Shares, status := DECDSAGenKeyRoundTwo(msgprex, cointype, ch, w, u1Poly, ids)
 	if !status {
 		return status
 	}
-	common.Debug("================generate key,round two finish================","key",msgprex)
 
 	if !DECDSAGenKeyRoundThree(msgprex, cointype, ch, w, u1PolyG, commitU1G, ids) {
 		return false
 	}
-	common.Debug("================generate key,round three finish================","key",msgprex)
 
 	sstruct, ds, status := DECDSAGenKeyVerifyShareData(msgprex, cointype, ch, w, u1PolyG, u1Shares, ids)
 	if !status {
 		return status
 	}
-	common.Debug("================generate key,verify share data finish================","key",msgprex)
 
 	cs, udecom, status := DECDSAGenKeyVerifyCommitment(msgprex, cointype, ch, w, ds, commitU1G, ids)
 	if !status {
 		return false
 	}
-	common.Debug("================generate key,verify commitment finish================","key",msgprex)
 
 	ug, status := DECDSAGenKeyCalcPubKey(msgprex, cointype, ch, w, udecom, ids)
 	if !status {
 		return false
 	}
-	common.Debug("================generate key,calc pubkey finish================","key",msgprex)
 
 	skU1, status := DECDSAGenKeyCalcPrivKey(msgprex, cointype, ch, w, sstruct, ids)
 	if !status {
 		return false
 	}
-	common.Debug("================generate key,calc privkey finish================","key",msgprex)
 
 	u1NtildeH1H2, status := DECDSAGenKeyRoundFour(msgprex, ch, w)
 	if !status {
 		return false
 	}
-	common.Debug("================generate key,round four finish================","key",msgprex)
 
 	if !DECDSAGenKeyRoundFive(msgprex, ch, w, u1) {
 		return false
 	}
-	common.Debug("================generate key,round five finish================","key",msgprex)
 
 	if !DECDSAGenKeyVerifyZKU(msgprex, cointype, ch, w, ids, ug) {
 		return false
 	}
-	common.Debug("================generate key,verify zk of u1 finish================","key",msgprex)
 
 	if !DECDSAGenKeySaveData(cointype, ids, w, ch, skU1, u1PaillierPk, u1PaillierSk, cs, u1NtildeH1H2) {
 		return false
 	}
-	common.Debug("================generate key================","u1",u1,"sku1",skU1,"key",msgprex)
 	//*******************!!!Distributed ECDSA End!!!**********************************
 	return true
 }

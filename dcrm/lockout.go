@@ -17,8 +17,6 @@
 package dcrm 
 
 import (
-	"bytes"
-	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -27,16 +25,15 @@ import (
 	"encoding/json"
 
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/signing"
-	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
 	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
 
 	"sync"
-	"github.com/agl/ed25519"
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"github.com/fsn-dev/cryptoCoins/coins/eos"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/log"
 )
 
 type LockOutReply struct {
@@ -85,10 +82,10 @@ func SetLockOutNonce(account string,nonce string) (string, error) {
 }
 
 func RpcAcceptLockOut(raw string) (string, string, error) {
-    common.Debug("=====================RpcAcceptLockOut call CheckRaw ================","raw",raw)
+    log.Debug("=====================RpcAcceptLockOut call CheckRaw ================","raw",raw)
     _,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("=====================RpcAcceptLockOut,CheckRaw ================","raw",raw,"err",err)
+	log.Debug("=====================RpcAcceptLockOut,CheckRaw ================","raw",raw,"err",err)
 	return "Failure",err.Error(),err
     }
 
@@ -101,7 +98,7 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
     if exsit {
 	ac,ok := da.(*AcceptLockOutData)
 	if ok && ac != nil {
-	    common.Debug("=====================RpcAcceptLockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptlo.Key)
+	    log.Debug("=====================RpcAcceptLockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",ac.GroupId,"key",acceptlo.Key)
 	    SendMsgToDcrmGroup(raw, ac.GroupId)
 	    SetUpMsgList(raw,cur_enode)
 	    return "Success", "", nil
@@ -112,10 +109,10 @@ func RpcAcceptLockOut(raw string) (string, string, error) {
 }
 
 func LockOut(raw string) (string, string, error) {
-    common.Debug("=====================LockOut call CheckRaw ================","raw",raw)
+    log.Debug("=====================LockOut call CheckRaw ================","raw",raw)
     key,_,_,txdata,err := CheckRaw(raw)
     if err != nil {
-	common.Debug("=====================LockOut,CheckRaw ================","raw",raw,"err",err)
+	log.Debug("=====================LockOut,CheckRaw ================","raw",raw,"err",err)
 	return "",err.Error(),err
     }
 
@@ -124,7 +121,7 @@ func LockOut(raw string) (string, string, error) {
 	return "","check raw fail,it is not *TxDataLockOut",fmt.Errorf("check raw fail,it is not *TxDataLockOut")
     }
 
-    common.Debug("=====================LockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",lo.GroupId,"key",key)
+    log.Debug("=====================LockOut, SendMsgToDcrmGroup ================","raw",raw,"gid",lo.GroupId,"key",key)
     SendMsgToDcrmGroup(raw, lo.GroupId)
     SetUpMsgList(raw,cur_enode)
     return key, "", nil
@@ -184,7 +181,7 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		    return
 		}
 
-		common.Debug("================GetCurNodeLockOutInfo, it is *AcceptLockOutData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
+		log.Debug("================GetCurNodeLockOutInfo, it is *AcceptLockOutData===================","vv",vv,"vv.Deal",vv.Deal,"vv.Status",vv.Status,"key",key)
 		if vv.Deal == "true" || vv.Status == "Success" {
 		    return
 		}
@@ -204,7 +201,7 @@ func GetCurNodeLockOutInfo(geter_acc string) ([]*LockOutCurNodeInfo, string, err
 		
 		los := &LockOutCurNodeInfo{Key: key, Account: vv.Account, GroupId: vv.GroupId, Nonce: vv.Nonce, DcrmFrom: dcrmaddr, DcrmTo: vv.DcrmTo, Value: vv.Value, Cointype: vv.Cointype, ThresHold: vv.LimitNum, Mode: vv.Mode, TimeStamp: vv.TimeStamp}
 		ret = append(ret, los)
-		common.Debug("================GetCurNodeLockOutInfo success return===================","key",key)
+		log.Debug("================GetCurNodeLockOutInfo success return===================","key",key)
 	    }(k,v)
 	}
 	LdbPubKeyData.RUnlock()
@@ -384,7 +381,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 	if lockout_tx_hash != "" {
 		w, err := FindWorker(wsid)
 		if w == nil || err != nil {
-			common.Debug("==========validate_lockout,no find worker================","nonce",nonce,"err",err,"key",w.sid)
+			log.Debug("==========validate_lockout,no find worker================","nonce",nonce,"err",err,"key",w.sid)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("get worker error.")}
 			ch <- res
 			return
@@ -409,7 +406,7 @@ func validate_lockout(wsid string, account string, dcrmaddr string, cointype str
 			return
 		}
 
-		common.Debug("================validate_lockout,the terminal lockout res is success===============","nonce",nonce,"key",w.sid)
+		log.Debug("================validate_lockout,the terminal lockout res is success===============","nonce",nonce,"key",w.sid)
 		res := RpcDcrmRes{Ret: lockout_tx_hash, Tip: tip, Err: err}
 		ch <- res
 		return
@@ -447,7 +444,7 @@ func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpk
 
 		// Retrieve eospubkey
 		eosstrs := strings.Split(string(eosstr), ":")
-		common.Debug("======== get eos settings========","eosstr",eosstr,"key",msgprex)
+		log.Debug("======== get eos settings========","eosstr",eosstr,"key",msgprex)
 		if len(eosstrs) != 5 {
 			var ret2 Err
 			ret2.Info = "get eos settings error: " + string(eosstr)
@@ -459,7 +456,7 @@ func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpk
 		dcrmpks, _ := hex.DecodeString(pubhex)
 		dcrmpkx2, dcrmpky2 := secp256k1.S256().Unmarshal(dcrmpks[:])
 		//dcrmaddr := pubhex
-		common.Debug("======== dcrm_sign eos========","pkx",dcrmpkx2,"pky",dcrmpky2,"key",msgprex)
+		log.Debug("======== dcrm_sign eos========","pkx",dcrmpkx2,"pky",dcrmpky2,"key",msgprex)
 		txhashs := []rune(txhash)
 		if string(txhashs[0:2]) == "0x" {
 			txhash = string(txhashs[2:])
@@ -467,7 +464,7 @@ func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpk
 
 		w, err := FindWorker(msgprex)
 		if w == nil || err != nil {
-			common.Debug("==========dcrm_sign,no find worker==============","key",msgprex,"err",err)
+			log.Debug("==========dcrm_sign,no find worker==============","key",msgprex,"err",err)
 			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: GetRetErr(ErrNoFindWorker)}
 			ch <- res
 			return ""
@@ -520,7 +517,7 @@ func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpk
 
 	w, err := FindWorker(msgprex)
 	if w == nil || err != nil {
-		common.Debug("==========dcrm_sign,no find worker============","key",msgprex,"err",err)
+		log.Debug("==========dcrm_sign,no find worker============","key",msgprex,"err",err)
 		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: fmt.Errorf("no find worker.")}
 		ch <- res
 		return ""
@@ -560,7 +557,7 @@ func dcrm_sign(msgprex string, txhash string, save string, sku1 *big.Int, dcrmpk
 			}
 			b, _ := hex.DecodeString(ret)
 			if eos.IsCanonical(b) {
-				common.Debug("ret is a canonical signature","key",msgprex)
+				log.Debug("ret is a canonical signature","key",msgprex)
 				flag = true
 				break
 			}
@@ -633,7 +630,7 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 	ids := GetIds(cointype, w.groupid)
 	idSign := ids[:w.ThresHold]
 	mMtA, _ := new(big.Int).SetString(message, 16)
-	common.Debug("=============Sign_ec2=============","w.ThresHold",w.ThresHold,"key",msgprex)
+	log.Debug("=============Sign_ec2=============","w.ThresHold",w.ThresHold,"key",msgprex)
 
 	//*******************!!!Distributed ECDSA Sign Start!!!**********************************
 
@@ -642,7 +639,7 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 	    return ""
 	}
 
-	common.Debug("=============Sign_ec2, map privkey finish =============","key",msgprex)
+	log.Debug("=============Sign_ec2, map privkey finish =============","key",msgprex)
 
 	///////gen paillier key
 	/*u1PaillierPk, u1PaillierSk := ec2.GenerateKeyPair(PaillierKeyLength)
@@ -677,148 +674,148 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 	if u1K == nil || u1Gamma == nil || commitU1GammaG == nil {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,round one finish=================","key",msgprex)
+	log.Debug("===================Sign_ec2,round one finish=================","key",msgprex)
 
 	ukc, ukc2, ukc3 := DECDSASignPaillierEncrypt(cointype, save, w, idSign, u1K, ch)
 	if ukc == nil || ukc2 == nil || ukc3 == nil {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,paillier encrypt finish=================","key",msgprex)
+	log.Debug("===================Sign_ec2,paillier encrypt finish=================","key",msgprex)
 
 	zk1proof, zkfactproof := DECDSASignRoundTwo(msgprex, cointype, save, w, idSign, ch, u1K, ukc2, ukc3)
 	if zk1proof == nil || zkfactproof == nil {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,round two finish================","key",msgprex)
+	log.Debug("===================Sign_ec2,round two finish================","key",msgprex)
 
 	if !DECDSASignRoundThree(msgprex, cointype, save, w, idSign, ch, ukc) {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,round three finish================","key",msgprex)
+	log.Debug("===================Sign_ec2,round three finish================","key",msgprex)
 
 	if !DECDSASignVerifyZKNtilde(msgprex, cointype, save, w, idSign, ch, ukc, ukc3, zk1proof, zkfactproof) {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,verify zk ntilde finish==================","key",msgprex)
+	log.Debug("===================Sign_ec2,verify zk ntilde finish==================","key",msgprex)
 
 	betaU1Star, betaU1, vU1Star, vU1 := signing.GetRandomBetaV(PaillierKeyLength, w.ThresHold)
-	common.Debug("===================Sign_ec2,get random betaU1Star/vU1Star finish================","key",msgprex)
+	log.Debug("===================Sign_ec2,get random betaU1Star/vU1Star finish================","key",msgprex)
 
 	mkg, mkg_mtazk2, mkw, mkw_mtazk2, status := DECDSASignRoundFour(msgprex, cointype, save, w, idSign, ukc, ukc3, zkfactproof, u1Gamma, w1, betaU1Star, vU1Star,ch)
 	if !status {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,round four finish================","key",msgprex)
+	log.Debug("===================Sign_ec2,round four finish================","key",msgprex)
 
 	if !DECDSASignVerifyZKGammaW(msgprex,cointype, save, w, idSign, ukc, ukc3, zkfactproof, mkg, mkg_mtazk2, mkw, mkw_mtazk2, ch) {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,verify zk gamma/w finish===================","key",msgprex)
+	log.Debug("===================Sign_ec2,verify zk gamma/w finish===================","key",msgprex)
 
 	u1PaillierSk := GetSelfPrivKey(cointype, idSign, w, save, ch)
 	if u1PaillierSk == nil {
 		return ""
 	}
-	common.Debug("===================Sign_ec2,get self privkey finish====================","key",msgprex)
+	log.Debug("===================Sign_ec2,get self privkey finish====================","key",msgprex)
 
 	alpha1 := DecryptCkGamma(cointype, idSign, w, u1PaillierSk, mkg, ch)
 	if alpha1 == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2,decrypt paillier(k)XGamma finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2,decrypt paillier(k)XGamma finish=================","key",msgprex)
 
 	uu1 := DecryptCkW(cointype, idSign, w, u1PaillierSk, mkw, ch)
 	if uu1 == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, decrypt paillier(k)Xw1 finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, decrypt paillier(k)Xw1 finish=================","key",msgprex)
 
 	delta1 := CalcDelta(alpha1, betaU1, ch, w.ThresHold)
 	if delta1 == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, calc delta finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, calc delta finish=================","key",msgprex)
 
 	sigma1 := CalcSigma(uu1, vU1, ch, w.ThresHold)
 	if sigma1 == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, calc sigma finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, calc sigma finish=================","key",msgprex)
 
 	deltaSum := DECDSASignRoundFive(msgprex, cointype, delta1, idSign, w, ch)
 	if deltaSum == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, round five finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, round five finish=================","key",msgprex)
 
 	u1GammaZKProof := DECDSASignRoundSix(msgprex, u1Gamma, commitU1GammaG, w, ch)
 	if u1GammaZKProof == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, round six finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, round six finish=================","key",msgprex)
 
 	ug := DECDSASignVerifyCommitment(cointype, w, idSign, commitU1GammaG, u1GammaZKProof, ch)
 	if ug == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, verify commitment finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, verify commitment finish=================","key",msgprex)
 
 	r, deltaGammaGy := Calc_r(cointype, w, idSign, ug, deltaSum, ch)
 	if r == nil || deltaGammaGy == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, calc r finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, calc r finish=================","key",msgprex)
 
 	// 5. calculate s
 	us1 := signing.CalcUs(mMtA, u1K, r, sigma1)
-	common.Debug("=====================Sign_ec2, calc self s finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, calc self s finish=================","key",msgprex)
 
 	commitBigVAB1, commitbigvabs, rho1, l1 := DECDSASignRoundSeven(msgprex, r, deltaGammaGy, us1, w, ch)
 	if commitBigVAB1 == nil || commitbigvabs == nil || rho1 == nil || l1 == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, round seven finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, round seven finish=================","key",msgprex)
 
 	u1zkABProof, zkabproofs := DECDSASignRoundEight(msgprex, r, deltaGammaGy, us1, l1, rho1, w, ch, commitBigVAB1)
 	if u1zkABProof == nil || zkabproofs == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, round eight finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, round eight finish=================","key",msgprex)
 
 	commitbigcom, BigVx, BigVy := DECDSASignVerifyBigVAB(cointype, w, commitbigvabs, zkabproofs, commitBigVAB1, u1zkABProof, idSign, r, deltaGammaGy, ch)
 	if commitbigcom == nil || BigVx == nil || BigVy == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, verify BigVAB finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, verify BigVAB finish=================","key",msgprex)
 
 	commitbiguts, commitBigUT1 := DECDSASignRoundNine(msgprex, cointype, w, idSign, mMtA, r, pkx, pky, BigVx, BigVy, rho1, commitbigcom, l1, ch)
 	if commitbiguts == nil || commitBigUT1 == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, round nine finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, round nine finish=================","key",msgprex)
 
 	commitbigutd11s := DECDSASignRoundTen(msgprex, commitBigUT1, w, ch)
 	if commitbigutd11s == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, round ten finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, round ten finish=================","key",msgprex)
 
 	if !DECDSASignVerifyBigUTCommitment(msgprex,cointype, commitbiguts, commitbigutd11s, commitBigUT1, w, idSign, ch, commitbigcom) {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2, verify BigUT commitment finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2, verify BigUT commitment finish=================","key",msgprex)
 
 	ss1s := DECDSASignRoundEleven(msgprex, cointype, w, idSign, ch, us1)
 	if ss1s == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2,round eleven finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2,round eleven finish=================","key",msgprex)
 
 	s := Calc_s(msgprex,cointype, w, idSign, ss1s, ch)
 	if s == nil {
 		return ""
 	}
-	common.Debug("=====================Sign_ec2,calc s finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2,calc s finish=================","key",msgprex)
 
 	// 3. justify the s
 	bb := false
@@ -834,7 +831,7 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 		ch <- res
 		return ""
 	}
-	common.Debug("=====================Sign_ec2,justify s finish=================","key",msgprex)
+	log.Debug("=====================Sign_ec2,justify s finish=================","key",msgprex)
 
 	// **[End-Test]  verify signature with MtA
 	signature := new(ECDSASignature)
@@ -879,23 +876,23 @@ func Sign_ec2(msgprex string, save string, sku1 *big.Int, message string, cointy
 	signature.SetRecoveryParam(int32(recid))
 
 	if !DECDSA_Sign_Verify_RSV(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), message, pkx, pky) {
-		common.Debug("=================Sign_ec2,verify is false==============","key",msgprex)
+		log.Debug("=================Sign_ec2,verify is false==============","key",msgprex)
 		res := RpcDcrmRes{Ret: "", Err: fmt.Errorf("sign verify fail.")}
 		ch <- res
 		return ""
 	}
-	common.Debug("=================Sign_ec2,verify (r,s) pass==============","key",msgprex)
+	log.Debug("=================Sign_ec2,verify (r,s) pass==============","key",msgprex)
 
 	signature2 := GetSignString(signature.GetR(), signature.GetS(), signature.GetRecoveryParam(), int(signature.GetRecoveryParam()))
 	rstring := "========================== r = " + fmt.Sprintf("%v", signature.GetR()) + " ========================="
 	sstring := "========================== s = " + fmt.Sprintf("%v", signature.GetS()) + " =========================="
 	fmt.Println(rstring)
 	fmt.Println(sstring)
-	common.Debug("=================Sign_ec2==============","rsv str",signature2,"key",msgprex)
+	log.Debug("=================Sign_ec2==============","rsv str",signature2,"key",msgprex)
 	res := RpcDcrmRes{Ret: signature2, Err: nil}
 	ch <- res
 
-	common.Debug("=================Sign_ec2, rsv pass==============","key",msgprex)
+	log.Debug("=================Sign_ec2, rsv pass==============","key",msgprex)
 	//*******************!!!Distributed ECDSA Sign End!!!**********************************
 
 	return ""
@@ -946,719 +943,4 @@ func dcrm_sign_ed(msgprex string, txhash string, save string, sku1 *big.Int,pk s
 	}
 	return bak_sig
 }
-
-func sign_ed(msgprex string,txhash []string,save string, sku1 *big.Int, pk string, keytype string, ch chan interface{}) string {
-
-    	tmp := make([]string,0)
-	for _,v := range txhash {
-	    txhashs := []rune(v)
-	    if string(txhashs[0:2]) == "0x" {
-		    tmp = append(tmp,string(txhashs[2:]))
-	    } else {
-		tmp = append(tmp,string(txhashs))
-	    }
-	}
-
-	w, err := FindWorker(msgprex)
-	if w == nil || err != nil {
-		logs.Debug("===========get worker fail.=============")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:no find worker", Err: GetRetErr(ErrNoFindWorker)}
-		ch <- res
-		return ""
-	}
-	id := w.id
-
-	cur_enode = GetSelfEnode()
-
-	logs.Debug("===================!!!Start!!!====================")
-
-	var result string
-	var bak_sig string
-	for _,v := range tmp {
-	    var ch1 = make(chan interface{}, 1)
-	    for i:=0;i < recalc_times;i++ {
-		//fmt.Printf("%v===============sign_ed, recalc i = %v, key = %v ================\n",common.CurrentTime(),i,msgprex)
-		if len(ch1) != 0 {
-		    <-ch1
-		}
-
-		w := workers[id]
-		w.Clear2()
-		bak_sig = Sign_ed(msgprex, save, sku1, v, keytype, pk, ch1, id)
-		ret, _, cherr := GetChannelValue(ch_t, ch1)
-		if ret != "" && cherr == nil {
-		    result += ret
-		    result += ":"
-			//res := RpcDcrmRes{Ret: ret, Tip: "", Err: cherr}
-			//ch <- res
-			break
-		}
-		
-		time.Sleep(time.Duration(3) * time.Second) //1000 == 1s
-	    }
-	}
-
-	result += "NULL"
-	tmps := strings.Split(result, ":")
-	if len(tmps) == (len(tmp) + 1) {
-	    res := RpcDcrmRes{Ret: result, Tip: "", Err: nil}
-	    ch <- res
-	}
-
-	return bak_sig
-}
-
-//msgprex = hash
-//return value is the backup for the dcrm sig
-func Sign_ed(msgprex string, save string, sku1 *big.Int, message string, cointype string, pk string, ch chan interface{}, id int) string {
-	logs.Debug("===================Sign_ed====================")
-	if id < 0 || id >= len(workers) || id >= RPCMaxWorker {
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get worker id fail", Err: GetRetErr(ErrGetWorkerIdError)}
-		ch <- res
-		return ""
-	}
-
-	w := workers[id]
-	GroupId := w.groupid
-	fmt.Println("========Sign_ed============", "GroupId", GroupId)
-	if GroupId == "" {
-		res := RpcDcrmRes{Ret: "", Tip: "get group id fail", Err: fmt.Errorf("get group id fail.")}
-		ch <- res
-		return ""
-	}
-
-	ns, _ := GetGroup(GroupId)
-	if ns != w.NodeCnt {
-		logs.Debug("Sign_ed,get nodes info error.")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:the group is not ready", Err: GetRetErr(ErrGroupNotReady)}
-		ch <- res
-		return ""
-	}
-
-	logs.Debug("===========Sign_ed============", "save len", len(save), "save", save)
-
-	ids := GetIds(cointype, GroupId)
-	idSign := ids[:w.ThresHold]
-
-	m := strings.Split(save, common.Sep11)
-
-	var sk [64]byte
-	//va := []byte(m[0])
-	va := sku1.Bytes()
-	copy(sk[:], va[:64])
-	//pk := ([]byte(m[1]))[:]
-	var tsk [32]byte
-	va = []byte(m[2])
-	copy(tsk[:], va[:32])
-	var pkfinal [32]byte
-	va = []byte(m[3])
-	copy(pkfinal[:], va[:32])
-
-	//fixid := []string{"36550725515126069209815254769857063254012795400127087205878074620099758462980","86773132036836319561089192108022254523765345393585629030875522375234841566222","80065533669343563706948463591465947300529465448793304408098904839998265250318"}
-	var uids = make(map[string][32]byte)
-	for _, id := range ids {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		//num,_ := new(big.Int).SetString(fixid[k],10)
-		var t [32]byte
-		//copy(t[:], num.Bytes())
-		copy(t[:], id.Bytes())
-		if len(id.Bytes()) < 32 {
-			l := len(id.Bytes())
-			for j := l; j < 32; j++ {
-				t[j] = byte(0x00)
-			}
-		}
-		uids[en[0]] = t
-	}
-
-	// [Notes]
-	// 1. calculate R
-	var r [32]byte
-	var RBytes [32]byte
-	var rDigest [64]byte
-
-	h := sha512.New()
-	_,err := h.Write(sk[32:])
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write sk fail in caling R", Err: err}
-	    ch <- res
-	    return ""
-	}
-
-	_,err = h.Write([]byte(message))
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write message fail in caling R", Err: err}
-	    ch <- res
-	    return ""
-	}
-
-	h.Sum(rDigest[:0])
-	ed.ScReduce(&r, &rDigest)
-
-	var R ed.ExtendedGroupElement
-	ed.GeScalarMultBase(&R, &r)
-
-	// 2. commit(R)
-	R.ToBytes(&RBytes)
-	CR, DR := ed.Commit(RBytes)
-
-	// 3. zkSchnorr(rU1)
-	zkR := ed.Prove(r)
-
-	mp := []string{msgprex, cur_enode}
-	enode := strings.Join(mp, "-")
-	s0 := "EDC21"
-	s1 := string(CR[:])
-
-	ss := enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================sign ed round one,send msg,code is EDC21==================")
-	SendMsgToDcrmGroup(ss, GroupId)
-	DisMsg(ss)
-
-	_, tip, cherr := GetChannelValue(ch_t, w.bedc21)
-	if cherr != nil {
-		logs.Debug("get w.bedc21 timeout.")
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c21 timeout.")}
-		ch <- res
-		return ""
-	}
-
-	if w.msg_edc21.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edc21 fail.")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get msg_edc21 fail", Err: fmt.Errorf("get all ed c21 fail.")}
-		ch <- res
-		return ""
-	}
-	var crs = make(map[string][32]byte)
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		if IsCurNode(enodes, cur_enode) {
-			crs[cur_enode] = CR
-			continue
-		}
-
-		en := strings.Split(string(enodes[8:]), "@")
-
-		iter := w.msg_edc21.Front()
-		for iter != nil {
-			data := iter.Value.(string)
-			m := strings.Split(data, common.Sep)
-			ps := strings.Split(m[0], "-")
-			if strings.EqualFold(ps[1], en[0]) {
-				var t [32]byte
-				va := []byte(m[2])
-				copy(t[:], va[:32])
-				crs[en[0]] = t
-				break
-			}
-			iter = iter.Next()
-		}
-	}
-
-	s0 = "EDZKR"
-	s1 = string(zkR[:])
-	ss = enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================sign ed round one,send msg,code is EDZKR==================")
-	SendMsgToDcrmGroup(ss, GroupId)
-	DisMsg(ss)
-
-	_, tip, cherr = GetChannelValue(ch_t, w.bedzkr)
-	if cherr != nil {
-		logs.Debug("get w.bedzkr timeout.")
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed zkr timeout.")}
-		ch <- res
-		return ""
-	}
-
-	if w.msg_edzkr.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edzkr fail.")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edzkr fail", Err: fmt.Errorf("get all ed zkr fail.")}
-		ch <- res
-		return ""
-	}
-
-	var zkrs = make(map[string][64]byte)
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		if IsCurNode(enodes, cur_enode) {
-			zkrs[cur_enode] = zkR
-			continue
-		}
-
-		en := strings.Split(string(enodes[8:]), "@")
-
-		iter := w.msg_edzkr.Front()
-		for iter != nil {
-			data := iter.Value.(string)
-			m := strings.Split(data, common.Sep)
-			ps := strings.Split(m[0], "-")
-			if strings.EqualFold(ps[1], en[0]) {
-				var t [64]byte
-				va := []byte(m[2])
-				copy(t[:], va[:64])
-				zkrs[en[0]] = t
-				break
-			}
-			iter = iter.Next()
-		}
-	}
-
-	s0 = "EDD21"
-	s1 = string(DR[:])
-	ss = enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================sign ed round one,send msg,code is EDD21==================")
-	SendMsgToDcrmGroup(ss, GroupId)
-	DisMsg(ss)
-
-	_, tip, cherr = GetChannelValue(ch_t, w.bedd21)
-	if cherr != nil {
-		logs.Debug("get w.bedd21 timeout.")
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d21 timeout.")}
-		ch <- res
-		return ""
-	}
-
-	if w.msg_edd21.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edd21 fail.")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edd21 fail", Err: fmt.Errorf("get all ed d21 fail.")}
-		ch <- res
-		return ""
-	}
-	var drs = make(map[string][64]byte)
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		if IsCurNode(enodes, cur_enode) {
-			drs[cur_enode] = DR
-			continue
-		}
-
-		en := strings.Split(string(enodes[8:]), "@")
-
-		iter := w.msg_edd21.Front()
-		for iter != nil {
-			data := iter.Value.(string)
-			m := strings.Split(data, common.Sep)
-			ps := strings.Split(m[0], "-")
-			if strings.EqualFold(ps[1], en[0]) {
-				var t [64]byte
-				va := []byte(m[2])
-				copy(t[:], va[:64])
-				drs[en[0]] = t
-				break
-			}
-			iter = iter.Next()
-		}
-	}
-
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		CRFlag := ed.Verify(crs[en[0]], drs[en[0]])
-		if !CRFlag {
-			fmt.Printf("Error: Commitment(R) Not Pass at User: %v", en[0])
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:commitment verification fail in ed sign", Err: fmt.Errorf("Commitment(R) Not Pass.")}
-			ch <- res
-			return ""
-		}
-	}
-
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		var temR [32]byte
-		t := drs[en[0]]
-		copy(temR[:], t[32:])
-
-		zkRFlag := ed.Verify_zk(zkrs[en[0]], temR)
-		if !zkRFlag {
-			fmt.Printf("Error: ZeroKnowledge Proof (R) Not Pass at User: %v", en[0])
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:zeroknowledge verification fail in ed sign", Err: fmt.Errorf("ZeroKnowledge Proof (R) Not Pass.")}
-			ch <- res
-			return ""
-		}
-	}
-
-	var FinalR, temR ed.ExtendedGroupElement
-	var FinalRBytes [32]byte
-	for index, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		var temRBytes [32]byte
-		t := drs[en[0]]
-		copy(temRBytes[:], t[32:])
-		temR.FromBytes(&temRBytes)
-		if index == 0 {
-			FinalR = temR
-		} else {
-			ed.GeAdd(&FinalR, &FinalR, &temR)
-		}
-	}
-	FinalR.ToBytes(&FinalRBytes)
-
-	// 2.6 calculate k=H(FinalRBytes||pk||M)
-	var k [32]byte
-	var kDigest [64]byte
-
-	h = sha512.New()
-	_,err = h.Write(FinalRBytes[:])
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write final r fail in caling k", Err: fmt.Errorf("write final r fail in caling k")}
-	    ch <- res
-	    return ""
-	}
-
-	_,err = h.Write(pkfinal[:])
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write pk fail in caling k", Err: fmt.Errorf("write pk fail in caling k")}
-	    ch <- res
-	    return ""
-	}
-
-	_,err = h.Write(([]byte(message))[:])
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write message fail in caling k", Err: fmt.Errorf("write message fail in caling k")}
-	    ch <- res
-	    return ""
-	}
-
-	h.Sum(kDigest[:0])
-
-	ed.ScReduce(&k, &kDigest)
-
-	// 2.7 calculate lambda1
-	var lambda [32]byte
-	lambda[0] = 1
-	order := ed.GetBytesOrder()
-
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		if IsCurNode(enodes, cur_enode) {
-			continue
-		}
-
-		var time [32]byte
-		t := uids[en[0]]
-		tt := uids[cur_enode]
-		ed.ScSub(&time, &t, &tt)
-		time = ed.ScModInverse(time, order)
-		ed.ScMul(&time, &time, &t)
-		ed.ScMul(&lambda, &lambda, &time)
-	}
-
-	var s [32]byte
-	ed.ScMul(&s, &lambda, &tsk)
-	ed.ScMul(&s, &s, &k)
-	ed.ScAdd(&s, &s, &r)
-
-	// 2.9 calculate sBBytes
-	var sBBytes [32]byte
-	var sB ed.ExtendedGroupElement
-	ed.GeScalarMultBase(&sB, &s)
-	sB.ToBytes(&sBBytes)
-
-	// 2.10 commit(sBBytes)
-	CSB, DSB := ed.Commit(sBBytes)
-
-	s0 = "EDC31"
-	s1 = string(CSB[:])
-	ss = enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================sign ed round one,send msg,code is EDC31==================")
-	SendMsgToDcrmGroup(ss, GroupId)
-	DisMsg(ss)
-
-	_, tip, cherr = GetChannelValue(ch_t, w.bedc31)
-	if cherr != nil {
-		logs.Debug("get w.bedc31 timeout.")
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed c31 timeout.")}
-		ch <- res
-		return ""
-	}
-
-	if w.msg_edc31.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edc31 fail.")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get msg_edc31 fail", Err: fmt.Errorf("get all ed c31 fail.")}
-		ch <- res
-		return ""
-	}
-	var csbs = make(map[string][32]byte)
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		if IsCurNode(enodes, cur_enode) {
-			csbs[cur_enode] = CSB
-			continue
-		}
-
-		en := strings.Split(string(enodes[8:]), "@")
-
-		iter := w.msg_edc31.Front()
-		for iter != nil {
-			data := iter.Value.(string)
-			m := strings.Split(data, common.Sep)
-			ps := strings.Split(m[0], "-")
-			if strings.EqualFold(ps[1], en[0]) {
-				var t [32]byte
-				va := []byte(m[2])
-				copy(t[:], va[:32])
-				csbs[en[0]] = t
-				break
-			}
-			iter = iter.Next()
-		}
-	}
-
-	s0 = "EDD31"
-	s1 = string(DSB[:])
-	ss = enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================sign ed round one,send msg,code is EDD31==================")
-	SendMsgToDcrmGroup(ss, GroupId)
-	DisMsg(ss)
-
-	_, tip, cherr = GetChannelValue(ch_t, w.bedd31)
-	if cherr != nil {
-		logs.Debug("get w.bedd31 timeout.")
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed d31 timeout.")}
-		ch <- res
-		return ""
-	}
-
-	if w.msg_edd31.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_edd31 fail.")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get all msg_edd31 fail", Err: fmt.Errorf("get all ed d31 fail.")}
-		ch <- res
-		return ""
-	}
-	var dsbs = make(map[string][64]byte)
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		if IsCurNode(enodes, cur_enode) {
-			dsbs[cur_enode] = DSB
-			continue
-		}
-
-		en := strings.Split(string(enodes[8:]), "@")
-
-		iter := w.msg_edd31.Front()
-		for iter != nil {
-			data := iter.Value.(string)
-			m := strings.Split(data, common.Sep)
-			ps := strings.Split(m[0], "-")
-			if strings.EqualFold(ps[1], en[0]) {
-				var t [64]byte
-				va := []byte(m[2])
-				copy(t[:], va[:64])
-				dsbs[en[0]] = t
-				break
-			}
-			iter = iter.Next()
-		}
-	}
-
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		CSBFlag := ed.Verify(csbs[en[0]], dsbs[en[0]])
-		if !CSBFlag {
-			fmt.Printf("Error: Commitment(SB) Not Pass at User: %v", en[0])
-			res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:commitment(CSB) not pass", Err: fmt.Errorf("Commitment(SB) Not Pass.")}
-			ch <- res
-			return ""
-		}
-	}
-
-	var sB2, temSB ed.ExtendedGroupElement
-	for index, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		var temSBBytes [32]byte
-		t := dsbs[en[0]]
-		copy(temSBBytes[:], t[32:])
-		temSB.FromBytes(&temSBBytes)
-
-		if index == 0 {
-			sB2 = temSB
-		} else {
-			ed.GeAdd(&sB2, &sB2, &temSB)
-		}
-	}
-
-	var k2 [32]byte
-	var kDigest2 [64]byte
-
-	h = sha512.New()
-	_,err = h.Write(FinalRBytes[:])
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write final r fail in caling k2", Err: fmt.Errorf("write final r fail in caling k2.")}
-	    ch <- res
-	    return ""
-	}
-
-	_,err = h.Write(pkfinal[:])
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write final pk fail in caling k2", Err: fmt.Errorf("write final pk fail in caling k2.")}
-	    ch <- res
-	    return ""
-	}
-
-	_,err = h.Write(([]byte(message))[:])
-	if err != nil {
-	    res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:write message fail in caling k2", Err: fmt.Errorf("write message fail in caling k2.")}
-	    ch <- res
-	    return ""
-	}
-
-	h.Sum(kDigest2[:0])
-
-	ed.ScReduce(&k2, &kDigest2)
-
-	// 3.6 calculate sBCal
-	var FinalR2, sBCal, FinalPkB ed.ExtendedGroupElement
-	FinalR2.FromBytes(&FinalRBytes)
-	FinalPkB.FromBytes(&pkfinal)
-	ed.GeScalarMult(&sBCal, &k2, &FinalPkB)
-	ed.GeAdd(&sBCal, &sBCal, &FinalR2)
-
-	// 3.7 verify equation
-	var sBBytes2, sBCalBytes [32]byte
-	sB2.ToBytes(&sBBytes2)
-	sBCal.ToBytes(&sBCalBytes)
-
-	if !bytes.Equal(sBBytes2[:], sBCalBytes[:]) {
-		fmt.Printf("Error: Not Pass Verification (SB = SBCal) at User: %v \n", cur_enode)
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:not pass verification (CSB == SBCal)", Err: fmt.Errorf("Error: Not Pass Verification (SB = SBCal).")}
-		ch <- res
-		return ""
-	}
-
-	s0 = "EDS"
-	s1 = string(s[:])
-	ss = enode + common.Sep + s0 + common.Sep + s1
-	logs.Debug("================sign ed round one,send msg,code is EDS==================")
-	SendMsgToDcrmGroup(ss, GroupId)
-	DisMsg(ss)
-
-	_, tip, cherr = GetChannelValue(ch_t, w.beds)
-	if cherr != nil {
-		logs.Debug("get w.beds timeout.")
-		res := RpcDcrmRes{Ret: "", Tip: tip, Err: fmt.Errorf("get ed s timeout.")}
-		ch <- res
-		return ""
-	}
-
-	if w.msg_eds.Len() != w.NodeCnt {
-		logs.Debug("get w.msg_eds fail.")
-		res := RpcDcrmRes{Ret: "", Tip: "dcrm back-end internal error:get msg_eds fail", Err: fmt.Errorf("get all ed s fail.")}
-		ch <- res
-		return ""
-	}
-	var eds = make(map[string][32]byte)
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		if IsCurNode(enodes, cur_enode) {
-			eds[cur_enode] = s
-			continue
-		}
-
-		en := strings.Split(string(enodes[8:]), "@")
-
-		iter := w.msg_eds.Front()
-		for iter != nil {
-			data := iter.Value.(string)
-			m := strings.Split(data, common.Sep)
-			ps := strings.Split(m[0], "-")
-			if strings.EqualFold(ps[1], en[0]) {
-				var t [32]byte
-				va := []byte(m[2])
-				copy(t[:], va[:32])
-				eds[en[0]] = t
-				break
-			}
-			iter = iter.Next()
-		}
-	}
-
-	var FinalS [32]byte
-	for _, id := range idSign {
-		enodes := GetEnodesByUid(id, cointype, GroupId)
-		en := strings.Split(string(enodes[8:]), "@")
-		t := eds[en[0]]
-		ed.ScAdd(&FinalS, &FinalS, &t)
-	}
-
-	inputVerify := InputVerify{FinalR: FinalRBytes, FinalS: FinalS, Message: []byte(message), FinalPk: pkfinal}
-
-	var pass = EdVerify(inputVerify)
-	common.Debug("===========ed verify============","pass",pass)
-
-	//r
-	rx := hex.EncodeToString(FinalRBytes[:])
-	sx := hex.EncodeToString(FinalS[:])
-	logs.Debug("========sign_ed========", "rx", rx, "sx", sx, "FinalRBytes", FinalRBytes, "FinalS", FinalS)
-
-	//////test
-	signature := new([64]byte)
-	copy(signature[:], FinalRBytes[:])
-	copy(signature[32:], FinalS[:])
-	suss := ed25519.Verify(&pkfinal, []byte(message), signature)
-	common.Debug("===========ed verify again============","pass",suss)
-	//////
-
-	res := RpcDcrmRes{Ret: rx + ":" + sx, Tip: "", Err: nil}
-	ch <- res
-	return ""
-}
-
-type InputVerify struct {
-	FinalR  [32]byte
-	FinalS  [32]byte
-	Message []byte
-	FinalPk [32]byte
-}
-
-func EdVerify(input InputVerify) bool {
-	// 1. calculate k
-	var k [32]byte
-	var kDigest [64]byte
-
-	h := sha512.New()
-	_,err := h.Write(input.FinalR[:])
-	if err != nil {
-	    return false
-	}
-
-	_,err = h.Write(input.FinalPk[:])
-	if err != nil {
-	    return false
-	}
-
-	_,err = h.Write(input.Message[:])
-	if err != nil {
-	    return false
-	}
-
-	h.Sum(kDigest[:0])
-
-	ed.ScReduce(&k, &kDigest)
-
-	// 2. verify the equation
-	var R, pkB, sB, sBCal ed.ExtendedGroupElement
-	pkB.FromBytes(&(input.FinalPk))
-	R.FromBytes(&(input.FinalR))
-
-	ed.GeScalarMult(&sBCal, &k, &pkB)
-	ed.GeAdd(&sBCal, &R, &sBCal)
-
-	ed.GeScalarMultBase(&sB, &(input.FinalS))
-
-	var sBBytes, sBCalBytes [32]byte
-	sB.ToBytes(&sBBytes)
-	sBCal.ToBytes(&sBCalBytes)
-
-	pass := bytes.Equal(sBBytes[:], sBCalBytes[:])
-
-	return pass
-}
-
-//////
 

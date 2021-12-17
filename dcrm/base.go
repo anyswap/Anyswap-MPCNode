@@ -46,6 +46,7 @@ import (
 	"io"
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
+	"github.com/fsn-dev/dcrm-walletService/log"
 )
 
 var (
@@ -69,24 +70,18 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	InitDev(KeyFile)
 	cur_enode = p2pdcrm.GetSelfID()
 	
-	common.Info("======================dcrm.Start======================","cache",cache,"handles",handles,"cur enode",cur_enode)
-	
 	dir := GetDbDir()
 	dbtmp, err := ethdb.NewLDBDatabase(dir, cache, handles)
 	//bug
 	if err != nil {
-	    common.Info("======================dcrm.Start,open db fail======================","err",err,"dir",dir)
 		for i := 0; i < 80; i++ {
 			dbtmp2, err2 := ethdb.NewLDBDatabase(dir, cache, handles)
 			if err2 == nil && dbtmp2 != nil {
 				dbtmp = dbtmp2
 				err = err2
 				break
-			} else {
-			    common.Info("======================dcrm.Start,open db fail======================","i",i,"err",err2,"dir",dir)
 			}
 
-			//time.Sleep(time.Duration(1000000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -97,7 +92,7 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	}
 
 	if db == nil {
-	    common.Info("======================dcrm.Start,open db fail and gdcrm panic======================")
+	    log.Error("[LAUNCH] open database fail,exit program.======================","err",err,"dir",dir)
 	    os.Exit(1)
 	    return
 	}
@@ -108,16 +103,12 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	dbsktmp, err := ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
 	//bug
 	if err != nil {
-	    common.Info("======================dcrm.Start,open dbsk fail======================","err",err,"dir",GetSkU1Dir())
 		for i := 0; i < 80; i++ {
 			dbsktmp, err = ethdb.NewLDBDatabase(GetSkU1Dir(), cache, handles)
 			if err == nil && dbsktmp != nil {
 				break
-			} else {
-			    common.Info("======================dcrm.Start,open dbsk fail======================","i",i,"err",err,"dir",GetSkU1Dir())
 			}
 
-			//time.Sleep(time.Duration(1000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -128,27 +119,21 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	}
 
 	if dbsk == nil {
-	    common.Info("======================dcrm.Start,open dbsk fail and gdcrm panic======================")
+	    log.Error("[LAUNCH] open database fail,exit program.======================","err",err,"dir",GetSkU1Dir())
 	    os.Exit(1)
 	    return
 	}
 
 	time.Sleep(time.Duration(10) * time.Second)
 
-	//
 	predbtmp, err := ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
-	//bug
 	if err != nil {
-	    common.Info("======================dcrm.Start,open predb fail======================","err",err,"dir",GetPreDbDir())
 		for i := 0; i < 80; i++ {
 			predbtmp, err = ethdb.NewLDBDatabase(GetPreDbDir(), cache, handles)
 			if err == nil && predbtmp != nil {
 				break
-			} else {
-			    common.Info("======================dcrm.Start,open predb fail======================","i",i,"err",err,"dir",GetPreDbDir())
 			}
 
-			//time.Sleep(time.Duration(1000000))
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}
@@ -159,19 +144,19 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	}
 	   
 	if predb == nil {
-	    common.Info("======================dcrm.Start,open predb fail and gdcrm panic======================")
+	    log.Error("[LAUNCH] open database fail,exit program======================","err",err,"dir",GetPreDbDir())
 	    os.Exit(1)
 	    return
 	}
 
 	prekey = GetSmpcPreKeyDb()
 	if prekey == nil {
-		common.Error("======================dcrm.Start,open prekey fail=====================")
+		log.Error("[LAUNCH] open database fail,exit program======================","err",err,"dir",GetPreKeyDir())
 		os.Exit(1)
 		return
 	}
 
-	common.Info("======================dcrm.Start,open all db success======================","cur_enode",cur_enode)
+	log.Info("[LAUNCH] open all database successfully")
 	
 	PrePubDataCount = int(presignnum)
 	WaitMsgTimeGG20 = int(waitmsg)
@@ -179,14 +164,11 @@ func Start(waitmsg uint64,trytimes uint64,presignnum uint64,waitagree uint64) {
 	waitallgg20 = WaitMsgTimeGG20 * recalc_times
 	AgreeWait = int(waitagree)
 	
-	//LdbPubKeyData = GetAllPubKeyDataFromDb()
 	GetAllPreSignFromDb()
-
 	AutoPreGenSignData()
-
 	go HandleRpcSign()
 
-	common.Info("================================dcrm.Start,init finish.========================","cur_enode",cur_enode,"waitmsg",WaitMsgTimeGG20,"trytimes",recalc_times,"presignnum",PrePubDataCount)
+	log.Info("[LAUNCH] launch dcrm successfully","current node ID",cur_enode)
 }
 
 func InitDev(keyfile string) {
@@ -233,18 +215,18 @@ type DcrmPubkeyRes struct {
 
 func GetPubKeyData(key string, account string, cointype string) (string, string, error) {
 	if key == "" || cointype == "" {
-		return "", "dcrm back-end internal error:parameter error in func GetPubKeyData", fmt.Errorf("get pubkey data param error.")
+		return "", "", fmt.Errorf("parameter error while getting pubkey data")
 	}
 
 	exsit,da := GetValueFromPubKeyData(key)
 	///////
 	if !exsit {
-		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
+		return "", "", fmt.Errorf("get pubkey data from db fail")
 	}
 
 	pubs,ok := da.(*PubKeyData)
 	if !ok {
-		return "", "dcrm back-end internal error:get data from db fail in func GetPubKeyData", fmt.Errorf("dcrm back-end internal error:get data from db fail in func GetPubKeyData")
+		return "", "", fmt.Errorf("get pubkey data from db fail")
 	}
 
 	pubkey := hex.EncodeToString([]byte(pubs.Pub))
@@ -254,12 +236,12 @@ func GetPubKeyData(key string, account string, cointype string) (string, string,
 
 		h := coins.NewCryptocoinHandler(cointype)
 		if h == nil {
-			return "", "cointype is not supported", fmt.Errorf("req addr fail.cointype is not supported.")
+			return "", "cointype is not supported", fmt.Errorf("keygen fail.cointype is not supported")
 		}
 
 		ctaddr, err := h.PublicKeyToAddress(pubkey)
 		if err != nil {
-			return "", "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkey, fmt.Errorf("req addr fail.")
+			return "", "get dcrm addr fail from pubkey:" + pubkey, fmt.Errorf("get dcrm addr fail.")
 		}
 
 		m = &DcrmAddrRes{Account: account, PubKey: pubkey, DcrmAddr: ctaddr, Cointype: cointype}
@@ -326,7 +308,7 @@ func CheckAccept(pubkey string,mode string,account string) bool {
 
 func CheckRaw(raw string) (string,string,string,interface{},error) {
     if raw == "" {
-	return "","","",nil,fmt.Errorf("raw data empty")
+	return "","","",nil,fmt.Errorf("invalid raw data")
     }
     
     tx := new(types.Transaction)
@@ -346,27 +328,27 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     if err == nil && req.TxType == "REQDCRMADDR" {
 	groupid := req.GroupId 
 	if groupid == "" {
-		return "","","",nil,fmt.Errorf("get group id fail.")
+		return "","","",nil,fmt.Errorf("invalid group ID")
 	}
 
 	threshold := req.ThresHold
 	if threshold == "" {
-		return "","","",nil,fmt.Errorf("get threshold fail.")
+		return "","","",nil,fmt.Errorf("invalid threshold")
 	}
 
 	mode := req.Mode
 	if mode == "" {
-		return "","","", nil,fmt.Errorf("get mode fail.")
+		return "","","", nil,fmt.Errorf("invalid mode")
 	}
 
 	timestamp := req.TimeStamp
 	if timestamp == "" {
-		return "","","", nil,fmt.Errorf("get timestamp fail.")
+		return "","","", nil,fmt.Errorf("invalid timestamp")
 	}
 
 	nums := strings.Split(threshold, "/")
 	if len(nums) != 2 {
-		return "","","", nil,fmt.Errorf("tx.data error.")
+		return "","","", nil,fmt.Errorf("invalid threshold")
 	}
 
 	nodecnt, err := strconv.Atoi(nums[1])
@@ -380,133 +362,25 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if nodecnt < ts || ts < 2 {
-	    return "","","",nil,fmt.Errorf("threshold format error")
+	    return "","","",nil,fmt.Errorf("invalid threshold")
 	}
 
 	Nonce := tx.Nonce()
 
 	nc,_ := GetGroup(groupid)
 	if nc != nodecnt {
-	    return "","","",nil,fmt.Errorf("check group node count error")
+	    return "","","",nil,fmt.Errorf("invalid number of group nodes")
 	}
 
 	if !CheckGroupEnode(groupid) {
-	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
+	    return "","","",nil,fmt.Errorf("duplicate nodes in group")
 	}
 	
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + "ALL" + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + threshold + ":" + mode))).Hex()
 
-//	common.Debug("================CheckRaw, it is reqaddr tx=================","raw ",raw,"key ",key,"req ",&req)
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&req,nil
     }
-    
-    lo := TxDataLockOut{}
-    err = json.Unmarshal(tx.Data(), &lo)
-    if err == nil && lo.TxType == "LOCKOUT" {
-	dcrmaddr := lo.DcrmAddr
-	dcrmto := lo.DcrmTo
-	value := lo.Value
-	cointype := lo.Cointype
-	groupid := lo.GroupId
-	threshold := lo.ThresHold
-	mode := lo.Mode
-	timestamp := lo.TimeStamp
-	Nonce := tx.Nonce()
-
-	if from.Hex() == "" || dcrmaddr == "" || dcrmto == "" || cointype == "" || value == "" || groupid == "" || threshold == "" || mode == "" || timestamp == "" {
-		return "","","",nil,fmt.Errorf("param error.")
-	}
-
-	////
-	nums := strings.Split(threshold, "/")
-	if len(nums) != 2 {
-		return "","","",nil,fmt.Errorf("tx.data error.")
-	}
-	nodecnt, err := strconv.Atoi(nums[1])
-	if err != nil {
-		return "","","",nil,err
-	}
-	limit, err := strconv.Atoi(nums[0])
-	if err != nil {
-		return "","","",nil,err
-	}
-	if nodecnt < limit || limit < 2 {
-	    return "","","",nil,fmt.Errorf("threshold format error")
-	}
-
-	nc,_ := GetGroup(groupid)
-	if nc < limit || nc > nodecnt {
-	    return "","","",nil,fmt.Errorf("check group node count error")
-	}
-	
-	if !CheckGroupEnode(groupid) {
-	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
-	}
-	
-	////
-
-	//check mode
-	key2 := Keccak256Hash([]byte(strings.ToLower(dcrmaddr))).Hex()
-	exsit,da := GetValueFromPubKeyData(key2)
-	if !exsit {
-		return "","","",nil,fmt.Errorf("dcrm back-end internal error:get data from db fail in lockout")
-	}
-
-	pubs,ok := da.(*PubKeyData)
-	if pubs == nil || !ok {
-		return "","","",nil,fmt.Errorf("dcrm back-end internal error:get data from db fail in func lockout")
-	}
-
-	if pubs.Key != "" && pubs.Mode != mode {
-	    return "","","",nil,fmt.Errorf("can not lockout with different mode in dcrm addr.")
-	}
-
-	////bug:check accout
-	if pubs.Key != "" && pubs.Mode == "1" && !strings.EqualFold(pubs.Account,from.Hex()) {
-	    return "","","",nil,fmt.Errorf("invalid lockout account")
-	}
-
-	if pubs.Key != "" {
-	    exsit,da = GetValueFromPubKeyData(pubs.Key)
-	    if !exsit {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-	    if da == nil {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-	    ac,ok := da.(*AcceptReqAddrData)
-	    if !ok {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-	    if ac == nil {
-		return "","","",nil,fmt.Errorf("no exist dcrm addr pubkey data")
-	    }
-
-//	    common.Debug("================CheckRaw=============","cur_enode ",cur_enode,"from ",from.Hex(),"ac.Sigs ",ac.Sigs)
-	    if pubs.Mode == "0" && !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
-		return "","","",nil,fmt.Errorf("invalid lockout account")
-	    }
-	}
-
-	//check to addr
-	validator := coins.NewDcrmAddressValidator(cointype)
-	if validator == nil {
-	    return "","","",nil,fmt.Errorf("unsupported cointype")
-	}
-	if !validator.IsValidAddress(dcrmto) {
-	    return "","","",nil,fmt.Errorf("invalid to addr")
-	}
-	//
-
-	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + groupid + ":" + fmt.Sprintf("%v", Nonce) + ":" + dcrmaddr + ":" + threshold))).Hex()
-
-//	common.Debug("=================CheckRaw, it is lockout tx================","raw ",raw,"key ",key,"lo ",&lo)
-	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&lo,nil
-    }
-
+ 
     sig := TxDataSign{}
     err = json.Unmarshal(tx.Data(), &sig)
     if err == nil && sig.TxType == "SIGN" {
@@ -541,28 +415,27 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 
 	nc,_ := GetGroup(groupid)
 	if nc < limit || nc > nodecnt {
-	    common.Info("==============CheckRaw, sign,check group node count error============","limit ",limit,"nodecnt ",nodecnt,"nc ",nc,"groupid ",groupid)
 	    return "","","",nil,fmt.Errorf("check group node count error")
 	}
 
 	if !CheckGroupEnode(groupid) {
-	    return "","","",nil,fmt.Errorf("there is same enodeID in group")
+	    return "","","",nil,fmt.Errorf("Duplicate enode ID in group")
 	}
 	
 	//check mode
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,da := GetValueFromPubKeyData(string(dcrmpks[:]))
 	if !exsit {
-	    return "","","",nil,fmt.Errorf("get data from db fail in func sign")
+	    return "","","",nil,fmt.Errorf("get pubkey data from db fail")
 	}
 
 	pubs,ok := da.(*PubKeyData)
 	if pubs == nil || !ok {
-	    return "","","",nil,fmt.Errorf("get data from db fail in func sign")
+	    return "","","",nil,fmt.Errorf("get pubkey data from db fail")
 	}
 
 	if pubs.Mode != mode {
-	    return "","","",nil,fmt.Errorf("can not sign with different mode in pubkey.")
+	    return "","","",nil,fmt.Errorf("verify mode fail")
 	}
 
 	if len(sig.MsgContext) > 16 {
@@ -575,11 +448,10 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	key := Keccak256Hash([]byte(strings.ToLower(from.Hex() + ":" + fmt.Sprintf("%v", Nonce) + ":" + pubkey + ":" + get_sign_hash(hash,keytype) + ":" + keytype + ":" + groupid + ":" + threshold + ":" + mode))).Hex()
-//	common.Debug("=================CheckRaw, it is sign tx==================","raw ",raw,"key ",key,"sig ",&sig)
+	
 	return key,from.Hex(),fmt.Sprintf("%v", Nonce),&sig,nil
     }
 
-    //******************//////////TODO
     pre := TxDataPreSignData{}
     err = json.Unmarshal(tx.Data(), &pre)
     if err == nil && pre.TxType == "PRESIGNDATA" {
@@ -588,24 +460,17 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	Nonce := tx.Nonce()
 
 	if from.Hex() == "" || pubkey == "" || subgids == nil {
-		return "","","",nil,fmt.Errorf("param error from raw data.")
+		return "","","",nil,fmt.Errorf("parameter error while checking pre-sign raw data")
 	}
 
 	dcrmpks, _ := hex.DecodeString(pubkey)
 	exsit,_ := GetPubKeyDataFromLocalDb(string(dcrmpks[:]))
 	if !exsit {
-	    time.Sleep(time.Duration(5000000000))
-	    exsit,_ = GetPubKeyDataFromLocalDb(string(dcrmpks[:])) //try again
-	}
-	if !exsit {
 		return "","","",nil,fmt.Errorf("invalid pubkey")
 	}
 
-//	common.Debug("=================CheckRaw, it is presigndata tx==================","raw ",raw,"pre ",&pre)
 	return "",from.Hex(),fmt.Sprintf("%v", Nonce),&pre,nil
     }
-
-    //************************/////////////
 
     rh := TxDataReShare{}
     err = json.Unmarshal(tx.Data(), &rh)
@@ -615,13 +480,13 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if from.Hex() == "" || rh.PubKey == "" || rh.TSGroupId == "" || rh.ThresHold == "" || rh.Account == "" || rh.Mode == "" || rh.TimeStamp == "" {
-	    return "","","",nil,fmt.Errorf("param error.")
+	    return "","","",nil,fmt.Errorf("parameter error while checking reshare raw data")
 	}
 
 	////
 	nums := strings.Split(rh.ThresHold, "/")
 	if len(nums) != 2 {
-	    return "","","",nil,fmt.Errorf("transacion data format error,threshold is not right")
+	    return "","","",nil,fmt.Errorf("verify threshold fail")
 	}
 	nodecnt, err := strconv.Atoi(nums[1])
 	if err != nil {
@@ -632,7 +497,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	    return "","","",nil,err
 	}
 	if nodecnt < limit || limit < 2 {
-	    return "","","",nil,fmt.Errorf("threshold format error")
+	    return "","","",nil,fmt.Errorf("verify threshold fail")
 	}
 
 	nc,_ := GetGroup(rh.GroupId)
@@ -650,68 +515,36 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     err = json.Unmarshal(tx.Data(), &acceptreq)
     if err == nil && acceptreq.TxType == "ACCEPTREQADDR" {
 	if acceptreq.Accept != "AGREE" && acceptreq.Accept != "DISAGREE" {
-	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
+	    return "","","",nil,fmt.Errorf("incorrect value of 'Accept' field")
 	}
 
 	exsit,da := GetValueFromPubKeyData(acceptreq.Key)
 	if !exsit {
-	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw reqaddr accept data")
+	    return "","","",nil,fmt.Errorf("get pubkey data fail")
 	}
 
 	ac,ok := da.(*AcceptReqAddrData)
 	if !ok || ac == nil {
-	    return "","","",nil,fmt.Errorf("decode accept data fail")
+	    return "","","",nil,fmt.Errorf("get pubkey data fail")
 	}
 
 	///////
 	if ac.Mode == "1" {
-	    return "","","",nil,fmt.Errorf("mode = 1,do not need to accept")
+	    return "","","",nil,fmt.Errorf("verify mode fail")
 	}
 	
 	if !CheckAcc(cur_enode,from.Hex(),ac.Sigs) {
 	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
 
-//	common.Debug("=================CheckRaw, it is acceptreqaddr tx====================","raw ",raw,"key ",acceptreq.Key,"acceptreq ",&acceptreq)
 	return "",from.Hex(),"",&acceptreq,nil
-    }
-
-    acceptlo := TxDataAcceptLockOut{}
-    err = json.Unmarshal(tx.Data(), &acceptlo)
-    if err == nil && acceptlo.TxType == "ACCEPTLOCKOUT" {
-
-	if acceptlo.Accept != "AGREE" && acceptlo.Accept != "DISAGREE" {
-	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
-	}
-
-	exsit,da := GetValueFromPubKeyData(acceptlo.Key)
-	if !exsit {
-	    return "","","",nil,fmt.Errorf("get accept data fail from db in checking raw lockout accept data")
-	}
-
-	ac,ok := da.(*AcceptLockOutData)
-	if !ok || ac == nil {
-	    return "","","",nil,fmt.Errorf("decode accept data fail")
-	}
-
-	if ac.Mode == "1" {
-	    return "","","",nil,fmt.Errorf("mode = 1,do not need to accept")
-	}
-	
-	if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
-	    return "","","",nil,fmt.Errorf("invalid accept account")
-	}
-
-//	common.Debug("=================CheckRaw, it is acceptlockout tx================","raw ",raw,"key ",acceptlo.Key,"acceptlo ",&acceptlo)
-	return "",from.Hex(),"",&acceptlo,nil
     }
 
     acceptsig := TxDataAcceptSign{}
     err = json.Unmarshal(tx.Data(), &acceptsig)
     if err == nil && acceptsig.TxType == "ACCEPTSIGN" {
-
 	if acceptsig.MsgHash == nil {
-	    return "","","",nil,fmt.Errorf("accept data error.")
+	    return "","","",nil,fmt.Errorf("invalid value of 'MsgHash' field")
 	}
 
 	if len(acceptsig.MsgContext) > 16 {
@@ -724,7 +557,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if acceptsig.Accept != "AGREE" && acceptsig.Accept != "DISAGREE" {
-	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
+	    return "","","",nil,fmt.Errorf("incorrect value of 'Accept' field")
 	}
 
 	exsit,da := GetValueFromPubKeyData(acceptsig.Key)
@@ -738,14 +571,13 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if ac.Mode == "1" {
-	    return "","","",nil,fmt.Errorf("mode = 1,do not need to accept")
+	    return "","","",nil,fmt.Errorf("verify mode fail")
 	}
-	
+
 	if !CheckAccept(ac.PubKey,ac.Mode,from.Hex()) {
-	    return "","","",nil,fmt.Errorf("invalid accepter")
+	    return "","","",nil,fmt.Errorf("invalid accept account")
 	}
-	
-//	common.Debug("=================CheckRaw, it is acceptsign tx====================","raw ",raw,"key ",acceptsig.Key,"acceptsig ",&acceptsig)
+
 	return acceptsig.Key,from.Hex(),"",&acceptsig,nil
     }
 
@@ -753,7 +585,7 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
     err = json.Unmarshal(tx.Data(), &acceptrh)
     if err == nil && acceptrh.TxType == "ACCEPTRESHARE" {
 	if acceptrh.Accept != "AGREE" && acceptrh.Accept != "DISAGREE" {
-	    return "","","",nil,fmt.Errorf("transaction data format error,the lastest segment is not AGREE or DISAGREE")
+	    return "","","",nil,fmt.Errorf("incorrect value of 'Accept' field")
 	}
 
 	exsit,da := GetValueFromPubKeyData(acceptrh.Key)
@@ -767,14 +599,13 @@ func CheckRaw(raw string) (string,string,string,interface{},error) {
 	}
 
 	if ac.Mode == "1" {
-	    return "","","",nil,fmt.Errorf("mode = 1,do not need to accept")
+	    return "","","",nil,fmt.Errorf("verify mode fail")
 	}
 	
 	if !IsValidReShareAccept(from.Hex(),ac.GroupId) {
 	    return "","","",nil,fmt.Errorf("check current enode account fail from raw data")
 	}
 
-//	common.Debug("=================CheckRaw, it is acceptreshare tx=====================","raw ",raw,"key ",acceptrh.Key,"acceptrh ",&acceptrh)
 	return "",from.Hex(),"",&acceptrh,nil
     }
 
@@ -844,7 +675,7 @@ func GetBalance(account string, cointype string, dcrmaddr string) (string, strin
 
 	ba, err := h.GetAddressBalance(dcrmaddr, "")
 	if err != nil {
-		return "0","dcrm back-end internal error:get dcrm addr balance fail,but return 0",nil
+		return "0","",nil
 	}
 
 	if h.IsToken() {
@@ -925,8 +756,6 @@ func receiveGroupInfo(msg interface{}) {
 }
 
 func Init(groupId string) {
-	common.Debug("======================Init==========================","get group id",groupId,"init_times",strconv.Itoa(init_times))
-
 	if init_times >= 1 {
 		return
 	}
@@ -951,12 +780,12 @@ func GetAddr(pubkey string,cointype string) (string,string,error) {
 
      h := coins.NewCryptocoinHandler(cointype)
      if h == nil {
-	     return "", "cointype is not supported", fmt.Errorf("req addr fail.cointype is not supported.")
+	     return "", "cointype is not supported", fmt.Errorf("cointype is not supported")
      }
 
      ctaddr, err := h.PublicKeyToAddress(pubkey)
      if err != nil {
-	     return "", "dcrm back-end internal error:get dcrm addr fail from pubkey:" + pubkey, fmt.Errorf("get dcrm  addr fail.")
+	     return "", "get dcrm addr fail from pubkey:" + pubkey, fmt.Errorf("get dcrm  addr fail")
      }
 
      return ctaddr, "", nil
@@ -965,13 +794,6 @@ func GetAddr(pubkey string,cointype string) (string,string,error) {
 func Encode2(obj interface{}) (string, error) {
     switch ch := obj.(type) {
 	case *SendMsg:
-		/*ch := obj.(*SendMsg)
-		ret,err := json.Marshal(ch)
-		if err != nil {
-		    return "",err
-		}
-		return string(ret),nil*/
-
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
 
@@ -981,15 +803,6 @@ func Encode2(obj interface{}) (string, error) {
 		}
 		return buff.String(), nil
 	case *SignBrocastData:
-
-		/*var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil*/
 
 		ch2 := obj.(*SignBrocastData)
 		ret,err := json.Marshal(ch2)
@@ -1034,16 +847,6 @@ func Encode2(obj interface{}) (string, error) {
 		    return "",err
 		}
 		return string(ret),nil
-		/*ch := obj.(*AcceptReqAddrData)
-
-		var buff bytes.Buffer
-		enc := gob.NewEncoder(&buff)
-
-		err1 := enc.Encode(ch)
-		if err1 != nil {
-			return "", err1
-		}
-		return buff.String(), nil*/
 	case *AcceptSignData:
 
 		var buff bytes.Buffer
@@ -1098,43 +901,7 @@ func Encode2(obj interface{}) (string, error) {
 
 func Decode2(s string, datatype string) (interface{}, error) {
 
-	if datatype == "SendMsg" {
-		/*var m SendMsg
-		err := json.Unmarshal([]byte(s), &m)
-		if err != nil {
-		    fmt.Println("================Decode2,json Unmarshal err =%v===================",err)
-		    return nil,err
-		}
-
-		return &m,nil*/
-		var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res SendMsg
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	}
-
 	if datatype == "SignBrocastData" {
-		/*var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res SignBrocastData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil*/
-
 		var m SignBrocastData 
 		err := json.Unmarshal([]byte(s), &m)
 		if err != nil {
@@ -1174,21 +941,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		return &res, nil
 	}
 
-	if datatype == "AcceptLockOutData" {
-		var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res AcceptLockOutData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	}
-
 	if datatype == "AcceptReqAddrData" {
 		var m AcceptReqAddrData
 		err := json.Unmarshal([]byte(s), &m)
@@ -1197,18 +949,6 @@ func Decode2(s string, datatype string) (interface{}, error) {
 		}
 
 		return &m,nil
-		/*var data bytes.Buffer
-		data.Write([]byte(s))
-
-		dec := gob.NewDecoder(&data)
-
-		var res AcceptReqAddrData
-		err := dec.Decode(&res)
-		if err != nil {
-			return nil, err
-		}
-
-		return &res, nil*/
 	}
 
 	if datatype == "AcceptSignData" {
@@ -1284,11 +1024,9 @@ func Decode2(s string, datatype string) (interface{}, error) {
 	return nil, fmt.Errorf("decode obj fail.")
 }
 
-///////
-
 func Compress(c []byte) (string, error) {
 	if c == nil {
-		return "", fmt.Errorf("compress fail.")
+		return "", fmt.Errorf("compress fail")
 	}
 
 	var in bytes.Buffer
@@ -1311,7 +1049,7 @@ func Compress(c []byte) (string, error) {
 func UnCompress(s string) (string, error) {
 
 	if s == "" {
-		return "", fmt.Errorf("param error.")
+		return "", fmt.Errorf("param error")
 	}
 
 	var data bytes.Buffer
@@ -1330,8 +1068,6 @@ func UnCompress(s string) (string, error) {
 
 	return out.String(), nil
 }
-
-////
 
 type DcrmHash [32]byte
 
@@ -1404,7 +1140,6 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 		iter := w.msg_acceptlockoutres.Front()
 		if iter != nil {
 		    mdss := iter.Value.(string)
-		    common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_LOCKOUT ================")
 		    key,_,_,_,_ := CheckRaw(mdss)
 		    key2 := GetReqAddrKeyByOtherKey(key,rt)
 		    exsit,da := GetValueFromPubKeyData(key2)
@@ -1570,7 +1305,6 @@ func GetAllReplyFromGroup(wid int,gid string,rt RpcType,initiator string) []Node
 	    iter := w.msg_acceptreqaddrres.Front()
 	    if iter != nil {
 		mdss := iter.Value.(string)
-		common.Debug("===================== GetAllReplyFromGroup call CheckRaw,it is Rpc_REQADDR ================")
 		key,_,_,_,_ := CheckRaw(mdss)
 		exsit,da := GetValueFromPubKeyData(key)
 		if exsit {
@@ -1737,12 +1471,12 @@ func CheckAcc(eid string, geter_acc string, sigs string) bool {
 //			    return true
 //			}
 //		}
-		
+
 		if strings.EqualFold(geter_acc,mm) { //allow user login diffrent node
 		    return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -1938,5 +1672,23 @@ func DoubleHash2(id string, keytype string) *big.Int {
 	// convert the hash ([]byte) to big.Int
 	digestBigInt := new(big.Int).SetBytes(digest)
 	return digestBigInt
+}
+
+//--------------------------------------------------------------------
+
+func getGroupNodes(gid string) []string {
+    if gid == "" {
+	return nil
+    }
+
+    ret := make([]string,0)
+    _, nodes := GetGroup(gid)
+    others := strings.Split(nodes, common.Sep2)
+    for _, v := range others {
+	node2 := ParseNode(v)
+	ret = append(ret,node2)
+    }
+
+    return ret
 }
 

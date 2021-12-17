@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/fsn-dev/dcrm-walletService/dcrm"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	//"github.com/fsn-dev/dcrm-walletService/log"
 	"github.com/fsn-dev/dcrm-walletService/rpc"
 )
 
@@ -45,7 +45,9 @@ type Service struct{}
 // raw: tx raw data
 //return pubkey and coins addr
 func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数名首字母必须大写
-	common.Info("===============ReqDcrmAddr================","raw",raw)
+
+    //hash := Keccak256Hash([]byte(raw)).Hex()
+    //log.Info("[RPC] dcrm_reqDcrmAddr","raw data hash",hash)
 
 	data := make(map[string]interface{})
 	if raw == "" {
@@ -59,7 +61,7 @@ func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数�
 	}
 
 	ret, tip, err := dcrm.ReqDcrmAddr(raw)
-	common.Info("=================ReqDcrmAddr,get result.==================","ret",ret,"tip",tip,"err",err,"raw",raw)
+	//log.Info("[RPC] dcrm_reqDcrmAddr","return value",ret,"err",err,"raw data hash",hash)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -80,13 +82,12 @@ func (this *Service) ReqDcrmAddr(raw string) map[string]interface{} { //函数�
 }
 
 func (this *Service) AcceptReqAddr(raw string) map[string]interface{} {
-	//fmt.Printf("%v ==========call rpc AcceptReqAddr from web,raw = %v==========\n", common.CurrentTime(), raw)
-	common.Info("========================AcceptReqAddr======================","raw",raw)
+	//hash := Keccak256Hash([]byte(raw)).Hex()
+	//log.Info("[RPC] dcrm_acceptReqAddr","raw data hash",hash)
 
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptReqAddr(raw)
-	//common.Info("========================AcceptReqAddr,get result======================","ret",ret,"tip",tip,"err",err,"raw",raw)
-	//fmt.Printf("%v ==========call rpc AcceptReqAddr from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
+	//log.Info("[RPC] dcrm_acceptReqAddr","return value",ret,"err",err,"raw data hash",hash)
 	if err != nil {
 		data["result"] = "Failure"
 		return map[string]interface{}{
@@ -143,10 +144,7 @@ func (this *Service) GetReqAddrNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{} {
-	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account)
-
 	s, tip, err := dcrm.GetCurNodeReqAddrInfo(account)
-	common.Debug("==================GetCurNodeReqAddrInfo====================","account",account,"ret",s,"err",err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -165,11 +163,8 @@ func (this *Service) GetCurNodeReqAddrInfo(account string) map[string]interface{
 }
 
 func (this *Service) GetReqAddrStatus(key string) map[string]interface{} {
-	common.Debug("==================GetReqAddrStatus====================","key",key)
-
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetReqAddrStatus(key)
-	common.Debug("==================GetReqAddrStatus====================","key",key,"ret",ret,"err",err)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -274,10 +269,7 @@ func (this *Service) GetLockOutNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetCurNodeLockOutInfo(account string) map[string]interface{} {
-	common.Debug("==================GetCurNodeLockOutInfo====================","account",account)
-
 	s, tip, err := dcrm.GetCurNodeLockOutInfo(account)
-	common.Debug("==================GetCurNodeLockOutInfo====================","account",account,"ret",s,"err",err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -319,13 +311,10 @@ func (this *Service) GetLockOutStatus(key string) map[string]interface{} {
 
 //sign
 func (this *Service) AcceptSign(raw string) map[string]interface{} {
-	//fmt.Printf("%v ==========call rpc AcceptSign from web,raw = %v==========\n", common.CurrentTime(), raw)
-	//common.Info("=============================AcceptSign============================","raw",raw)
-
+	//hash := Keccak256Hash([]byte(raw)).Hex()
+	//log.Info("[RPC] dcrm_acceptSign","raw data hash",hash)
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.RpcAcceptSign(raw)
-	//common.Info("=============================AcceptSign,get result============================","ret",ret,"tip",tip,"err",err,"raw",raw)
-	//fmt.Printf("%v ==========call rpc AcceptSign from web,ret = %v,tip = %v,err = %v,raw = %v==========\n", common.CurrentTime(), ret, tip, err, raw)
 	if err != nil {
 		data["result"] = "Failure"
 		return map[string]interface{}{
@@ -346,11 +335,8 @@ func (this *Service) AcceptSign(raw string) map[string]interface{} {
 }
 
 func (this *Service) Sign(raw string) map[string]interface{} {
-	common.Info("===================Sign=====================","raw",raw)
-
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.Sign(raw)
-	//common.Info("===================Sign,get result=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -403,10 +389,7 @@ func (this *Service) GetSignNonce(account string) map[string]interface{} {
 }
 
 func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
-	common.Debug("==================GetCurNodeSignInfo====================","account",account)
-
 	s, tip, err := dcrm.GetCurNodeSignInfo(account)
-	common.Debug("==================GetCurNodeSignInfo====================","account",account,"ret",s,"err",err)
 	if err != nil {
 		return map[string]interface{}{
 			"Status": "Error",
@@ -425,10 +408,8 @@ func (this *Service) GetCurNodeSignInfo(account string) map[string]interface{} {
 }
 
 func (this *Service) GetSignStatus(key string) map[string]interface{} {
-	common.Debug("==================GetSignStatus====================","key",key)
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetSignStatus(key)
-	common.Debug("==================GetSignStatus====================","key",key,"ret",ret,"err",err)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -450,11 +431,8 @@ func (this *Service) GetSignStatus(key string) map[string]interface{} {
 
 //reshare
 func (this *Service) ReShare(raw string) map[string]interface{} {
-	common.Debug("===================ReShare=====================","raw",raw)
-
 	data := make(map[string]interface{})
 	key, tip, err := dcrm.ReShare(raw)
-	common.Debug("===================reshare=====================","key",key,"err",err,"raw",raw)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -578,7 +556,6 @@ func (this *Service) GetReShareStatus(key string) map[string]interface{} {
 //raw tx: 
 //data = pubkey + subgids
 func (this *Service) PreGenSignData(raw string) map[string]interface{} {
-	common.Info("===================PreGenSignData=====================","raw",raw)
 
 	data := make(map[string]interface{})
 	tip, err := dcrm.PreGenSignData(raw)
@@ -605,10 +582,8 @@ func (this *Service) PreGenSignData(raw string) map[string]interface{} {
 //gid = "",get all pubkey of all gid
 //gid != "",get all pubkey by gid
 func (this *Service) GetAccounts(account, mode string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc GetAccounts from web, account = %v, mode = %v ================\n", common.CurrentTime(), account, mode)
 	data := make(map[string]interface{})
 	ret, tip, err := dcrm.GetAccounts(account, mode)
-	fmt.Printf("%v ==========finish call rpc GetAccounts ,ret = %v,err = %v,account = %v, mode = %v ================\n", common.CurrentTime(), ret, err, account, mode)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -629,7 +604,6 @@ func (this *Service) GetAccounts(account, mode string) map[string]interface{} {
 }
 
 func (this *Service) GetAccountsBalance(pubkey string, account string) map[string]interface{} {
-	fmt.Printf("%v ==========call rpc GetAccountsBalance from web, account = %v, pubkey = %v,=============\n", common.CurrentTime(), account, pubkey)
 	data := make(map[string]interface{})
 	if pubkey == "" {
 		data["result"] = ""
@@ -642,7 +616,6 @@ func (this *Service) GetAccountsBalance(pubkey string, account string) map[strin
 	}
 
 	ret, tip, err := dcrm.GetAccountsBalance(pubkey, account)
-	fmt.Printf("%v ==========finish call rpc GetAccountsBalance from web, ret = %v,err = %v,account = %v, pubkey = %v,=============\n", common.CurrentTime(), ret, err, account, pubkey)
 	if err != nil {
 		data["result"] = ""
 		return map[string]interface{}{
@@ -663,7 +636,6 @@ func (this *Service) GetAccountsBalance(pubkey string, account string) map[strin
 }
 
 func (this *Service) GetBalance(account string, cointype string, dcrmaddr string) map[string]interface{} {
-	//fmt.Printf("%v ==========call rpc GetBalance from web,account = %v,cointype = %v,dcrm from = %v ===========\n", common.CurrentTime(), account, cointype, dcrmaddr)
 
 	data := make(map[string]interface{})
 	if account == "" || cointype == "" || dcrmaddr == "" {

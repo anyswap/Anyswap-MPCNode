@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/fsn-dev/dcrm-walletService/log"
 )
 
 var (
@@ -38,13 +38,13 @@ func GenRandomSafePrime() {
 	    lhalf := big.NewInt(1024)
 	     m := new(big.Int).Exp(two,lhalf,nil)
 	     if p != nil && p.Cmp(m) < 0 {
-		common.Info("================================Success Generate Safe Random Prime.==============================")
 		SafePrime <-p
 	     }
 	     //
          }
 	
 	if len(SafePrime) == 4 {
+		log.Info(" 4 large safe prime numbers have been generated successfully ")
 		break
  	}
 	 

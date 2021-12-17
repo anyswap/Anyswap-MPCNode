@@ -1,4 +1,5 @@
-package common 
+// Package log is a wrapper of logrus.
+package log
 
 import (
 	"fmt"
@@ -31,7 +32,7 @@ func SetLogger(logLevel uint32, jsonFormat, colorFormat bool) {
 			ForceQuote:      true,
 			FullTimestamp:   true,
 			TimestampFormat: timestampFormat,
-			DisableSorting:  true,
+			DisableSorting:  false,
 		})
 	}
 }
@@ -40,6 +41,13 @@ func SetLogger(logLevel uint32, jsonFormat, colorFormat bool) {
 func SetLogFile(logFile string, logRotation, logMaxAge uint64) {
 	if logFile == "" {
 		return
+	}
+	// always write in json format to log file
+	if !JSONFormat {
+		JSONFormat = true
+		logrus.SetFormatter(&logrus.JSONFormatter{
+			TimestampFormat: timestampFormat,
+		})
 	}
 	var (
 		logRotateSuffix = "%Y%m%d%H"
@@ -75,6 +83,21 @@ func WithFields(ctx ...interface{}) *logrus.Entry {
 		}
 	}
 	return logrus.WithFields(fields)
+}
+
+// PrintFunc print function prototype
+type PrintFunc func(msg string, ctx ...interface{})
+
+// GetPrintFuncOr get log func of default
+func GetPrintFuncOr(predicate func() bool, targetFunc, otherFunc PrintFunc) PrintFunc {
+	if predicate() {
+		return targetFunc
+	}
+	return otherFunc
+}
+
+// Null don't output anything
+func Null(string, ...interface{}) {
 }
 
 // Trace trace

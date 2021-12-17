@@ -47,6 +47,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
 	rpcdcrm "github.com/fsn-dev/dcrm-walletService/rpc/dcrm"
 	"gopkg.in/urfave/cli.v1"
+	logs "github.com/fsn-dev/dcrm-walletService/log"
 )
 
 const (
@@ -74,7 +75,7 @@ func StartDcrm(c *cli.Context) {
 	go func() {
 	    <-signalChan
 	    stopLock.Lock()
-	    common.Info("=============================Cleaning before stop...======================================")
+	    logs.Info("=============================Cleaning before stop...======================================")
 	    stopLock.Unlock()
 	    os.Exit(0)
 	}()
@@ -88,9 +89,9 @@ func StartDcrm(c *cli.Context) {
 }
 
 func SetLogger() {
-          common.SetLogger(uint32(verbosity), json, color)
+          logs.SetLogger(uint32(verbosity), json, color)
          if log != "" {
-                 common.SetLogFile(log, rotate, maxage)
+                 logs.SetLogFile(log, rotate, maxage)
          }
 }
 

@@ -47,6 +47,8 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
 	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
 	"github.com/fsn-dev/dcrm-walletService/log"
+	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"errors"
 )
 
 var (
@@ -1617,7 +1619,45 @@ func GetIds(cointype string, groupid string) sortableIDSSlice {
 		ids = append(ids, uid)
 	}
 	sort.Sort(ids)
+
+	// check uid: uid == 0, uid == 0 (mod N)
+	for _,v := range ids {
+	    idnum := new(big.Int).Mod(v,s256.S256().N)
+	    if idnum.Cmp(big.NewInt(0)) == 0 || v.Cmp(big.NewInt(0)) == 0 {
+		log.Error("uid is equal to 0 or 0 modulo the order of the curve","coin type",cointype,"gid",groupid)
+		return nil
+	    }
+	}
+
+	// check uid: uidi == uidj
+	dul,err := ContainsDuplicate(ids) 
+	if dul || err != nil {
+	    if dul {
+		log.Error("error getting uid:containing the same uid","gid",groupid,"coin type",cointype)
+	    }
+
+	    return nil
+	}
+
 	return ids
+}
+
+// ContainsDuplicate judge weather contain duplicate element in ids array
+func ContainsDuplicate(ids []*big.Int) (bool,error) {
+    if ids == nil || len(ids) == 0 {
+	return false,errors.New("input param error")
+    }
+
+    numMap:=make(map[string]int)
+    for _,v := range ids {
+        numMap[strings.ToLower(fmt.Sprintf("%v",v))] = 1
+    }
+
+    if len(numMap) != len(ids) {
+       return true,nil
+    }
+
+    return false,nil
 }
 
 func GetIds2(keytype string, groupid string) sortableIDSSlice {
@@ -1629,7 +1669,28 @@ func GetIds2(keytype string, groupid string) sortableIDSSlice {
 		uid := DoubleHash2(node2, keytype)
 		ids = append(ids, uid)
 	}
+	
 	sort.Sort(ids)
+	
+	// check uid: uid == 0, uid == 0 (mod N)
+	for _,v := range ids {
+	    idnum := new(big.Int).Mod(v,s256.S256().N)
+	    if idnum.Cmp(big.NewInt(0)) == 0 || v.Cmp(big.NewInt(0)) == 0 {
+		log.Error("uid is equal to 0 or 0 modulo the order of the curve","key type",keytype,"gid",groupid)
+		return nil
+	    }
+	}
+
+	// check uid: uidi == uidj
+	dul,err := ContainsDuplicate(ids) 
+	if dul || err != nil {
+	    if dul {
+		log.Error("error getting uid:containing the same uid","gid",groupid,"key type",keytype)
+	    }
+
+	    return nil
+	}
+
 	return ids
 }
 

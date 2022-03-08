@@ -39,6 +39,7 @@ import (
 	"github.com/fsn-dev/dcrm-walletService/internal/common"
 	"container/list"
 	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"runtime/debug"
 )
 
 var (
@@ -749,13 +750,25 @@ type SignCurNodeInfo struct {
 }
 
 func GetCurNodeSignInfo(geter_acc string) ([]*SignCurNodeInfo, string, error) {
+    defer func() {
+          if r := recover(); r != nil {
+              fmt.Errorf("GetCurNodeSignInfo Runtime error: %v\n%v", r, string(debug.Stack()))
+              return
+          }
+      }()
+
 	var ret []*SignCurNodeInfo
 	var wg sync.WaitGroup
 	LdbPubKeyData.RLock()
 	for k, v := range LdbPubKeyData.Map {
 	    wg.Add(1)
 	    go func(key string,value interface{}) {
-		defer wg.Done()
+		defer func() {
+		  if r := recover();r != nil {
+		      fmt.Errorf("GetCurNodeSignInfo go Runtime error: %v\n%v", r, string(debug.Stack()))
+		  }
+		  wg.Done()
+	      }()
 
 		vv,ok := value.(*AcceptSignData)
 		if vv == nil || !ok {

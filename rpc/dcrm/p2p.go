@@ -25,6 +25,7 @@ import (
 )
 
 var RPCTEST bool = false
+const maxGroupMember int = 100
 
 const (
 	SUCCESS string = "Success"
@@ -91,6 +92,11 @@ type GroupInfo struct {
 }
 
 func (this *Service) ReshareGroup(threshold string, enodes []string) map[string]interface{} {
+	if len(enodes) > maxGroupMember {
+		ret := &GroupID{}
+		common.Debug("==== ReshareSDKGroup() ====", "threshold", threshold, "len(enodes)", len(enodes), "enodes", "parameter error")
+		return packageResult(FAIL, "enodes parameter error", "", ret)
+	}
 	common.Debug("==== ReshareSDKGroup() ====", "threshold", threshold, "len(enodes)", len(enodes))
 	all, err := layer2.CheckAddPeer(threshold, enodes, true)
 	if err != nil {
@@ -126,6 +132,11 @@ func (this *Service) CreateGroup(threshold string, enodes []string) map[string]i
 }
 
 func (this *Service) CreateSDKGroup(threshold string, enodes []string, subGroup bool) map[string]interface{} {
+	if len(enodes) > maxGroupMember {
+		ret := &GroupID{}
+		common.Debug("==== CreateSDKGroup() ====", "threshold", threshold, "len(enodes)", len(enodes), "enodes", "parameter error")
+		return packageResult(FAIL, "enodes parameter error", "", ret)
+	}
 	_, err := layer2.CheckAddPeer(threshold, enodes, subGroup)
 	if err != nil {
 		ret := &GroupID{}

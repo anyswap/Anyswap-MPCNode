@@ -250,37 +250,37 @@ func (this *Service) GetEnodeStatus(enode string) map[string]interface{} {
 }
 
 // TEST
-func (this *Service) GetSDKGroupAll() map[string]interface{} {
-	if RPCTEST == false {
-		return packageResult(FAIL, "", "RPCTEST == false", "")
-	}
-	retMsg := layer2.GetGroupSDKAll()
-	fmt.Printf("==== GetSDKGroupAll() ====, ret: %v\n", retMsg)
-	return packageResult(SUCCESS, "", "", retMsg)
-}
-
-func (this *Service) BroadcastInSDKGroupAll(gid, msg string) map[string]interface{} {
-	if RPCTEST == false {
-		return packageResult(FAIL, "", "RPCTEST == false", "")
-	}
-	retMsg, err := layer2.SdkProtocol_broadcastInGroupAll(gid, msg)
-	status := SUCCESS
-	if err != nil {
-		status = FAIL
-	}
-	fmt.Printf("==== BroadcastInSDKGroupAll() ====, ret: %v\n", retMsg)
-	return packageResult(status, "", retMsg, msg)
-}
-
-func (this *Service) SendToGroupAllNodes(gid, msg string) map[string]interface{} {
-	if RPCTEST == false {
-		return packageResult(FAIL, "", "RPCTEST == false", "")
-	}
-	retMsg, err := layer2.SdkProtocol_SendToGroupAllNodes(gid, msg)
-	status := SUCCESS
-	if err != nil {
-		status = FAIL
-	}
-	fmt.Printf("==== SendToGroupAllNodes() ====, ret: %v\n", retMsg)
-	return packageResult(status, "", retMsg, msg)
-}
+//func (this *Service) GetSDKGroupAll() map[string]interface{} {
+//	if RPCTEST == false {
+//		return packageResult(FAIL, "", "RPCTEST == false", "")
+//	}
+//	retMsg := layer2.GetGroupSDKAll()
+//	fmt.Printf("==== GetSDKGroupAll() ====, ret: %v\n", retMsg)
+//	return packageResult(SUCCESS, "", "", retMsg)
+//}
+//
+//func (this *Service) BroadcastInSDKGroupAll(gid, msg string) map[string]interface{} {
+//	if RPCTEST == false {
+//		return packageResult(FAIL, "", "RPCTEST == false", "")
+//	}
+//	retMsg, err := layer2.SdkProtocol_broadcastInGroupAll(gid, msg)
+//	status := SUCCESS
+//	if err != nil {
+//		status = FAIL
+//	}
+//	fmt.Printf("==== BroadcastInSDKGroupAll() ====, ret: %v\n", retMsg)
+//	return packageResult(status, "", retMsg, msg)
+//}
+//
+//func (this *Service) SendToGroupAllNodes(gid, msg string) map[string]interface{} {
+//	if RPCTEST == false {
+//		return packageResult(FAIL, "", "RPCTEST == false", "")
+//	}
+//	retMsg, err := layer2.SdkProtocol_SendToGroupAllNodes(gid, msg)
+//	status := SUCCESS
+//	if err != nil {
+//		status = FAIL
+//	}
+//	fmt.Printf("==== SendToGroupAllNodes() ====, ret: %v\n", retMsg)
+//	return packageResult(status, "", retMsg, msg)
+//}

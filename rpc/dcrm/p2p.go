@@ -19,8 +19,8 @@ package dcrm
 import (
 	"fmt"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/params"
-	"github.com/fsn-dev/dcrm-walletService/p2p/layer2"
+	"github.com/anyswap/Anyswap-MPCNode/internal/params"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/layer2"
 )
 
 var RPCTEST bool = false

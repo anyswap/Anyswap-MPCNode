@@ -26,11 +26,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/p2p"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
-	"github.com/fsn-dev/dcrm-walletService/rpc"
-	"github.com/fsn-dev/dcrm-walletService/log"
+	"github.com/anyswap/Anyswap-MPCNode/crypto"
+	"github.com/anyswap/Anyswap-MPCNode/p2p"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/rpc"
+	"github.com/anyswap/Anyswap-MPCNode/log"
 )
 
 // txs start

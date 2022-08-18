@@ -20,8 +20,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
-	"github.com/fsn-dev/dcrm-walletService/log"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/math/random"
+	"github.com/anyswap/Anyswap-MPCNode/log"
 )
 
 var (

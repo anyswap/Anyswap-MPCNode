@@ -17,12 +17,12 @@
 package ec2
 
 import (
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/math/random"
 	//"github.com/fusion/dcrm-sdk/crypto/dcrm/dev/lib/ec2/paillier"
 	"math/big"
 
-	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
+	s256 "github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/sha3"
 )
 
 type MtAZK2Proof struct {

@@ -20,7 +20,7 @@ import (
 	"math/big"
 	"unsafe"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/math"
 )
 
 /*

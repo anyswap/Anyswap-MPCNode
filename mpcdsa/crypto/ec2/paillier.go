@@ -21,8 +21,8 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/sha3"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/math/random"
 )
 
 var ErrMessageTooLong = errors.New("[ERROR]: message is too long.")

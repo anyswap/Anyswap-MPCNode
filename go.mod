@@ -1,4 +1,4 @@
-module github.com/fsn-dev/dcrm-walletService
+module github.com/anyswap/Anyswap-MPCNode
 
 go 1.13
 

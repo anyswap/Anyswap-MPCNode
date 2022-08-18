@@ -24,16 +24,16 @@ import (
 	"time"
 	"encoding/json"
 
-	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/signing"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/anyswap/Anyswap-MPCNode/mpcdsa/ecdsa/signing"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
 
 	"sync"
 	"github.com/astaxie/beego/logs"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"github.com/fsn-dev/cryptoCoins/coins/eos"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/log"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/log"
 )
 
 type LockOutReply struct {

@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
-	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/adapters"
+	"github.com/anyswap/Anyswap-MPCNode/p2p"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/event"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/simulations/adapters"
 )
 
 var DialBanTimeout = 200 * time.Millisecond

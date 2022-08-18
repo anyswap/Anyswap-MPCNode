@@ -29,7 +29,7 @@ import (
 	"net"
 	"sort"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
 )
 
 const (

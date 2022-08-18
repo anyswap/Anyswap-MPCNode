@@ -24,9 +24,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-walletService/dcrm"
-	//"github.com/fsn-dev/dcrm-walletService/log"
-	"github.com/fsn-dev/dcrm-walletService/rpc"
+	"github.com/anyswap/Anyswap-MPCNode/dcrm"
+	//"github.com/anyswap/Anyswap-MPCNode/log"
+	"github.com/anyswap/Anyswap-MPCNode/rpc"
 )
 
 func listenSignal(exit chan int) {

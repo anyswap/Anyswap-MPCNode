@@ -22,10 +22,10 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/p2p"
-	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
-	"github.com/fsn-dev/dcrm-walletService/rpc"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/p2p"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/nat"
+	"github.com/anyswap/Anyswap-MPCNode/rpc"
 )
 
 const (

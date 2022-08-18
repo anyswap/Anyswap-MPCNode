@@ -42,12 +42,12 @@ import (
 	
 	"log"
 	"os"
-	"github.com/fsn-dev/dcrm-walletService/ethdb"
+	"github.com/anyswap/Anyswap-MPCNode/ethdb"
 	"os/user"
 	"runtime"
 	"path/filepath"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"github.com/fsn-dev/dcrm-walletService/internal/common/hexutil"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/sha3"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/hexutil"
 )
 
 const (

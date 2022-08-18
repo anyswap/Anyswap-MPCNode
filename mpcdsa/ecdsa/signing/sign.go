@@ -23,9 +23,9 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/mpcdsa/crypto/ec2"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
 )
 
 //////////////////////////////////////////////////////////////

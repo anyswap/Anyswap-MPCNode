@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
-	"github.com/fsn-dev/dcrm-walletService/rpc"
+	"github.com/anyswap/Anyswap-MPCNode/p2p"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/rpc"
 )
 
 // txs start

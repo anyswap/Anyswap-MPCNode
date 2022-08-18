@@ -37,7 +37,7 @@ mkdir -p $GOPATH/src/github.com/fsn-dev
 
 cd $GOPATH/src/github.com/fsn-dev
 
-git clone https://github.com/fsn-dev/dcrm-walletService.git
+git clone https://github.com/anyswap/Anyswap-MPCNode.git
 ```
 ## Build
 Next compile the code.  Make sure you are in dcrm-walletService directory.
@@ -58,7 +58,7 @@ nohup ./bin/cmd/gdcrm --nodekey node1.key &
 The `gdcrm` will provide rpc service, the default RPC port is port 4449.
 
 Note: 
-Before use [walletService RPC API](https://github.com/fsn-dev/dcrm-walletService/wiki/walletService-RPC-API), please wait at least 5 minutes after running the node which need to prepare dcrm env.
+Before use [walletService RPC API](https://github.com/anyswap/Anyswap-MPCNode/wiki/walletService-RPC-API), please wait at least 5 minutes after running the node which need to prepare dcrm env.
 
 # Front-end
 

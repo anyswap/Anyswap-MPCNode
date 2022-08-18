@@ -23,12 +23,12 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/p2p"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
-	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
-	"github.com/fsn-dev/dcrm-walletService/log"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/sha3"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/p2p"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/rlp"
+	"github.com/anyswap/Anyswap-MPCNode/log"
 )
 
 func BroadcastToGroup(gid discover.NodeID, msg string, p2pType int, myself bool) (string, error) {

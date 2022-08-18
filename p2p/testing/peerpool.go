@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
 )
 
 type TestPeer interface {

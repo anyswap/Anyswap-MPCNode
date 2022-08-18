@@ -28,8 +28,8 @@ import (
 	"strings"
 
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/fsn-dev/dcrm-walletService/node"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/node"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
 )
 
 var (

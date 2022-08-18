@@ -23,7 +23,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common/mclock"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/mclock"
 )
 
 const (

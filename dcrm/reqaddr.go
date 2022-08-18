@@ -31,12 +31,12 @@ import (
 	"sync"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
-	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
-	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
-	"github.com/fsn-dev/dcrm-walletService/mpcdsa/ecdsa/keygen"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/log"
+	"github.com/anyswap/Anyswap-MPCNode/mpcdsa/crypto/ec2"
+	"github.com/anyswap/Anyswap-MPCNode/mpcdsa/crypto/ed"
+	"github.com/anyswap/Anyswap-MPCNode/mpcdsa/ecdsa/keygen"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/log"
 )
 
 var (

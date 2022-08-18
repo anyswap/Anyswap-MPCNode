@@ -19,8 +19,8 @@ package ec2
 import (
 	"math/big"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/sha3"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/math/random"
 )
 
 type Commitment struct {

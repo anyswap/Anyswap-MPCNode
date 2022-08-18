@@ -26,11 +26,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discv5"
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
-	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
-	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discv5"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/event"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/nat"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/netutil"
 )
 
 const (

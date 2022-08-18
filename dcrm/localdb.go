@@ -17,13 +17,15 @@
 package dcrm 
 
 import (
-    "github.com/fsn-dev/dcrm-walletService/internal/common"
-    "github.com/fsn-dev/dcrm-walletService/internal/common/fdlimit"
-    "github.com/fsn-dev/dcrm-walletService/ethdb"
+    "github.com/anyswap/Anyswap-MPCNode/internal/common"
+    "github.com/anyswap/Anyswap-MPCNode/internal/common/fdlimit"
+    "github.com/anyswap/Anyswap-MPCNode/ethdb"
     "time"
+    "fmt"
+    "runtime/debug"
     "sync"
-    "github.com/fsn-dev/dcrm-walletService/p2p/discover"
-    "github.com/fsn-dev/dcrm-walletService/log"
+    "github.com/anyswap/Anyswap-MPCNode/p2p/discover"
+    "github.com/anyswap/Anyswap-MPCNode/log"
 )
 
 var (
@@ -304,7 +306,14 @@ func GetValueFromDb(key string) (bool,interface{}) {
 	return false,nil
     }
 
-    da, err := db.Get([]byte(key))
+    defer func() {
+             if r := recover(); r != nil {
+                     fmt.Errorf("GetValueFromDb error: %v\n%v", r, string(debug.Stack()))
+                     return
+             }
+     }()
+    
+     da, err := db.Get([]byte(key))
     if err != nil || da == nil {
 	return false,nil
     }

@@ -32,13 +32,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fsn-dev/dcrm-walletService/node"
-	"github.com/fsn-dev/dcrm-walletService/p2p"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/node"
+	"github.com/anyswap/Anyswap-MPCNode/p2p"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
 	"github.com/fsn-dev/cryptoCoins/tools/rlp"
-	"github.com/fsn-dev/dcrm-walletService/p2p/simulations"
-	"github.com/fsn-dev/dcrm-walletService/p2p/simulations/adapters"
-	"github.com/fsn-dev/dcrm-walletService/rpc"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/simulations"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/simulations/adapters"
+	"github.com/anyswap/Anyswap-MPCNode/rpc"
 )
 
 // ProtocolTester is the tester environment used for unit testing protocol

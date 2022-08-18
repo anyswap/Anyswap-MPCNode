@@ -20,8 +20,8 @@ import (
 	"math/big"
 	"crypto/rand"
 
-	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ec2"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/anyswap/Anyswap-MPCNode/mpcdsa/crypto/ec2"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
 )
 
 ////////////////////////////////////

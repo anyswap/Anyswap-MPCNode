@@ -42,7 +42,7 @@ import (
 	"fmt"
 	"hash"
 
-	ethcrypto "github.com/fsn-dev/dcrm-walletService/crypto"
+	ethcrypto "github.com/anyswap/Anyswap-MPCNode/crypto"
 )
 
 var (

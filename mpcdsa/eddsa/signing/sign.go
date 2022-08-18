@@ -23,8 +23,8 @@ package signing
 //	"math/big"
 //	"strings"
 //
-//	"github.com/fsn-dev/dcrm-walletService/mpcdsa/crypto/ed"
-//	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+//	"github.com/anyswap/Anyswap-MPCNode/mpcdsa/crypto/ed"
+//	"github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
 //)
 
 //////////////////////////////////////////////////////////////

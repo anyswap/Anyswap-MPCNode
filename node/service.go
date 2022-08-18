@@ -19,9 +19,9 @@ package node
 import (
 	"reflect"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p"
-	"github.com/fsn-dev/dcrm-walletService/p2p/event"
-	"github.com/fsn-dev/dcrm-walletService/rpc"
+	"github.com/anyswap/Anyswap-MPCNode/p2p"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/event"
+	"github.com/anyswap/Anyswap-MPCNode/rpc"
 )
 
 // ServiceContext is a collection of service independent options inherited from

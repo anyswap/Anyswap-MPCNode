@@ -3,7 +3,7 @@ package ec2
 import (
 	"math/big"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/math/random"
 )
 
 type NtildeH1H2 struct {

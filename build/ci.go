@@ -25,8 +25,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-walletService/internal/build"
-	"github.com/fsn-dev/dcrm-walletService/internal/params"
+	"github.com/anyswap/Anyswap-MPCNode/internal/build"
+	"github.com/anyswap/Anyswap-MPCNode/internal/params"
 )
 
 var (

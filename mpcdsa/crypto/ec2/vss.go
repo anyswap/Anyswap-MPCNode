@@ -20,8 +20,8 @@ import (
 	"errors"
 	"math/big"
 
-	s256 "github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
-	"github.com/fsn-dev/dcrm-walletService/internal/common/math/random"
+	s256 "github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/math/random"
 )
 
 //var ErrShareNotPass = errors.New("[ERROR]: the set of shares contain invalid share.")

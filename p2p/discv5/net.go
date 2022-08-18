@@ -24,11 +24,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/crypto/sha3"
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/internal/common/mclock"
-	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
+	"github.com/anyswap/Anyswap-MPCNode/crypto"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/sha3"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common/mclock"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/netutil"
 	"github.com/fsn-dev/cryptoCoins/tools/rlp"
 )
 

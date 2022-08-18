@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fsn-dev/dcrm-walletService/cmd/utils"
-	"github.com/fsn-dev/dcrm-walletService/internal/params"
+	"github.com/anyswap/Anyswap-MPCNode/cmd/utils"
+	"github.com/anyswap/Anyswap-MPCNode/internal/params"
 	"gopkg.in/urfave/cli.v1"
 )
 

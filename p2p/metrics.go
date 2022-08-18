@@ -21,7 +21,7 @@ package p2p
 import (
 	"net"
 
-	"github.com/fsn-dev/dcrm-walletService/p2p/metrics"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/metrics"
 )
 
 var (

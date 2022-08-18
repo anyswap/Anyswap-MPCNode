@@ -17,8 +17,8 @@
 package dcrm 
 
 import (
-	"github.com/fsn-dev/dcrm-walletService/internal/common"
-	"github.com/fsn-dev/dcrm-walletService/crypto/secp256k1"
+	"github.com/anyswap/Anyswap-MPCNode/internal/common"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/secp256k1"
 	"strings"
 	"math/big"
 	"encoding/hex"
@@ -27,16 +27,16 @@ import (
 	"container/list"
 	"github.com/fsn-dev/cryptoCoins/coins"
 	"crypto/ecdsa"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/crypto/ecies"
+	"github.com/anyswap/Anyswap-MPCNode/crypto"
+	"github.com/anyswap/Anyswap-MPCNode/crypto/ecies"
 	"strconv"
-	"github.com/fsn-dev/dcrm-walletService/p2p/discover"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/discover"
 	crand "crypto/rand"
 	"github.com/fsn-dev/cryptoCoins/coins/types"
 	"github.com/fsn-dev/cryptoCoins/tools/rlp"
 	"encoding/json"
 	"runtime/debug"
-	"github.com/fsn-dev/dcrm-walletService/log"
+	"github.com/anyswap/Anyswap-MPCNode/log"
 )
 
 var (

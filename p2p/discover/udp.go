@@ -25,10 +25,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/fsn-dev/dcrm-walletService/crypto"
-	"github.com/fsn-dev/dcrm-walletService/p2p/nat"
-	"github.com/fsn-dev/dcrm-walletService/p2p/netutil"
-	"github.com/fsn-dev/dcrm-walletService/p2p/rlp"
+	"github.com/anyswap/Anyswap-MPCNode/crypto"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/nat"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/netutil"
+	"github.com/anyswap/Anyswap-MPCNode/p2p/rlp"
 )
 
 // Errors

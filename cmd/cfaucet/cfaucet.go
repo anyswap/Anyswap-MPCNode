@@ -18,7 +18,7 @@ import (
 	"github.com/fsn-dev/cryptoCoins/coins/eos"
 	"github.com/fsn-dev/cryptoCoins/coins/trx"
 	"github.com/fsn-dev/cryptoCoins/coins/xrp"
-	"github.com/fsn-dev/dcrm-walletService/crypto"
+	"github.com/anyswap/Anyswap-MPCNode/crypto"
 )
 
 func init() {
